@@ -26,6 +26,7 @@ class Node(BaseModel):
             json.dumps(self.model_dump(), ensure_ascii=False, sort_keys=True).encode("utf-8")
         ).hexdigest()
 
+    # TODO Oleksandr: copy-paste Immutable methods that freeze mutable field values (lists, dicts, sets)
 
 class Promise:
     pass
