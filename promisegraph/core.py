@@ -12,9 +12,9 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 class Node(BaseModel):
     """
-    TODO Oleksnadr: update this docstring a bit ?
-    A base class for immutable pydantic objects. It is frozen and has a git-style hash key that is calculated from the
-    JSON representation of the object.
+    A frozen pydantic model that allows arbitrary fields, has a git-style hash key that is calculated from the
+    JSON representation of its data. The data is recursively validated to be immutable. Dicts are converted to
+    `Node` instances, lists and tuples are converted to tuples of immutable values, sets are prohibited.
     """
 
     model_config = ConfigDict(frozen=True, extra="allow")
