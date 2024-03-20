@@ -60,28 +60,28 @@ class Node(BaseModel):
         return type(None), str, int, float, bool, tuple, list, dict, Node
 
 
-ITEM = TypeVar("ITEM")
-RESULT = TypeVar("RESULT")
+PART = TypeVar("PART")
+WHOLE = TypeVar("WHOLE")
 
 
-class Promise(Generic[ITEM, RESULT]):
+class Promise(Generic[PART, WHOLE]):
     """
     TODO Oleksandr: docstring
     """
 
     def __init__(
         self,
-        producer: Callable[[], AsyncIterator[ITEM]],
-        aggregator: Callable[[AsyncIterable[ITEM]], Awaitable[RESULT]],
+        producer: Callable[[], AsyncIterator[PART]],
+        packager: Callable[[AsyncIterable[PART]], Awaitable[WHOLE]],
     ):
         """
-        TODO Oleksandr: replace the definition of `producer` with a protocol ? what about `aggregator` ?
+        TODO Oleksandr: replace the definition of `producer` with a protocol ? what about `packager` ?
         TODO Oleksandr: docstring
         """
         self._producer = producer
-        self._aggregator = aggregator
+        self._packager = packager
 
-    def __aiter__(self) -> AsyncIterator[ITEM]:
+    def __aiter__(self) -> AsyncIterator[PART]:
         """
         TODO Oleksandr: docstring
         TODO Oleksandr: schedule the `producer` in the __init__ to start at the earliest possible time
@@ -90,8 +90,8 @@ class Promise(Generic[ITEM, RESULT]):
         """
         return self._producer()
 
-    async def aresolve(self) -> RESULT:
+    async def aresolve(self) -> WHOLE:
         """
         TODO Oleksandr: docstring
         """
-        return await self._aggregator(self)
+        return await self._packager(self)
