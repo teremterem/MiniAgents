@@ -5,7 +5,7 @@ TODO Oleksandr: split this module into multiple modules
 import hashlib
 import json
 from functools import cached_property
-from typing import Any
+from typing import Any, TypeVar, Generic, AsyncIterator, Callable, Awaitable, AsyncIterable
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -60,9 +60,38 @@ class Node(BaseModel):
         return type(None), str, int, float, bool, tuple, list, dict, Node
 
 
-# class Promise:
-#     pass
+ITEM = TypeVar("ITEM")
+RESULT = TypeVar("RESULT")
 
 
-# class PromisePath:
-#     pass
+class Promise(Generic[ITEM, RESULT]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self,
+        producer: Callable[[], AsyncIterator[ITEM]],
+        aggregator: Callable[[AsyncIterable[ITEM]], Awaitable[RESULT]],
+    ):
+        """
+        TODO Oleksandr: replace the definition of `producer` with a protocol ? what about `aggregator` ?
+        TODO Oleksandr: docstring
+        """
+        self._producer = producer
+        self._aggregator = aggregator
+
+    def __aiter__(self) -> AsyncIterator[ITEM]:
+        """
+        TODO Oleksandr: docstring
+        TODO Oleksandr: schedule the `producer` in the __init__ to start at the earliest possible time
+        TODO Oleksandr: introduce a proxy that captures all the items produced by the `producer` and collects them
+         so the next call to `__aiter__` returns the items from the proxy
+        """
+        return self._producer()
+
+    async def aresolve(self) -> RESULT:
+        """
+        TODO Oleksandr: docstring
+        """
+        return await self._aggregator(self)
