@@ -1,11 +1,13 @@
 """
-This module will later be split into multiple modules.
+TODO Oleksandr: split this module into multiple modules
 """
+
 import hashlib
 import json
 from functools import cached_property
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class Node(BaseModel):
@@ -26,11 +28,41 @@ class Node(BaseModel):
             json.dumps(self.model_dump(), ensure_ascii=False, sort_keys=True).encode("utf-8")
         ).hexdigest()
 
-    # TODO Oleksandr: copy-paste Immutable methods that freeze mutable field values (lists, dicts, sets)
+    # noinspection PyNestedDecorators
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_immutable_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """
+        Recursively make sure that the field values of the object are immutable.
+        """
+        for key, value in values.items():
+            values[key] = cls._validate_value(key, value)
+        return values
 
-class Promise:
-    pass
+    @classmethod
+    def _validate_value(cls, key: str, value: Any) -> Any:
+        """
+        Recursively make sure that the field value is immutable.
+        """
+        if isinstance(value, (tuple, list)):
+            return tuple(cls._validate_value(key, sub_value) for sub_value in value)
+        if isinstance(value, dict):
+            return Node(**value)
+        if not isinstance(value, cls._allowed_value_types()):
+            raise ValueError(
+                f"only {{{', '.join([t.__name__ for t in cls._allowed_value_types()])}}} "
+                f"are allowed as field values in {cls.__name__}, got {type(value).__name__} in `{key}`"
+            )
+        return value
+
+    @classmethod
+    def _allowed_value_types(cls) -> tuple[type[Any], ...]:
+        return type(None), str, int, float, bool, tuple, list, dict, Node
 
 
-class PromisePath:
-    pass
+# class Promise:
+#     pass
+
+
+# class PromisePath:
+#     pass
