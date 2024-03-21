@@ -2,12 +2,20 @@
 TODO Oleksandr: split this module into multiple modules
 """
 
+import asyncio
 import hashlib
 import json
 from functools import cached_property
 from typing import Any, TypeVar, Generic, AsyncIterator, Callable, Awaitable, AsyncIterable
 
 from pydantic import BaseModel, ConfigDict, model_validator
+
+
+class Sentinel:
+    """A sentinel object that is used indicate things like "no value", "end of queue" etc."""
+
+
+NO_VALUE = Sentinel()
 
 
 class Node(BaseModel):
@@ -74,24 +82,60 @@ class Promise(Generic[PART, WHOLE]):
         producer: Callable[[], AsyncIterator[PART]],
         packager: Callable[[AsyncIterable[PART]], Awaitable[WHOLE]],
     ):
-        """
-        TODO Oleksandr: replace the definition of `producer` with a protocol ? what about `packager` ?
-        TODO Oleksandr: docstring
-        """
-        self._producer = producer
+        self._producer_iterator = producer()  # TODO Oleksandr: is it possible to get an async generator like this ?
         self._packager = packager
+
+        self._parts_so_far = []
+        self._whole = NO_VALUE
+
+        self._producer_finished = False
+        self._lock = asyncio.Lock()
 
     def __aiter__(self) -> AsyncIterator[PART]:
         """
-        TODO Oleksandr: docstring
         TODO Oleksandr: schedule the `producer` in the __init__ to start at the earliest possible time
-        TODO Oleksandr: introduce a proxy that captures all the items produced by the `producer` and collects them
-         so the next call to `__aiter__` returns the items from the proxy
         """
-        return self._producer()
+        return _PromiseReplayIterator(self)
 
     async def aresolve(self) -> WHOLE:
         """
         TODO Oleksandr: docstring
         """
-        return await self._packager(self)
+        if self._whole is NO_VALUE:
+            self._whole = await self._packager(self)
+        return self._whole
+
+
+class _PromiseReplayIterator(AsyncIterator[PART]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(self, promise: "Promise") -> None:
+        self._promise = promise
+        self._index = 0
+
+    # noinspection PyProtectedMember
+    async def __anext__(self) -> PART:
+        if self._index < len(self._promise._parts_so_far):
+            item = self._promise._parts_so_far[self._index]
+        elif self._promise._producer_finished:
+            raise StopAsyncIteration
+        else:
+            async with self._promise._lock:
+                if self._index < len(self._promise._parts_so_far):
+                    item = self._promise._parts_so_far[self._index]
+                else:
+                    try:
+                        # pylint: disable=undefined-variable
+                        item = await anext(self._promise._producer_iterator)
+                    except BaseException as exc:  # pylint: disable=broad-except
+                        item = exc
+                    self._promise._parts_so_far[self._index] = item
+
+        self._index += 1
+        if isinstance(item, BaseException):
+            self._promise._producer_finished = True
+            raise item
+
+        return item
