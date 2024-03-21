@@ -127,11 +127,10 @@ class _PromiseReplayIterator(AsyncIterator[PART]):
                     item = self._promise._parts_so_far[self._index]
                 else:
                     try:
-                        # pylint: disable=undefined-variable
-                        item = await anext(self._promise._producer_iterator)
+                        item = await self._promise._producer_iterator.__anext__()
                     except BaseException as exc:  # pylint: disable=broad-except
                         item = exc
-                    self._promise._parts_so_far[self._index] = item
+                    self._promise._parts_so_far.append(item)
 
         self._index += 1
         if isinstance(item, BaseException):
