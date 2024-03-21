@@ -51,29 +51,21 @@ async def test_promise_replay_iterator_exception() -> None:
 
     promise = Promise(producer, packager)
 
-    promise_iterator1 = promise.__aiter__()
-    promise_iterator2 = promise.__aiter__()
+    async def iterate_over_promise():
+        promise_iterator = promise.__aiter__()
 
-    assert await promise_iterator1.__anext__() == 1
-    assert await promise_iterator2.__anext__() == 1
+        assert await promise_iterator.__anext__() == 1
+        assert await promise_iterator.__anext__() == 2
+        with pytest.raises(ValueError):
+            await promise_iterator.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await promise_iterator.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await promise_iterator.__anext__()
 
-    assert await promise_iterator1.__anext__() == 2
-    assert await promise_iterator2.__anext__() == 2
-
-    with pytest.raises(ValueError):
-        await promise_iterator1.__anext__()
-    with pytest.raises(ValueError):
-        await promise_iterator2.__anext__()
-
-    with pytest.raises(StopAsyncIteration):
-        await promise_iterator1.__anext__()
-    with pytest.raises(StopAsyncIteration):
-        await promise_iterator2.__anext__()
-
-    with pytest.raises(StopAsyncIteration):
-        await promise_iterator1.__anext__()
-    with pytest.raises(StopAsyncIteration):
-        await promise_iterator2.__anext__()
+    await iterate_over_promise()
+    # iterate over the promise again
+    await iterate_over_promise()
 
 
 @pytest.mark.asyncio
