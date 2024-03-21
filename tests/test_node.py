@@ -1,5 +1,7 @@
-# pylint: disable=redefined-outer-name
-"""Tests for the Node-based models."""
+"""
+Tests for the `Node`-based models.
+"""
+
 import hashlib
 from typing import Optional
 from unittest.mock import patch

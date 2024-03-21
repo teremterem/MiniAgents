@@ -2,12 +2,20 @@
 TODO Oleksandr: split this module into multiple modules
 """
 
+import asyncio
 import hashlib
 import json
 from functools import cached_property
-from typing import Any
+from typing import Any, TypeVar, Generic, AsyncIterator, Callable, Awaitable, AsyncIterable
 
 from pydantic import BaseModel, ConfigDict, model_validator
+
+
+class Sentinel:
+    """A sentinel object that is used indicate things like "no value", "end of queue" etc."""
+
+
+NO_VALUE = Sentinel()
 
 
 class Node(BaseModel):
@@ -60,9 +68,73 @@ class Node(BaseModel):
         return type(None), str, int, float, bool, tuple, list, dict, Node
 
 
-# class Promise:
-#     pass
+PART = TypeVar("PART")
+WHOLE = TypeVar("WHOLE")
 
 
-# class PromisePath:
-#     pass
+class Promise(Generic[PART, WHOLE]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self,
+        producer: Callable[[], AsyncIterator[PART]],
+        packager: Callable[[AsyncIterable[PART]], Awaitable[WHOLE]],
+    ):
+        self._producer_iterator = producer()
+        self._packager = packager
+
+        self._parts_so_far = []
+        self._whole = NO_VALUE
+
+        self._producer_finished = False
+        self._lock = asyncio.Lock()
+
+    def __aiter__(self) -> AsyncIterator[PART]:
+        """
+        TODO Oleksandr: schedule the `producer` in the __init__ to start at the earliest possible time
+        """
+        return _PromiseReplayIterator(self)
+
+    async def aresolve(self) -> WHOLE:
+        """
+        TODO Oleksandr: docstring
+        """
+        if self._whole is NO_VALUE:
+            self._whole = await self._packager(self)
+        return self._whole
+
+
+class _PromiseReplayIterator(AsyncIterator[PART]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(self, promise: "Promise") -> None:
+        self._promise = promise
+        self._index = 0
+
+    # noinspection PyProtectedMember
+    async def __anext__(self) -> PART:
+        if self._index < len(self._promise._parts_so_far):
+            item = self._promise._parts_so_far[self._index]
+        elif self._promise._producer_finished:
+            raise StopAsyncIteration
+        else:
+            async with self._promise._lock:
+                if self._index < len(self._promise._parts_so_far):
+                    item = self._promise._parts_so_far[self._index]
+                else:
+                    try:
+                        item = await self._promise._producer_iterator.__anext__()
+                    except BaseException as exc:  # pylint: disable=broad-except
+                        item = exc
+                    self._promise._parts_so_far.append(item)
+
+        self._index += 1
+        if isinstance(item, BaseException):
+            self._promise._producer_finished = True
+            raise item
+
+        return item
