@@ -39,7 +39,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self._producer_iterator = producer()
         self._packager = packager
 
-        self._parts_so_far: list[Union[PIECE, BaseException]] = []
+        self._pieces_so_far: list[Union[PIECE, BaseException]] = []
         self._whole = NO_VALUE
 
         self._producer_finished = False
@@ -73,20 +73,29 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
 
     async def _aproduce_the_stream(self) -> None:
         while True:
-            try:
-                self._queue.put_nowait(await self._producer_iterator.__anext__())
-            except StopAsyncIteration as exc:
-                self._queue.put_nowait(exc)
+            piece = await self._real_anext()
+            self._queue.put_nowait(piece)
+            if isinstance(piece, StopAsyncIteration):
                 break
-            except BaseException as exc:  # pylint: disable=broad-except
-                self._queue.put_nowait(exc)
+
+    async def _real_anext(self) -> Union[PIECE, BaseException]:
+        try:
+            piece = await self._producer_iterator.__anext__()
+        except BaseException as exc:  # pylint: disable=broad-except
+            # Any exception, apart from `StopAsyncIteration`, will always be stored in the `_pieces_so_far` list
+            # before the `StopAsyncIteration` and will not conclude the list (in other words, `StopAsyncIteration`
+            # will always conclude the `_pieces_so_far` list). This is because if you keep iterating over an
+            # iterator/generator past any other exception that it might raise, it is still supposed to raise
+            # `StopAsyncIteration` at the end.
+            piece = exc
+        return piece
 
 
 # noinspection PyProtectedMember
 class _StreamReplayIterator(AsyncIterator[PIECE]):
     """
-    The pieces that have already been "produced" are stored in the `_parts_so_far` attribute of the parent
-    `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_parts_so_far`, and then it
+    The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
+    `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
     continues to retrieve new pieces from the original producer of the parent `StreamedPromise`
     (`_producer_iterator` attribute of the parent `StreamedPromise`).
     """
@@ -96,45 +105,36 @@ class _StreamReplayIterator(AsyncIterator[PIECE]):
         self._index = 0
 
     async def __anext__(self) -> PIECE:
-        if self._index < len(self._streamed_promise._parts_so_far):
-            item = self._streamed_promise._parts_so_far[self._index]
+        if self._index < len(self._streamed_promise._pieces_so_far):
+            piece = self._streamed_promise._pieces_so_far[self._index]
         elif self._streamed_promise._producer_finished:
-            # StopAsyncIteration is stored as the last item in the parts list
-            raise self._streamed_promise._parts_so_far[-1]
+            # StopAsyncIteration is stored as the last piece in the piece list
+            raise self._streamed_promise._pieces_so_far[-1]
         else:
             async with self._streamed_promise._producer_lock:
-                if self._index < len(self._streamed_promise._parts_so_far):
-                    item = self._streamed_promise._parts_so_far[self._index]
+                if self._index < len(self._streamed_promise._pieces_so_far):
+                    piece = self._streamed_promise._pieces_so_far[self._index]
                 else:
-                    item = await self._real_anext()
+                    piece = await self._real_anext()
 
         self._index += 1
 
-        if isinstance(item, BaseException):
-            raise item
-        return item
+        if isinstance(piece, BaseException):
+            raise piece
+        return piece
 
     async def _real_anext(self) -> Union[PIECE, BaseException]:
         # pylint: disable=protected-access
         if self._streamed_promise._queue is None:
             # the stream is being produced on demand, not beforehand
-            try:
-                item = await self._streamed_promise._producer_iterator.__anext__()
-            except StopAsyncIteration as exc:
-                # StopAsyncIteration will be stored as the last item in the parts list
-                item = exc
-                self._streamed_promise._producer_finished = True
-            except BaseException as exc:  # pylint: disable=broad-except
-                # any other exception will be stored in the parts list before the StopAsyncIteration
-                # (this is because if you keep iterating over an iterator/generator past any regular exception
-                # that it might raise, it is still supposed to raise StopAsyncIteration at the end)
-                item = exc
-
+            piece = await self._streamed_promise._real_anext()
         else:
             # the stream is being produced beforehand ("stream immediately" option)
-            item = await self._streamed_promise._queue.get()
-            if isinstance(item, StopAsyncIteration):
-                self._streamed_promise._producer_finished = True
+            piece = await self._streamed_promise._queue.get()
 
-        self._streamed_promise._parts_so_far.append(item)
-        return item
+        if isinstance(piece, StopAsyncIteration):
+            # StopAsyncIteration will be stored as the last piece in the piece list
+            self._streamed_promise._producer_finished = True
+
+        self._streamed_promise._pieces_so_far.append(piece)
+        return piece
