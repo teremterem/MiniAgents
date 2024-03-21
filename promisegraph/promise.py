@@ -23,7 +23,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     :param producer: A callable that returns an async iterator yielding the pieces of the whole value.
     :param packager: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
-    TODO Oleksandr: explain the `stream_immediately` parameter
+    TODO Oleksandr: explain the `schedule_immediately` parameter
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -32,7 +32,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self,
         producer: Callable[[], AsyncIterator[PIECE]],
         packager: Callable[[AsyncIterable[PIECE]], Awaitable[WHOLE]],
-        stream_immediately: bool = True,
+        schedule_immediately: bool = False,
         # TODO Oleksandr: also make it possible to supply all the pieces (as well as the whole) at once,
         #  without a producer (or a packager)
     ):
@@ -46,10 +46,12 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self._producer_lock = asyncio.Lock()
         self._packager_lock = asyncio.Lock()
 
-        if stream_immediately:
+        if schedule_immediately:
+            # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
             asyncio.create_task(self._aproduce_the_stream())
         else:
+            # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
@@ -131,7 +133,7 @@ class _StreamReplayIterator(AsyncIterator[PIECE]):
             # the stream is being produced on demand, not beforehand
             piece = await self._streamed_promise._real_anext()
         else:
-            # the stream is being produced beforehand ("stream immediately" option)
+            # the stream is being produced beforehand ("schedule immediately" option)
             piece = await self._streamed_promise._queue.get()
 
         if isinstance(piece, StopAsyncIteration):

@@ -7,9 +7,9 @@ import pytest
 from promisegraph.promise import StreamedPromise
 
 
-@pytest.mark.parametrize("stream_immediately", [True, False])
+@pytest.mark.parametrize("schedule_immediately", [False, True])
 @pytest.mark.asyncio
-async def test_stream_replay_iterator(stream_immediately: bool) -> None:
+async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times, the `producer` is only called once.
     """
@@ -24,7 +24,7 @@ async def test_stream_replay_iterator(stream_immediately: bool) -> None:
     async def packager(parts):
         return [part async for part in parts]
 
-    streamed_promise = StreamedPromise(producer, packager, stream_immediately=stream_immediately)
+    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
 
     assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
     # iterate over the promise again
@@ -34,9 +34,9 @@ async def test_stream_replay_iterator(stream_immediately: bool) -> None:
     assert producer_iterations == 5
 
 
-@pytest.mark.parametrize("stream_immediately", [True, False])
+@pytest.mark.parametrize("schedule_immediately", [False, True])
 @pytest.mark.asyncio
-async def test_stream_replay_iterator_exception(stream_immediately: bool) -> None:
+async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times and an exception is raised in the middle of
     the `producer` iterations, the exact same sequence of exceptions is replayed.
@@ -51,7 +51,7 @@ async def test_stream_replay_iterator_exception(stream_immediately: bool) -> Non
     async def packager(parts):
         return [part async for part in parts]
 
-    streamed_promise = StreamedPromise(producer, packager, stream_immediately=stream_immediately)
+    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
 
     async def iterate_over_promise():
         promise_iterator = streamed_promise.__aiter__()
@@ -70,9 +70,9 @@ async def test_stream_replay_iterator_exception(stream_immediately: bool) -> Non
     await iterate_over_promise()
 
 
-@pytest.mark.parametrize("stream_immediately", [True, False])
+@pytest.mark.parametrize("schedule_immediately", [False, True])
 @pytest.mark.asyncio
-async def test_streamed_promise_acollect(stream_immediately: bool) -> None:
+async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
     Assert that:
     - when a `StreamedPromise` is "collected" multiple times, the `packager` is only called once;
@@ -89,7 +89,7 @@ async def test_streamed_promise_acollect(stream_immediately: bool) -> None:
         packager_calls += 1
         return [part async for part in parts]
 
-    streamed_promise = StreamedPromise(producer, packager, stream_immediately=stream_immediately)
+    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
 
     result1 = await streamed_promise.acollect()
     # "collect from the stream" again
