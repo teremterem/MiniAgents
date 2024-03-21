@@ -68,37 +68,34 @@ class Node(BaseModel):
         return type(None), str, int, float, bool, tuple, list, dict, Node
 
 
-PART = TypeVar("PART")
+PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
 
 
-class Promise(Generic[PART, WHOLE]):
+class StreamedPromise(Generic[PIECE, WHOLE]):
     """
     TODO Oleksandr: docstring
     """
 
     def __init__(
         self,
-        producer: Callable[[], AsyncIterator[PART]],
-        packager: Callable[[AsyncIterable[PART]], Awaitable[WHOLE]],
+        producer: Callable[[], AsyncIterator[PIECE]],
+        packager: Callable[[AsyncIterable[PIECE]], Awaitable[WHOLE]],
     ):
         self._producer_iterator = producer()
         self._packager = packager
 
-        self._parts_so_far: list[Union[PART, BaseException]] = []
+        self._parts_so_far: list[Union[PIECE, BaseException]] = []
         self._whole = NO_VALUE
 
         self._producer_finished = False
         self._producer_lock = asyncio.Lock()
         self._packager_lock = asyncio.Lock()
 
-    def __aiter__(self) -> AsyncIterator[PART]:
-        """
-        TODO Oleksandr: schedule the `producer` in the __init__ to start at the earliest possible time
-        """
+    def __aiter__(self) -> AsyncIterator[PIECE]:
         return _PromiseReplayIterator(self)
 
-    async def aresolve(self) -> WHOLE:
+    async def acollect(self) -> WHOLE:
         """
         TODO Oleksandr: docstring
         """
@@ -110,16 +107,12 @@ class Promise(Generic[PART, WHOLE]):
 
 
 # noinspection PyProtectedMember
-class _PromiseReplayIterator(AsyncIterator[PART]):
-    """
-    TODO Oleksandr: docstring
-    """
-
-    def __init__(self, promise: "Promise") -> None:
+class _PromiseReplayIterator(AsyncIterator[PIECE]):
+    def __init__(self, promise: "StreamedPromise") -> None:
         self._promise = promise
         self._index = 0
 
-    async def __anext__(self) -> PART:
+    async def __anext__(self) -> PIECE:
         if self._index < len(self._promise._parts_so_far):
             item = self._promise._parts_so_far[self._index]
         elif self._promise._producer_finished:
@@ -138,7 +131,7 @@ class _PromiseReplayIterator(AsyncIterator[PART]):
             raise item
         return item
 
-    async def _real_anext(self) -> Union[PART, BaseException]:
+    async def _real_anext(self) -> Union[PIECE, BaseException]:
         # pylint: disable=protected-access
         try:
             item = await self._promise._producer_iterator.__anext__()
