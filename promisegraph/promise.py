@@ -46,10 +46,11 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self._producer_lock = asyncio.Lock()
         self._packager_lock = asyncio.Lock()
 
-        self._queue = None
         if stream_immediately:
             self._queue = asyncio.Queue()
             asyncio.create_task(self._aproduce_the_stream())
+        else:
+            self._queue = None
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
         """
