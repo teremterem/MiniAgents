@@ -5,7 +5,7 @@
 
 class Sentinel:
     """
-    A sentinel object that is used indicate things like "no value", "end of queue" etc.
+    A sentinel object that is used indicate things like "no value" (because None is a value) etc.
     """
 
 
