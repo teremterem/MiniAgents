@@ -82,7 +82,7 @@ class Promise(Generic[PART, WHOLE]):
         producer: Callable[[], AsyncIterator[PART]],
         packager: Callable[[AsyncIterable[PART]], Awaitable[WHOLE]],
     ):
-        self._producer_iterator = producer()  # TODO Oleksandr: is it possible to get an async generator like this ?
+        self._producer_iterator = producer()
         self._packager = packager
 
         self._parts_so_far = []

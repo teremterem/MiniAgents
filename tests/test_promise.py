@@ -34,6 +34,49 @@ async def test_promise_replay_iterator() -> None:
 
 
 @pytest.mark.asyncio
+async def test_promise_replay_iterator_exception() -> None:
+    """
+    Assert that when a `Promise` is iterated over multiple times and an exception is raised in the middle of the
+    `producer` iterations, the exact same sequence of exceptions is replayed.
+    """
+
+    async def producer():
+        for i in range(1, 6):
+            if i == 3:
+                raise ValueError("Test error")
+            yield i
+
+    async def packager(parts):
+        return [part async for part in parts]
+
+    promise = Promise(producer, packager)
+
+    promise_iterator1 = promise.__aiter__()
+    promise_iterator2 = promise.__aiter__()
+
+    assert await promise_iterator1.__anext__() == 1
+    assert await promise_iterator2.__anext__() == 1
+
+    assert await promise_iterator1.__anext__() == 2
+    assert await promise_iterator2.__anext__() == 2
+
+    with pytest.raises(ValueError):
+        await promise_iterator1.__anext__()
+    with pytest.raises(ValueError):
+        await promise_iterator2.__anext__()
+
+    with pytest.raises(StopAsyncIteration):
+        await promise_iterator1.__anext__()
+    with pytest.raises(StopAsyncIteration):
+        await promise_iterator2.__anext__()
+
+    with pytest.raises(StopAsyncIteration):
+        await promise_iterator1.__anext__()
+    with pytest.raises(StopAsyncIteration):
+        await promise_iterator2.__anext__()
+
+
+@pytest.mark.asyncio
 async def test_promise_aresolve() -> None:
     """
     Assert that:
