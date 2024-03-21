@@ -93,7 +93,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self._packager_lock = asyncio.Lock()
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
-        return _PromiseReplayIterator(self)
+        return _StreamReplayIterator(self)
 
     async def acollect(self) -> WHOLE:
         """
@@ -107,7 +107,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
 
 
 # noinspection PyProtectedMember
-class _PromiseReplayIterator(AsyncIterator[PIECE]):
+class _StreamReplayIterator(AsyncIterator[PIECE]):
     def __init__(self, promise: "StreamedPromise") -> None:
         self._promise = promise
         self._index = 0
