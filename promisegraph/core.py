@@ -6,7 +6,7 @@ import asyncio
 import hashlib
 import json
 from functools import cached_property
-from typing import Any, TypeVar, Generic, AsyncIterator, Callable, Awaitable, AsyncIterable
+from typing import Any, TypeVar, Generic, AsyncIterator, Callable, Awaitable, AsyncIterable, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -85,11 +85,12 @@ class Promise(Generic[PART, WHOLE]):
         self._producer_iterator = producer()
         self._packager = packager
 
-        self._parts_so_far = []
+        self._parts_so_far: list[Union[PART, BaseException]] = []
         self._whole = NO_VALUE
 
         self._producer_finished = False
-        self._lock = asyncio.Lock()
+        self._producer_lock = asyncio.Lock()
+        self._packager_lock = asyncio.Lock()
 
     def __aiter__(self) -> AsyncIterator[PART]:
         """
@@ -102,10 +103,13 @@ class Promise(Generic[PART, WHOLE]):
         TODO Oleksandr: docstring
         """
         if self._whole is NO_VALUE:
-            self._whole = await self._packager(self)
+            async with self._packager_lock:
+                if self._whole is NO_VALUE:
+                    self._whole = await self._packager(self)
         return self._whole
 
 
+# noinspection PyProtectedMember
 class _PromiseReplayIterator(AsyncIterator[PART]):
     """
     TODO Oleksandr: docstring
@@ -115,26 +119,37 @@ class _PromiseReplayIterator(AsyncIterator[PART]):
         self._promise = promise
         self._index = 0
 
-    # noinspection PyProtectedMember
     async def __anext__(self) -> PART:
         if self._index < len(self._promise._parts_so_far):
             item = self._promise._parts_so_far[self._index]
         elif self._promise._producer_finished:
-            raise StopAsyncIteration
+            # StopAsyncIteration is stored as the last item in the parts list
+            raise self._promise._parts_so_far[-1]
         else:
-            async with self._promise._lock:
+            async with self._promise._producer_lock:
                 if self._index < len(self._promise._parts_so_far):
                     item = self._promise._parts_so_far[self._index]
                 else:
-                    try:
-                        item = await self._promise._producer_iterator.__anext__()
-                    except BaseException as exc:  # pylint: disable=broad-except
-                        item = exc
-                    self._promise._parts_so_far.append(item)
+                    item = await self._real_anext()
 
         self._index += 1
-        if isinstance(item, BaseException):
-            self._promise._producer_finished = True
-            raise item
 
+        if isinstance(item, BaseException):
+            raise item
+        return item
+
+    async def _real_anext(self) -> Union[PART, BaseException]:
+        # pylint: disable=protected-access
+        try:
+            item = await self._promise._producer_iterator.__anext__()
+        except StopAsyncIteration as exc:
+            # StopAsyncIteration will be stored as the last item in the parts list
+            item = exc
+            self._promise._producer_finished = True
+        except BaseException as exc:  # pylint: disable=broad-except
+            # any other exception will be stored in the parts list before the StopAsyncIteration
+            # (this is because if you keep iterating over an iterator/generator past any regular exception
+            # that it might raise, it is still supposed to raise StopAsyncIteration at the end)
+            item = exc
+        self._promise._parts_so_far.append(item)
         return item
