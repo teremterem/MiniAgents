@@ -106,9 +106,10 @@ class _StreamReplayIterator(AsyncIterator[PIECE]):
 
     async def __anext__(self) -> PIECE:
         if self._index < len(self._streamed_promise._pieces_so_far):
+            # "replay" a piece that was produced earlier
             piece = self._streamed_promise._pieces_so_far[self._index]
         elif self._streamed_promise._producer_finished:
-            # StopAsyncIteration is stored as the last piece in the piece list
+            # we know that `StopAsyncIteration` was stored as the last piece in the piece list
             raise self._streamed_promise._pieces_so_far[-1]
         else:
             async with self._streamed_promise._producer_lock:
@@ -133,7 +134,7 @@ class _StreamReplayIterator(AsyncIterator[PIECE]):
             piece = await self._streamed_promise._queue.get()
 
         if isinstance(piece, StopAsyncIteration):
-            # StopAsyncIteration will be stored as the last piece in the piece list
+            # `StopAsyncIteration` will be stored as the last piece in the piece list
             self._streamed_promise._producer_finished = True
 
         self._streamed_promise._pieces_so_far.append(piece)
