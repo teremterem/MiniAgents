@@ -1,10 +1,10 @@
 """
-Tests for the `Promise` class.
+Tests for the `StreamedPromise` class.
 """
 
 import pytest
 
-from promisegraph.core import StreamedPromise
+from promisegraph.promise import StreamedPromise
 
 
 @pytest.mark.asyncio

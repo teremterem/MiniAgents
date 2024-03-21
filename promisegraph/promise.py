@@ -1,72 +1,11 @@
 """
-TODO Oleksandr: split this module into multiple modules
+The main class in this module is `StreamedPromise`. See its docstring for more information.
 """
 
 import asyncio
-import hashlib
-import json
-from functools import cached_property
-from typing import Any, TypeVar, Generic, AsyncIterator, Callable, Awaitable, AsyncIterable, Union
+from typing import TypeVar, Generic, AsyncIterator, Callable, Awaitable, AsyncIterable, Union
 
-from pydantic import BaseModel, ConfigDict, model_validator
-
-
-class Sentinel:
-    """A sentinel object that is used indicate things like "no value", "end of queue" etc."""
-
-
-NO_VALUE = Sentinel()
-
-
-class Node(BaseModel):
-    """
-    A frozen pydantic model that allows arbitrary fields, has a git-style hash key that is calculated from the
-    JSON representation of its data. The data is recursively validated to be immutable. Dicts are converted to
-    `Node` instances, lists and tuples are converted to tuples of immutable values, sets are prohibited.
-    """
-
-    model_config = ConfigDict(frozen=True, extra="allow")
-
-    @cached_property
-    def hash_key(self) -> str:
-        """
-        Get the hash key for this object. It is a hash of the JSON representation of the object.
-        """
-        return hashlib.sha256(
-            json.dumps(self.model_dump(), ensure_ascii=False, sort_keys=True).encode("utf-8")
-        ).hexdigest()
-
-    # noinspection PyNestedDecorators
-    @model_validator(mode="before")
-    @classmethod
-    def _validate_immutable_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """
-        Recursively make sure that the field values of the object are immutable.
-        """
-        for key, value in values.items():
-            values[key] = cls._validate_value(key, value)
-        return values
-
-    @classmethod
-    def _validate_value(cls, key: str, value: Any) -> Any:
-        """
-        Recursively make sure that the field value is immutable.
-        """
-        if isinstance(value, (tuple, list)):
-            return tuple(cls._validate_value(key, sub_value) for sub_value in value)
-        if isinstance(value, dict):
-            return Node(**value)
-        if not isinstance(value, cls._allowed_value_types()):
-            raise ValueError(
-                f"only {{{', '.join([t.__name__ for t in cls._allowed_value_types()])}}} "
-                f"are allowed as field values in {cls.__name__}, got {type(value).__name__} in `{key}`"
-            )
-        return value
-
-    @classmethod
-    def _allowed_value_types(cls) -> tuple[type[Any], ...]:
-        return type(None), str, int, float, bool, tuple, list, dict, Node
-
+from promisegraph.sentinels import NO_VALUE
 
 PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
@@ -74,7 +13,16 @@ WHOLE = TypeVar("WHOLE")
 
 class StreamedPromise(Generic[PIECE, WHOLE]):
     """
-    TODO Oleksandr: docstring
+    A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
+
+    The StreamedPromise allows for "replaying" the stream of pieces without involving the producer
+    for the pieces that have already been produced. This means that multiple consumers can iterate
+    over the stream independently, and each consumer will receive all the pieces from the beginning,
+    even if some pieces were produced before the consumer started iterating.
+
+    :param producer: A callable that returns an async iterator yielding the pieces of the whole value.
+    :param packager: A callable that takes an async iterable of pieces and returns the whole value
+                     ("packages" the pieces).
     """
 
     def __init__(
@@ -93,11 +41,16 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self._packager_lock = asyncio.Lock()
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
+        """
+        This allows to consume the stream piece by piece. Each new iterator returned by `__aiter__` will replay
+        the stream from the beginning.
+        """
         return _StreamReplayIterator(self)
 
     async def acollect(self) -> WHOLE:
         """
-        TODO Oleksandr: docstring
+        "Accumulates" all the pieces of the stream and returns the "whole" value. Will return the exact
+        same object (the exact same instance) if called multiple times.
         """
         if self._whole is NO_VALUE:
             async with self._packager_lock:
@@ -108,6 +61,13 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
 
 # noinspection PyProtectedMember
 class _StreamReplayIterator(AsyncIterator[PIECE]):
+    """
+    The pieces that have already been "produced" are stored in the `_parts_so_far` attribute of the parent
+    `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_parts_so_far`, and then it
+    continues to retrieve new pieces from the original producer of the parent `StreamedPromise`
+    (`_producer_iterator` attribute of the parent `StreamedPromise`).
+    """
+
     def __init__(self, promise: "StreamedPromise") -> None:
         self._promise = promise
         self._index = 0
