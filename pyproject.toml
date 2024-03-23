@@ -29,6 +29,7 @@ pylint = "*"
 pytest = "*"
 pytest-asyncio = "*"
 pytest-cov = "*"
+python-dotenv = "*"
 
 [build-system]
 requires = ["poetry-core"]
