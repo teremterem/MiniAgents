@@ -1759,6 +1759,20 @@ files = [
 wcwidth = "*"
 
 [[package]]
+name = "promptlayer"
+version = "0.5.1"
+description = "PromptLayer is a platform for prompt engineering and tracks your LLM requests."
+optional = false
+python-versions = "<4.0,>=3.8.1"
+files = [
+    {file = "promptlayer-0.5.1-py3-none-any.whl", hash = "sha256:b7030b8404f3f70054ac538eb55112b9fe0e2424aea4313384f57d21669a699c"},
+    {file = "promptlayer-0.5.1.tar.gz", hash = "sha256:fbd13ae83dcbc5915cc31e5ba9e40da9c553e72964decc2f5592ef0db3e001b2"},
+]
+
+[package.dependencies]
+requests = ">=2.31.0,<3.0.0"
+
+[[package]]
 name = "psutil"
 version = "5.9.8"
 description = "Cross-platform lib for process and system monitoring in Python."
@@ -2906,4 +2920,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "4275677b8233fd3652292d9cd4d9259f5eff8acc20e71808469e3b470fac2e22"
+content-hash = "21bfed422c3da1d2935eaa0dcf86caa9816ba19fc64088099477fb7062c4347b"
