@@ -2,8 +2,7 @@
 Split this module into multiple modules.
 """
 
-from abc import ABC, abstractmethod
-from typing import AsyncIterator
+from typing import Protocol, AsyncIterator, Any
 
 from promisegraph.node import Node
 from promisegraph.promise import StreamedPromise
@@ -17,22 +16,33 @@ class Message(Node):
     text: str
 
 
-class MessagePromise(StreamedPromise[str, Message], ABC):
+class MessagePieceProducer(Protocol):
     """
-    A promise of a message that can be streamed piece by piece.
+    A protocol for message piece producer functions.
     """
 
-    def __init__(self) -> None:
-        super().__init__(self._token_producer, self._message_packager, schedule_immediately=True)
+    def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
 
-    @abstractmethod
-    async def _token_producer(self) -> AsyncIterator[str]:  # TODO Oleksandr: what's the correct return type ?
-        """
-        TODO Oleksandr: docstring
-        """
 
-    @abstractmethod
-    async def _message_packager(self, _) -> Message:
-        """
-        TODO Oleksandr: docstring
-        """
+class MessagePromise(StreamedPromise[str, Message]):
+    """
+    A promise of a message that can be streamed token by token.
+    """
+
+    def __init__(
+        self,
+        msg_piece_producer: MessagePieceProducer,
+        schedule_immediately: bool = True,
+    ) -> None:
+        super().__init__(producer=self._producer, packager=self._packager, schedule_immediately=schedule_immediately)
+        self._msg_piece_producer = msg_piece_producer
+        self._metadata_so_far: dict[str, Any] = {}
+
+    def _producer(self, _) -> AsyncIterator[str]:
+        return self._msg_piece_producer(self._metadata_so_far)
+
+    async def _packager(self, _) -> Message:
+        return Message(
+            text="".join([token async for token in self]),
+            **self._metadata_so_far,
+        )
