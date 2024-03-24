@@ -1,5 +1,5 @@
 """
-TODO Oleksandr: docstring
+Split this module into multiple modules.
 """
 
 from abc import ABC, abstractmethod
