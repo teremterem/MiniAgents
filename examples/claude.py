@@ -20,6 +20,8 @@ async def main() -> None:
     """
     Send a message to Claude and print the response.
     """
+    # import promptlayer
+    # client = promptlayer.anthropic.AsyncAnthropic()
     client = anthropic.AsyncAnthropic()
 
     message_stream = await client.messages.create(
