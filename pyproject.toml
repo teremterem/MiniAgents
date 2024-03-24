@@ -19,15 +19,18 @@ python = ">=3.9,<4.0"
 pydantic = ">=2.0.0,<3.0.0"
 
 [tool.poetry.dev-dependencies]
+anthropic = "*"
 black = "*"
 ipython = "*"
 jupyterlab = "*"
 notebook = "*"
 pre-commit = "*"
+promptlayer = "*"
 pylint = "*"
 pytest = "*"
 pytest-asyncio = "*"
 pytest-cov = "*"
+python-dotenv = "*"
 
 [build-system]
 requires = ["poetry-core"]
