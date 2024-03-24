@@ -12,19 +12,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import anthropic
-from anthropic.types import ContentBlockDeltaEvent
+from promisegraph.miniagents.ext.llms.anthropic import anthropic
 
 
 async def main() -> None:
     """
     Send a message to Claude and print the response.
     """
-    # import promptlayer
-    # client = promptlayer.anthropic.AsyncAnthropic()
-    client = anthropic.AsyncAnthropic()
-
-    message_stream = await client.messages.create(
+    msg_promise = anthropic(
         model="claude-3-opus-20240229",
         max_tokens=1000,
         temperature=0.0,
@@ -33,9 +28,8 @@ async def main() -> None:
         stream=True,
     )
 
-    async for token in message_stream:
-        if isinstance(token, ContentBlockDeltaEvent):
-            print(token.delta.text, end="", flush=True)
+    async for token in msg_promise:
+        print(token, end="", flush=True)
     print()
     print()
 

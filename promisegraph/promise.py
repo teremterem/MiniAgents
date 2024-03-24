@@ -3,12 +3,31 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 """
 
 import asyncio
-from typing import TypeVar, Generic, AsyncIterator, Callable, Awaitable, AsyncIterable, Union
+from typing import TypeVar, Generic, AsyncIterator, Union, Optional, Protocol
 
 from promisegraph.sentinels import NO_VALUE
 
 PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
+StreamedPromiseBound = TypeVar("StreamedPromiseBound", bound="StreamedPromise")
+
+
+class StreamedPieceProducer(Protocol[PIECE]):
+    """
+    A protocol for piece producers. A piece producer is a function that takes a `StreamedPromise` instance
+    as an argument and returns an async iterator of pieces.
+    """
+
+    def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE]: ...
+
+
+class StreamedWholePackager(Protocol[WHOLE]):
+    """
+    A protocol for packagers of the whole value. A whole packager is a function that takes a `StreamedPromise`
+    instance as an argument and returns the whole value.
+    """
+
+    async def __call__(self, streamed_promise: StreamedPromiseBound) -> WHOLE: ...
 
 
 class StreamedPromise(Generic[PIECE, WHOLE]):
@@ -30,17 +49,17 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
 
     def __init__(
         self,
-        producer: Callable[[], AsyncIterator[PIECE]],
-        packager: Callable[[AsyncIterable[PIECE]], Awaitable[WHOLE]],
+        producer: StreamedPieceProducer[PIECE],
+        packager: StreamedWholePackager[WHOLE],
         schedule_immediately: bool = False,
         # TODO Oleksandr: also make it possible to supply all the pieces (as well as the whole) at once,
         #  without a producer (or a packager)
-    ):
-        self._producer_iterator = producer()
-        self._packager = packager
+    ) -> None:
+        self.__packager = packager
+        self.__producer = producer
 
         self._pieces_so_far: list[Union[PIECE, BaseException]] = []
-        self._whole = NO_VALUE
+        self._whole = NO_VALUE  # NO_VALUE is used because `None` is also a legitimate value for the "whole"
 
         self._producer_finished = False
         self._producer_lock = asyncio.Lock()
@@ -53,6 +72,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
+        self._producer_iterator: Optional[AsyncIterator[PIECE]] = None
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
         """
@@ -71,7 +91,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         if self._whole is NO_VALUE:
             async with self._packager_lock:
                 if self._whole is NO_VALUE:
-                    self._whole = await self._packager(self)
+                    self._whole = await self.__packager(self)
         return self._whole
 
     async def _aproduce_the_stream(self) -> None:
@@ -83,6 +103,8 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
 
     async def _real_anext(self) -> Union[PIECE, BaseException]:
         try:
+            if self._producer_iterator is None:
+                self._producer_iterator = self.__producer(self)
             piece = await self._producer_iterator.__anext__()
         except BaseException as exc:  # pylint: disable=broad-except
             # Any exception, apart from `StopAsyncIteration`, will always be stored in the `_pieces_so_far` list
