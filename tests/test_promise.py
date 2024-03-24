@@ -2,6 +2,8 @@
 Tests for the `StreamedPromise` class.
 """
 
+from typing import AsyncIterator
+
 import pytest
 
 from promisegraph.promise import StreamedPromise
@@ -15,14 +17,16 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     """
     producer_iterations = 0
 
-    async def producer(_):
+    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+        assert _streamed_promise is streamed_promise
         nonlocal producer_iterations
         for i in range(1, 6):
             producer_iterations += 1
             yield i
 
-    async def packager(parts):
-        return [part async for part in parts]
+    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+        assert _streamed_promise is streamed_promise
+        return [piece async for piece in _streamed_promise]
 
     streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
 
@@ -42,14 +46,16 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
     the `producer` iterations, the exact same sequence of exceptions is replayed.
     """
 
-    async def producer(_):
+    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+        assert _streamed_promise is streamed_promise
         for i in range(1, 6):
             if i == 3:
                 raise ValueError("Test error")
             yield i
 
-    async def packager(parts):
-        return [part async for part in parts]
+    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+        assert _streamed_promise is streamed_promise
+        return [piece async for piece in _streamed_promise]
 
     streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
 
@@ -80,14 +86,16 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
     packager_calls = 0
 
-    async def producer(_):
+    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+        assert _streamed_promise is streamed_promise
         for i in range(1, 6):
             yield i
 
-    async def packager(parts):
+    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+        assert _streamed_promise is streamed_promise
         nonlocal packager_calls
         packager_calls += 1
-        return [part async for part in parts]
+        return [piece async for piece in _streamed_promise]
 
     streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
 
