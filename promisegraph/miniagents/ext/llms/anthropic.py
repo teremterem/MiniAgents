@@ -26,7 +26,11 @@ def anthropic(schedule_immediately: bool = True, stream: bool = True, **kwargs) 
                 if isinstance(token, ContentBlockDeltaEvent):
                     yield token.delta.text
         else:
-            assert len(response.content) != 1
+            if len(response.content) != 1:
+                raise RuntimeError(
+                    f"exactly one message should have been returned by Anthropic, "
+                    f"but {len(response.content)} were returned instead"
+                )
             yield response.content[0].text
 
     return MessagePromise(msg_piece_producer=msg_piece_producer, schedule_immediately=schedule_immediately)

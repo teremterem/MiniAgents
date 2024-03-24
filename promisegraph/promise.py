@@ -5,7 +5,7 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 import asyncio
 from typing import TypeVar, Generic, AsyncIterator, Union, Optional, Protocol
 
-from promisegraph.sentinels import NO_VALUE
+from promisegraph.sentinels import NO_VALUE, Sentinel, FAILED
 
 PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
@@ -59,9 +59,10 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self.__producer = producer
 
         self._pieces_so_far: list[Union[PIECE, BaseException]] = []
-        self._whole = NO_VALUE  # NO_VALUE is used because `None` is also a legitimate value for the "whole"
+        # NO_VALUE is used because `None` is also a legitimate value for the "whole"
+        self._whole: Union[Optional[WHOLE], Sentinel] = NO_VALUE
 
-        self._producer_finished = False
+        self._all_pieces_consumed = False
         self._producer_lock = asyncio.Lock()
         self._packager_lock = asyncio.Lock()
 
@@ -72,7 +73,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
-        self._producer_iterator: Optional[AsyncIterator[PIECE]] = None
+        self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
         """
@@ -96,24 +97,33 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
 
     async def _aproduce_the_stream(self) -> None:
         while True:
-            piece = await self._real_anext()
+            piece = await self._aproducer_iterator_next()
             self._queue.put_nowait(piece)
             if isinstance(piece, StopAsyncIteration):
                 break
 
-    async def _real_anext(self) -> Union[PIECE, BaseException]:
-        try:
-            if self._producer_iterator is None:
+    async def _aproducer_iterator_next(self) -> Union[PIECE, BaseException]:
+        # pylint: disable=broad-except
+        if self._producer_iterator is None:
+            try:
                 self._producer_iterator = self.__producer(self)
-            piece = await self._producer_iterator.__anext__()
-        except BaseException as exc:  # pylint: disable=broad-except
+            except BaseException as exc:
+                self._producer_iterator = FAILED
+                return exc
+
+        elif self._producer_iterator is FAILED:
+            # we were not able to instantiate the producer iterator at all - stopping the stream
+            return StopAsyncIteration()
+
+        try:
+            return await self._producer_iterator.__anext__()
+        except BaseException as exc:
             # Any exception, apart from `StopAsyncIteration`, will always be stored in the `_pieces_so_far` list
             # before the `StopAsyncIteration` and will not conclude the list (in other words, `StopAsyncIteration`
             # will always conclude the `_pieces_so_far` list). This is because if you keep iterating over an
             # iterator/generator past any other exception that it might raise, it is still supposed to raise
             # `StopAsyncIteration` at the end.
-            piece = exc
-        return piece
+            return exc
 
 
 # noinspection PyProtectedMember
@@ -133,7 +143,7 @@ class _StreamReplayIterator(AsyncIterator[PIECE]):
         if self._index < len(self._streamed_promise._pieces_so_far):
             # "replay" a piece that was produced earlier
             piece = self._streamed_promise._pieces_so_far[self._index]
-        elif self._streamed_promise._producer_finished:
+        elif self._streamed_promise._all_pieces_consumed:
             # we know that `StopAsyncIteration` was stored as the last piece in the piece list
             raise self._streamed_promise._pieces_so_far[-1]
         else:
@@ -153,14 +163,14 @@ class _StreamReplayIterator(AsyncIterator[PIECE]):
         # pylint: disable=protected-access
         if self._streamed_promise._queue is None:
             # the stream is being produced on demand, not beforehand
-            piece = await self._streamed_promise._real_anext()
+            piece = await self._streamed_promise._aproducer_iterator_next()
         else:
             # the stream is being produced beforehand ("schedule immediately" option)
             piece = await self._streamed_promise._queue.get()
 
         if isinstance(piece, StopAsyncIteration):
             # `StopAsyncIteration` will be stored as the last piece in the piece list
-            self._streamed_promise._producer_finished = True
+            self._streamed_promise._all_pieces_consumed = True
 
         self._streamed_promise._pieces_so_far.append(piece)
         return piece

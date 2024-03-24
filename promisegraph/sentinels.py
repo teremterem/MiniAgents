@@ -5,8 +5,9 @@
 
 class Sentinel:
     """
-    A sentinel object that is used indicate things like "no value" (because None is a value) etc.
+    A sentinel object that is used indicate things like "no value" (because None is a value), "failed" etc.
     """
 
 
 NO_VALUE = Sentinel()
+FAILED = Sentinel()
