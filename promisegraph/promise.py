@@ -5,7 +5,7 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 import asyncio
 from typing import TypeVar, Generic, AsyncIterator, Union, Optional, Protocol
 
-from promisegraph.sentinels import NO_VALUE, Sentinel, FAILED
+from promisegraph.sentinels import Sentinel, NO_VALUE, FAILED
 
 PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
