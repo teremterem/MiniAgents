@@ -107,6 +107,8 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         if self._producer_iterator is None:
             try:
                 self._producer_iterator = self.__producer(self)
+                if not callable(self._producer_iterator.__anext__):
+                    raise TypeError("The producer must return an async iterator")
             except BaseException as exc:
                 self._producer_iterator = FAILED
                 return exc
