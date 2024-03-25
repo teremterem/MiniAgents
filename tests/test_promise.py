@@ -78,6 +78,37 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
 @pytest.mark.asyncio
+async def test_stream_broken_producer(schedule_immediately: bool) -> None:
+    """
+    Assert that when a `StreamedPromise` tries to iterate over a broken producer it does not hang indefinitely, just
+    raises an error and stops the stream.
+    """
+    producer = "not really a producer"
+
+    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+        assert _streamed_promise is streamed_promise
+        return [piece async for piece in _streamed_promise]
+
+    # noinspection PyTypeChecker
+    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+
+    async def iterate_over_promise():
+        promise_iterator = streamed_promise.__aiter__()
+
+        with pytest.raises(TypeError):
+            await promise_iterator.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await promise_iterator.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await promise_iterator.__anext__()
+
+    await iterate_over_promise()
+    # iterate over the stream again
+    await iterate_over_promise()
+
+
+@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.asyncio
 async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
     Assert that:
