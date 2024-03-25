@@ -80,7 +80,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
 @pytest.mark.asyncio
 async def test_stream_broken_producer(schedule_immediately: bool) -> None:
     """
-    Assert that when a `StreamedPromise` tries to iterate over a broken producer it does not hang indefinitely, just
+    Assert that when a `StreamedPromise` tries to iterate over a broken `producer` it does not hang indefinitely, just
     raises an error and stops the stream.
     """
     producer = "not really a producer"
@@ -105,6 +105,30 @@ async def test_stream_broken_producer(schedule_immediately: bool) -> None:
     await iterate_over_promise()
     # iterate over the stream again
     await iterate_over_promise()
+
+
+@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.asyncio
+async def test_stream_broken_packager(schedule_immediately: bool) -> None:
+    """
+    Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `acollect()`.
+    """
+
+    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+        assert _streamed_promise is streamed_promise
+        for i in range(1, 6):
+            yield i
+
+    packager = "not really a packager"
+
+    # noinspection PyTypeChecker
+    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+
+    with pytest.raises(TypeError):
+        await streamed_promise.acollect()
+    assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
+    with pytest.raises(TypeError):
+        await streamed_promise.acollect()
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
