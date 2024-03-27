@@ -1,8 +1,10 @@
-# PromiseGraph
+# MiniAgents
+
+TODO Oleksandr: write proper readme
 
 ## Classes
 
-### Promise
+### StreamedPromise
 
 ### Node
 

@@ -22,7 +22,9 @@ def anthropic(schedule_immediately: bool = True, stream: bool = True, **kwargs) 
         response = await client.messages.create(stream=stream, **kwargs)
         # TODO Oleksandr: collect metadata_so_far
         if stream:
-            async for token in response:
+            # TODO Oleksandr: reimplement streaming using this:
+            #  https://docs.anthropic.com/claude/reference/messages-streaming
+            async for token in response.text_stream:
                 if isinstance(token, ContentBlockDeltaEvent):
                     yield token.delta.text
         else:
@@ -31,6 +33,6 @@ def anthropic(schedule_immediately: bool = True, stream: bool = True, **kwargs) 
                     f"exactly one message should have been returned by Anthropic, "
                     f"but {len(response.content)} were returned instead"
                 )
-            yield response.content[0].text
+            yield response.content[0].text  # yield the whole text as one "piece"
 
     return MessagePromise(msg_piece_producer=msg_piece_producer, schedule_immediately=schedule_immediately)
