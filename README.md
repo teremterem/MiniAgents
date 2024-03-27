@@ -1,8 +1,10 @@
-# PromiseGraph
+# MiniAgents
+
+TODO Oleksandr: write proper readme
 
 ## Classes
 
-### Promise
+### StreamedPromise
 
 ### Node
 
@@ -14,9 +16,3 @@
 The answer to both questions is probably no - I need to more or less closely adapt this graph to the use case of
 AgentForum. Each relation type should connect Nodes into a path where it is clear which Node is the source and which
 is the target.
-
----
-
-## Class ideas
-
-- Realizer / Materializer / Resolver ?
