@@ -13,21 +13,18 @@ def anthropic(schedule_immediately: bool = True, stream: bool = True, **kwargs) 
     """
     # pylint: disable=import-outside-toplevel
     import anthropic as anthropic_original
-    from anthropic.types import ContentBlockDeltaEvent
 
     # TODO Oleksandr: instantiate the client only once but don't import `anthropic` at the module level
     client = anthropic_original.AsyncAnthropic()
 
     async def msg_piece_producer(_: dict[str, Any]) -> AsyncIterator[str]:
-        response = await client.messages.create(stream=stream, **kwargs)
         # TODO Oleksandr: collect metadata_so_far
         if stream:
-            # TODO Oleksandr: reimplement streaming using this:
-            #  https://docs.anthropic.com/claude/reference/messages-streaming
-            async for token in response.text_stream:
-                if isinstance(token, ContentBlockDeltaEvent):
-                    yield token.delta.text
+            async with client.messages.stream(**kwargs) as response:  # pylint: disable=not-async-context-manager
+                async for token in response.text_stream:
+                    yield token
         else:
+            response = await client.messages.create(stream=False, **kwargs)
             if len(response.content) != 1:
                 raise RuntimeError(
                     f"exactly one message should have been returned by Anthropic, "
