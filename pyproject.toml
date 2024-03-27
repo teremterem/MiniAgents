@@ -5,8 +5,8 @@ line-length = 119
 branch = true
 
 [tool.poetry]
-name = "promisegraph"
-version = "0.0.2"
+name = "miniagents"
+version = "0.0.1"
 description = """\
 TODO Oleksandr\
 """

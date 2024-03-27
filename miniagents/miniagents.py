@@ -4,8 +4,8 @@ Split this module into multiple modules.
 
 from typing import Protocol, AsyncIterator, Any
 
-from promisegraph.node import Node
-from promisegraph.promise import StreamedPromise
+from miniagents.promisegraph.node import Node
+from miniagents.promisegraph.promise import StreamedPromise
 
 
 class Message(Node):

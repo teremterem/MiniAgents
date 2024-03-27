@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from promisegraph.miniagents.ext.llms.anthropic import anthropic
+from miniagents.ext.llms.anthropic import anthropic
 
 
 async def main() -> None:

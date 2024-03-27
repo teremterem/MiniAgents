@@ -1,10 +1,10 @@
 """
-This module integrates Anthropic language models with PromiseGraph / MiniAgents.
+This module integrates Anthropic language models with MiniAgents.
 """
 
 from typing import AsyncIterator, Any
 
-from promisegraph.miniagents.miniagents import MessagePromise
+from miniagents.miniagents import MessagePromise
 
 
 def anthropic(schedule_immediately: bool = True, stream: bool = True, **kwargs) -> MessagePromise:

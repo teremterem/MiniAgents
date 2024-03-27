@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from promisegraph.promise import StreamedPromise
+from miniagents.promisegraph.promise import StreamedPromise
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
