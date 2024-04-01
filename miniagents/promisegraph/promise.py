@@ -32,7 +32,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self,
         producer: StreamedPieceProducer[PIECE],
         packager: StreamedWholePackager[WHOLE],
-        schedule_immediately: bool = False,
+        schedule_immediately: bool,
         # TODO Oleksandr: also make it possible to supply all the pieces (as well as the whole) at once,
         #  without a producer (or a packager)
     ) -> None:
@@ -165,7 +165,8 @@ class AppendProducer(Generic[PIECE]):
     pieces into it (and, consequently, into the `StreamedPromise`) later using `append()`.
     """
 
-    def __init__(self, append_errors_too: bool = True) -> None:
+    def __init__(self, append_errors_too: bool) -> None:
+        # TODO Oleksandr: explain `append_errors_too` in the docstring
         self._queue = asyncio.Queue()
         self._append_open = False
         self._append_closed = False

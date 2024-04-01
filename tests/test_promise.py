@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promisegraph.promise import StreamedPromise
+from miniagents.promisegraph.promise import StreamedPromise, AppendProducer
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
@@ -44,11 +44,11 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
     the `producer` iterations, the exact same sequence of exceptions is replayed.
     """
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+    with AppendProducer(append_errors_too=True) as producer:
         for i in range(1, 6):
             if i == 3:
                 raise ValueError("Test error")
-            yield i
+            producer.append(i)
 
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
@@ -128,9 +128,9 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
     Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `acollect()`.
     """
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+    with AppendProducer(append_errors_too=True) as producer:
         for i in range(1, 6):
-            yield i
+            producer.append(i)
 
     # noinspection PyTypeChecker
     streamed_promise = StreamedPromise(producer, broken_packager, schedule_immediately=schedule_immediately)
@@ -143,8 +143,9 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("append_errors_too", [False, True])  # TODO Oleksandr: what's the point ? test it properly
 @pytest.mark.asyncio
-async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
+async def test_streamed_promise_acollect(schedule_immediately: bool, append_errors_too: bool) -> None:
     """
     Assert that:
     - when a `StreamedPromise` is "collected" multiple times, the `packager` is only called once;
@@ -152,9 +153,9 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
     packager_calls = 0
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+    with AppendProducer(append_errors_too=append_errors_too) as producer:
         for i in range(1, 6):
-            yield i
+            producer.append(i)
 
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         nonlocal packager_calls
