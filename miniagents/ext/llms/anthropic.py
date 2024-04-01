@@ -12,10 +12,10 @@ def anthropic(schedule_immediately: bool = True, stream: bool = True, **kwargs) 
     Run text generation with Anthropic.
     """
     # pylint: disable=import-outside-toplevel
-    import anthropic as anthropic_original
+    import anthropic
 
-    # TODO Oleksandr: instantiate the client only once but don't import `anthropic` at the module level
-    client = anthropic_original.AsyncAnthropic()
+    # TODO Oleksandr: instantiate the client only once (but still don't import `anthropic` at the module level)
+    client = anthropic.AsyncAnthropic()
 
     async def msg_piece_producer(_: dict[str, Any]) -> AsyncIterator[str]:
         # TODO Oleksandr: collect metadata_so_far

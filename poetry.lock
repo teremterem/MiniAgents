@@ -1761,13 +1761,13 @@ wcwidth = "*"
 
 [[package]]
 name = "promptlayer"
-version = "0.5.2"
+version = "0.5.3"
 description = "PromptLayer is a platform for prompt engineering and tracks your LLM requests."
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "promptlayer-0.5.2-py3-none-any.whl", hash = "sha256:c14166ae1b8bf6885d6442d32613d22c415b87b0822c54744d5ad81fcd3ceb88"},
-    {file = "promptlayer-0.5.2.tar.gz", hash = "sha256:b3aedf45a4f459a7583b3f3f9a9d5f38b00c78e5d76c626ea083687480678037"},
+    {file = "promptlayer-0.5.3-py3-none-any.whl", hash = "sha256:55cee8605f9103f6acb42fff3c25f580c6972e02926e8d33b8675560d5b0bf0b"},
+    {file = "promptlayer-0.5.3.tar.gz", hash = "sha256:dcfe03783134a95d006445bfceca3dfd6a29eb23643942264550279fe82e9396"},
 ]
 
 [package.dependencies]
