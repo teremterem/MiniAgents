@@ -3,31 +3,10 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 """
 
 import asyncio
-from typing import TypeVar, Generic, AsyncIterator, Union, Optional, Protocol
+from typing import Generic, AsyncIterator, Union, Optional
 
 from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED
-
-PIECE = TypeVar("PIECE")
-WHOLE = TypeVar("WHOLE")
-StreamedPromiseBound = TypeVar("StreamedPromiseBound", bound="StreamedPromise")
-
-
-class StreamedPieceProducer(Protocol[PIECE]):
-    """
-    A protocol for piece producers. A piece producer is a function that takes a `StreamedPromise` instance
-    as an argument and returns an async iterator of pieces.
-    """
-
-    def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE]: ...
-
-
-class StreamedWholePackager(Protocol[WHOLE]):
-    """
-    A protocol for packagers of the whole value. A whole packager is a function that takes a `StreamedPromise`
-    instance as an argument and returns the whole value.
-    """
-
-    async def __call__(self, streamed_promise: StreamedPromiseBound) -> WHOLE: ...
+from miniagents.promisegraph.typing import PIECE, WHOLE, StreamedPieceProducer, StreamedWholePackager
 
 
 class StreamedPromise(Generic[PIECE, WHOLE]):
