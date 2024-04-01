@@ -4,6 +4,7 @@ Types for the PromiseGraph part of the library.
 
 from typing import TypeVar, AsyncIterator, Protocol
 
+ITEM = TypeVar("ITEM")
 PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
 StreamedPromiseBound = TypeVar("StreamedPromiseBound", bound="StreamedPromise")
