@@ -169,10 +169,10 @@ class AppendProducer(Generic[PIECE]):
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
     `StreamedPromise` constructor while also keeping a reference to it in the outside code in order to `feed` the
     pieces into it (and, consequently, into the `StreamedPromise`) later using `append()`.
+    TODO Oleksandr: explain the `capture_errors` parameter
     """
 
     def __init__(self, capture_errors: bool) -> None:
-        # TODO Oleksandr: explain `capture_errors` in the docstring
         self._queue = asyncio.Queue()
         self._append_open = False
         self._append_closed = False
