@@ -73,6 +73,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         if self._whole is NO_VALUE:
             async with self._packager_lock:
                 if self._whole is NO_VALUE:
+                    # TODO Oleksandr: if an error happens, catch it and "replay" it when `acollect()` is called again
                     self._whole = await self.__packager(self)
         return self._whole
 
@@ -165,12 +166,12 @@ class AppendProducer(Generic[PIECE]):
     pieces into it (and, consequently, into the `StreamedPromise`) later using `append()`.
     """
 
-    def __init__(self, append_errors_too: bool) -> None:
-        # TODO Oleksandr: explain `append_errors_too` in the docstring
+    def __init__(self, capture_errors: bool) -> None:
+        # TODO Oleksandr: explain `capture_errors` in the docstring
         self._queue = asyncio.Queue()
         self._append_open = False
         self._append_closed = False
-        self._append_errors_too = append_errors_too
+        self._capture_errors = capture_errors
 
     def __enter__(self) -> "AppendProducer":
         return self.open()
@@ -182,12 +183,12 @@ class AppendProducer(Generic[PIECE]):
         traceback: Optional[TracebackType],
     ) -> bool:
         is_append_closed_error = isinstance(exc_value, AppendClosedError)
-        if exc_value and not is_append_closed_error and self._append_errors_too:
+        if exc_value and not is_append_closed_error and self._capture_errors:
             self.append(exc_value)
         self.close()
-        # if `_append_errors_too` is True, then we also return True, so that the exception is not propagated outside
+        # if `_capture_errors` is True, then we also return True, so that the exception is not propagated outside
         # the `with` block (except if the error is an `AppendClosedError` - in this case, we do not suppress it)
-        return self._append_errors_too and not is_append_closed_error
+        return self._capture_errors and not is_append_closed_error
 
     def append(self, piece: PIECE) -> "AppendProducer":
         """

@@ -44,7 +44,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
     the `producer` iterations, the exact same sequence of exceptions is replayed.
     """
 
-    with AppendProducer(append_errors_too=True) as producer:
+    with AppendProducer(capture_errors=True) as producer:
         for i in range(1, 6):
             if i == 3:
                 raise ValueError("Test error")
@@ -128,7 +128,7 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
     Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `acollect()`.
     """
 
-    with AppendProducer(append_errors_too=True) as producer:
+    with AppendProducer(capture_errors=True) as producer:
         for i in range(1, 6):
             producer.append(i)
 
@@ -143,9 +143,8 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
-@pytest.mark.parametrize("append_errors_too", [False, True])  # TODO Oleksandr: what's the point ? test it properly
 @pytest.mark.asyncio
-async def test_streamed_promise_acollect(schedule_immediately: bool, append_errors_too: bool) -> None:
+async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
     Assert that:
     - when a `StreamedPromise` is "collected" multiple times, the `packager` is only called once;
@@ -153,7 +152,7 @@ async def test_streamed_promise_acollect(schedule_immediately: bool, append_erro
     """
     packager_calls = 0
 
-    with AppendProducer(append_errors_too=append_errors_too) as producer:
+    with AppendProducer(capture_errors=False) as producer:
         for i in range(1, 6):
             producer.append(i)
 
@@ -173,6 +172,29 @@ async def test_streamed_promise_acollect(schedule_immediately: bool, append_erro
 
     assert result1 == [1, 2, 3, 4, 5]
     assert result2 is result1  # the promise should always return the exact same instance of the result object
+
+
+@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.asyncio
+async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -> None:
+    """
+    Assert that when `AppendProducer` is not capturing errors, then:
+    - the error is raised beyond the context manager;
+    - the `StreamedPromise` is not affected by the error and is just returning the elements up to the error.
+    """
+    with pytest.raises(ValueError):
+        with AppendProducer(capture_errors=False) as producer:
+            for i in range(1, 6):
+                if i == 3:
+                    raise ValueError("Test error")
+                producer.append(i)
+
+    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+        return [piece async for piece in _streamed_promise]
+
+    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+
+    assert await streamed_promise.acollect() == [1, 2]
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
