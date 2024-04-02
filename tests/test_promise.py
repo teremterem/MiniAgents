@@ -119,6 +119,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
     [
         "not really a packager",
         lambda _: [],  # non-async packager
+        TypeError,
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True])
@@ -127,6 +128,16 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
     """
     Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `acollect()`.
     """
+    expected_packager_call_count = 0  # we are not counting packager calls for completely broken packagers (too hard)
+    actual_packager_call_count = 0
+    if isinstance(broken_packager, type):
+        expected_packager_call_count = 1  # we are counting packager calls for the partially broken packager
+        error_class = broken_packager
+
+        async def broken_packager(_streamed_promise: StreamedPromise) -> None:  # pylint: disable=function-redefined
+            nonlocal actual_packager_call_count
+            actual_packager_call_count += 1
+            raise error_class("Test error")
 
     with AppendProducer(capture_errors=True) as producer:
         for i in range(1, 6):
@@ -135,11 +146,17 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
     # noinspection PyTypeChecker
     streamed_promise = StreamedPromise(producer, broken_packager, schedule_immediately=schedule_immediately)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as exc_info1:
         await streamed_promise.acollect()
+    error1 = exc_info1.value
+
     assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
-    with pytest.raises(TypeError):
+
+    with pytest.raises(TypeError) as exc_info2:
         await streamed_promise.acollect()
+    assert error1 is exc_info2.value  # exact same error instance should be raised again
+
+    assert actual_packager_call_count == expected_packager_call_count
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])

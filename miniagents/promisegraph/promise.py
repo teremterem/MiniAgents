@@ -36,12 +36,12 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         # TODO Oleksandr: also make it possible to supply all the pieces (as well as the whole) at once,
         #  without a producer (or a packager)
     ) -> None:
-        self.__packager = packager
         self.__producer = producer
+        self.__packager = packager
 
         self._pieces_so_far: list[Union[PIECE, BaseException]] = []
         # NO_VALUE is used because `None` is also a legitimate value for the "whole"
-        self._whole: Union[Optional[WHOLE], Sentinel] = NO_VALUE
+        self._whole: Union[WHOLE, Sentinel, BaseException] = NO_VALUE
 
         self._all_pieces_consumed = False
         self._producer_lock = asyncio.Lock()
@@ -73,8 +73,13 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         if self._whole is NO_VALUE:
             async with self._packager_lock:
                 if self._whole is NO_VALUE:
-                    # TODO Oleksandr: if an error happens, catch it and "replay" it when `acollect()` is called again
-                    self._whole = await self.__packager(self)
+                    try:
+                        self._whole = await self.__packager(self)
+                    except BaseException as exc:  # pylint: disable=broad-except
+                        self._whole = exc
+
+        if isinstance(self._whole, BaseException):
+            raise self._whole
         return self._whole
 
     async def _aproduce_the_stream(self) -> None:
