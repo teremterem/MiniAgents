@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promisegraph.promise import StreamedPromise
+from miniagents.promisegraph.promise import StreamedPromise, AppendProducer
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
@@ -44,11 +44,11 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
     the `producer` iterations, the exact same sequence of exceptions is replayed.
     """
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+    with AppendProducer(capture_errors=True) as producer:
         for i in range(1, 6):
             if i == 3:
                 raise ValueError("Test error")
-            yield i
+            producer.append(i)
 
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
@@ -119,6 +119,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
     [
         "not really a packager",
         lambda _: [],  # non-async packager
+        TypeError,
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True])
@@ -127,19 +128,35 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
     """
     Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `acollect()`.
     """
+    expected_packager_call_count = 0  # we are not counting packager calls for completely broken packagers (too hard)
+    actual_packager_call_count = 0
+    if isinstance(broken_packager, type):
+        expected_packager_call_count = 1  # we are counting packager calls for the partially broken packager
+        error_class = broken_packager
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+        async def broken_packager(_streamed_promise: StreamedPromise) -> None:  # pylint: disable=function-redefined
+            nonlocal actual_packager_call_count
+            actual_packager_call_count += 1
+            raise error_class("Test error")
+
+    with AppendProducer(capture_errors=True) as producer:
         for i in range(1, 6):
-            yield i
+            producer.append(i)
 
     # noinspection PyTypeChecker
     streamed_promise = StreamedPromise(producer, broken_packager, schedule_immediately=schedule_immediately)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as exc_info1:
         await streamed_promise.acollect()
+    error1 = exc_info1.value
+
     assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
-    with pytest.raises(TypeError):
+
+    with pytest.raises(TypeError) as exc_info2:
         await streamed_promise.acollect()
+    assert error1 is exc_info2.value  # exact same error instance should be raised again
+
+    assert actual_packager_call_count == expected_packager_call_count
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
@@ -152,9 +169,9 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
     packager_calls = 0
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+    with AppendProducer(capture_errors=False) as producer:
         for i in range(1, 6):
-            yield i
+            producer.append(i)
 
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         nonlocal packager_calls
@@ -172,6 +189,29 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
 
     assert result1 == [1, 2, 3, 4, 5]
     assert result2 is result1  # the promise should always return the exact same instance of the result object
+
+
+@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.asyncio
+async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -> None:
+    """
+    Assert that when `AppendProducer` is not capturing errors, then:
+    - the error is raised beyond the context manager;
+    - the `StreamedPromise` is not affected by the error and is just returning the elements up to the error.
+    """
+    with pytest.raises(ValueError):
+        with AppendProducer(capture_errors=False) as producer:
+            for i in range(1, 6):
+                if i == 3:
+                    raise ValueError("Test error")
+                producer.append(i)
+
+    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+        return [piece async for piece in _streamed_promise]
+
+    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+
+    assert await streamed_promise.acollect() == [1, 2]
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
