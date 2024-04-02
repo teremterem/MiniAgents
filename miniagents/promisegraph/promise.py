@@ -4,7 +4,7 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 
 import asyncio
 from types import TracebackType
-from typing import Generic, AsyncIterator, Union, Optional, Any
+from typing import Generic, AsyncIterator, Union, Optional
 
 from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
 from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
@@ -24,6 +24,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     :param packager: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
     TODO Oleksandr: explain the `schedule_immediately` parameter
+    TODO Oleksandr: explain the `collect_as_soon_as_possible` parameter
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -33,8 +34,9 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         producer: StreamedPieceProducer[PIECE],
         packager: StreamedWholePackager[WHOLE],
         schedule_immediately: bool,
+        collect_as_soon_as_possible: bool,
         # TODO Oleksandr: also make it possible to supply all the pieces (as well as the whole) at once,
-        #  without a producer (or a packager)
+        #  without a producer (or a packager) ?
     ) -> None:
         self.__producer = producer
         self.__packager = packager
@@ -54,6 +56,10 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
+
+        if collect_as_soon_as_possible:
+            asyncio.create_task(self.acollect())
+
         self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
@@ -62,6 +68,13 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         the stream from the beginning.
         """
         return self._StreamReplayIterator(self)
+
+    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE]:
+        """
+        This enables the `StreamedPromise` to be used as a piece producer for another `StreamedPromise`, effectively
+        chaining them together.
+        """
+        return self.__aiter__()
 
     async def acollect(self) -> WHOLE:
         """
@@ -163,7 +176,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
             return piece
 
 
-class AppendProducer(Generic[PIECE]):
+class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
     """
     This is a special kind of `producer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
@@ -241,9 +254,16 @@ class AppendProducer(Generic[PIECE]):
         self._append_closed = True
         self._queue.put_nowait(END_OF_QUEUE)
 
-    async def __call__(self, streamed_promise: StreamedPromise[PIECE, Any]) -> AsyncIterator[PIECE]:
-        while True:
-            piece = await self._queue.get()
-            if piece is END_OF_QUEUE:
-                break
-            yield piece
+    async def __anext__(self) -> PIECE:
+        if self._queue is None:
+            raise StopAsyncIteration()
+
+        piece = await self._queue.get()
+        if piece is END_OF_QUEUE:
+            self._queue = None
+            raise StopAsyncIteration()
+
+        return piece
+
+    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE]:
+        return self

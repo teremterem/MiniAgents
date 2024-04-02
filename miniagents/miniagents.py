@@ -33,8 +33,14 @@ class MessagePromise(StreamedPromise[str, Message]):
         self,
         msg_piece_producer: MessagePieceProducer,
         schedule_immediately: bool = True,
+        collect_as_soon_as_possible: bool = True,
     ) -> None:
-        super().__init__(producer=self._producer, packager=self._packager, schedule_immediately=schedule_immediately)
+        super().__init__(
+            producer=self._producer,
+            packager=self._packager,
+            schedule_immediately=schedule_immediately,
+            collect_as_soon_as_possible=collect_as_soon_as_possible,
+        )
         self._msg_piece_producer = msg_piece_producer
         self._metadata_so_far: dict[str, Any] = {}
 

@@ -10,8 +10,9 @@ from miniagents.promisegraph.promise import StreamedPromise, AppendProducer
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
+async def test_stream_replay_iterator(schedule_immediately: bool, collect_as_soon_as_possible: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times, the `producer` is only called once.
     """
@@ -26,7 +27,12 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
-    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+    streamed_promise = StreamedPromise(
+        producer=producer,
+        packager=packager,
+        schedule_immediately=schedule_immediately,
+        collect_as_soon_as_possible=collect_as_soon_as_possible,
+    )
 
     assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
     # iterate over the promise again
@@ -37,8 +43,9 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> None:
+async def test_stream_replay_iterator_exception(schedule_immediately: bool, collect_as_soon_as_possible: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times and an exception is raised in the middle of
     the `producer` iterations, the exact same sequence of exceptions is replayed.
@@ -53,7 +60,12 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
-    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+    streamed_promise = StreamedPromise(
+        producer=producer,
+        packager=packager,
+        schedule_immediately=schedule_immediately,
+        collect_as_soon_as_possible=collect_as_soon_as_possible,
+    )
 
     async def iterate_over_promise():
         promise_iterator = streamed_promise.__aiter__()
@@ -85,8 +97,11 @@ async def _async_producer_but_no_generator(_):
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_stream_broken_producer(broken_producer, schedule_immediately: bool) -> None:
+async def test_stream_broken_producer(
+    broken_producer, schedule_immediately: bool, collect_as_soon_as_possible: bool
+) -> None:
     """
     Assert that when a `StreamedPromise` tries to iterate over a broken `producer` it does not hang indefinitely, just
     raises an error and stops the stream.
@@ -96,7 +111,12 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
         return [piece async for piece in _streamed_promise]
 
     # noinspection PyTypeChecker
-    streamed_promise = StreamedPromise(broken_producer, packager, schedule_immediately=schedule_immediately)
+    streamed_promise = StreamedPromise(
+        producer=broken_producer,
+        packager=packager,
+        schedule_immediately=schedule_immediately,
+        collect_as_soon_as_possible=collect_as_soon_as_possible,
+    )
 
     async def iterate_over_promise():
         promise_iterator = streamed_promise.__aiter__()
@@ -123,8 +143,11 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_stream_broken_packager(broken_packager, schedule_immediately: bool) -> None:
+async def test_stream_broken_packager(
+    broken_packager, schedule_immediately: bool, collect_as_soon_as_possible: bool
+) -> None:
     """
     Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `acollect()`.
     """
@@ -144,7 +167,12 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
             producer.append(i)
 
     # noinspection PyTypeChecker
-    streamed_promise = StreamedPromise(producer, broken_packager, schedule_immediately=schedule_immediately)
+    streamed_promise = StreamedPromise(
+        producer=producer,
+        packager=broken_packager,
+        schedule_immediately=schedule_immediately,
+        collect_as_soon_as_possible=collect_as_soon_as_possible,
+    )
 
     with pytest.raises(TypeError) as exc_info1:
         await streamed_promise.acollect()
@@ -160,8 +188,9 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
+async def test_streamed_promise_acollect(schedule_immediately: bool, collect_as_soon_as_possible: bool) -> None:
     """
     Assert that:
     - when a `StreamedPromise` is "collected" multiple times, the `packager` is only called once;
@@ -178,7 +207,12 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
         packager_calls += 1
         return [piece async for piece in _streamed_promise]
 
-    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+    streamed_promise = StreamedPromise(
+        producer=producer,
+        packager=packager,
+        schedule_immediately=schedule_immediately,
+        collect_as_soon_as_possible=collect_as_soon_as_possible,
+    )
 
     result1 = await streamed_promise.acollect()
     # "collect from the stream" again
@@ -192,8 +226,11 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -> None:
+async def test_append_producer_dont_capture_errors(
+    schedule_immediately: bool, collect_as_soon_as_possible: bool
+) -> None:
     """
     Assert that when `AppendProducer` is not capturing errors, then:
     - the error is raised beyond the context manager;
@@ -209,14 +246,20 @@ async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
-    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+    streamed_promise = StreamedPromise(
+        producer=producer,
+        packager=packager,
+        schedule_immediately=schedule_immediately,
+        collect_as_soon_as_possible=collect_as_soon_as_possible,
+    )
 
     assert await streamed_promise.acollect() == [1, 2]
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_streamed_promise_same_instance(schedule_immediately: bool) -> None:
+async def test_streamed_promise_same_instance(schedule_immediately: bool, collect_as_soon_as_possible: bool) -> None:
     """
     Assert that `producer` and `packager` receive the exact same instance of `StreamedPromise`.
     """
@@ -230,6 +273,11 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
         assert _streamed_promise is streamed_promise
         return [piece async for piece in _streamed_promise]
 
-    streamed_promise = StreamedPromise(producer, packager, schedule_immediately=schedule_immediately)
+    streamed_promise = StreamedPromise(
+        producer=producer,
+        packager=packager,
+        schedule_immediately=schedule_immediately,
+        collect_as_soon_as_possible=collect_as_soon_as_possible,
+    )
 
     await streamed_promise.acollect()
