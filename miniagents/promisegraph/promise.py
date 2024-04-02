@@ -24,6 +24,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     :param packager: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
     TODO Oleksandr: explain the `schedule_immediately` parameter
+    TODO Oleksandr: explain the `collect_as_soon_as_possible` parameter
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -33,8 +34,9 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         producer: StreamedPieceProducer[PIECE],
         packager: StreamedWholePackager[WHOLE],
         schedule_immediately: bool,
+        collect_as_soon_as_possible: bool,
         # TODO Oleksandr: also make it possible to supply all the pieces (as well as the whole) at once,
-        #  without a producer (or a packager)
+        #  without a producer (or a packager) ?
     ) -> None:
         self.__producer = producer
         self.__packager = packager
@@ -54,6 +56,10 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
+
+        if collect_as_soon_as_possible:
+            asyncio.create_task(self.acollect())
+
         self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
@@ -62,6 +68,13 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         the stream from the beginning.
         """
         return self._StreamReplayIterator(self)
+
+    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE]:
+        """
+        This enables the `StreamedPromise` to be used as a piece producer for another `StreamedPromise`, effectively
+        chaining them together.
+        """
+        return self.__aiter__()
 
     async def acollect(self) -> WHOLE:
         """
