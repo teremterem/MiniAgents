@@ -4,7 +4,7 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 
 import asyncio
 from types import TracebackType
-from typing import Generic, AsyncIterator, Union, Optional, Any
+from typing import Generic, AsyncIterator, Union, Optional
 
 from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
 from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
@@ -176,7 +176,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
             return piece
 
 
-class AppendProducer(Generic[PIECE]):
+class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
     """
     This is a special kind of `producer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
@@ -254,9 +254,16 @@ class AppendProducer(Generic[PIECE]):
         self._append_closed = True
         self._queue.put_nowait(END_OF_QUEUE)
 
-    async def __call__(self, streamed_promise: StreamedPromise[PIECE, Any]) -> AsyncIterator[PIECE]:
-        while True:
-            piece = await self._queue.get()
-            if piece is END_OF_QUEUE:
-                break
-            yield piece
+    async def __anext__(self) -> PIECE:
+        if self._queue is None:
+            raise StopAsyncIteration()
+
+        piece = await self._queue.get()
+        if piece is END_OF_QUEUE:
+            self._queue = None
+            raise StopAsyncIteration()
+
+        return piece
+
+    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE]:
+        return self
