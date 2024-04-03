@@ -102,9 +102,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, dict):
             yield MessagePromise(prefill_message=Message(**zero_or_more_items))
         elif isinstance(zero_or_more_items, BaseException):
-            # TODO TODO TODO Oleksandr: exceptions are raised from promises -
-            #  introduce a flag to just pass them through ?
-            pass
+            raise zero_or_more_items
         elif hasattr(zero_or_more_items, "__iter__"):
             for item in zero_or_more_items:
                 async for message_promise in MessageSequence._flattener(None, item):
