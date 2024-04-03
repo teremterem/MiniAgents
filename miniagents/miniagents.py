@@ -75,9 +75,9 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
     def __init__(
         self,
+        producer_capture_errors: bool,
         schedule_immediately: bool = True,
-        collect_as_soon_as_possible: bool = True,
-        producer_capture_errors: bool = False,
+        collect_as_soon_as_possible: bool = False,
     ) -> None:
         self._schedule_immediately = schedule_immediately
         self._collect_as_soon_as_possible = collect_as_soon_as_possible
