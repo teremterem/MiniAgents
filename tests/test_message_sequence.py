@@ -46,7 +46,7 @@ async def test_message_sequence(schedule_immediately: bool, collect_as_soon_as_p
             msg_seq2.append_producer.append("msg9")
 
         msg_seq1.append_producer.append(msg_seq2.sequence_promise)
-        msg_seq1.append_producer.append(MessagePromise(ready_message=Message(text="msg10", yet_another_attr=10)))
+        msg_seq1.append_producer.append(MessagePromise(prefill_message=Message(text="msg10", yet_another_attr=10)))
         # msg_seq1.append_producer.append(ValueError("msg11"))
 
     message_result = [await msg_promise.acollect() async for msg_promise in msg_seq1.sequence_promise]

@@ -35,28 +35,31 @@ class MessagePromise(StreamedPromise[str, Message]):
         schedule_immediately: bool = True,
         collect_as_soon_as_possible: bool = True,
         message_piece_producer: MessagePieceProducer = None,
-        ready_message: Optional[Message] = None,
+        prefill_message: Optional[Message] = None,
     ) -> None:
-        self._ready_message = ready_message
-        super().__init__(
-            producer=self._producer,
-            packager=self._packager,
-            schedule_immediately=schedule_immediately,
-            collect_as_soon_as_possible=collect_as_soon_as_possible,
-        )
-        self._message_piece_producer = message_piece_producer
-        self._metadata_so_far: dict[str, Any] = {}
+        # TODO Oleksandr: raise an error if both ready_message and message_piece_producer are not None
+        #  (or both are None)
+        if prefill_message:
+            super().__init__(
+                schedule_immediately=schedule_immediately,
+                collect_as_soon_as_possible=collect_as_soon_as_possible,
+                prefill_pieces=[prefill_message.text],
+                prefill_whole=prefill_message,
+            )
+        else:
+            super().__init__(
+                schedule_immediately=schedule_immediately,
+                collect_as_soon_as_possible=collect_as_soon_as_possible,
+                producer=self._producer,
+                packager=self._packager,
+            )
+            self._message_piece_producer = message_piece_producer
+            self._metadata_so_far: dict[str, Any] = {}
 
     def _producer(self, _) -> AsyncIterator[str]:
-        if self._ready_message:
-            # TODO TODO TODO Oleksandr: support this scenario one way or another
-            # yield from self._ready_message.text
-            pass
         return self._message_piece_producer(self._metadata_so_far)
 
     async def _packager(self, _) -> Message:
-        if self._ready_message:
-            return self._ready_message
         return Message(
             text="".join([token async for token in self]),
             **self._metadata_so_far,
@@ -93,11 +96,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         if isinstance(zero_or_more_items, MessagePromise):
             yield zero_or_more_items
         elif isinstance(zero_or_more_items, Message):
-            yield MessagePromise(ready_message=zero_or_more_items)
+            yield MessagePromise(prefill_message=zero_or_more_items)
         elif isinstance(zero_or_more_items, str):
-            yield MessagePromise(ready_message=Message(text=zero_or_more_items))
+            yield MessagePromise(prefill_message=Message(text=zero_or_more_items))
         elif isinstance(zero_or_more_items, dict):
-            yield MessagePromise(ready_message=Message(**zero_or_more_items))
+            yield MessagePromise(prefill_message=Message(**zero_or_more_items))
         elif isinstance(zero_or_more_items, BaseException):
             # TODO TODO TODO Oleksandr: exceptions are raised from promises -
             #  introduce a flag to just pass them through ?
