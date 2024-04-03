@@ -78,3 +78,56 @@ async def test_message_sequence(schedule_immediately: bool, collect_as_soon_as_p
         "msg10",
         # "msg11",
     ]
+
+
+@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
+@pytest.mark.asyncio
+async def test_message_sequence_error(schedule_immediately: bool, collect_as_soon_as_possible: bool) -> None:
+    """
+    Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
+    the right place.
+    """
+    msg_seq1 = MessageSequence(
+        producer_capture_errors=True,
+        schedule_immediately=schedule_immediately,
+        collect_as_soon_as_possible=collect_as_soon_as_possible,
+    )
+    with msg_seq1.append_producer:
+        msg_seq1.append_producer.append("msg1")
+
+        msg_seq2 = MessageSequence(
+            producer_capture_errors=True,
+            schedule_immediately=schedule_immediately,
+            collect_as_soon_as_possible=collect_as_soon_as_possible,
+        )
+        with msg_seq2.append_producer:
+            msg_seq2.append_producer.append("msg2")
+
+            msg_seq3 = MessageSequence(
+                producer_capture_errors=True,
+                schedule_immediately=schedule_immediately,
+                collect_as_soon_as_possible=collect_as_soon_as_possible,
+            )
+            with msg_seq3.append_producer:
+                msg_seq3.append_producer.append("msg3")
+                # msg_seq1.append_producer.append(TypeError("msg4"))
+                raise ValueError("msg5")
+
+            msg_seq2.append_producer.append(msg_seq3.sequence_promise)
+            msg_seq2.append_producer.append("msg6")
+
+        msg_seq1.append_producer.append(msg_seq2.sequence_promise)
+        msg_seq1.append_producer.append("msg7")
+
+    message_result = []
+    with pytest.raises(ValueError, match="msg5"):
+        async for msg_promise in msg_seq1.sequence_promise:
+            message_result.append(await msg_promise.acollect())
+
+    assert message_result == [
+        Message(text="msg1"),
+        Message(text="msg2"),
+        Message(text="msg3"),
+        # ValueError("msg4"),
+    ]
