@@ -2,7 +2,7 @@
 Types for the PromiseGraph part of the library.
 """
 
-from typing import TypeVar, AsyncIterator, Protocol
+from typing import TypeVar, AsyncIterator, Protocol, Union
 
 PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
@@ -37,4 +37,6 @@ class SequenceFlattener(Protocol[IN, OUT]):
     `IN` into zero or more instances of `OUT`.
     """
 
-    def __call__(self, flat_sequence: FlatSequenceBound, zero_or_more_items: IN) -> AsyncIterator[OUT]: ...
+    def __call__(
+        self, flat_sequence: FlatSequenceBound, zero_or_more_items: Union[IN, BaseException]
+    ) -> AsyncIterator[OUT]: ...

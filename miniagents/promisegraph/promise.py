@@ -4,7 +4,7 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 
 import asyncio
 from types import TracebackType
-from typing import Generic, AsyncIterator, Union, Optional
+from typing import Generic, AsyncIterator, Union, Optional, Iterable
 
 from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
 from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
@@ -27,29 +27,38 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     TODO Oleksandr: explain the `collect_as_soon_as_possible` parameter
     """
 
-    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes,too-many-arguments
 
     def __init__(
         self,
-        producer: StreamedPieceProducer[PIECE],
-        packager: StreamedWholePackager[WHOLE],
         schedule_immediately: bool,
         collect_as_soon_as_possible: bool,
-        # TODO Oleksandr: also make it possible to supply all the pieces (as well as the whole) at once,
-        #  without a producer (or a packager) ?
+        producer: Optional[StreamedPieceProducer[PIECE]] = None,
+        packager: Optional[StreamedWholePackager[WHOLE]] = None,
+        prefill_pieces: Optional[Iterable[PIECE]] = NO_VALUE,
+        prefill_whole: Optional[WHOLE] = NO_VALUE,
     ) -> None:
+        # TODO Oleksandr: raise an error if both prefill_pieces/prefilled_whole pair and producer are set
+        #  (or both are not set)
         self.__producer = producer
         self.__packager = packager
 
-        self._pieces_so_far: list[Union[PIECE, BaseException]] = []
-        # NO_VALUE is used because `None` is also a legitimate value for the "whole"
-        self._whole: Union[WHOLE, Sentinel, BaseException] = NO_VALUE
+        if prefill_pieces is NO_VALUE:
+            self._pieces_so_far: list[Union[PIECE, BaseException]] = []
+        else:
+            self._pieces_so_far: list[Union[PIECE, BaseException]] = [*prefill_pieces, StopAsyncIteration()]
 
-        self._all_pieces_consumed = False
+        if prefill_whole is NO_VALUE:
+            # NO_VALUE is used because `None` is also a legitimate value for the "whole"
+            self._whole: Union[WHOLE, Sentinel, BaseException] = NO_VALUE
+        else:
+            self._whole = prefill_whole
+
+        self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._producer_lock = asyncio.Lock()
         self._packager_lock = asyncio.Lock()
 
-        if schedule_immediately:
+        if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
             asyncio.create_task(self._aproduce_the_stream())
@@ -57,7 +66,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
-        if collect_as_soon_as_possible:
+        if collect_as_soon_as_possible and prefill_whole is NO_VALUE:
             asyncio.create_task(self.acollect())
 
         self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
