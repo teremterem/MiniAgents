@@ -73,7 +73,7 @@ MessageType = Union[SingleMessageType, Iterable["MessageType"], AsyncIterable["M
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     """
-    TODO TODO TODO Oleksandr
+    TODO Oleksandr: produce a docstring for this class after you actually use it in real agents
     """
 
     def __init__(
