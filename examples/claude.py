@@ -10,6 +10,8 @@ import readline  # pylint: disable=unused-import
 
 from dotenv import load_dotenv
 
+from miniagents.miniagents import Message
+
 load_dotenv()
 
 from miniagents.ext.llms.anthropic import anthropic
@@ -24,7 +26,7 @@ async def main() -> None:
         max_tokens=1000,
         temperature=0.0,
         system="Respond only in Yoda-speak.",
-        messages=[{"role": "user", "content": "How are you today?"}],
+        messages=Message(role="user", text="How are you today?"),
         stream=True,
     )
 

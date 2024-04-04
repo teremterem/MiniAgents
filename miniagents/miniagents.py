@@ -91,6 +91,22 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             producer_capture_errors=producer_capture_errors,
         )
 
+    @classmethod
+    async def aflatten_and_collect(cls, messages: MessageType) -> list[Message]:
+        """
+        Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
+        MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform list of
+        Message objects.
+        """
+        message_sequence = cls(
+            producer_capture_errors=True,
+            schedule_immediately=False,
+            collect_as_soon_as_possible=False,
+        )
+        with message_sequence.append_producer:
+            message_sequence.append_producer.append(messages)
+        return [await message_promise.acollect() async for message_promise in message_sequence.sequence_promise]
+
     @staticmethod
     async def _flattener(_, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
         if isinstance(zero_or_more_items, MessagePromise):
