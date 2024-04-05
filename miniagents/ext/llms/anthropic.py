@@ -5,6 +5,8 @@ This module integrates Anthropic language models with MiniAgents.
 import typing
 from typing import AsyncIterator, Any, Optional
 
+from anthropic.types import ContentBlockDeltaEvent
+
 from miniagents.miniagents import MessagePromise, MessageType, MessageSequence, Message
 
 if typing.TYPE_CHECKING:
@@ -35,10 +37,15 @@ def anthropic(
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
 
         if stream:
-            # pylint: disable=not-async-context-manager
-            async with async_client.messages.stream(messages=message_dicts, **kwargs) as response:
-                async for token in response.text_stream:
-                    yield token
+            response = await async_client.messages.create(messages=message_dicts, stream=True, **kwargs)
+            async for token in response:
+                if isinstance(token, ContentBlockDeltaEvent):
+                    yield token.delta.text
+            # # TODO Oleksandr: switch back to the version below when PromptLayer supports `text_stream`
+            # # pylint: disable=not-async-context-manager
+            # async with async_client.messages.stream(messages=message_dicts, **kwargs) as response:
+            #     async for token in response.text_stream:
+            #         yield token
         else:
             response = await async_client.messages.create(messages=message_dicts, stream=False, **kwargs)
             if len(response.content) != 1:
