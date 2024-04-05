@@ -2,9 +2,13 @@
 This module integrates Anthropic language models with MiniAgents.
 """
 
-from typing import AsyncIterator, Any
+import typing
+from typing import AsyncIterator, Any, Optional
 
 from miniagents.miniagents import MessagePromise, MessageType, MessageSequence, Message
+
+if typing.TYPE_CHECKING:
+    import anthropic as anthropic_original
 
 
 def anthropic(
@@ -12,16 +16,18 @@ def anthropic(
     schedule_immediately: bool = True,
     collect_as_soon_as_possible: bool = True,
     stream: bool = True,
+    async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
     **kwargs,
 ) -> MessagePromise:
     """
     Run text generation with Anthropic.
     """
-    # pylint: disable=import-outside-toplevel
-    import anthropic as anthropic_original
+    if not async_client:
+        # pylint: disable=import-outside-toplevel
+        import anthropic as anthropic_original
 
-    # TODO Oleksandr: instantiate the client only once (but still don't import `anthropic` at the module level)
-    client = anthropic_original.AsyncAnthropic()
+        # TODO Oleksandr: instantiate the client only once (but still don't import `anthropic` at the module level)
+        async_client = anthropic_original.AsyncAnthropic()
 
     async def message_piece_producer(_: dict[str, Any]) -> AsyncIterator[str]:
         # TODO Oleksandr: collect metadata_so_far
@@ -30,11 +36,11 @@ def anthropic(
 
         if stream:
             # pylint: disable=not-async-context-manager
-            async with client.messages.stream(messages=message_dicts, **kwargs) as response:
+            async with async_client.messages.stream(messages=message_dicts, **kwargs) as response:
                 async for token in response.text_stream:
                     yield token
         else:
-            response = await client.messages.create(messages=message_dicts, stream=False, **kwargs)
+            response = await async_client.messages.create(messages=message_dicts, stream=False, **kwargs)
             if len(response.content) != 1:
                 raise RuntimeError(
                     f"exactly one message should have been returned by Anthropic, "
