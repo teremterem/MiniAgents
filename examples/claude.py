@@ -7,6 +7,7 @@ import asyncio
 
 # noinspection PyUnresolvedReferences
 import readline  # pylint: disable=unused-import
+from pprint import pprint
 
 from dotenv import load_dotenv
 
@@ -34,6 +35,7 @@ async def main() -> None:
         print(token, end="", flush=True)
     print()
     print()
+    pprint((await msg_promise.acollect()).model_dump())
 
 
 if __name__ == "__main__":
