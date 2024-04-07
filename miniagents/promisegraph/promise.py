@@ -109,6 +109,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
                         self._whole = exc
 
                     for collect_event in self.on_collect:
+                        # TODO Oleksandr: should these events be waited for (in case the app is shutting down) ?
                         # noinspection PyAsyncCall
                         asyncio.create_task(collect_event(self, self._whole))
 
