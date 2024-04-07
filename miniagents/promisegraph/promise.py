@@ -34,7 +34,6 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     :param packager: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
     TODO Oleksandr: explain the `schedule_immediately` parameter
-    TODO Oleksandr: explain the `collect_as_soon_as_possible` parameter
     """
 
     # pylint: disable=too-many-instance-attributes,too-many-arguments
@@ -42,13 +41,12 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     def __init__(
         self,
         schedule_immediately: bool,
-        collect_as_soon_as_possible: bool,
         producer: Optional[StreamedPieceProducer[PIECE]] = None,
         packager: Optional[StreamedWholePackager[WHOLE]] = None,
         prefill_pieces: Optional[Iterable[PIECE]] = NO_VALUE,
         prefill_whole: Optional[WHOLE] = NO_VALUE,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefill_pieces/prefilled_whole pair and producer are set
+        # TODO Oleksandr: raise an error if both prefill_pieces/prefilled_whole and producer/packager are set
         #  (or both are not set)
         self.__producer = producer
         self.__packager = packager
@@ -76,7 +74,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
-        if collect_as_soon_as_possible and prefill_whole is NO_VALUE:
+        if schedule_immediately and prefill_whole is NO_VALUE:
             asyncio.create_task(self.acollect())
 
         self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None

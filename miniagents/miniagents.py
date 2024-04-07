@@ -35,7 +35,6 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __init__(
         self,
         schedule_immediately: bool = True,
-        collect_as_soon_as_possible: bool = True,
         message_piece_producer: MessagePieceProducer = None,
         prefill_message: Optional[Message] = None,
         metadata_so_far: Optional[Node] = None,
@@ -45,14 +44,12 @@ class MessagePromise(StreamedPromise[str, Message]):
         if prefill_message:
             super().__init__(
                 schedule_immediately=schedule_immediately,
-                collect_as_soon_as_possible=collect_as_soon_as_possible,
                 prefill_pieces=[prefill_message.text],
                 prefill_whole=prefill_message,
             )
         else:
             super().__init__(
                 schedule_immediately=schedule_immediately,
-                collect_as_soon_as_possible=collect_as_soon_as_possible,
                 producer=self._producer,
                 packager=self._packager,
             )
@@ -83,14 +80,10 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         self,
         producer_capture_errors: bool,
         schedule_immediately: bool = True,
-        collect_as_soon_as_possible: bool = False,
     ) -> None:
-        self._schedule_immediately = schedule_immediately
-        self._collect_as_soon_as_possible = collect_as_soon_as_possible
         super().__init__(
             flattener=self._flattener,
             schedule_immediately=schedule_immediately,
-            collect_as_soon_as_possible=collect_as_soon_as_possible,
             producer_capture_errors=producer_capture_errors,
         )
 
@@ -104,7 +97,6 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         message_sequence = cls(
             producer_capture_errors=True,
             schedule_immediately=False,
-            collect_as_soon_as_possible=False,
         )
         with message_sequence.append_producer:
             message_sequence.append_producer.append(messages)

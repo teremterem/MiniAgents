@@ -8,16 +8,14 @@ from miniagents.miniagents import MessageSequence, Message, MessagePromise
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
-@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_message_sequence(schedule_immediately: bool, collect_as_soon_as_possible: bool) -> None:
+async def test_message_sequence(schedule_immediately: bool) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence.
     """
     msg_seq1 = MessageSequence(
         producer_capture_errors=True,
         schedule_immediately=schedule_immediately,
-        collect_as_soon_as_possible=collect_as_soon_as_possible,
     )
     with msg_seq1.append_producer:
         msg_seq1.append_producer.append("msg1")
@@ -27,7 +25,6 @@ async def test_message_sequence(schedule_immediately: bool, collect_as_soon_as_p
         msg_seq2 = MessageSequence(
             producer_capture_errors=True,
             schedule_immediately=schedule_immediately,
-            collect_as_soon_as_possible=collect_as_soon_as_possible,
         )
         with msg_seq2.append_producer:
             msg_seq2.append_producer.append("msg4")
@@ -35,7 +32,6 @@ async def test_message_sequence(schedule_immediately: bool, collect_as_soon_as_p
             msg_seq3 = MessageSequence(
                 producer_capture_errors=True,
                 schedule_immediately=schedule_immediately,
-                collect_as_soon_as_possible=collect_as_soon_as_possible,
             )
             with msg_seq3.append_producer:
                 msg_seq3.append_producer.append("msg5")
@@ -81,9 +77,8 @@ async def test_message_sequence(schedule_immediately: bool, collect_as_soon_as_p
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True])
-@pytest.mark.parametrize("collect_as_soon_as_possible", [False, True])
 @pytest.mark.asyncio
-async def test_message_sequence_error(schedule_immediately: bool, collect_as_soon_as_possible: bool) -> None:
+async def test_message_sequence_error(schedule_immediately: bool) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
     the right place.
@@ -91,7 +86,6 @@ async def test_message_sequence_error(schedule_immediately: bool, collect_as_soo
     msg_seq1 = MessageSequence(
         producer_capture_errors=True,
         schedule_immediately=schedule_immediately,
-        collect_as_soon_as_possible=collect_as_soon_as_possible,
     )
     with msg_seq1.append_producer:
         msg_seq1.append_producer.append("msg1")
@@ -99,7 +93,6 @@ async def test_message_sequence_error(schedule_immediately: bool, collect_as_soo
         msg_seq2 = MessageSequence(
             producer_capture_errors=True,
             schedule_immediately=schedule_immediately,
-            collect_as_soon_as_possible=collect_as_soon_as_possible,
         )
         with msg_seq2.append_producer:
             msg_seq2.append_producer.append("msg2")
@@ -107,7 +100,6 @@ async def test_message_sequence_error(schedule_immediately: bool, collect_as_soo
             msg_seq3 = MessageSequence(
                 producer_capture_errors=True,
                 schedule_immediately=schedule_immediately,
-                collect_as_soon_as_possible=collect_as_soon_as_possible,
             )
             with msg_seq3.append_producer:
                 msg_seq3.append_producer.append("msg3")

@@ -20,23 +20,20 @@ class FlatSequence(Generic[IN, OUT]):
         self,
         flattener: SequenceFlattener[IN, OUT],
         schedule_immediately: bool,
-        collect_as_soon_as_possible: bool,
         producer_capture_errors: bool,
     ) -> None:
         self.__flattener = flattener
         self._input_promise = StreamedPromise(
             producer=self._producer,
             packager=lambda _: None,
-            schedule_immediately=schedule_immediately,
-            collect_as_soon_as_possible=False,
+            schedule_immediately=False,
         )
 
         self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
         self.sequence_promise = StreamedPromise(
             producer=self._input_promise,
             packager=self._packager,
-            schedule_immediately=False,
-            collect_as_soon_as_possible=collect_as_soon_as_possible,
+            schedule_immediately=schedule_immediately,
         )
 
     async def _producer(self, _) -> AsyncIterator[OUT]:

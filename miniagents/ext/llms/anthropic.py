@@ -14,7 +14,6 @@ if typing.TYPE_CHECKING:
 def anthropic(
     messages: MessageType,
     schedule_immediately: bool = True,
-    collect_as_soon_as_possible: bool = True,
     stream: bool = True,
     async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
     **kwargs,
@@ -72,7 +71,6 @@ def anthropic(
     return MessagePromise(
         message_piece_producer=message_piece_producer,
         schedule_immediately=schedule_immediately,
-        collect_as_soon_as_possible=collect_as_soon_as_possible,
     )
 
 
