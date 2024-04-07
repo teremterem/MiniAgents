@@ -23,7 +23,7 @@ async def main() -> None:
     Send a message to Claude and print the response.
     """
     msg_promise = anthropic(
-        model="claude-3-opus-20240229",
+        model="claude-3-haiku-20240307",  # "claude-3-opus-20240229",
         max_tokens=1000,
         temperature=0.0,
         system="Respond only in Yoda-speak.",
