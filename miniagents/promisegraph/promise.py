@@ -13,12 +13,8 @@ from miniagents.promisegraph.typing import (
     WHOLE,
     StreamedPieceProducer,
     StreamedWholePackager,
-    PromiseCollectionEvent,
+    CollectPromiseEvent,
 )
-
-# TODO Oleksandr: switch from a global variable to an instance attribute after you work out what the "main" class
-#  should look like
-ON_COLLECT: Optional[PromiseCollectionEvent] = None
 
 
 class StreamedPromise(Generic[PIECE, WHOLE]):
@@ -37,6 +33,10 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     """
 
     # pylint: disable=too-many-instance-attributes,too-many-arguments
+
+    # TODO Oleksandr: switch from a class attribute to an instance attribute after you work out what the "main" class
+    #  for this framework/library should look like (and what its purpose should be)
+    on_collect: list[CollectPromiseEvent] = []
 
     def __init__(
         self,
@@ -108,10 +108,9 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
                     except BaseException as exc:  # pylint: disable=broad-except
                         self._whole = exc
 
-                    if ON_COLLECT:
-                        # pylint: disable=not-callable
+                    for collect_event in self.on_collect:
                         # noinspection PyAsyncCall
-                        asyncio.create_task(ON_COLLECT(self, self._whole))
+                        asyncio.create_task(collect_event(self, self._whole))
 
         if isinstance(self._whole, BaseException):
             raise self._whole

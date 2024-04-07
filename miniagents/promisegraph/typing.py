@@ -30,7 +30,7 @@ class StreamedWholePackager(Protocol[WHOLE]):
     async def __call__(self, streamed_promise: StreamedPromiseBound) -> WHOLE: ...
 
 
-class PromiseCollectionEvent(Protocol):
+class CollectPromiseEvent(Protocol):
     """
     A protocol for StreamedPromise collection events. A promise collection event is a function that is scheduled to
     be called after StreamedPromise.acollect() finishes collecting the promise. "Scheduled" means that the function
