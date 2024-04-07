@@ -24,6 +24,7 @@ def anthropic(
     """
     if not async_client:
         # pylint: disable=import-outside-toplevel
+        # noinspection PyShadowingNames
         import anthropic as anthropic_original
 
         # TODO Oleksandr: instantiate the client only once (but still don't import `anthropic` at the module level)
@@ -32,6 +33,14 @@ def anthropic(
     async def message_piece_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         collected_messages = await MessageSequence.aflatten_and_collect(messages)
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
+
+        metadata_so_far["agent_call"] = {
+            "anthropic": {
+                "message_hash_keys": tuple(msg.hash_key for msg in collected_messages),
+                "stream": stream,
+                **kwargs,
+            },
+        }
 
         if stream:
             # pylint: disable=not-async-context-manager

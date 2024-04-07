@@ -30,14 +30,17 @@ class MessagePromise(StreamedPromise[str, Message]):
     A promise of a message that can be streamed token by token.
     """
 
+    # pylint: disable=too-many-arguments
+
     def __init__(
         self,
         schedule_immediately: bool = True,
         collect_as_soon_as_possible: bool = True,
         message_piece_producer: MessagePieceProducer = None,
         prefill_message: Optional[Message] = None,
+        metadata_so_far: Optional[Node] = None,
     ) -> None:
-        # TODO Oleksandr: raise an error if both ready_message and message_piece_producer are not None
+        # TODO Oleksandr: raise an error if both ready_message and message_piece_producer/metadata_so_far are not None
         #  (or both are None)
         if prefill_message:
             super().__init__(
@@ -54,7 +57,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 packager=self._packager,
             )
             self._message_piece_producer = message_piece_producer
-            self._metadata_so_far: dict[str, Any] = {}
+            self._metadata_so_far: dict[str, Any] = metadata_so_far.model_dump() if metadata_so_far else {}
 
     def _producer(self, _) -> AsyncIterator[str]:
         return self._message_piece_producer(self._metadata_so_far)
@@ -121,11 +124,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             raise zero_or_more_items
         elif hasattr(zero_or_more_items, "__iter__"):
             for item in zero_or_more_items:
-                async for message_promise in MessageSequence._flattener(None, item):
+                async for message_promise in MessageSequence._flattener(_, item):
                     yield message_promise
         elif hasattr(zero_or_more_items, "__aiter__"):
             async for item in zero_or_more_items:
-                async for message_promise in MessageSequence._flattener(None, item):
+                async for message_promise in MessageSequence._flattener(_, item):
                     yield message_promise
         else:
             raise TypeError(f"unexpected message type: {type(zero_or_more_items)}")
