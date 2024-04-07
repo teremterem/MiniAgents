@@ -8,7 +8,17 @@ from typing import Generic, AsyncIterator, Union, Optional, Iterable
 
 from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
 from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
-from miniagents.promisegraph.typing import PIECE, WHOLE, StreamedPieceProducer, StreamedWholePackager
+from miniagents.promisegraph.typing import (
+    PIECE,
+    WHOLE,
+    StreamedPieceProducer,
+    StreamedWholePackager,
+    PromiseCollectionEvent,
+)
+
+# TODO Oleksandr: switch from a global variable to an instance attribute after you work out what the "main" class
+#  should look like
+ON_COLLECT: Optional[PromiseCollectionEvent] = None
 
 
 class StreamedPromise(Generic[PIECE, WHOLE]):
@@ -99,6 +109,11 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
                         self._whole = await self.__packager(self)
                     except BaseException as exc:  # pylint: disable=broad-except
                         self._whole = exc
+
+                    if ON_COLLECT:
+                        # pylint: disable=not-callable
+                        # noinspection PyAsyncCall
+                        asyncio.create_task(ON_COLLECT(self, self._whole))
 
         if isinstance(self._whole, BaseException):
             raise self._whole
