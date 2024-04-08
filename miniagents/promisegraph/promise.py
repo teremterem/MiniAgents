@@ -3,8 +3,11 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 """
 
 import asyncio
+import contextvars
+from asyncio import Task
+from contextvars import ContextVar
 from types import TracebackType
-from typing import Generic, AsyncIterator, Union, Optional, Iterable
+from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable
 
 from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
 from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
@@ -13,8 +16,66 @@ from miniagents.promisegraph.typing import (
     WHOLE,
     StreamedPieceProducer,
     StreamedWholePackager,
-    CollectPromiseEventHandler,
+    PromiseCollectedEventHandler,
 )
+
+
+class Promises:
+    """
+    # TODO TODO TODO Oleksandr
+    """
+
+    _current: ContextVar[Optional["Promises"]] = ContextVar("Promises._current", default=None)
+
+    def __init__(
+        self,
+        schedule_immediately_by_default: bool = True,
+        on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
+    ) -> None:
+        self.parent = self._current.get()
+        self.on_promise_collected: list[PromiseCollectedEventHandler] = (
+            [on_promise_collected] if callable(on_promise_collected) else list(on_promise_collected)
+        )
+        self.child_tasks: list[Task] = []
+
+        # TODO TODO TODO Oleksandr: support schedule_immediately_by_default in StreamedPromise
+        self.schedule_immediately_by_default = schedule_immediately_by_default
+
+        self._previous_ctx_token: Optional[contextvars.Token] = None
+
+    @classmethod
+    def get_current(cls) -> "Promises":
+        """
+        # TODO TODO TODO Oleksandr
+        """
+        current = cls._current.get()
+        if not current:
+            raise RuntimeError(
+                "No `Promises` context is currently active. Did you forget to do `async with Promises():`?"
+            )
+        return current
+
+    def schedule_task(self, awaitable: Awaitable) -> Task:
+        """
+        # TODO TODO TODO Oleksandr
+        """
+        task = asyncio.create_task(awaitable)
+        self.child_tasks.append(task)
+        return task
+
+    async def __aenter__(self) -> "Promises":
+        if self._previous_ctx_token:
+            raise RuntimeError("`Promises` context manager is not reentrant")
+        self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await asyncio.gather(
+            *self.child_tasks,
+            return_exceptions=True,  # this prevents waiting until the first exception and then giving up
+        )
+        self._current.reset(self._previous_ctx_token)
+        self._previous_ctx_token = None
 
 
 class StreamedPromise(Generic[PIECE, WHOLE]):
@@ -33,10 +94,6 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     """
 
     # pylint: disable=too-many-instance-attributes,too-many-arguments
-
-    # TODO Oleksandr: switch from a class attribute to an instance attribute after you work out what the "main" class
-    #  for this framework/library should look like (and what its purpose should be)
-    on_collect: list[CollectPromiseEventHandler] = []
 
     def __init__(
         self,
@@ -61,7 +118,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
             self._whole: Union[WHOLE, Sentinel, BaseException] = NO_VALUE
         else:
             self._whole = prefill_whole
-            self._schedule_collect_event_handlers()
+            self._schedule_collected_event_handlers()
 
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._producer_lock = asyncio.Lock()
@@ -70,13 +127,13 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            asyncio.create_task(self._aproduce_the_stream())
+            Promises.get_current().schedule_task(self._aproduce_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
         if schedule_immediately and prefill_whole is NO_VALUE:
-            asyncio.create_task(self.acollect())
+            Promises.get_current().schedule_task(self.acollect())
 
         self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
@@ -109,17 +166,18 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
                     except BaseException as exc:  # pylint: disable=broad-except
                         self._whole = exc
 
-                    self._schedule_collect_event_handlers()
+                    self._schedule_collected_event_handlers()
 
         if isinstance(self._whole, BaseException):
             raise self._whole
         return self._whole
 
-    def _schedule_collect_event_handlers(self):
-        for collect_event in self.on_collect:
-            # TODO Oleksandr: should these events be waited for (in case the app is shutting down) ?
-            # noinspection PyAsyncCall
-            asyncio.create_task(collect_event(self, self._whole))
+    def _schedule_collected_event_handlers(self):
+        promises = Promises.get_current()
+        while promises:
+            for handler in promises.on_promise_collected:
+                promises.schedule_task(handler(self, self._whole))
+            promises = promises.parent
 
     async def _aproduce_the_stream(self) -> None:
         while True:
