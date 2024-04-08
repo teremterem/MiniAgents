@@ -70,11 +70,15 @@ class MessagePromise(StreamedPromise[str, Message]):
 SingleMessageType = Union[str, dict[str, Any], Message, MessagePromise, BaseException]
 MessageType = Union[SingleMessageType, Iterable["MessageType"], AsyncIterable["MessageType"]]
 
+MessageSequencePromise = StreamedPromise[MessagePromise, tuple[MessagePromise, ...]]
+
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     """
     TODO Oleksandr: produce a docstring for this class after you actually use it in real agents
     """
+
+    sequence_promise: MessageSequencePromise
 
     def __init__(
         self,
