@@ -17,7 +17,7 @@ class Message(Node):
     text: str
 
 
-class MessagePieceProducer(Protocol):
+class MessageTokenProducer(Protocol):
     """
     A protocol for message piece producer functions.
     """
@@ -35,11 +35,11 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __init__(
         self,
         schedule_immediately: bool = True,
-        message_piece_producer: MessagePieceProducer = None,
+        message_token_producer: MessageTokenProducer = None,
         prefill_message: Optional[Message] = None,
         metadata_so_far: Optional[Node] = None,
     ) -> None:
-        # TODO Oleksandr: raise an error if both ready_message and message_piece_producer/metadata_so_far are not None
+        # TODO Oleksandr: raise an error if both ready_message and message_token_producer/metadata_so_far are not None
         #  (or both are None)
         if prefill_message:
             super().__init__(
@@ -53,11 +53,11 @@ class MessagePromise(StreamedPromise[str, Message]):
                 producer=self._producer,
                 packager=self._packager,
             )
-            self._message_piece_producer = message_piece_producer
+            self._message_token_producer = message_token_producer
             self._metadata_so_far: dict[str, Any] = metadata_so_far.model_dump() if metadata_so_far else {}
 
     def _producer(self, _) -> AsyncIterator[str]:
-        return self._message_piece_producer(self._metadata_so_far)
+        return self._message_token_producer(self._metadata_so_far)
 
     async def _packager(self, _) -> Message:
         return Message(

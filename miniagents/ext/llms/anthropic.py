@@ -29,7 +29,7 @@ def anthropic(
         # TODO Oleksandr: instantiate the client only once (but still don't import `anthropic` at the module level)
         async_client = anthropic_original.AsyncAnthropic()
 
-    async def message_piece_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+    async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         collected_messages = await MessageSequence.aflatten_and_collect(messages)
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
 
@@ -69,7 +69,7 @@ def anthropic(
         metadata_so_far["anthropic"] = anthropic_final_message.model_dump(exclude={"content"})
 
     return MessagePromise(
-        message_piece_producer=message_piece_producer,
+        message_token_producer=message_token_producer,
         schedule_immediately=schedule_immediately,
     )
 
