@@ -30,11 +30,11 @@ class StreamedWholePackager(Protocol[WHOLE]):
     async def __call__(self, streamed_promise: StreamedPromiseBound) -> WHOLE: ...
 
 
-class CollectPromiseEvent(Protocol):
+class CollectPromiseEventHandler(Protocol):
     """
-    A protocol for StreamedPromise collection events. A promise collection event is a function that is scheduled to
-    be called after StreamedPromise.acollect() finishes collecting the promise. "Scheduled" means that the function
-    is passed to the event loop for execution without blocking the current coroutine.
+    A protocol for StreamedPromise collection event handlers. A promise collection event is a function that is
+    scheduled to be called after StreamedPromise.acollect() finishes collecting the promise. "Scheduled" means
+    that the function is passed to the event loop for execution without blocking the current coroutine.
     """
 
     async def __call__(self, streamed_promise: StreamedPromiseBound, whole: Any) -> None: ...

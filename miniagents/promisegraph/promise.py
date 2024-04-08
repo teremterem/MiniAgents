@@ -13,7 +13,7 @@ from miniagents.promisegraph.typing import (
     WHOLE,
     StreamedPieceProducer,
     StreamedWholePackager,
-    CollectPromiseEvent,
+    CollectPromiseEventHandler,
 )
 
 
@@ -36,7 +36,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
 
     # TODO Oleksandr: switch from a class attribute to an instance attribute after you work out what the "main" class
     #  for this framework/library should look like (and what its purpose should be)
-    on_collect: list[CollectPromiseEvent] = []
+    on_collect: list[CollectPromiseEventHandler] = []
 
     def __init__(
         self,
@@ -61,6 +61,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
             self._whole: Union[WHOLE, Sentinel, BaseException] = NO_VALUE
         else:
             self._whole = prefill_whole
+            self._schedule_collect_event_handlers()
 
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._producer_lock = asyncio.Lock()
@@ -108,14 +109,17 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
                     except BaseException as exc:  # pylint: disable=broad-except
                         self._whole = exc
 
-                    for collect_event in self.on_collect:
-                        # TODO Oleksandr: should these events be waited for (in case the app is shutting down) ?
-                        # noinspection PyAsyncCall
-                        asyncio.create_task(collect_event(self, self._whole))
+                    self._schedule_collect_event_handlers()
 
         if isinstance(self._whole, BaseException):
             raise self._whole
         return self._whole
+
+    def _schedule_collect_event_handlers(self):
+        for collect_event in self.on_collect:
+            # TODO Oleksandr: should these events be waited for (in case the app is shutting down) ?
+            # noinspection PyAsyncCall
+            asyncio.create_task(collect_event(self, self._whole))
 
     async def _aproduce_the_stream(self) -> None:
         while True:
