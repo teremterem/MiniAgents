@@ -7,7 +7,7 @@ import contextvars
 from asyncio import Task
 from contextvars import ContextVar
 from types import TracebackType
-from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable
+from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
 from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
 from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
@@ -38,7 +38,7 @@ class PromiseContext:
             [on_promise_collected] if callable(on_promise_collected) else list(on_promise_collected)
         )
         # TODO TODO TODO Oleksandr: this list of child tasks will be a memory leak when PromiseContext is global
-        self.child_tasks: list[Task] = []
+        self.child_tasks: set[Task] = set()
 
         # TODO TODO TODO Oleksandr: support in StreamedPromise and AppendProducer
         self.schedule_immediately_by_default = schedule_immediately_by_default
@@ -62,8 +62,15 @@ class PromiseContext:
         """
         TODO TODO TODO Oleksandr
         """
-        task = asyncio.create_task(awaitable)
-        self.child_tasks.append(task)
+
+        async def awaitable_wrapper() -> Any:
+            try:
+                return await awaitable
+            finally:
+                self.child_tasks.remove(task)
+
+        task = asyncio.create_task(awaitable_wrapper())
+        self.child_tasks.add(task)
         return task
 
     def activate(self) -> "PromiseContext":

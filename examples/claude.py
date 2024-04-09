@@ -32,6 +32,7 @@ async def main() -> None:
             stream=True,
         )
 
+        print()
         async for token in msg_promise:
             print(token, end="", flush=True)
         print()
