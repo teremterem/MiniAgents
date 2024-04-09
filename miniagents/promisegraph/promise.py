@@ -20,12 +20,12 @@ from miniagents.promisegraph.typing import (
 )
 
 
-class Promises:
+class PromiseContext:
     """
     TODO TODO TODO Oleksandr
     """
 
-    _current: ContextVar[Optional["Promises"]] = ContextVar("Promises._current", default=None)
+    _current: ContextVar[Optional["PromiseContext"]] = ContextVar("PromiseContext._current", default=None)
 
     def __init__(
         self,
@@ -47,14 +47,14 @@ class Promises:
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
     @classmethod
-    def get_current(cls) -> "Promises":
+    def get_current(cls) -> "PromiseContext":
         """
         TODO TODO TODO Oleksandr
         """
         current = cls._current.get()
         if not current:
             raise RuntimeError(
-                "No `Promises` context is currently active. Did you forget to do `async with Promises():`?"
+                "No PromiseContext is currently active. Did you forget to do `async with PromiseContext():`?"
             )
         return current
 
@@ -66,12 +66,12 @@ class Promises:
         self.child_tasks.append(task)
         return task
 
-    def activate(self) -> "Promises":
+    def activate(self) -> "PromiseContext":
         """
         TODO TODO TODO Oleksandr
         """
         if self._previous_ctx_token:
-            raise RuntimeError("`Promises` context manager is not reentrant")
+            raise RuntimeError("PromiseContext is not reentrant")
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
         return self
 
@@ -86,7 +86,7 @@ class Promises:
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
 
-    async def __aenter__(self) -> "Promises":
+    async def __aenter__(self) -> "PromiseContext":
         return self.activate()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -142,13 +142,13 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            Promises.get_current().schedule_task(self._aproduce_the_stream())
+            PromiseContext.get_current().schedule_task(self._aproduce_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
         if schedule_immediately and prefill_whole is NO_VALUE:
-            Promises.get_current().schedule_task(self.acollect())
+            PromiseContext.get_current().schedule_task(self.acollect())
 
         self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
@@ -188,11 +188,11 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         return self._whole
 
     def _schedule_collected_event_handlers(self):
-        promises = Promises.get_current()
-        while promises:
-            for handler in promises.on_promise_collected:
-                promises.schedule_task(handler(self, self._whole))
-            promises = promises.parent
+        promise_ctx = PromiseContext.get_current()
+        while promise_ctx:
+            for handler in promise_ctx.on_promise_collected:
+                promise_ctx.schedule_task(handler(self, self._whole))
+            promise_ctx = promise_ctx.parent
 
     async def _aproduce_the_stream(self) -> None:
         while True:
