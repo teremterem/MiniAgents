@@ -22,7 +22,7 @@ from miniagents.promisegraph.typing import (
 
 class Promises:
     """
-    # TODO TODO TODO Oleksandr
+    TODO TODO TODO Oleksandr
     """
 
     _current: ContextVar[Optional["Promises"]] = ContextVar("Promises._current", default=None)
@@ -30,6 +30,7 @@ class Promises:
     def __init__(
         self,
         schedule_immediately_by_default: bool = True,
+        producer_capture_errors_by_default: bool = False,
         on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
@@ -38,15 +39,16 @@ class Promises:
         )
         self.child_tasks: list[Task] = []
 
-        # TODO TODO TODO Oleksandr: support schedule_immediately_by_default in StreamedPromise
+        # TODO TODO TODO Oleksandr: support in StreamedPromise and AppendProducer
         self.schedule_immediately_by_default = schedule_immediately_by_default
+        self.producer_capture_errors_by_default = producer_capture_errors_by_default
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
     @classmethod
     def get_current(cls) -> "Promises":
         """
-        # TODO TODO TODO Oleksandr
+        TODO TODO TODO Oleksandr
         """
         current = cls._current.get()
         if not current:
@@ -57,25 +59,37 @@ class Promises:
 
     def schedule_task(self, awaitable: Awaitable) -> Task:
         """
-        # TODO TODO TODO Oleksandr
+        TODO TODO TODO Oleksandr
         """
         task = asyncio.create_task(awaitable)
         self.child_tasks.append(task)
         return task
 
-    async def __aenter__(self) -> "Promises":
+    def activate(self) -> "Promises":
+        """
+        TODO TODO TODO Oleksandr
+        """
         if self._previous_ctx_token:
             raise RuntimeError("`Promises` context manager is not reentrant")
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def afinalize(self) -> None:
+        """
+        TODO TODO TODO Oleksandr
+        """
         await asyncio.gather(
             *self.child_tasks,
             return_exceptions=True,  # this prevents waiting until the first exception and then giving up
         )
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
+
+    async def __aenter__(self) -> "Promises":
+        return self.activate()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self.afinalize()
 
 
 class StreamedPromise(Generic[PIECE, WHOLE]):
