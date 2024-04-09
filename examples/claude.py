@@ -13,10 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from miniagents.ext.llms.anthropic import anthropic
 from miniagents.miniagents import Message
 from miniagents.promisegraph.promise import PromiseContext
-
-from miniagents.ext.llms.anthropic import anthropic
 
 
 async def main() -> None:
