@@ -37,6 +37,7 @@ class Promises:
         self.on_promise_collected: list[PromiseCollectedEventHandler] = (
             [on_promise_collected] if callable(on_promise_collected) else list(on_promise_collected)
         )
+        # TODO TODO TODO Oleksandr: this list of child tasks will be a memory leak when PromiseContext is global
         self.child_tasks: list[Task] = []
 
         # TODO TODO TODO Oleksandr: support in StreamedPromise and AppendProducer
