@@ -11,10 +11,10 @@ from pprint import pprint
 
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from miniagents.miniagents import Message
 from miniagents.promisegraph.promise import PromiseContext
-
-load_dotenv()
 
 from miniagents.ext.llms.anthropic import anthropic
 
