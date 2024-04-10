@@ -2,9 +2,10 @@
 The main class in this module is `FlatSequence`. See its docstring for more information.
 """
 
-from typing import Generic, AsyncIterator
+from typing import Generic, AsyncIterator, Union
 
 from miniagents.promisegraph.promise import StreamedPromise, AppendProducer
+from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 from miniagents.promisegraph.typing import SequenceFlattener, IN, OUT
 
 
@@ -19,24 +20,22 @@ class FlatSequence(Generic[IN, OUT]):
     def __init__(
         self,
         flattener: SequenceFlattener[IN, OUT],
-        schedule_immediately: bool,
-        collect_as_soon_as_possible: bool,
-        producer_capture_errors: bool,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
+        sequence_promise_class: type[StreamedPromise[OUT, tuple[OUT, ...]]] = StreamedPromise[OUT, tuple[OUT, ...]],
     ) -> None:
         self.__flattener = flattener
         self._input_promise = StreamedPromise(
             producer=self._producer,
             packager=lambda _: None,
-            schedule_immediately=schedule_immediately,
-            collect_as_soon_as_possible=False,
+            schedule_immediately=False,
         )
 
         self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
-        self.sequence_promise = StreamedPromise(
+        self.sequence_promise = sequence_promise_class(
             producer=self._input_promise,
             packager=self._packager,
-            schedule_immediately=False,
-            collect_as_soon_as_possible=collect_as_soon_as_possible,
+            schedule_immediately=schedule_immediately,
         )
 
     async def _producer(self, _) -> AsyncIterator[OUT]:

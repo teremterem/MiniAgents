@@ -2,7 +2,7 @@
 Types for the PromiseGraph part of the library.
 """
 
-from typing import TypeVar, AsyncIterator, Protocol, Union
+from typing import TypeVar, AsyncIterator, Protocol, Union, Any
 
 PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
@@ -28,6 +28,16 @@ class StreamedWholePackager(Protocol[WHOLE]):
     """
 
     async def __call__(self, streamed_promise: StreamedPromiseBound) -> WHOLE: ...
+
+
+class PromiseCollectedEventHandler(Protocol):
+    """
+    A protocol for StreamedPromise collection event handlers. A promise collection event is a function that is
+    scheduled to be called after StreamedPromise.acollect() finishes collecting the promise. "Scheduled" means
+    that the function is passed to the event loop for execution without blocking the current coroutine.
+    """
+
+    async def __call__(self, streamed_promise: StreamedPromiseBound, whole: Any) -> None: ...
 
 
 class SequenceFlattener(Protocol[IN, OUT]):

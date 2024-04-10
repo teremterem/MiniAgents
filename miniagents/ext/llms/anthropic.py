@@ -3,9 +3,11 @@ This module integrates Anthropic language models with MiniAgents.
 """
 
 import typing
-from typing import AsyncIterator, Any, Optional
+from typing import AsyncIterator, Any, Optional, Union
 
 from miniagents.miniagents import MessagePromise, MessageType, MessageSequence, Message
+from miniagents.promisegraph.promise import PromiseContext
+from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
@@ -13,9 +15,8 @@ if typing.TYPE_CHECKING:
 
 def anthropic(
     messages: MessageType,
-    schedule_immediately: bool = True,
-    collect_as_soon_as_possible: bool = True,
-    stream: bool = True,
+    schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+    stream: Union[bool, Sentinel] = DEFAULT,
     async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
     **kwargs,
 ) -> MessagePromise:
@@ -24,14 +25,26 @@ def anthropic(
     """
     if not async_client:
         # pylint: disable=import-outside-toplevel
+        # noinspection PyShadowingNames
         import anthropic as anthropic_original
 
         # TODO Oleksandr: instantiate the client only once (but still don't import `anthropic` at the module level)
         async_client = anthropic_original.AsyncAnthropic()
 
-    async def message_piece_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        collected_messages = await MessageSequence.aflatten_and_collect(messages)
+    if stream is DEFAULT:
+        stream = PromiseContext().stream_llm_tokens_by_default
+
+    async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+        collected_messages = await MessageSequence.acollect_messages(messages)
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
+
+        metadata_so_far["agent_call"] = {
+            "anthropic": {
+                "message_hash_keys": tuple(msg.hash_key for msg in collected_messages),
+                "stream": stream,
+                **kwargs,
+            },
+        }
 
         if stream:
             # pylint: disable=not-async-context-manager
@@ -61,9 +74,8 @@ def anthropic(
         metadata_so_far["anthropic"] = anthropic_final_message.model_dump(exclude={"content"})
 
     return MessagePromise(
-        message_piece_producer=message_piece_producer,
+        message_token_producer=message_token_producer,
         schedule_immediately=schedule_immediately,
-        collect_as_soon_as_possible=collect_as_soon_as_possible,
     )
 
 
