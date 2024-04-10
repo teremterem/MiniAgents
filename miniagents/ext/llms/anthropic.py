@@ -3,9 +3,11 @@ This module integrates Anthropic language models with MiniAgents.
 """
 
 import typing
-from typing import AsyncIterator, Any, Optional
+from typing import AsyncIterator, Any, Optional, Union
 
 from miniagents.miniagents import MessagePromise, MessageType, MessageSequence, Message
+from miniagents.promisegraph.promise import PromiseContext
+from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
@@ -13,8 +15,8 @@ if typing.TYPE_CHECKING:
 
 def anthropic(
     messages: MessageType,
-    schedule_immediately: bool = True,
-    stream: bool = True,
+    schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+    stream: Union[bool, Sentinel] = DEFAULT,
     async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
     **kwargs,
 ) -> MessagePromise:
@@ -28,6 +30,9 @@ def anthropic(
 
         # TODO Oleksandr: instantiate the client only once (but still don't import `anthropic` at the module level)
         async_client = anthropic_original.AsyncAnthropic()
+
+    if stream is DEFAULT:
+        stream = PromiseContext().stream_llm_tokens_by_default
 
     async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         collected_messages = await MessageSequence.aflatten_and_collect(messages)

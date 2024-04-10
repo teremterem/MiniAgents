@@ -10,7 +10,7 @@ from types import TracebackType
 from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
 from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
-from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
+from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
 from miniagents.promisegraph.typing import (
     PIECE,
     WHOLE,
@@ -33,6 +33,7 @@ class PromiseContext:
         self,
         schedule_immediately_by_default: bool = True,
         producer_capture_errors_by_default: bool = False,
+        stream_llm_tokens_by_default: bool = True,
         on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
@@ -41,9 +42,10 @@ class PromiseContext:
         )
         self.child_tasks: set[Task] = set()
 
-        # TODO TODO TODO Oleksandr: support in StreamedPromise and AppendProducer
         self.schedule_immediately_by_default = schedule_immediately_by_default
         self.producer_capture_errors_by_default = producer_capture_errors_by_default
+        # TODO Oleksandr: move this setting to a child class (MiniAgents ?)
+        self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
@@ -126,7 +128,7 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
 
     def __init__(
         self,
-        schedule_immediately: bool,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         producer: Optional[StreamedPieceProducer[PIECE]] = None,
         packager: Optional[StreamedWholePackager[WHOLE]] = None,
         prefill_pieces: Optional[Iterable[PIECE]] = NO_VALUE,
@@ -153,16 +155,21 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         self._producer_lock = asyncio.Lock()
         self._packager_lock = asyncio.Lock()
 
+        promise_context = PromiseContext.get_current()
+
+        if schedule_immediately is DEFAULT:
+            schedule_immediately = promise_context.schedule_immediately_by_default
+
         if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            PromiseContext.get_current().schedule_task(self._aproduce_the_stream())
+            promise_context.schedule_task(self._aproduce_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
         if schedule_immediately and prefill_whole is NO_VALUE:
-            PromiseContext.get_current().schedule_task(self.acollect())
+            promise_context.schedule_task(self.acollect())
 
         self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
@@ -298,11 +305,14 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
     TODO Oleksandr: explain the `capture_errors` parameter
     """
 
-    def __init__(self, capture_errors: bool) -> None:
+    def __init__(self, capture_errors: Union[bool, Sentinel] = DEFAULT) -> None:
         self._queue = asyncio.Queue()
         self._append_open = False
         self._append_closed = False
-        self._capture_errors = capture_errors
+        if capture_errors is DEFAULT:
+            self._capture_errors = PromiseContext.get_current().producer_capture_errors_by_default
+        else:
+            self._capture_errors = capture_errors
 
     def __enter__(self) -> "AppendProducer":
         return self.open()

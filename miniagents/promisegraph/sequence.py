@@ -2,9 +2,10 @@
 The main class in this module is `FlatSequence`. See its docstring for more information.
 """
 
-from typing import Generic, AsyncIterator
+from typing import Generic, AsyncIterator, Union
 
 from miniagents.promisegraph.promise import StreamedPromise, AppendProducer
+from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 from miniagents.promisegraph.typing import SequenceFlattener, IN, OUT
 
 
@@ -19,8 +20,8 @@ class FlatSequence(Generic[IN, OUT]):
     def __init__(
         self,
         flattener: SequenceFlattener[IN, OUT],
-        schedule_immediately: bool,
-        producer_capture_errors: bool,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
         sequence_promise_class: type[StreamedPromise[OUT, tuple[OUT, ...]]] = StreamedPromise[OUT, tuple[OUT, ...]],
     ) -> None:
         self.__flattener = flattener

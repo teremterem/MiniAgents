@@ -6,6 +6,7 @@ from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable,
 
 from miniagents.promisegraph.node import Node
 from miniagents.promisegraph.promise import StreamedPromise
+from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 from miniagents.promisegraph.sequence import FlatSequence
 
 
@@ -34,7 +35,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     def __init__(
         self,
-        schedule_immediately: bool = True,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         message_token_producer: MessageTokenProducer = None,
         prefill_message: Optional[Message] = None,
         metadata_so_far: Optional[Node] = None,
@@ -93,8 +94,8 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
     def __init__(
         self,
-        producer_capture_errors: bool,
-        schedule_immediately: bool = True,
+        producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
     ) -> None:
         super().__init__(
             flattener=self._flattener,
