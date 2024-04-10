@@ -22,7 +22,9 @@ from miniagents.promisegraph.typing import (
 
 class PromiseContext:
     """
-    TODO TODO TODO Oleksandr
+    This is the main class for managing the context of promises. It is a context manager that is used to configure
+    default settings for promises and to handle the lifecycle of promises (attach `on_promise_collected` handlers).
+    TODO Oleksandr: explain this class in more detail
     """
 
     _current: ContextVar[Optional["PromiseContext"]] = ContextVar("PromiseContext._current", default=None)
@@ -48,7 +50,7 @@ class PromiseContext:
     @classmethod
     def get_current(cls) -> "PromiseContext":
         """
-        TODO TODO TODO Oleksandr
+        Get the current context. If no context is currently active, raise an error.
         """
         current = cls._current.get()
         if not current:
@@ -59,7 +61,9 @@ class PromiseContext:
 
     def schedule_task(self, awaitable: Awaitable) -> Task:
         """
-        TODO TODO TODO Oleksandr
+        Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
+        `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
+        before finalizing the context.
         """
 
         async def awaitable_wrapper() -> Any:
@@ -74,7 +78,10 @@ class PromiseContext:
 
     def activate(self) -> "PromiseContext":
         """
-        TODO TODO TODO Oleksandr
+        Activate the context. This is a context manager method that is used to activate the context for the duration
+        of the `async with` block. Can be called as a regular method as well in cases where it is not possible to use
+        the `async with` block (e.g., if a PromiseContext needs to be activated for the duration of an async webserver
+        being up).
         """
         if self._previous_ctx_token:
             raise RuntimeError("PromiseContext is not reentrant")
@@ -83,7 +90,8 @@ class PromiseContext:
 
     async def afinalize(self) -> None:
         """
-        TODO TODO TODO Oleksandr
+        Finalize the context (wait for all the child tasks to finish and reset the context). This method is called
+        automatically at the end of the `async with` block.
         """
         await asyncio.gather(
             *self.child_tasks,
