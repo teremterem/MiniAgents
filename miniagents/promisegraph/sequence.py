@@ -21,6 +21,7 @@ class FlatSequence(Generic[IN, OUT]):
         flattener: SequenceFlattener[IN, OUT],
         schedule_immediately: bool,
         producer_capture_errors: bool,
+        sequence_promise_class: type[StreamedPromise[OUT, tuple[OUT, ...]]] = StreamedPromise[OUT, tuple[OUT, ...]],
     ) -> None:
         self.__flattener = flattener
         self._input_promise = StreamedPromise(
@@ -30,7 +31,7 @@ class FlatSequence(Generic[IN, OUT]):
         )
 
         self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
-        self.sequence_promise = StreamedPromise(
+        self.sequence_promise = sequence_promise_class(
             producer=self._input_promise,
             packager=self._packager,
             schedule_immediately=schedule_immediately,

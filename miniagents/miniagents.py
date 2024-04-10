@@ -70,7 +70,18 @@ class MessagePromise(StreamedPromise[str, Message]):
 SingleMessageType = Union[str, dict[str, Any], Message, MessagePromise, BaseException]
 MessageType = Union[SingleMessageType, Iterable["MessageType"], AsyncIterable["MessageType"]]
 
-MessageSequencePromise = StreamedPromise[MessagePromise, tuple[MessagePromise, ...]]
+
+class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromise, ...]]):
+    """
+    A promise of a sequence of messages that can be streamed message by message.
+    """
+
+    async def acollect_messages(self) -> tuple[Message, ...]:
+        """
+        Collect all messages from the sequence and return them as a tuple of Message objects.
+        """
+        # pylint: disable=consider-using-generator
+        return tuple([await message_promise.acollect() async for message_promise in self])
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
@@ -89,13 +100,14 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             flattener=self._flattener,
             schedule_immediately=schedule_immediately,
             producer_capture_errors=producer_capture_errors,
+            sequence_promise_class=MessageSequencePromise,
         )
 
     @classmethod
-    async def aflatten_and_collect(cls, messages: MessageType) -> list[Message]:
+    async def aflatten_and_collect(cls, messages: MessageType) -> tuple[Message, ...]:
         """
         Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
-        MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform list of
+        MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform tuple of
         Message objects.
         """
         message_sequence = cls(
@@ -104,7 +116,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         )
         with message_sequence.append_producer:
             message_sequence.append_producer.append(messages)
-        return [await message_promise.acollect() async for message_promise in message_sequence.sequence_promise]
+        return await message_sequence.sequence_promise.acollect_messages()
 
     @staticmethod
     async def _flattener(_, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
