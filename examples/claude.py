@@ -38,6 +38,7 @@ async def main() -> None:
         print()
         print()
         pprint((await msg_promise.acollect()).model_dump())
+        print()
 
 
 if __name__ == "__main__":
