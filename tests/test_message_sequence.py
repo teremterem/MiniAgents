@@ -6,9 +6,10 @@ import pytest
 
 from miniagents.miniagents import MessageSequence, Message, MessagePromise
 from miniagents.promisegraph.promise import PromiseContext
+from miniagents.promisegraph.sentinels import DEFAULT
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_message_sequence(schedule_immediately: bool) -> None:
     """
@@ -78,7 +79,7 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
         ]
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_message_sequence_error(schedule_immediately: bool) -> None:
     """

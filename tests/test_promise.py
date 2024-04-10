@@ -7,9 +7,10 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, PromiseContext
+from miniagents.promisegraph.sentinels import DEFAULT
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     """
@@ -41,7 +42,7 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     assert producer_iterations == 5
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> None:
     """
@@ -94,7 +95,7 @@ async def _async_producer_but_no_generator(_):
         _async_producer_but_no_generator,
     ],
 )
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_stream_broken_producer(broken_producer, schedule_immediately: bool) -> None:
     """
@@ -137,7 +138,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
         TypeError,
     ],
 )
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_stream_broken_packager(broken_packager, schedule_immediately: bool) -> None:
     """
@@ -180,7 +181,7 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
     assert actual_packager_call_count == expected_packager_call_count
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
@@ -217,7 +218,7 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
         assert result2 is result1  # the promise should always return the exact same instance of the result object
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -> None:
     """
@@ -245,7 +246,7 @@ async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -
         assert await streamed_promise.acollect() == [1, 2]
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_streamed_promise_same_instance(schedule_immediately: bool) -> None:
     """

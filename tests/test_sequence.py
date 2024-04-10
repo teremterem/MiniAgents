@@ -7,10 +7,11 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promisegraph.promise import PromiseContext
+from miniagents.promisegraph.sentinels import DEFAULT
 from miniagents.promisegraph.sequence import FlatSequence
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_flat_sequence(schedule_immediately: bool) -> None:
     """
