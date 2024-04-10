@@ -105,7 +105,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         )
 
     @classmethod
-    async def aflatten_and_collect(cls, messages: MessageType) -> tuple[Message, ...]:
+    async def acollect_messages(cls, messages: MessageType) -> tuple[Message, ...]:
         """
         Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
         MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform tuple of

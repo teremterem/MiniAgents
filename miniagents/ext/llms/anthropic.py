@@ -35,7 +35,7 @@ def anthropic(
         stream = PromiseContext().stream_llm_tokens_by_default
 
     async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        collected_messages = await MessageSequence.aflatten_and_collect(messages)
+        collected_messages = await MessageSequence.acollect_messages(messages)
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
 
         metadata_so_far["agent_call"] = {
