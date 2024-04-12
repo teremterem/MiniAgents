@@ -3,7 +3,7 @@
 Split this module into multiple modules.
 """
 
-from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional
+from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
 from miniagents.promisegraph.node import Node
 from miniagents.promisegraph.promise import StreamedPromise
@@ -157,7 +157,7 @@ class Agent:
 
     def __init__(
         self,
-        func: Optional["AgentFunction"],
+        func: AgentFunction,
         alias: Optional[str] = None,
         description: Optional[str] = None,
         uppercase_func_name: bool = True,
@@ -182,3 +182,37 @@ class Agent:
 
         self.__name__ = self.alias
         self.__doc__ = self.description
+
+
+def agent(
+    func: Optional[AgentFunction] = None,
+    /,  # TODO Oleksandr: do I really need to enforce positional-only upon `func` ?
+    alias: Optional[str] = None,
+    description: Optional[str] = None,
+    uppercase_func_name: bool = True,
+    normalize_spaces_in_docstring: bool = True,
+) -> Union["Agent", Callable[[AgentFunction], Agent]]:
+    """
+    A decorator that converts an agent function into an agent.
+    """
+    if func is None:
+        # the decorator `@forum.agent(...)` was used with arguments
+        def _decorator(f: "AgentFunction") -> "Agent":
+            return Agent(
+                f,
+                alias=alias,
+                description=description,
+                uppercase_func_name=uppercase_func_name,
+                normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+            )
+
+        return _decorator
+
+    # the decorator `@forum.agent` was used either without arguments or as a direct function call
+    return Agent(
+        func,
+        alias=alias,
+        description=description,
+        uppercase_func_name=uppercase_func_name,
+        normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+    )
