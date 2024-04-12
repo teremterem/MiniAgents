@@ -1,3 +1,4 @@
+# pylint: disable=too-many-arguments
 """
 Split this module into multiple modules.
 """
@@ -30,8 +31,6 @@ class MessagePromise(StreamedPromise[str, Message]):
     """
     A promise of a message that can be streamed token by token.
     """
-
-    # pylint: disable=too-many-arguments
 
     def __init__(
         self,
@@ -141,3 +140,45 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
                     yield message_promise
         else:
             raise TypeError(f"unexpected message type: {type(zero_or_more_items)}")
+
+
+class AgentFunction(Protocol):
+    """
+    A protocol for agent functions.
+    """
+
+    def __call__(self, incoming: MessageType, **kwargs) -> AsyncIterator[MessageType]: ...
+
+
+class Agent:
+    """
+    A wrapper for an agent function that allows calling the agent.
+    """
+
+    def __init__(
+        self,
+        func: Optional["AgentFunction"],
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+        uppercase_func_name: bool = True,
+        normalize_spaces_in_docstring: bool = True,
+    ) -> None:
+        self._func = func
+
+        self.alias = alias
+        if self.alias is None:
+            self.alias = func.__name__
+            if uppercase_func_name:
+                self.alias = self.alias.upper()
+
+        self.description = description
+        if self.description is None:
+            self.description = func.__doc__
+            if self.description and normalize_spaces_in_docstring:
+                self.description = " ".join(self.description.split())
+        if self.description:
+            # replace all {AGENT_ALIAS} entries in the description with the actual agent alias
+            self.description = self.description.format(AGENT_ALIAS=self.alias)
+
+        self.__name__ = self.alias
+        self.__doc__ = self.description
