@@ -216,3 +216,42 @@ def agent(
         uppercase_func_name=uppercase_func_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
     )
+
+
+class AgentCall:
+    """
+    A call to an agent. This object is returned by Agent.start_asking()/start_telling() methods. It is used to send
+    requests to the agent and receive its responses.
+    """
+
+    def __init__(
+        self,
+        receiving_agent: Agent,
+        **function_kwargs,
+    ) -> None:
+        self.receiving_agent = receiving_agent
+
+    def send_request(self, content: MessageType, **metadata) -> "AgentCall":
+        """
+        Send a request to the agent.
+        """
+        # TODO TODO TODO Oleksandr
+        return self
+
+    def response_sequence(self) -> MessageSequencePromise:
+        """
+        Finish the agent call and return the agent's response(s).
+
+        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
+        """
+        self.finish()
+        return  # TODO TODO TODO Oleksandr
+
+    def finish(self) -> "AgentCall":
+        """
+        Finish the agent call.
+
+        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
+        """
+        # TODO TODO TODO Oleksandr
+        return self
