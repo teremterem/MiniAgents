@@ -147,7 +147,7 @@ class AgentFunction(Protocol):
     A protocol for agent functions.
     """
 
-    def __call__(self, incoming: MessageType, **kwargs) -> AsyncIterator[MessageType]: ...
+    def __call__(self, incoming: MessageSequence, **kwargs) -> AsyncIterator[MessageType]: ...
 
 
 class Agent:
@@ -182,6 +182,51 @@ class Agent:
 
         self.__name__ = self.alias
         self.__doc__ = self.description
+
+    def inquire(self, messages: MessageType, **function_kwargs) -> MessageSequence:
+        """
+        TODO TODO TODO Oleksandr: update this docstring
+        "Ask" the agent and immediately receive an AsyncMessageSequence object that can be used to obtain the agent's
+        response(s). If blank_history is False and history_tracker/branch_from is not specified and pre-existing
+        messages are passed as requests (for ex. messages that came from other agents), then this agent call will be
+        automatically branched off of the conversation branch those pre-existing messages belong to (the history will
+        be inherited from those messages, in other words).
+        """
+        agent_call = self.initiate_inquiry(
+            is_asking=is_asking,
+            branch_from=branch_from,
+            reply_to=reply_to,
+            blank_history=blank_history,
+            **function_kwargs,
+        )
+        if content is not None:
+            if override_sender_alias:
+                agent_call.send_request(content, final_sender_alias=override_sender_alias)
+            else:
+                agent_call.send_request(content)
+
+        if is_asking:
+            return agent_call.response_sequence()
+        agent_call.finish()
+        return None
+
+    def initiate_inquiry(self, **function_kwargs) -> "AgentCall":
+        """
+        TODO TODO TODO Oleksandr: update this docstring
+        Initiate the process of "asking" the agent. Returns an AgentCall object that can be used to send requests to
+        the agent by calling `send_request()` zero or more times and receive its responses by calling
+        `response_sequence()` at the end. If blank_history is False and history_tracker/branch_from is not specified
+        and pre-existing messages are passed as requests (for ex. messages that came from other agents), then this
+        agent call will be automatically branched off of the conversation branch those pre-existing messages belong to
+        (the history will be inherited from those messages, in other words).
+        """
+        agent_call = AgentCall(receiving_agent=self, **function_kwargs)
+        agent_call._task = asyncio.create_task(
+            self._acall_non_cached_agent_func(agent_call=agent_call, **function_kwargs)
+        )
+        parent_ctx._child_agent_calls.append(agent_call)
+
+        return agent_call
 
 
 def agent(
@@ -224,11 +269,7 @@ class AgentCall:
     requests to the agent and receive its responses.
     """
 
-    def __init__(
-        self,
-        receiving_agent: Agent,
-        **function_kwargs,
-    ) -> None:
+    def __init__(self, receiving_agent: Agent, **function_kwargs) -> None:
         self.receiving_agent = receiving_agent
 
     def send_request(self, content: MessageType, **metadata) -> "AgentCall":
