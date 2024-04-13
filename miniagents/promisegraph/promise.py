@@ -12,11 +12,13 @@ from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable,
 from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
 from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
 from miniagents.promisegraph.typing import (
+    T,
     PIECE,
     WHOLE,
     StreamedPieceProducer,
     StreamedWholePackager,
     PromiseCollectedEventHandler,
+    PromiseFulfiller,
 )
 
 
@@ -109,7 +111,68 @@ class PromiseContext:
         await self.afinalize()
 
 
-class StreamedPromise(Generic[PIECE, WHOLE]):
+class Promise(Generic[T]):
+    """
+    TODO TODO TODO Oleksandr
+    """
+
+    def __init__(
+        self,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        fulfiller: Optional[PromiseFulfiller[T]] = None,
+        prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
+    ) -> None:
+        # TODO Oleksandr: raise an error if both prefilled_whole and packager are set (or both are not set)
+        promise_context = PromiseContext.get_current()
+
+        if schedule_immediately is DEFAULT:
+            schedule_immediately = promise_context.schedule_immediately_by_default
+
+        self.__fulfiller = fulfiller
+
+        if prefill_result is NO_VALUE:
+            # NO_VALUE is used because `None` is also a legitimate value
+            self._result: Union[T, Sentinel, BaseException] = NO_VALUE
+        else:
+            self._result = prefill_result
+            self._schedule_collected_event_handlers()
+
+        self._fulfiller_lock = asyncio.Lock()
+
+        if schedule_immediately and prefill_result is NO_VALUE:
+            promise_context.schedule_task(self.acollect())
+
+    async def acollect(self) -> T:
+        """
+        TODO TODO TODO Oleksandr: update this docstring
+        "Accumulates" all the pieces of the stream and returns the "whole" value. Will return the exact
+        same object (the exact same instance) if called multiple times on the same instance of `StreamedPromise`.
+        """
+        # TODO Oleksandr: put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
+        #  `acollect()` from within the `fulfiller` function
+        if self._result is NO_VALUE:
+            async with self._fulfiller_lock:
+                if self._result is NO_VALUE:
+                    try:
+                        self._result = await self.__fulfiller(self)
+                    except BaseException as exc:  # pylint: disable=broad-except
+                        self._result = exc
+
+                    self._schedule_collected_event_handlers()
+
+        if isinstance(self._result, BaseException):
+            raise self._result
+        return self._result
+
+    def _schedule_collected_event_handlers(self):
+        promise_ctx = PromiseContext.get_current()
+        while promise_ctx:
+            for handler in promise_ctx.on_promise_collected:
+                promise_ctx.schedule_task(handler(self, self._result))
+            promise_ctx = promise_ctx.parent
+
+
+class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     """
     A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
 
@@ -124,41 +187,34 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
     TODO Oleksandr: explain the `schedule_immediately` parameter
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-arguments
-
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         producer: Optional[StreamedPieceProducer[PIECE]] = None,
         packager: Optional[StreamedWholePackager[WHOLE]] = None,
-        prefill_pieces: Optional[Iterable[PIECE]] = NO_VALUE,
-        prefill_whole: Optional[WHOLE] = NO_VALUE,
+        prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
+        prefill_whole: Union[Optional[WHOLE], Sentinel] = NO_VALUE,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefill_pieces/prefilled_whole and producer/packager are set
-        #  (or both are not set)
+        # TODO Oleksandr: raise an error if both prefill_pieces and producer are set (or both are not set)
+        promise_context = PromiseContext.get_current()
+
+        if schedule_immediately is DEFAULT:
+            schedule_immediately = promise_context.schedule_immediately_by_default
+
+        super().__init__(
+            schedule_immediately=schedule_immediately,
+            fulfiller=packager,
+            prefill_result=prefill_whole,
+        )
         self.__producer = producer
-        self.__packager = packager
 
         if prefill_pieces is NO_VALUE:
             self._pieces_so_far: list[Union[PIECE, BaseException]] = []
         else:
             self._pieces_so_far: list[Union[PIECE, BaseException]] = [*prefill_pieces, StopAsyncIteration()]
 
-        if prefill_whole is NO_VALUE:
-            # NO_VALUE is used because `None` is also a legitimate value for the "whole"
-            self._whole: Union[WHOLE, Sentinel, BaseException] = NO_VALUE
-        else:
-            self._whole = prefill_whole
-            self._schedule_collected_event_handlers()
-
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._producer_lock = asyncio.Lock()
-        self._packager_lock = asyncio.Lock()
-
-        promise_context = PromiseContext.get_current()
-
-        if schedule_immediately is DEFAULT:
-            schedule_immediately = promise_context.schedule_immediately_by_default
 
         if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
@@ -167,9 +223,6 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
-
-        if schedule_immediately and prefill_whole is NO_VALUE:
-            promise_context.schedule_task(self.acollect())
 
         self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
@@ -186,34 +239,6 @@ class StreamedPromise(Generic[PIECE, WHOLE]):
         chaining them together.
         """
         return self.__aiter__()
-
-    async def acollect(self) -> WHOLE:
-        """
-        "Accumulates" all the pieces of the stream and returns the "whole" value. Will return the exact
-        same object (the exact same instance) if called multiple times on the same instance of `StreamedPromise`.
-        """
-        # TODO Oleksandr: put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
-        #  `acollect()` from within the `packager` function
-        if self._whole is NO_VALUE:
-            async with self._packager_lock:
-                if self._whole is NO_VALUE:
-                    try:
-                        self._whole = await self.__packager(self)
-                    except BaseException as exc:  # pylint: disable=broad-except
-                        self._whole = exc
-
-                    self._schedule_collected_event_handlers()
-
-        if isinstance(self._whole, BaseException):
-            raise self._whole
-        return self._whole
-
-    def _schedule_collected_event_handlers(self):
-        promise_ctx = PromiseContext.get_current()
-        while promise_ctx:
-            for handler in promise_ctx.on_promise_collected:
-                promise_ctx.schedule_task(handler(self, self._whole))
-            promise_ctx = promise_ctx.parent
 
     async def _aproduce_the_stream(self) -> None:
         while True:
