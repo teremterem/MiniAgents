@@ -183,7 +183,7 @@ class Agent:
         self.__name__ = self.alias
         self.__doc__ = self.description
 
-    def inquire(self, messages: MessageType, **function_kwargs) -> MessageSequence:
+    def inquire(self, message: Optional[MessageType] = None, **function_kwargs) -> MessageSequencePromise:
         """
         TODO TODO TODO Oleksandr: update this docstring
         "Ask" the agent and immediately receive an AsyncMessageSequence object that can be used to obtain the agent's
@@ -192,23 +192,10 @@ class Agent:
         automatically branched off of the conversation branch those pre-existing messages belong to (the history will
         be inherited from those messages, in other words).
         """
-        agent_call = self.initiate_inquiry(
-            is_asking=is_asking,
-            branch_from=branch_from,
-            reply_to=reply_to,
-            blank_history=blank_history,
-            **function_kwargs,
-        )
-        if content is not None:
-            if override_sender_alias:
-                agent_call.send_request(content, final_sender_alias=override_sender_alias)
-            else:
-                agent_call.send_request(content)
-
-        if is_asking:
-            return agent_call.response_sequence()
-        agent_call.finish()
-        return None
+        agent_call = self.initiate_inquiry(**function_kwargs)
+        if message is not None:
+            agent_call.send_message(message)
+        return agent_call.reply_sequence()
 
     def initiate_inquiry(self, **function_kwargs) -> "AgentCall":
         """
@@ -220,13 +207,7 @@ class Agent:
         agent call will be automatically branched off of the conversation branch those pre-existing messages belong to
         (the history will be inherited from those messages, in other words).
         """
-        agent_call = AgentCall(receiving_agent=self, **function_kwargs)
-        agent_call._task = asyncio.create_task(
-            self._acall_non_cached_agent_func(agent_call=agent_call, **function_kwargs)
-        )
-        parent_ctx._child_agent_calls.append(agent_call)
-
-        return agent_call
+        return AgentCall(receiving_agent=self, **function_kwargs)
 
 
 def agent(
@@ -265,22 +246,30 @@ def agent(
 
 class AgentCall:
     """
+    TODO TODO TODO Oleksandr: update this docstring
+    TODO TODO TODO Oleksandr: turn this into a context manager ?
     A call to an agent. This object is returned by Agent.start_asking()/start_telling() methods. It is used to send
     requests to the agent and receive its responses.
     """
 
     def __init__(self, receiving_agent: Agent, **function_kwargs) -> None:
         self.receiving_agent = receiving_agent
+        self.function_kwargs = function_kwargs
 
-    def send_request(self, content: MessageType, **metadata) -> "AgentCall":
+        self._message_sequence = MessageSequence()
+        self._message_sequence.append_producer.open()
+
+    def send_message(self, message: MessageType) -> "AgentCall":
         """
+        TODO TODO TODO Oleksandr: update this docstring
         Send a request to the agent.
         """
-        # TODO TODO TODO Oleksandr
+        self._message_sequence.append_producer.append(message)
         return self
 
-    def response_sequence(self) -> MessageSequencePromise:
+    def reply_sequence(self) -> MessageSequencePromise:
         """
+        TODO TODO TODO Oleksandr: update this docstring
         Finish the agent call and return the agent's response(s).
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
@@ -294,5 +283,6 @@ class AgentCall:
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
         """
-        # TODO TODO TODO Oleksandr
+        # TODO TODO TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
+        self._message_sequence.append_producer.close()
         return self
