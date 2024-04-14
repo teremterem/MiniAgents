@@ -6,7 +6,7 @@ Split this module into multiple modules.
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
 from miniagents.promisegraph.node import Node
-from miniagents.promisegraph.promise import StreamedPromise
+from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, Promise
 from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 from miniagents.promisegraph.sequence import FlatSequence
 
@@ -17,6 +17,12 @@ class Message(Node):
     """
 
     text: str
+
+
+class AgentCallNode(Node):
+    """
+    TODO TODO TODO Oleksandr
+    """
 
 
 class MessageTokenProducer(Protocol):
@@ -147,7 +153,7 @@ class AgentFunction(Protocol):
     A protocol for agent functions.
     """
 
-    def __call__(self, incoming: MessageSequence, **kwargs) -> AsyncIterator[MessageType]: ...
+    def __call__(self, messages: MessageSequencePromise, **kwargs) -> AsyncIterator[MessageType]: ...
 
 
 class Agent:
@@ -183,7 +189,12 @@ class Agent:
         self.__name__ = self.alias
         self.__doc__ = self.description
 
-    def inquire(self, message: Optional[MessageType] = None, **function_kwargs) -> MessageSequencePromise:
+    def inquire(
+        self,
+        message: Optional[MessageType] = None,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        **function_kwargs,
+    ) -> MessageSequencePromise:
         """
         TODO TODO TODO Oleksandr: update this docstring
         "Ask" the agent and immediately receive an AsyncMessageSequence object that can be used to obtain the agent's
@@ -192,12 +203,16 @@ class Agent:
         automatically branched off of the conversation branch those pre-existing messages belong to (the history will
         be inherited from those messages, in other words).
         """
-        agent_call = self.initiate_inquiry(**function_kwargs)
+        agent_call = self.initiate_inquiry(schedule_immediately=schedule_immediately, **function_kwargs)
         if message is not None:
             agent_call.send_message(message)
         return agent_call.reply_sequence()
 
-    def initiate_inquiry(self, **function_kwargs) -> "AgentCall":
+    def initiate_inquiry(
+        self,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        **function_kwargs,
+    ) -> "AgentCall":
         """
         TODO TODO TODO Oleksandr: update this docstring
         Initiate the process of "asking" the agent. Returns an AgentCall object that can be used to send requests to
@@ -207,7 +222,31 @@ class Agent:
         agent call will be automatically branched off of the conversation branch those pre-existing messages belong to
         (the history will be inherited from those messages, in other words).
         """
-        return AgentCall(receiving_agent=self, **function_kwargs)
+        message_sequence = MessageSequence(
+            producer_capture_errors=False,  # TODO TODO TODO Oleksandr: is this the right value ?
+            schedule_immediately=schedule_immediately,
+        )
+        reply_sequence = MessageSequence(
+            producer_capture_errors=False,  # TODO TODO TODO Oleksandr: is this the right value ?
+            schedule_immediately=schedule_immediately,
+        )
+        agent_call = AgentCall(
+            message_producer=message_sequence.append_producer,
+            reply_sequence_promise=reply_sequence.sequence_promise,
+        )
+
+        async def _agent_call_fulfiller(_) -> AgentCallNode:
+            with reply_sequence.append_producer:
+                async for reply in self._func(message_sequence.sequence_promise, **function_kwargs):
+                    reply_sequence.append_producer.append(reply)
+            return AgentCallNode(**function_kwargs)
+
+        # TODO TODO TODO Oleksandr: should I, instead of this promise, override the `message_sequence` producer ?
+        Promise[AgentCallNode](
+            schedule_immediately=True,  # TODO TODO TODO Oleksandr: is this the right value ?
+            fulfiller=_agent_call_fulfiller,
+        )
+        return agent_call
 
 
 def agent(
@@ -252,30 +291,33 @@ class AgentCall:
     requests to the agent and receive its responses.
     """
 
-    def __init__(self, receiving_agent: Agent, **function_kwargs) -> None:
-        self.receiving_agent = receiving_agent
-        self.function_kwargs = function_kwargs
+    def __init__(
+        self,
+        message_producer: AppendProducer[MessageType],
+        reply_sequence_promise: MessageSequencePromise,
+    ) -> None:
+        self._message_producer = message_producer
+        self._reply_sequence_promise = reply_sequence_promise
 
-        self._message_sequence = MessageSequence()
-        self._message_sequence.append_producer.open()
+        self._message_producer.open()
 
     def send_message(self, message: MessageType) -> "AgentCall":
         """
-        TODO TODO TODO Oleksandr: update this docstring
+        TODO TODO TODO Oleksandr: update this docstring ?
         Send a request to the agent.
         """
-        self._message_sequence.append_producer.append(message)
+        self._message_producer.append(message)
         return self
 
     def reply_sequence(self) -> MessageSequencePromise:
         """
-        TODO TODO TODO Oleksandr: update this docstring
+        TODO TODO TODO Oleksandr: update this docstring ?
         Finish the agent call and return the agent's response(s).
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
         """
         self.finish()
-        return  # TODO TODO TODO Oleksandr
+        return self._reply_sequence_promise
 
     def finish(self) -> "AgentCall":
         """
@@ -284,5 +326,5 @@ class AgentCall:
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
         """
         # TODO TODO TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
-        self._message_sequence.append_producer.close()
+        self._message_producer.close()
         return self
