@@ -4,10 +4,12 @@ Types for the PromiseGraph part of the library.
 
 from typing import TypeVar, AsyncIterator, Protocol, Union, Any
 
+T = TypeVar("T")
 PIECE = TypeVar("PIECE")
 WHOLE = TypeVar("WHOLE")
 IN = TypeVar("IN")
 OUT = TypeVar("OUT")
+PromiseBound = TypeVar("PromiseBound", bound="Promise")
 StreamedPromiseBound = TypeVar("StreamedPromiseBound", bound="StreamedPromise")
 FlatSequenceBound = TypeVar("FlatSequenceBound", bound="FlatSequence")
 
@@ -19,6 +21,14 @@ class StreamedPieceProducer(Protocol[PIECE]):
     """
 
     def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE]: ...
+
+
+class PromiseFulfiller(Protocol[T]):
+    """
+    TODO TODO TODO Oleksandr
+    """
+
+    async def __call__(self, promise: PromiseBound) -> T: ...
 
 
 class StreamedWholePackager(Protocol[WHOLE]):

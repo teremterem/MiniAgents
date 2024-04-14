@@ -109,7 +109,6 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
     async def iterate_over_promise():
         promise_iterator = streamed_promise.__aiter__()
 
-        # noinspection PyTypeChecker
         with pytest.raises((TypeError, AttributeError)):
             await promise_iterator.__anext__()
         with pytest.raises(StopAsyncIteration):
@@ -118,7 +117,6 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
             await promise_iterator.__anext__()
 
     async with PromiseContext():
-        # noinspection PyTypeChecker
         streamed_promise = StreamedPromise(
             producer=broken_producer,
             packager=packager,
@@ -160,7 +158,6 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
             producer.append(i)
 
     async with PromiseContext():
-        # noinspection PyTypeChecker
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=broken_packager,
@@ -253,7 +250,6 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
     Assert that `producer` and `packager` receive the exact same instance of `StreamedPromise`.
     """
 
-    # noinspection PyTypeChecker
     async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
         assert _streamed_promise is streamed_promise
         yield 1
