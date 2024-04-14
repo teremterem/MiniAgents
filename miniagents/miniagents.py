@@ -24,6 +24,8 @@ class AgentCallNode(Node):
     TODO TODO TODO Oleksandr
     """
 
+    message_hash_keys: tuple[str, ...]
+
 
 class MessageTokenProducer(Protocol):
     """
@@ -87,6 +89,7 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
         Collect all messages from the sequence and return them as a tuple of Message objects.
         """
         # pylint: disable=consider-using-generator
+        # noinspection PyTypeChecker
         return tuple([await message_promise.acollect() async for message_promise in self])
 
 
@@ -239,7 +242,10 @@ class Agent:
             with reply_sequence.append_producer:
                 async for reply in self._func(message_sequence.sequence_promise, **function_kwargs):
                     reply_sequence.append_producer.append(reply)
-            return AgentCallNode(**function_kwargs)
+            message_hash_keys = [
+                message.hash_key for message in await message_sequence.sequence_promise.acollect_messages()
+            ]
+            return AgentCallNode(message_hash_keys=message_hash_keys, **function_kwargs)
 
         # TODO TODO TODO Oleksandr: should I, instead of this promise, override the `message_sequence` producer ?
         Promise[AgentCallNode](
