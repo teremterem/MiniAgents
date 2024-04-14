@@ -39,7 +39,7 @@ class PromiseContext:
         on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
-        self.on_promise_collected: list[PromiseCollectedEventHandler] = (
+        self.on_promise_collected_handlers: list[PromiseCollectedEventHandler] = (
             [on_promise_collected] if callable(on_promise_collected) else list(on_promise_collected)
         )
         self.child_tasks: set[Task] = set()
@@ -62,6 +62,13 @@ class PromiseContext:
                 "No PromiseContext is currently active. Did you forget to do `async with PromiseContext():`?"
             )
         return current
+
+    def on_promise_collected(self, handler: PromiseCollectedEventHandler) -> PromiseCollectedEventHandler:
+        """
+        Add a handler to be called after a promise is collected.
+        """
+        self.on_promise_collected_handlers.append(handler)
+        return handler
 
     def schedule_task(self, awaitable: Awaitable) -> Task:
         """
@@ -167,7 +174,7 @@ class Promise(Generic[T]):
     def _schedule_collected_event_handlers(self):
         promise_ctx = PromiseContext.get_current()
         while promise_ctx:
-            for handler in promise_ctx.on_promise_collected:
+            for handler in promise_ctx.on_promise_collected_handlers:
                 promise_ctx.schedule_task(handler(self, self._result))
             promise_ctx = promise_ctx.parent
 

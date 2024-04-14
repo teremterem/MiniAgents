@@ -46,6 +46,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         message_token_producer: MessageTokenProducer = None,
         prefill_message: Optional[Message] = None,
         metadata_so_far: Optional[Node] = None,
+        message_class: type[Message] = Message,
     ) -> None:
         # TODO Oleksandr: raise an error if both ready_message and message_token_producer/metadata_so_far are not None
         #  (or both are None)
@@ -63,12 +64,13 @@ class MessagePromise(StreamedPromise[str, Message]):
             )
             self._message_token_producer = message_token_producer
             self._metadata_so_far: dict[str, Any] = metadata_so_far.model_dump() if metadata_so_far else {}
+            self._message_class = message_class
 
     def _producer(self, _) -> AsyncIterator[str]:
         return self._message_token_producer(self._metadata_so_far)
 
     async def _packager(self, _) -> Message:
-        return Message(
+        return self._message_class(
             text="".join([token async for token in self]),
             **self._metadata_so_far,
         )
