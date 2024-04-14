@@ -248,6 +248,7 @@ class Agent:
             return AgentCallNode(message_hash_keys=message_hash_keys, **function_kwargs)
 
         # TODO TODO TODO Oleksandr: should I, instead of this promise, override the `message_sequence` producer ?
+        #  with current implementation, `schedule_immediately` is probably not respected
         Promise[AgentCallNode](
             schedule_immediately=True,  # TODO TODO TODO Oleksandr: is this the right value ?
             fulfiller=_agent_call_fulfiller,
