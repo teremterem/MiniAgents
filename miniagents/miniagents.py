@@ -73,6 +73,11 @@ class MessagePromise(StreamedPromise[str, Message]):
             **self._metadata_so_far,
         )
 
+    def __aiter__(self) -> AsyncIterator[str]:
+        # PyCharm fails to see that MessagePromise inherits AsyncIterable protocol from StreamedPromise,
+        # hence the need to explicitly declare the __aiter__ method here
+        return super().__aiter__()
+
 
 # TODO Oleksandr: add documentation somewhere that explains what MessageType and SingleMessageType represent
 SingleMessageType = Union[str, dict[str, Any], Message, MessagePromise, BaseException]
@@ -89,8 +94,12 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
         Collect all messages from the sequence and return them as a tuple of Message objects.
         """
         # pylint: disable=consider-using-generator
-        # noinspection PyTypeChecker
         return tuple([await message_promise.acollect() async for message_promise in self])
+
+    def __aiter__(self) -> AsyncIterator[MessagePromise]:
+        # PyCharm fails to see that MessageSequencePromise inherits AsyncIterable protocol from StreamedPromise,
+        # hence the need to explicitly declare the __aiter__ method here
+        return super().__aiter__()
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
@@ -159,7 +168,7 @@ class AgentFunction(Protocol):
     def __call__(self, messages: MessageSequencePromise, **kwargs) -> AsyncIterator[MessageType]: ...
 
 
-class Agent:
+class MiniAgent:
     """
     A wrapper for an agent function that allows calling the agent.
     """
@@ -194,7 +203,7 @@ class Agent:
 
     def inquire(
         self,
-        message: Optional[MessageType] = None,
+        messages: Optional[MessageType] = None,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         **function_kwargs,
     ) -> MessageSequencePromise:
@@ -207,8 +216,8 @@ class Agent:
         be inherited from those messages, in other words).
         """
         agent_call = self.initiate_inquiry(schedule_immediately=schedule_immediately, **function_kwargs)
-        if message is not None:
-            agent_call.send_message(message)
+        if messages is not None:
+            agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
     def initiate_inquiry(
@@ -256,21 +265,21 @@ class Agent:
         return agent_call
 
 
-def agent(
+def miniagent(
     func: Optional[AgentFunction] = None,
     /,  # TODO Oleksandr: do I really need to enforce positional-only upon `func` ?
     alias: Optional[str] = None,
     description: Optional[str] = None,
     uppercase_func_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
-) -> Union["Agent", Callable[[AgentFunction], Agent]]:
+) -> Union["MiniAgent", Callable[[AgentFunction], MiniAgent]]:
     """
     A decorator that converts an agent function into an agent.
     """
     if func is None:
-        # the decorator `@forum.agent(...)` was used with arguments
-        def _decorator(f: "AgentFunction") -> "Agent":
-            return Agent(
+        # the decorator `@miniagent(...)` was used with arguments
+        def _decorator(f: "AgentFunction") -> "MiniAgent":
+            return MiniAgent(
                 f,
                 alias=alias,
                 description=description,
@@ -280,8 +289,8 @@ def agent(
 
         return _decorator
 
-    # the decorator `@forum.agent` was used either without arguments or as a direct function call
-    return Agent(
+    # the decorator `@miniagent` was used either without arguments or as a direct function call
+    return MiniAgent(
         func,
         alias=alias,
         description=description,
