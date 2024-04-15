@@ -31,11 +31,8 @@ async def on_promise_collected(_: PromiseBound, result: Any) -> None:
     TODO Oleksandr: docstring
     """
     if isinstance(result, Node):
-        print()
-        print()
         print("HASH KEY:", result.hash_key)
         pprint(result.model_dump(), width=119)
-        print()
         print()
 
 
