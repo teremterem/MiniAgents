@@ -55,7 +55,7 @@ class AgentReplyNode(Node):
     TODO Oleksandr
     """
 
-    message_hash_keys: tuple[str, ...]
+    reply_hash_keys: tuple[str, ...]
 
 
 class MessageTokenProducer(Protocol):
@@ -312,10 +312,11 @@ class AgentReplyMessageSequence(MessageSequence):
         self._agent_func = agent_func
         self._function_kwargs = function_kwargs
         self._input_sequence_promise = input_sequence_promise
+        self._agent_call_node: Optional[AgentCallNode] = None
 
     async def _agent_call_producer(self, _) -> AsyncIterator[MessageType]:
-        async for reply in self._agent_func(self._input_sequence_promise, **self._function_kwargs):
-            yield reply
+        async for zero_or_more_reply_msgs in self._agent_func(self._input_sequence_promise, **self._function_kwargs):
+            yield zero_or_more_reply_msgs
 
         async def _create_agent_call_node(_) -> AgentCallNode:
             message_hash_keys = [
@@ -323,10 +324,25 @@ class AgentReplyMessageSequence(MessageSequence):
             ]
             return AgentCallNode(message_hash_keys=message_hash_keys, **self._function_kwargs)
 
-        await Promise[AgentCallNode](
+        self._agent_call_node = await Promise[AgentCallNode](
             schedule_immediately=False,
             fulfiller=_create_agent_call_node,
         ).acollect()  # ensure on_collect handlers are called
+
+    async def _producer(self, _) -> AsyncIterator[MessagePromise]:
+        async for reply_promise in super()._producer(_):
+            yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise
+
+        async def _create_agent_reply_node(_) -> AgentReplyNode:
+            reply_hash_keys = [message.hash_key for message in await self.sequence_promise.acollect_messages()]
+            return AgentReplyNode(
+                reply_hash_keys=reply_hash_keys, agent_call=self._agent_call_node, **self._function_kwargs
+            )
+
+        Promise[AgentReplyNode](
+            schedule_immediately=True,  # ensure on_collect handlers are called
+            fulfiller=_create_agent_reply_node,
+        )
 
 
 def miniagent(
