@@ -139,6 +139,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     TODO Oleksandr: produce a docstring for this class after you actually use it in real agents
     """
 
+    append_producer: AppendProducer[MessageType]
     sequence_promise: MessageSequencePromise
 
     def __init__(
@@ -146,10 +147,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
     ) -> None:
+        self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
         super().__init__(
+            incoming_producer=self.append_producer,
             flattener=self._flattener,
             schedule_immediately=schedule_immediately,
-            producer_capture_errors=producer_capture_errors,
             sequence_promise_class=MessageSequencePromise,
         )
 
@@ -190,6 +192,22 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
                     yield message_promise
         else:
             raise TypeError(f"unexpected message type: {type(zero_or_more_items)}")
+
+
+class AgentCallMessageSequence(MessageSequence):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    async def _packager(self, _) -> tuple[MessagePromise, ...]:
+        result = await super()._packager(_)
+        return result
+
+
+class AgentReplyMessageSequence(MessageSequence):
+    """
+    TODO Oleksandr: docstring
+    """
 
 
 class AgentFunction(Protocol):
