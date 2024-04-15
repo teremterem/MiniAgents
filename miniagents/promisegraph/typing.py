@@ -25,7 +25,7 @@ class StreamedPieceProducer(Protocol[PIECE]):
 
 class PromiseFulfiller(Protocol[T]):
     """
-    TODO TODO TODO Oleksandr
+    TODO Oleksandr
     """
 
     async def __call__(self, promise: PromiseBound) -> T: ...
@@ -42,7 +42,7 @@ class StreamedWholePackager(Protocol[WHOLE]):
 
 class PromiseCollectedEventHandler(Protocol):
     """
-    TODO TODO TODO Oleksandr: update this docstring
+    TODO Oleksandr: update this docstring
     A protocol for StreamedPromise collection event handlers. A promise collection event is a function that is
     scheduled to be called after StreamedPromise.acollect() finishes collecting the promise. "Scheduled" means
     that the function is passed to the event loop for execution without blocking the current coroutine.

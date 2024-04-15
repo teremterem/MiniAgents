@@ -93,7 +93,7 @@ async def _anthropic_func(
         metadata_so_far["anthropic"] = anthropic_final_message.model_dump(exclude={"content"})
 
     yield MessagePromise(
-        schedule_immediately=True,  # TODO TODO TODO Oleksandr: is this the right value
+        schedule_immediately=True,  # TODO Oleksandr: is this the right value
         message_token_producer=message_token_producer,
         message_class=AnthropicMessage,
     )

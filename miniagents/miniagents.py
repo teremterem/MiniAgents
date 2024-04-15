@@ -13,7 +13,7 @@ from miniagents.promisegraph.sequence import FlatSequence
 
 class MiniAgents(PromiseContext):
     """
-    TODO TODO TODO Oleksandr: docstring
+    TODO Oleksandr: docstring
     """
 
     def __init__(
@@ -27,7 +27,7 @@ class MiniAgents(PromiseContext):
     @classmethod
     def get_current(cls) -> "MiniAgents":
         """
-        TODO TODO TODO Oleksandr: docstring
+        TODO Oleksandr: docstring
         """
         # noinspection PyTypeChecker
         return super().get_current()
@@ -43,7 +43,7 @@ class Message(Node):
 
 class AgentCallNode(Node):
     """
-    TODO TODO TODO Oleksandr
+    TODO Oleksandr
     """
 
     message_hash_keys: tuple[str, ...]
@@ -51,7 +51,7 @@ class AgentCallNode(Node):
 
 class AgentReplyNode(Node):
     """
-    TODO TODO TODO Oleksandr
+    TODO Oleksandr
     """
 
     message_hash_keys: tuple[str, ...]
@@ -240,7 +240,7 @@ class MiniAgent:
         **function_kwargs,
     ) -> MessageSequencePromise:
         """
-        TODO TODO TODO Oleksandr: update this docstring
+        TODO Oleksandr: update this docstring
         "Ask" the agent and immediately receive an AsyncMessageSequence object that can be used to obtain the agent's
         response(s). If blank_history is False and history_tracker/branch_from is not specified and pre-existing
         messages are passed as requests (for ex. messages that came from other agents), then this agent call will be
@@ -258,7 +258,7 @@ class MiniAgent:
         **function_kwargs,
     ) -> "AgentCall":
         """
-        TODO TODO TODO Oleksandr: update this docstring
+        TODO Oleksandr: update this docstring
         Initiate the process of "asking" the agent. Returns an AgentCall object that can be used to send requests to
         the agent by calling `send_request()` zero or more times and receive its responses by calling
         `response_sequence()` at the end. If blank_history is False and history_tracker/branch_from is not specified
@@ -267,11 +267,11 @@ class MiniAgent:
         (the history will be inherited from those messages, in other words).
         """
         message_sequence = MessageSequence(
-            producer_capture_errors=False,  # TODO TODO TODO Oleksandr: is this the right value ?
+            producer_capture_errors=False,  # TODO Oleksandr: is this the right value ?
             schedule_immediately=schedule_immediately,
         )
         reply_sequence = MessageSequence(
-            producer_capture_errors=False,  # TODO TODO TODO Oleksandr: is this the right value ?
+            producer_capture_errors=False,  # TODO Oleksandr: is this the right value ?
             schedule_immediately=schedule_immediately,
         )
         agent_call = AgentCall(
@@ -288,10 +288,10 @@ class MiniAgent:
             ]
             return AgentCallNode(message_hash_keys=message_hash_keys, **function_kwargs)
 
-        # TODO TODO TODO Oleksandr: should I, instead of this promise, override the `message_sequence` producer ?
+        # TODO Oleksandr: should I, instead of this promise, override the `message_sequence` producer ?
         #  with current implementation, `schedule_immediately` is probably not respected
         Promise[AgentCallNode](
-            schedule_immediately=True,  # TODO TODO TODO Oleksandr: is this the right value ?
+            schedule_immediately=True,  # TODO Oleksandr: is this the right value ?
             fulfiller=_agent_call_fulfiller,
         )
         return agent_call
@@ -333,8 +333,8 @@ def miniagent(
 
 class AgentCall:
     """
-    TODO TODO TODO Oleksandr: update this docstring
-    TODO TODO TODO Oleksandr: turn this into a context manager ?
+    TODO Oleksandr: update this docstring
+    TODO Oleksandr: turn this into a context manager ?
     A call to an agent. This object is returned by Agent.start_asking()/start_telling() methods. It is used to send
     requests to the agent and receive its responses.
     """
@@ -351,7 +351,7 @@ class AgentCall:
 
     def send_message(self, message: MessageType) -> "AgentCall":
         """
-        TODO TODO TODO Oleksandr: update this docstring ?
+        TODO Oleksandr: update this docstring ?
         Send a request to the agent.
         """
         self._message_producer.append(message)
@@ -359,7 +359,7 @@ class AgentCall:
 
     def reply_sequence(self) -> MessageSequencePromise:
         """
-        TODO TODO TODO Oleksandr: update this docstring ?
+        TODO Oleksandr: update this docstring ?
         Finish the agent call and return the agent's response(s).
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
@@ -373,6 +373,6 @@ class AgentCall:
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
         """
-        # TODO TODO TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
+        # TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
         self._message_producer.close()
         return self

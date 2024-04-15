@@ -122,7 +122,7 @@ class PromiseContext:
 
 class Promise(Generic[T]):
     """
-    TODO TODO TODO Oleksandr
+    TODO Oleksandr
     """
 
     def __init__(
@@ -153,7 +153,7 @@ class Promise(Generic[T]):
 
     async def acollect(self) -> T:
         """
-        TODO TODO TODO Oleksandr: update this docstring
+        TODO Oleksandr: update this docstring
         "Accumulates" all the pieces of the stream and returns the "whole" value. Will return the exact
         same object (the exact same instance) if called multiple times on the same instance of `StreamedPromise`.
         """
