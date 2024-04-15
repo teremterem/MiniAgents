@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from miniagents.ext.llms.anthropic import create_anthropic_agent
-from miniagents.promisegraph.promise import PromiseContext
+from miniagents.miniagents import MiniAgents
 
 anthropic_agent = create_anthropic_agent()
 
@@ -23,14 +23,13 @@ async def main() -> None:
     """
     Send a message to Claude and print the response.
     """
-    async with PromiseContext():
+    async with MiniAgents():
         reply_sequence = anthropic_agent.inquire(
             "How are you today?",
             model="claude-3-haiku-20240307",  # "claude-3-opus-20240229",
             max_tokens=1000,
             temperature=0.0,
             system="Respond only in Yoda-speak.",
-            stream=True,
         )
 
         print()

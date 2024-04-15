@@ -6,8 +6,15 @@ import typing
 from functools import partial
 from typing import AsyncIterator, Any, Optional
 
-from miniagents.miniagents import MessagePromise, MessageType, Message, miniagent, MiniAgent, MessageSequencePromise
-from miniagents.promisegraph.promise import PromiseContext
+from miniagents.miniagents import (
+    MessagePromise,
+    MessageType,
+    Message,
+    miniagent,
+    MiniAgent,
+    MessageSequencePromise,
+    MiniAgents,
+)
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
@@ -43,7 +50,7 @@ async def _anthropic_func(
     Run text generation with Anthropic.
     """
     if stream is None:
-        stream = PromiseContext().stream_llm_tokens_by_default
+        stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         collected_messages = await messages.acollect_messages()

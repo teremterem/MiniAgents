@@ -6,9 +6,31 @@ Split this module into multiple modules.
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
 from miniagents.promisegraph.node import Node
-from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, Promise
+from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, Promise, PromiseContext
 from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 from miniagents.promisegraph.sequence import FlatSequence
+
+
+class MiniAgents(PromiseContext):
+    """
+    TODO TODO TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self,
+        stream_llm_tokens_by_default: bool = True,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
+
+    @classmethod
+    def get_current(cls) -> "MiniAgents":
+        """
+        TODO TODO TODO Oleksandr: docstring
+        """
+        # noinspection PyTypeChecker
+        return super().get_current()
 
 
 class Message(Node):
@@ -20,6 +42,14 @@ class Message(Node):
 
 
 class AgentCallNode(Node):
+    """
+    TODO TODO TODO Oleksandr
+    """
+
+    message_hash_keys: tuple[str, ...]
+
+
+class AgentReplyNode(Node):
     """
     TODO TODO TODO Oleksandr
     """

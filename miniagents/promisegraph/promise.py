@@ -35,7 +35,6 @@ class PromiseContext:
         self,
         schedule_immediately_by_default: bool = True,
         producer_capture_errors_by_default: bool = False,
-        stream_llm_tokens_by_default: bool = True,
         on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
@@ -46,8 +45,6 @@ class PromiseContext:
 
         self.schedule_immediately_by_default = schedule_immediately_by_default
         self.producer_capture_errors_by_default = producer_capture_errors_by_default
-        # TODO Oleksandr: move this setting to a child class (MiniAgents ?)
-        self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
@@ -59,7 +56,12 @@ class PromiseContext:
         current = cls._current.get()
         if not current:
             raise RuntimeError(
-                "No PromiseContext is currently active. Did you forget to do `async with PromiseContext():`?"
+                f"No {cls.__name__} is currently active. Did you forget to do `async with {cls.__name__}():`?"
+            )
+        if not isinstance(current, cls):
+            raise TypeError(
+                f"You seem to have done `async with {type(current).__name__}():` (or similar), "
+                f"but `async with {cls.__name__}():` is expected instead."
             )
         return current
 
