@@ -9,6 +9,7 @@ from miniagents.promisegraph.node import Node
 from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, Promise, PromiseContext
 from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 from miniagents.promisegraph.sequence import FlatSequence
+from miniagents.promisegraph.typing import StreamedPieceProducer
 
 
 class MiniAgents(PromiseContext):
@@ -139,17 +140,24 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     TODO Oleksandr: produce a docstring for this class after you actually use it in real agents
     """
 
-    append_producer: AppendProducer[MessageType]
+    append_producer: Optional[AppendProducer[MessageType]]
     sequence_promise: MessageSequencePromise
 
     def __init__(
         self,
         producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        incoming_producer: Optional[StreamedPieceProducer[MessageType]] = None,
     ) -> None:
-        self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
+        if incoming_producer:
+            # an external producer is provided, so we don't create the default AppendProducer
+            self.append_producer = None
+        else:
+            self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
+            incoming_producer = self.append_producer
+
         super().__init__(
-            incoming_producer=self.append_producer,
+            incoming_producer=incoming_producer,
             flattener=self._flattener,
             schedule_immediately=schedule_immediately,
             sequence_promise_class=MessageSequencePromise,
