@@ -12,9 +12,6 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from miniagents.promisegraph.node import Node
-from miniagents.promisegraph.typing import PromiseBound
-
 load_dotenv()
 
 from miniagents.ext.llms.anthropic import create_anthropic_agent
@@ -26,14 +23,13 @@ mini_agents = MiniAgents()
 
 
 @mini_agents.on_promise_collected
-async def on_promise_collected(_: PromiseBound, result: Any) -> None:
+async def on_promise_collected(_, result: Any) -> None:
     """
     TODO Oleksandr: docstring
     """
-    if isinstance(result, Node):
-        print("HASH KEY:", result.hash_key)
-        pprint(result.model_dump(), width=119)
-        print()
+    print("HASH KEY:", result.hash_key)
+    pprint(result.model_dump(), width=119)
+    print()
 
 
 async def main() -> None:

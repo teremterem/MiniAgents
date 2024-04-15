@@ -47,6 +47,7 @@ class AgentCallNode(Node):
     TODO Oleksandr
     """
 
+    agent_alias: str
     message_hash_keys: tuple[str, ...]
 
 
@@ -55,6 +56,7 @@ class AgentReplyNode(Node):
     TODO Oleksandr
     """
 
+    agent_call_hash_key: str
     reply_hash_keys: tuple[str, ...]
 
 
@@ -280,7 +282,7 @@ class MiniAgent:
             schedule_immediately=False,
         )
         reply_sequence = AgentReplyMessageSequence(
-            agent_func=self._func,
+            mini_agent=self,
             function_kwargs=function_kwargs,
             input_sequence_promise=input_sequence.sequence_promise,
             schedule_immediately=schedule_immediately,
@@ -300,7 +302,7 @@ class AgentReplyMessageSequence(MessageSequence):
 
     def __init__(
         self,
-        agent_func: AgentFunction,
+        mini_agent: MiniAgent,
         function_kwargs: dict[str, Any],
         input_sequence_promise: MessageSequencePromise,
         **kwargs,
@@ -309,12 +311,15 @@ class AgentReplyMessageSequence(MessageSequence):
             incoming_producer=self._agent_call_producer,
             **kwargs,
         )
-        self._agent_func = agent_func
+        self._mini_agent = mini_agent
         self._function_kwargs = function_kwargs
         self._input_sequence_promise = input_sequence_promise
 
     async def _agent_call_producer(self, _) -> AsyncIterator[MessageType]:
-        async for zero_or_more_reply_msgs in self._agent_func(self._input_sequence_promise, **self._function_kwargs):
+        # noinspection PyProtectedMember
+        async for zero_or_more_reply_msgs in self._mini_agent._func(  # pylint: disable=protected-access
+            self._input_sequence_promise, **self._function_kwargs
+        ):
             yield zero_or_more_reply_msgs
 
     async def _producer(self, _) -> AsyncIterator[MessagePromise]:
@@ -325,11 +330,15 @@ class AgentReplyMessageSequence(MessageSequence):
             message_hash_keys = [
                 message.hash_key for message in await self._input_sequence_promise.acollect_messages()
             ]
-            return AgentCallNode(message_hash_keys=message_hash_keys, **self._function_kwargs)
+            return AgentCallNode(
+                message_hash_keys=message_hash_keys, agent_alias=self._mini_agent.alias, **self._function_kwargs
+            )
 
         async def _create_agent_reply_node(_) -> AgentReplyNode:
             reply_hash_keys = [message.hash_key for message in await self.sequence_promise.acollect_messages()]
-            return AgentReplyNode(reply_hash_keys=reply_hash_keys, agent_call=agent_call_node, **self._function_kwargs)
+            return AgentReplyNode(
+                reply_hash_keys=reply_hash_keys, agent_call_hash_key=agent_call_node.hash_key, **self._function_kwargs
+            )
 
         agent_call_node = await Promise[AgentCallNode](
             schedule_immediately=False,
