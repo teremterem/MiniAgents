@@ -56,15 +56,6 @@ async def _anthropic_func(
         collected_messages = await messages.acollect_messages()
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
 
-        # TODO TODO TODO Oleksandr: leverage AgentCallNode somehow instead of this
-        metadata_so_far["agent_call"] = {
-            "anthropic": {
-                "message_hash_keys": tuple(msg.hash_key for msg in collected_messages),
-                "stream": stream,
-                **kwargs,
-            },
-        }
-
         if stream:
             # pylint: disable=not-async-context-manager
             async with async_client.messages.stream(messages=message_dicts, **kwargs) as response:

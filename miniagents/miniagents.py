@@ -202,22 +202,6 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             raise TypeError(f"unexpected message type: {type(zero_or_more_items)}")
 
 
-class AgentCallMessageSequence(MessageSequence):
-    """
-    TODO Oleksandr: docstring
-    """
-
-    async def _packager(self, _) -> tuple[MessagePromise, ...]:
-        result = await super()._packager(_)
-        return result
-
-
-class AgentReplyMessageSequence(MessageSequence):
-    """
-    TODO Oleksandr: docstring
-    """
-
-
 class AgentFunction(Protocol):
     """
     A protocol for agent functions.
@@ -292,35 +276,57 @@ class MiniAgent:
         agent call will be automatically branched off of the conversation branch those pre-existing messages belong to
         (the history will be inherited from those messages, in other words).
         """
-        message_sequence = MessageSequence(
-            producer_capture_errors=False,  # TODO Oleksandr: is this the right value ?
+        input_sequence = MessageSequence(
+            schedule_immediately=False,
+        )
+        reply_sequence = AgentReplyMessageSequence(
+            agent_func=self._func,
+            function_kwargs=function_kwargs,
+            input_sequence_promise=input_sequence.sequence_promise,
             schedule_immediately=schedule_immediately,
         )
-        reply_sequence = MessageSequence(
-            producer_capture_errors=False,  # TODO Oleksandr: is this the right value ?
-            schedule_immediately=schedule_immediately,
-        )
+
         agent_call = AgentCall(
-            message_producer=message_sequence.append_producer,
+            message_producer=input_sequence.append_producer,
             reply_sequence_promise=reply_sequence.sequence_promise,
         )
-
-        async def _agent_call_fulfiller(_) -> AgentCallNode:
-            with reply_sequence.append_producer:
-                async for reply in self._func(message_sequence.sequence_promise, **function_kwargs):
-                    reply_sequence.append_producer.append(reply)
-            message_hash_keys = [
-                message.hash_key for message in await message_sequence.sequence_promise.acollect_messages()
-            ]
-            return AgentCallNode(message_hash_keys=message_hash_keys, **function_kwargs)
-
-        # TODO Oleksandr: should I, instead of this promise, override the `message_sequence` producer ?
-        #  with current implementation, `schedule_immediately` is probably not respected
-        Promise[AgentCallNode](
-            schedule_immediately=True,  # TODO Oleksandr: is this the right value ?
-            fulfiller=_agent_call_fulfiller,
-        )
         return agent_call
+
+
+class AgentReplyMessageSequence(MessageSequence):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self,
+        agent_func: AgentFunction,
+        function_kwargs: dict[str, Any],
+        input_sequence_promise: MessageSequencePromise,
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            incoming_producer=self._agent_call_producer,
+            **kwargs,
+        )
+        self._agent_func = agent_func
+        self._function_kwargs = function_kwargs
+        self._input_sequence_promise = input_sequence_promise
+
+    async def _agent_call_producer(self, _) -> AsyncIterator[MessageType]:
+        async for reply in self._agent_func(self._input_sequence_promise, **self._function_kwargs):
+            yield reply
+
+        async def _create_agent_call_node(_) -> AgentCallNode:
+            message_hash_keys = [
+                message.hash_key for message in await self._input_sequence_promise.acollect_messages()
+            ]
+            return AgentCallNode(message_hash_keys=message_hash_keys, **self._function_kwargs)
+
+        await Promise[AgentCallNode](
+            schedule_immediately=False,
+            fulfiller=_create_agent_call_node,
+        ).acollect()  # ensure on_collect handlers are called
 
 
 def miniagent(
