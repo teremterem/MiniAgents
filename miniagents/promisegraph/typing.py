@@ -14,6 +14,14 @@ StreamedPromiseBound = TypeVar("StreamedPromiseBound", bound="StreamedPromise")
 FlatSequenceBound = TypeVar("FlatSequenceBound", bound="FlatSequence")
 
 
+class PromiseFulfiller(Protocol[T]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    async def __call__(self, promise: PromiseBound) -> T: ...
+
+
 class StreamedPieceProducer(Protocol[PIECE]):
     """
     A protocol for piece producers. A piece producer is a function that takes a `StreamedPromise` instance as an
@@ -21,14 +29,6 @@ class StreamedPieceProducer(Protocol[PIECE]):
     """
 
     def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE]: ...
-
-
-class PromiseFulfiller(Protocol[T]):
-    """
-    TODO Oleksandr
-    """
-
-    async def __call__(self, promise: PromiseBound) -> T: ...
 
 
 class StreamedWholePackager(Protocol[WHOLE]):
