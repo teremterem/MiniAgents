@@ -71,27 +71,12 @@ class Message(Node):
     text: Optional[str] = None
     text_template: Optional[str] = None
 
-    # TODO TODO TODO Oleksandr: why @cached_property doesn't work in Recensia ?
-    # @cached_property
-    def as_string(self) -> str:
-        """
-        Return the message as a string.
-        """
-        return self._as_string()
-
-    def __str__(self) -> str:
-        return self.as_string()  # TODO TODO TODO Oleksandr: why @cached_property doesn't work in Recensia ?
-
     def _as_string(self) -> str:
-        """
-        Return the message as a string. This is the method that child classes should override to customize the string
-        representation of the message.
-        """
         if self.text is not None:
             return self.text
         if self.text_template is not None:
             return self.text_template.format(**self.model_dump())
-        return self.as_json
+        return super()._as_string()
 
 
 class AgentCallNode(Node):

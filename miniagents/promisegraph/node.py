@@ -20,6 +20,23 @@ class Node(BaseModel):
     model_config = ConfigDict(frozen=True, extra="allow")
 
     @cached_property
+    def as_string(self) -> str:
+        """
+        Return a string representation of this node.
+        """
+        return self._as_string()
+
+    def __str__(self) -> str:
+        return self.as_string
+
+    def _as_string(self) -> str:
+        """
+        Return the message as a string. This is the method that child classes should override to customize the string
+        representation of the message.
+        """
+        return self.as_json
+
+    @cached_property
     def as_json(self) -> str:
         """
         Get the JSON representation of the object.
