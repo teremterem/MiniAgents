@@ -8,7 +8,6 @@ import asyncio
 # noinspection PyUnresolvedReferences
 import readline  # pylint: disable=unused-import
 from pprint import pprint
-from typing import Any
 
 from dotenv import load_dotenv
 
@@ -16,19 +15,21 @@ load_dotenv()
 
 from miniagents.ext.llms.anthropic import create_anthropic_agent
 from miniagents.miniagents import MiniAgents
+from miniagents.promisegraph.node import Node
 
 anthropic_agent = create_anthropic_agent()
 
 mini_agents = MiniAgents()
 
 
-@mini_agents.on_promise_collected
-async def on_promise_collected(_, result: Any) -> None:
+@mini_agents.on_node_collected
+async def on_node_collected(_, node: Node) -> None:
     """
     TODO Oleksandr: docstring
     """
-    print("HASH KEY:", result.hash_key)
-    pprint(result.model_dump(), width=119)
+    print("HASH KEY:", node.hash_key)
+    print(type(node).__name__)
+    pprint(node.model_dump(), width=119)
     print()
 
 

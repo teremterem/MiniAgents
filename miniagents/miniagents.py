@@ -9,7 +9,15 @@ from miniagents.promisegraph.node import Node
 from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, Promise, PromiseContext
 from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 from miniagents.promisegraph.sequence import FlatSequence
-from miniagents.promisegraph.typing import StreamedPieceProducer
+from miniagents.promisegraph.typing import StreamedPieceProducer, PromiseBound
+
+
+class NodeCollectedEventHandler(Protocol):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    async def __call__(self, promise: PromiseBound, node: Node) -> None: ...
 
 
 class MiniAgents(PromiseContext):
@@ -20,9 +28,15 @@ class MiniAgents(PromiseContext):
     def __init__(
         self,
         stream_llm_tokens_by_default: bool = True,
+        on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
+        self.on_node_collected_handlers: list[NodeCollectedEventHandler] = (
+            [on_node_collected] if callable(on_node_collected) else list(on_node_collected)
+        )
+        self.on_promise_collected(self._schedule_on_node_collected)
+
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
 
     @classmethod
@@ -32,6 +46,22 @@ class MiniAgents(PromiseContext):
         """
         # noinspection PyTypeChecker
         return super().get_current()
+
+    def on_node_collected(self, handler: NodeCollectedEventHandler) -> NodeCollectedEventHandler:
+        """
+        Add a handler to be called after a promise of type Node is collected.
+        """
+        self.on_node_collected_handlers.append(handler)
+        return handler
+
+    async def _schedule_on_node_collected(self, _, result: Any) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        if not isinstance(result, Node):
+            return
+        for handler in self.on_node_collected_handlers:
+            self.schedule_task(handler(_, result))
 
 
 class Message(Node):
