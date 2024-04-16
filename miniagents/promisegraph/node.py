@@ -20,13 +20,18 @@ class Node(BaseModel):
     model_config = ConfigDict(frozen=True, extra="allow")
 
     @cached_property
+    def as_json(self) -> str:
+        """
+        Get the JSON representation of the object.
+        """
+        return json.dumps(self.model_dump(), ensure_ascii=False, sort_keys=True)
+
+    @cached_property
     def hash_key(self) -> str:
         """
         Get the hash key for this object. It is a hash of the JSON representation of the object.
         """
-        return hashlib.sha256(
-            json.dumps(self.model_dump(), ensure_ascii=False, sort_keys=True).encode("utf-8")
-        ).hexdigest()
+        return hashlib.sha256(self.as_json.encode("utf-8")).hexdigest()
 
     # noinspection PyNestedDecorators
     @model_validator(mode="before")

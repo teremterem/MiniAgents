@@ -2,7 +2,7 @@
 """
 Split this module into multiple modules.
 """
-
+from functools import cached_property
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
 from miniagents.promisegraph.node import Node
@@ -69,7 +69,29 @@ class Message(Node):
     A message that can be sent between agents.
     """
 
-    text: str
+    text: Optional[str] = None
+    text_template: Optional[str] = None
+
+    @cached_property
+    def as_string(self) -> str:
+        """
+        Return the message as a string.
+        """
+        return self._as_string()
+
+    def __str__(self) -> str:
+        return self.as_string
+
+    def _as_string(self) -> str:
+        """
+        Return the message as a string. This is the method that child classes should override to customize the string
+        representation of the message.
+        """
+        if self.text is not None:
+            return self.text
+        if self.text_template is not None:
+            return self.text_template.format(**self.model_dump())
+        return self.as_json
 
 
 class AgentCallNode(Node):
@@ -116,7 +138,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         if prefill_message:
             super().__init__(
                 schedule_immediately=schedule_immediately,
-                prefill_pieces=[prefill_message.text],
+                prefill_pieces=[str(prefill_message)],
                 prefill_whole=prefill_message,
             )
         else:

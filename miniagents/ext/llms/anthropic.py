@@ -102,5 +102,5 @@ def _message_to_anthropic_dict(message: Message) -> dict[str, Any]:
 
     return {
         "role": role,
-        "content": message.text,
+        "content": str(message),
     }
