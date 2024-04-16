@@ -6,9 +6,62 @@ Split this module into multiple modules.
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
 from miniagents.promisegraph.node import Node
-from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, Promise
+from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, Promise, PromiseContext
 from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
 from miniagents.promisegraph.sequence import FlatSequence
+from miniagents.promisegraph.typing import StreamedPieceProducer, PromiseBound
+
+
+class NodeCollectedEventHandler(Protocol):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    async def __call__(self, promise: PromiseBound, node: Node) -> None: ...
+
+
+class MiniAgents(PromiseContext):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self,
+        stream_llm_tokens_by_default: bool = True,
+        on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.on_node_collected_handlers: list[NodeCollectedEventHandler] = (
+            [on_node_collected] if callable(on_node_collected) else list(on_node_collected)
+        )
+        self.on_promise_collected(self._schedule_on_node_collected)
+
+        self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
+
+    @classmethod
+    def get_current(cls) -> "MiniAgents":
+        """
+        TODO Oleksandr: docstring
+        """
+        # noinspection PyTypeChecker
+        return super().get_current()
+
+    def on_node_collected(self, handler: NodeCollectedEventHandler) -> NodeCollectedEventHandler:
+        """
+        Add a handler to be called after a promise of type Node is collected.
+        """
+        self.on_node_collected_handlers.append(handler)
+        return handler
+
+    async def _schedule_on_node_collected(self, _, result: Any) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        if not isinstance(result, Node):
+            return
+        for handler in self.on_node_collected_handlers:
+            self.schedule_task(handler(_, result))
 
 
 class Message(Node):
@@ -21,10 +74,20 @@ class Message(Node):
 
 class AgentCallNode(Node):
     """
-    TODO TODO TODO Oleksandr
+    TODO Oleksandr
     """
 
+    agent_alias: str
     message_hash_keys: tuple[str, ...]
+
+
+class AgentReplyNode(Node):
+    """
+    TODO Oleksandr
+    """
+
+    agent_call_hash_key: str
+    reply_hash_keys: tuple[str, ...]
 
 
 class MessageTokenProducer(Protocol):
@@ -46,6 +109,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         message_token_producer: MessageTokenProducer = None,
         prefill_message: Optional[Message] = None,
         metadata_so_far: Optional[Node] = None,
+        message_class: type[Message] = Message,
     ) -> None:
         # TODO Oleksandr: raise an error if both ready_message and message_token_producer/metadata_so_far are not None
         #  (or both are None)
@@ -63,12 +127,13 @@ class MessagePromise(StreamedPromise[str, Message]):
             )
             self._message_token_producer = message_token_producer
             self._metadata_so_far: dict[str, Any] = metadata_so_far.model_dump() if metadata_so_far else {}
+            self._message_class = message_class
 
     def _producer(self, _) -> AsyncIterator[str]:
         return self._message_token_producer(self._metadata_so_far)
 
     async def _packager(self, _) -> Message:
-        return Message(
+        return self._message_class(
             text="".join([token async for token in self]),
             **self._metadata_so_far,
         )
@@ -107,17 +172,26 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     TODO Oleksandr: produce a docstring for this class after you actually use it in real agents
     """
 
+    append_producer: Optional[AppendProducer[MessageType]]
     sequence_promise: MessageSequencePromise
 
     def __init__(
         self,
         producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        incoming_producer: Optional[StreamedPieceProducer[MessageType]] = None,
     ) -> None:
+        if incoming_producer:
+            # an external producer is provided, so we don't create the default AppendProducer
+            self.append_producer = None
+        else:
+            self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
+            incoming_producer = self.append_producer
+
         super().__init__(
+            incoming_producer=incoming_producer,
             flattener=self._flattener,
             schedule_immediately=schedule_immediately,
-            producer_capture_errors=producer_capture_errors,
             sequence_promise_class=MessageSequencePromise,
         )
 
@@ -208,7 +282,7 @@ class MiniAgent:
         **function_kwargs,
     ) -> MessageSequencePromise:
         """
-        TODO TODO TODO Oleksandr: update this docstring
+        TODO Oleksandr: update this docstring
         "Ask" the agent and immediately receive an AsyncMessageSequence object that can be used to obtain the agent's
         response(s). If blank_history is False and history_tracker/branch_from is not specified and pre-existing
         messages are passed as requests (for ex. messages that came from other agents), then this agent call will be
@@ -226,7 +300,7 @@ class MiniAgent:
         **function_kwargs,
     ) -> "AgentCall":
         """
-        TODO TODO TODO Oleksandr: update this docstring
+        TODO Oleksandr: update this docstring
         Initiate the process of "asking" the agent. Returns an AgentCall object that can be used to send requests to
         the agent by calling `send_request()` zero or more times and receive its responses by calling
         `response_sequence()` at the end. If blank_history is False and history_tracker/branch_from is not specified
@@ -234,35 +308,77 @@ class MiniAgent:
         agent call will be automatically branched off of the conversation branch those pre-existing messages belong to
         (the history will be inherited from those messages, in other words).
         """
-        message_sequence = MessageSequence(
-            producer_capture_errors=False,  # TODO TODO TODO Oleksandr: is this the right value ?
+        input_sequence = MessageSequence(
+            schedule_immediately=False,
+        )
+        reply_sequence = AgentReplyMessageSequence(
+            mini_agent=self,
+            function_kwargs=function_kwargs,
+            input_sequence_promise=input_sequence.sequence_promise,
             schedule_immediately=schedule_immediately,
         )
-        reply_sequence = MessageSequence(
-            producer_capture_errors=False,  # TODO TODO TODO Oleksandr: is this the right value ?
-            schedule_immediately=schedule_immediately,
-        )
+
         agent_call = AgentCall(
-            message_producer=message_sequence.append_producer,
+            message_producer=input_sequence.append_producer,
             reply_sequence_promise=reply_sequence.sequence_promise,
         )
-
-        async def _agent_call_fulfiller(_) -> AgentCallNode:
-            with reply_sequence.append_producer:
-                async for reply in self._func(message_sequence.sequence_promise, **function_kwargs):
-                    reply_sequence.append_producer.append(reply)
-            message_hash_keys = [
-                message.hash_key for message in await message_sequence.sequence_promise.acollect_messages()
-            ]
-            return AgentCallNode(message_hash_keys=message_hash_keys, **function_kwargs)
-
-        # TODO TODO TODO Oleksandr: should I, instead of this promise, override the `message_sequence` producer ?
-        #  with current implementation, `schedule_immediately` is probably not respected
-        Promise[AgentCallNode](
-            schedule_immediately=True,  # TODO TODO TODO Oleksandr: is this the right value ?
-            fulfiller=_agent_call_fulfiller,
-        )
         return agent_call
+
+
+class AgentReplyMessageSequence(MessageSequence):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self,
+        mini_agent: MiniAgent,
+        function_kwargs: dict[str, Any],
+        input_sequence_promise: MessageSequencePromise,
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            incoming_producer=self._agent_call_producer,
+            **kwargs,
+        )
+        self._mini_agent = mini_agent
+        self._function_kwargs = function_kwargs
+        self._input_sequence_promise = input_sequence_promise
+
+    async def _agent_call_producer(self, _) -> AsyncIterator[MessageType]:
+        # noinspection PyProtectedMember
+        async for zero_or_more_reply_msgs in self._mini_agent._func(  # pylint: disable=protected-access
+            self._input_sequence_promise, **self._function_kwargs
+        ):
+            yield zero_or_more_reply_msgs
+
+    async def _producer(self, _) -> AsyncIterator[MessagePromise]:
+        async for reply_promise in super()._producer(_):
+            yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise
+
+        async def _create_agent_call_node(_) -> AgentCallNode:
+            message_hash_keys = [
+                message.hash_key for message in await self._input_sequence_promise.acollect_messages()
+            ]
+            return AgentCallNode(
+                message_hash_keys=message_hash_keys, agent_alias=self._mini_agent.alias, **self._function_kwargs
+            )
+
+        async def _create_agent_reply_node(_) -> AgentReplyNode:
+            reply_hash_keys = [message.hash_key for message in await self.sequence_promise.acollect_messages()]
+            return AgentReplyNode(
+                reply_hash_keys=reply_hash_keys, agent_call_hash_key=agent_call_node.hash_key, **self._function_kwargs
+            )
+
+        agent_call_node = await Promise[AgentCallNode](
+            schedule_immediately=False,
+            fulfiller=_create_agent_call_node,
+        ).acollect()  # ensure on_collect handlers are called
+
+        Promise[AgentReplyNode](
+            schedule_immediately=True,  # ensure on_collect handlers are called, but avoid deadlock
+            fulfiller=_create_agent_reply_node,
+        )
 
 
 def miniagent(
@@ -301,8 +417,8 @@ def miniagent(
 
 class AgentCall:
     """
-    TODO TODO TODO Oleksandr: update this docstring
-    TODO TODO TODO Oleksandr: turn this into a context manager ?
+    TODO Oleksandr: update this docstring
+    TODO Oleksandr: turn this into a context manager ?
     A call to an agent. This object is returned by Agent.start_asking()/start_telling() methods. It is used to send
     requests to the agent and receive its responses.
     """
@@ -319,7 +435,7 @@ class AgentCall:
 
     def send_message(self, message: MessageType) -> "AgentCall":
         """
-        TODO TODO TODO Oleksandr: update this docstring ?
+        TODO Oleksandr: update this docstring ?
         Send a request to the agent.
         """
         self._message_producer.append(message)
@@ -327,7 +443,7 @@ class AgentCall:
 
     def reply_sequence(self) -> MessageSequencePromise:
         """
-        TODO TODO TODO Oleksandr: update this docstring ?
+        TODO Oleksandr: update this docstring ?
         Finish the agent call and return the agent's response(s).
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
@@ -341,6 +457,6 @@ class AgentCall:
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
         """
-        # TODO TODO TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
+        # TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
         self._message_producer.close()
         return self

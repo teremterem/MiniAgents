@@ -4,9 +4,9 @@ The main class in this module is `FlatSequence`. See its docstring for more info
 
 from typing import Generic, AsyncIterator, Union
 
-from miniagents.promisegraph.promise import StreamedPromise, AppendProducer
+from miniagents.promisegraph.promise import StreamedPromise
 from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
-from miniagents.promisegraph.typing import SequenceFlattener, IN, OUT
+from miniagents.promisegraph.typing import SequenceFlattener, IN, OUT, StreamedPieceProducer
 
 
 class FlatSequence(Generic[IN, OUT]):
@@ -14,14 +14,13 @@ class FlatSequence(Generic[IN, OUT]):
     TODO Oleksandr: produce a docstring for this class after you use it in the MiniAgents framework
     """
 
-    append_producer: AppendProducer[IN]
     sequence_promise: StreamedPromise[OUT, tuple[OUT, ...]]
 
     def __init__(
         self,
+        incoming_producer: StreamedPieceProducer[IN],
         flattener: SequenceFlattener[IN, OUT],
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
         sequence_promise_class: type[StreamedPromise[OUT, tuple[OUT, ...]]] = StreamedPromise[OUT, tuple[OUT, ...]],
     ) -> None:
         self.__flattener = flattener
@@ -30,8 +29,9 @@ class FlatSequence(Generic[IN, OUT]):
             packager=lambda _: None,
             schedule_immediately=False,
         )
+        # TODO Oleksandr: should I really pass `self` here ? it is not of type `StreamedPromiseBound`
+        self._incoming_producer_iterator = incoming_producer(self)
 
-        self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
         self.sequence_promise = sequence_promise_class(
             producer=self._input_promise,
             packager=self._packager,
@@ -39,7 +39,7 @@ class FlatSequence(Generic[IN, OUT]):
         )
 
     async def _producer(self, _) -> AsyncIterator[OUT]:
-        async for zero_or_more_items in self.append_producer:
+        async for zero_or_more_items in self._incoming_producer_iterator:
             async for item in self.__flattener(self, zero_or_more_items):
                 yield item
 

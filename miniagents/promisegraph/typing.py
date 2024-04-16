@@ -14,6 +14,14 @@ StreamedPromiseBound = TypeVar("StreamedPromiseBound", bound="StreamedPromise")
 FlatSequenceBound = TypeVar("FlatSequenceBound", bound="FlatSequence")
 
 
+class PromiseFulfiller(Protocol[T]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    async def __call__(self, promise: PromiseBound) -> T: ...
+
+
 class StreamedPieceProducer(Protocol[PIECE]):
     """
     A protocol for piece producers. A piece producer is a function that takes a `StreamedPromise` instance as an
@@ -21,14 +29,6 @@ class StreamedPieceProducer(Protocol[PIECE]):
     """
 
     def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE]: ...
-
-
-class PromiseFulfiller(Protocol[T]):
-    """
-    TODO TODO TODO Oleksandr
-    """
-
-    async def __call__(self, promise: PromiseBound) -> T: ...
 
 
 class StreamedWholePackager(Protocol[WHOLE]):
@@ -42,12 +42,13 @@ class StreamedWholePackager(Protocol[WHOLE]):
 
 class PromiseCollectedEventHandler(Protocol):
     """
+    TODO Oleksandr: update this docstring
     A protocol for StreamedPromise collection event handlers. A promise collection event is a function that is
     scheduled to be called after StreamedPromise.acollect() finishes collecting the promise. "Scheduled" means
     that the function is passed to the event loop for execution without blocking the current coroutine.
     """
 
-    async def __call__(self, streamed_promise: StreamedPromiseBound, whole: Any) -> None: ...
+    async def __call__(self, promise: PromiseBound, result: Any) -> None: ...
 
 
 class SequenceFlattener(Protocol[IN, OUT]):

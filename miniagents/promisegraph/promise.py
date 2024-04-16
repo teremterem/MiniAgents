@@ -35,19 +35,16 @@ class PromiseContext:
         self,
         schedule_immediately_by_default: bool = True,
         producer_capture_errors_by_default: bool = False,
-        stream_llm_tokens_by_default: bool = True,
         on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
-        self.on_promise_collected: list[PromiseCollectedEventHandler] = (
+        self.on_promise_collected_handlers: list[PromiseCollectedEventHandler] = (
             [on_promise_collected] if callable(on_promise_collected) else list(on_promise_collected)
         )
         self.child_tasks: set[Task] = set()
 
         self.schedule_immediately_by_default = schedule_immediately_by_default
         self.producer_capture_errors_by_default = producer_capture_errors_by_default
-        # TODO Oleksandr: move this setting to a child class (MiniAgents ?)
-        self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
@@ -59,9 +56,21 @@ class PromiseContext:
         current = cls._current.get()
         if not current:
             raise RuntimeError(
-                "No PromiseContext is currently active. Did you forget to do `async with PromiseContext():`?"
+                f"No {cls.__name__} is currently active. Did you forget to do `async with {cls.__name__}():`?"
+            )
+        if not isinstance(current, cls):
+            raise TypeError(
+                f"You seem to have done `async with {type(current).__name__}():` (or similar), "
+                f"but `async with {cls.__name__}():` is expected instead."
             )
         return current
+
+    def on_promise_collected(self, handler: PromiseCollectedEventHandler) -> PromiseCollectedEventHandler:
+        """
+        Add a handler to be called after a promise is collected.
+        """
+        self.on_promise_collected_handlers.append(handler)
+        return handler
 
     def schedule_task(self, awaitable: Awaitable) -> Task:
         """
@@ -113,7 +122,7 @@ class PromiseContext:
 
 class Promise(Generic[T]):
     """
-    TODO TODO TODO Oleksandr
+    TODO Oleksandr
     """
 
     def __init__(
@@ -144,7 +153,7 @@ class Promise(Generic[T]):
 
     async def acollect(self) -> T:
         """
-        TODO TODO TODO Oleksandr: update this docstring
+        TODO Oleksandr: update this docstring
         "Accumulates" all the pieces of the stream and returns the "whole" value. Will return the exact
         same object (the exact same instance) if called multiple times on the same instance of `StreamedPromise`.
         """
@@ -167,7 +176,7 @@ class Promise(Generic[T]):
     def _schedule_collected_event_handlers(self):
         promise_ctx = PromiseContext.get_current()
         while promise_ctx:
-            for handler in promise_ctx.on_promise_collected:
+            for handler in promise_ctx.on_promise_collected_handlers:
                 promise_ctx.schedule_task(handler(self, self._result))
             promise_ctx = promise_ctx.parent
 
