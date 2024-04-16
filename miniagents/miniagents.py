@@ -2,7 +2,6 @@
 """
 Split this module into multiple modules.
 """
-from functools import cached_property
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
 from miniagents.promisegraph.node import Node
@@ -72,7 +71,8 @@ class Message(Node):
     text: Optional[str] = None
     text_template: Optional[str] = None
 
-    @cached_property
+    # TODO TODO TODO Oleksandr: why @cached_property doesn't work in Recensia ?
+    # @cached_property
     def as_string(self) -> str:
         """
         Return the message as a string.
@@ -80,7 +80,7 @@ class Message(Node):
         return self._as_string()
 
     def __str__(self) -> str:
-        return self.as_string
+        return self.as_string()  # TODO TODO TODO Oleksandr: why @cached_property doesn't work in Recensia ?
 
     def _as_string(self) -> str:
         """
