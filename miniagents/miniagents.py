@@ -79,12 +79,19 @@ class Message(Node):
         return super()._as_string()
 
 
-class AgentCallNode(Node):
+class AgentInteractionNode(Node):
     """
     TODO Oleksandr
     """
 
     agent_alias: str
+
+
+class AgentCallNode(Node):
+    """
+    TODO Oleksandr
+    """
+
     message_hash_keys: tuple[str, ...]
 
 
@@ -368,13 +375,18 @@ class AgentReplyMessageSequence(MessageSequence):
                 message.hash_key for message in await self._input_sequence_promise.acollect_messages()
             ]
             return AgentCallNode(
-                message_hash_keys=message_hash_keys, agent_alias=self._mini_agent.alias, **self._function_kwargs
+                message_hash_keys=message_hash_keys,
+                agent_alias=self._mini_agent.alias,
+                **self._function_kwargs,
             )
 
         async def _create_agent_reply_node(_) -> AgentReplyNode:
             reply_hash_keys = [message.hash_key for message in await self.sequence_promise.acollect_messages()]
             return AgentReplyNode(
-                reply_hash_keys=reply_hash_keys, agent_call_hash_key=agent_call_node.hash_key, **self._function_kwargs
+                reply_hash_keys=reply_hash_keys,
+                agent_alias=self._mini_agent.alias,
+                agent_call_hash_key=agent_call_node.hash_key,
+                **self._function_kwargs,
             )
 
         agent_call_node = await Promise[AgentCallNode](
