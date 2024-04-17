@@ -7,7 +7,7 @@ from typing import Union
 
 import pytest
 
-from miniagents.miniagents import MiniAgents, miniagent
+from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 from miniagents.promisegraph.sentinels import DEFAULT, Sentinel
 
 
@@ -56,3 +56,39 @@ async def test_agents_run_in_parallel(schedule_immediately: Union[bool, Sentinel
             "agent2 - start",
             "agent2 - end",
         ]
+
+
+@pytest.mark.asyncio
+async def test_sub_agents_run_in_parallel() -> None:
+    """
+    Test that two agents that were called by the third agent can run in parallel.
+    """
+    event_sequence = []
+
+    @miniagent
+    async def agent1(_) -> None:
+        event_sequence.append("agent1 - start")
+        await asyncio.sleep(0.1)
+        event_sequence.append("agent1 - end")
+
+    @miniagent
+    async def agent2(_) -> None:
+        event_sequence.append("agent2 - start")
+        await asyncio.sleep(0.1)
+        event_sequence.append("agent2 - end")
+
+    @miniagent
+    async def aggregation_agent(ctx: InteractionContext) -> None:
+        # ctx.reply(agent.inquire() for agent in [agent1, agent2])
+        for agent in [agent1, agent2]:
+            ctx.reply(agent.inquire())
+
+    async with MiniAgents():
+        aggregation_agent.inquire()
+
+    assert event_sequence == [
+        "agent1 - start",
+        "agent2 - start",
+        "agent1 - end",
+        "agent2 - end",
+    ]
