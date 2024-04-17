@@ -82,6 +82,8 @@ class PromiseContext:
         async def awaitable_wrapper() -> Any:
             try:
                 return await awaitable
+                # TODO Oleksandr: memorize exceptions so they can be raised when PromiseContext is finalized ?
+                #  HUGE NO! that would be a memory leak
             finally:
                 self.child_tasks.remove(task)
 

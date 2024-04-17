@@ -19,22 +19,16 @@ class Node(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="allow")
 
+    def __str__(self) -> str:
+        return self.as_string
+
     @cached_property
     def as_string(self) -> str:
         """
         Return a string representation of this node.
         """
+        # NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         return self._as_string()
-
-    def __str__(self) -> str:
-        return self.as_string
-
-    def _as_string(self) -> str:
-        """
-        Return the message as a string. This is the method that child classes should override to customize the string
-        representation of the message.
-        """
-        return self.as_json
 
     @cached_property
     def as_json(self) -> str:
@@ -49,6 +43,19 @@ class Node(BaseModel):
         Get the hash key for this object. It is a hash of the JSON representation of the object.
         """
         return hashlib.sha256(self.as_json.encode("utf-8")).hexdigest()
+
+    def serialize_node(self, **model_dump_kwargs) -> dict[str, Any]:
+        """
+        TODO Oleksandr
+        """
+        return self.model_dump(**model_dump_kwargs)
+
+    def _as_string(self) -> str:
+        """
+        Return the message as a string. This is the method that child classes should override to customize the string
+        representation of the message.
+        """
+        return self.as_json
 
     # noinspection PyNestedDecorators
     @model_validator(mode="before")
