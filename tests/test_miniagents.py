@@ -19,13 +19,13 @@ async def test_agents_run_in_parallel() -> None:
     @miniagent
     async def agent1(_) -> None:
         event_sequence.append("agent1 - start")
-        asyncio.sleep(1)
+        await asyncio.sleep(0.2)
         event_sequence.append("agent1 - end")
 
     @miniagent
     async def agent2(_) -> None:
         event_sequence.append("agent2 - start")
-        asyncio.sleep(1)
+        await asyncio.sleep(0.2)
         event_sequence.append("agent2 - end")
 
     async with MiniAgents():
