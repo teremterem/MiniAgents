@@ -292,6 +292,7 @@ class MiniAgent:
         # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
         uppercase_func_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
+        # TODO Oleksandr: `call_nodes_metadata` is a confusing name...
         call_nodes_metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         self._func = func
@@ -425,7 +426,6 @@ class AgentReplyMessageSequence(MessageSequence):
                 agent_alias=self._mini_agent.alias,
                 agent_call_hash_key=(await agent_call_promise.acollect()).hash_key,
                 **call_nodes_metadata,
-                **self._function_kwargs,  # this will override any keys from `self._call_nodes_metadata`
             )
 
         Promise[AgentReplyNode](
@@ -441,6 +441,7 @@ def miniagent(
     description: Optional[str] = None,
     uppercase_func_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
+    call_nodes_metadata: Optional[dict[str, Any]] = None,
 ) -> Union["MiniAgent", Callable[[AgentFunction], MiniAgent]]:
     """
     A decorator that converts an agent function into an agent.
@@ -454,6 +455,7 @@ def miniagent(
                 description=description,
                 uppercase_func_name=uppercase_func_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+                call_nodes_metadata=call_nodes_metadata,
             )
 
         return _decorator
@@ -465,6 +467,7 @@ def miniagent(
         description=description,
         uppercase_func_name=uppercase_func_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+        call_nodes_metadata=call_nodes_metadata,
     )
 
 
