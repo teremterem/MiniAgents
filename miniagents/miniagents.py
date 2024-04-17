@@ -264,6 +264,10 @@ class InteractionContext:
         """
         TODO Oleksandr: docstring
         """
+        # TODO Oleksandr: add a warning that iterators, async iterators and generators, if passed as `messages` will
+        #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
+        #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
+        #  guarantee that it will be iterated over immediately)
         self._reply_producer.append(messages)
 
 

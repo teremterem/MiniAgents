@@ -79,9 +79,9 @@ async def test_sub_agents_run_in_parallel() -> None:
 
     @miniagent
     async def aggregation_agent(ctx: InteractionContext) -> None:
-        # ctx.reply(agent.inquire() for agent in [agent1, agent2])
-        for agent in [agent1, agent2]:
-            ctx.reply(agent.inquire())
+        # wrapping this generator into a list comprehension is necessary to make sure that the agents are called
+        # immediately (and are executed in parallel as a result)
+        ctx.reply([agent.inquire() for agent in [agent1, agent2]])
 
     async with MiniAgents():
         aggregation_agent.inquire()
