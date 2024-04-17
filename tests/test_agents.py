@@ -58,8 +58,9 @@ async def test_agents_run_in_parallel(schedule_immediately: Union[bool, Sentinel
         ]
 
 
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_sub_agents_run_in_parallel() -> None:
+async def test_sub_agents_run_in_parallel(schedule_immediately: Union[bool, Sentinel]) -> None:
     """
     Test that two agents that were called by the third agent can run in parallel.
     """
@@ -81,14 +82,28 @@ async def test_sub_agents_run_in_parallel() -> None:
     async def aggregation_agent(ctx: InteractionContext) -> None:
         # wrapping this generator into a list comprehension is necessary to make sure that the agents are called
         # immediately (and are executed in parallel as a result)
-        ctx.reply([agent.inquire() for agent in [agent1, agent2]])
+        ctx.reply([agent.inquire(schedule_immediately=schedule_immediately) for agent in [agent1, agent2]])
 
     async with MiniAgents():
-        aggregation_agent.inquire()
+        replies = aggregation_agent.inquire(schedule_immediately=schedule_immediately)
+        if schedule_immediately is False:
+            # when agents are not automatically scheduled, their result needs to be awaited for explicitly in order
+            # for their respective functions to be called
+            await replies.acollect_messages()
 
-    assert event_sequence == [
-        "agent1 - start",
-        "agent2 - start",
-        "agent1 - end",
-        "agent2 - end",
-    ]
+    if schedule_immediately is DEFAULT or schedule_immediately is True:
+        # for MiniAgents() True is the DEFAULT
+        assert event_sequence == [
+            "agent1 - start",
+            "agent2 - start",
+            "agent1 - end",
+            "agent2 - end",
+        ]
+    else:
+        # if agents aren't scheduled for execution "immediately" then they are processed sequentially
+        assert event_sequence == [
+            "agent1 - start",
+            "agent1 - end",
+            "agent2 - start",
+            "agent2 - end",
+        ]
