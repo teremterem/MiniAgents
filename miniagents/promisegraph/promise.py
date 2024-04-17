@@ -111,7 +111,7 @@ class PromiseContext:
         await asyncio.gather(
             *self.child_tasks,
             return_exceptions=True,  # this prevents waiting until the first exception and then giving up
-        )
+        )  # TODO Oleksandr: log exceptions that `gather` may return ?
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
 
