@@ -292,8 +292,10 @@ class MiniAgent:
         # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
         uppercase_func_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
+        call_nodes_metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         self._func = func
+        self._call_nodes_metadata = Node(**(call_nodes_metadata or {}))  # TODO Oleksandr: do deep copy instead ?
 
         self.alias = alias
         if self.alias is None:
@@ -363,6 +365,7 @@ class MiniAgent:
         return agent_call
 
 
+# noinspection PyProtectedMember
 class AgentReplyMessageSequence(MessageSequence):
     """
     TODO Oleksandr: docstring
@@ -371,8 +374,8 @@ class AgentReplyMessageSequence(MessageSequence):
     def __init__(
         self,
         mini_agent: MiniAgent,
-        function_kwargs: dict[str, Any],
         input_sequence_promise: MessageSequencePromise,
+        function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
         super().__init__(
@@ -380,10 +383,12 @@ class AgentReplyMessageSequence(MessageSequence):
             **kwargs,
         )
         self._mini_agent = mini_agent
-        self._function_kwargs = function_kwargs
         self._input_sequence_promise = input_sequence_promise
+        # TODO Oleksandr: freeze function_kwargs as a Node object ? or just do deep copy ?
+        self._function_kwargs = function_kwargs
 
     async def _producer(self, _) -> AsyncIterator[MessagePromise]:
+        # pylint: disable=protected-access
         async def run_the_agent(_) -> AgentCallNode:
             ctx = InteractionContext(
                 this_agent=self._mini_agent,
@@ -392,7 +397,7 @@ class AgentReplyMessageSequence(MessageSequence):
             )
             with self.append_producer:
                 # errors are not raised above this `with` block, thanks to `producer_capture_errors=True`
-                await self._mini_agent._func(ctx, **self._function_kwargs)  # pylint: disable=protected-access
+                await self._mini_agent._func(ctx, **self._function_kwargs)
 
             message_hash_keys = [
                 message.hash_key for message in await self._input_sequence_promise.acollect_messages()
@@ -400,9 +405,11 @@ class AgentReplyMessageSequence(MessageSequence):
             return AgentCallNode(
                 message_hash_keys=message_hash_keys,
                 agent_alias=self._mini_agent.alias,
-                **self._function_kwargs,
+                **call_nodes_metadata,
+                **self._function_kwargs,  # this will override any keys from `self._call_nodes_metadata`
             )
 
+        call_nodes_metadata = self._mini_agent._call_nodes_metadata.model_dump()
         agent_call_promise = Promise[AgentCallNode](
             schedule_immediately=True,
             fulfiller=run_the_agent,
@@ -417,7 +424,8 @@ class AgentReplyMessageSequence(MessageSequence):
                 reply_hash_keys=reply_hash_keys,
                 agent_alias=self._mini_agent.alias,
                 agent_call_hash_key=(await agent_call_promise.acollect()).hash_key,
-                **self._function_kwargs,
+                **call_nodes_metadata,
+                **self._function_kwargs,  # this will override any keys from `self._call_nodes_metadata`
             )
 
         Promise[AgentReplyNode](
