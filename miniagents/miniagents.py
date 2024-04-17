@@ -248,12 +248,31 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             raise TypeError(f"unexpected message type: {type(zero_or_more_items)}")
 
 
+class InteractionContext:
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_producer: AppendProducer[MessageType]
+    ) -> None:
+        self.this_agent = this_agent
+        self.messages = messages
+        self._reply_producer = reply_producer
+
+    def reply(self, messages: MessageType) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        self._reply_producer.append(messages)
+
+
 class AgentFunction(Protocol):
     """
     A protocol for agent functions.
     """
 
-    def __call__(self, messages: MessageSequencePromise, **kwargs) -> AsyncIterator[MessageType]: ...
+    async def __call__(self, ctx: InteractionContext, **kwargs) -> None: ...
 
 
 class MiniAgent:
@@ -266,6 +285,7 @@ class MiniAgent:
         func: AgentFunction,
         alias: Optional[str] = None,
         description: Optional[str] = None,
+        # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
         uppercase_func_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
     ) -> None:
@@ -352,25 +372,24 @@ class AgentReplyMessageSequence(MessageSequence):
         **kwargs,
     ) -> None:
         super().__init__(
-            incoming_producer=self._agent_call_producer,
+            producer_capture_errors=True,  # we want `self.append_producer` not to let errors out of `run_the_agent`
             **kwargs,
         )
         self._mini_agent = mini_agent
         self._function_kwargs = function_kwargs
         self._input_sequence_promise = input_sequence_promise
 
-    async def _agent_call_producer(self, _) -> AsyncIterator[MessageType]:
-        # noinspection PyProtectedMember
-        async for zero_or_more_reply_msgs in self._mini_agent._func(  # pylint: disable=protected-access
-            self._input_sequence_promise, **self._function_kwargs
-        ):
-            yield zero_or_more_reply_msgs
-
     async def _producer(self, _) -> AsyncIterator[MessagePromise]:
-        async for reply_promise in super()._producer(_):
-            yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise
+        async def run_the_agent(_) -> AgentCallNode:
+            ctx = InteractionContext(
+                this_agent=self._mini_agent,
+                messages=self._input_sequence_promise,
+                reply_producer=self.append_producer,
+            )
+            with self.append_producer:
+                # errors are not raised above this `with` block, thanks to `producer_capture_errors=True`
+                await self._mini_agent._func(ctx, **self._function_kwargs)  # pylint: disable=protected-access
 
-        async def _create_agent_call_node(_) -> AgentCallNode:
             message_hash_keys = [
                 message.hash_key for message in await self._input_sequence_promise.acollect_messages()
             ]
@@ -380,23 +399,26 @@ class AgentReplyMessageSequence(MessageSequence):
                 **self._function_kwargs,
             )
 
-        async def _create_agent_reply_node(_) -> AgentReplyNode:
+        agent_call_promise = Promise[AgentCallNode](
+            schedule_immediately=True,
+            fulfiller=run_the_agent,
+        )
+
+        async for reply_promise in super()._producer(_):
+            yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
+
+        async def create_agent_reply_node(_) -> AgentReplyNode:
             reply_hash_keys = [message.hash_key for message in await self.sequence_promise.acollect_messages()]
             return AgentReplyNode(
                 reply_hash_keys=reply_hash_keys,
                 agent_alias=self._mini_agent.alias,
-                agent_call_hash_key=agent_call_node.hash_key,
+                agent_call_hash_key=(await agent_call_promise.acollect()).hash_key,
                 **self._function_kwargs,
             )
 
-        agent_call_node = await Promise[AgentCallNode](
-            schedule_immediately=False,
-            fulfiller=_create_agent_call_node,
-        ).acollect()  # ensure on_collect handlers are called
-
         Promise[AgentReplyNode](
-            schedule_immediately=True,  # ensure on_collect handlers are called, but avoid deadlock
-            fulfiller=_create_agent_reply_node,
+            schedule_immediately=True,  # use a separate async task to avoid deadlock upon AgentReplyNode "collection"
+            fulfiller=create_agent_reply_node,
         )
 
 

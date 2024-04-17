@@ -8,12 +8,11 @@ from typing import AsyncIterator, Any, Optional
 
 from miniagents.miniagents import (
     MessagePromise,
-    MessageType,
     Message,
     miniagent,
     MiniAgent,
-    MessageSequencePromise,
     MiniAgents,
+    InteractionContext,
 )
 from miniagents.promisegraph.node import Node
 
@@ -29,7 +28,9 @@ class AnthropicMessage(Message):
     anthropic: Node
 
 
-def create_anthropic_agent(async_client: Optional["anthropic_original.AsyncAnthropic"] = None) -> MiniAgent:
+def create_anthropic_agent(
+    async_client: Optional["anthropic_original.AsyncAnthropic"] = None, **mini_agent_kwargs
+) -> MiniAgent:
     """
     Create an MiniAgent for Anthropic models (see MiniAgent class definition and docstring for usage details).
     """
@@ -40,15 +41,15 @@ def create_anthropic_agent(async_client: Optional["anthropic_original.AsyncAnthr
 
         async_client = anthropic_original.AsyncAnthropic()
 
-    return miniagent(partial(_anthropic_func, async_client=async_client), alias="ANTHROPIC_AGENT")
+    return miniagent(partial(_anthropic_func, async_client=async_client), alias="ANTHROPIC_AGENT", **mini_agent_kwargs)
 
 
 async def _anthropic_func(
-    messages: MessageSequencePromise,
+    ctx: InteractionContext,
     async_client: "anthropic_original.AsyncAnthropic",
     stream: Optional[bool] = None,
     **kwargs,
-) -> AsyncIterator[MessageType]:
+) -> None:
     """
     Run text generation with Anthropic.
     """
@@ -56,7 +57,7 @@ async def _anthropic_func(
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        collected_messages = await messages.acollect_messages()
+        collected_messages = await ctx.messages.acollect_messages()
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
 
         if stream:
@@ -86,10 +87,12 @@ async def _anthropic_func(
 
         metadata_so_far["anthropic"] = anthropic_final_message.model_dump(exclude={"content"})
 
-    yield MessagePromise(
-        schedule_immediately=True,  # TODO Oleksandr: is this the right value
-        message_token_producer=message_token_producer,
-        message_class=AnthropicMessage,
+    ctx.reply(
+        MessagePromise(
+            schedule_immediately=True,  # TODO Oleksandr: should this be customizable ?
+            message_token_producer=message_token_producer,
+            message_class=AnthropicMessage,
+        )
     )
 
 
