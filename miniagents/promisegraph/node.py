@@ -67,7 +67,15 @@ class Node(BaseModel):
         Recursively make sure that the field values of the object are immutable.
         """
         # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
-        values = {"class_": cls.__name__, **values}
+        if "class_" in values:
+            if values["class_"] != cls.__name__:
+                raise ValueError(
+                    f"the `class_` field of a Node must be equal to its actual class name, got {values['class_']} "
+                    f"instead of {cls.__name__}"
+                )
+        else:
+            values = {"class_": cls.__name__, **values}
+
         for key, value in values.items():
             values[key] = cls._validate_value(key, value)
         return values
