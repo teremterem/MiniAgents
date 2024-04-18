@@ -297,7 +297,7 @@ class MiniAgent:
         self._func = func
         # TODO Oleksandr: do deep copy ? freeze with Node ? yoo need to start putting these things down into the
         #  "Philosophy" section of README
-        self._interaction_metadata = interaction_metadata
+        self._interaction_metadata = interaction_metadata or {}
 
         self.alias = alias
         if self.alias is None:
