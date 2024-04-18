@@ -52,8 +52,9 @@ def test_sample_immutable_hash_key() -> None:
 
     # print(json.dumps(sample.model_dump(), ensure_ascii=False, sort_keys=True))
     expected_hash_key = hashlib.sha256(
-        '{"some_opt_field": 2, "some_req_field": "test", "sub_immutable": '
-        '{"some_opt_field": 3, "some_req_field": "юнікод", "sub_immutable": null}}'.encode("utf-8")
+        '{"class_": "SampleImmutable", "some_opt_field": 2, "some_req_field": "test", "sub_immutable": '
+        '{"class_": "SampleImmutable", "some_opt_field": 3, "some_req_field": "юнікод", "sub_immutable": null}}'
+        "".encode("utf-8")
     ).hexdigest()
     assert sample.hash_key == expected_hash_key
 
@@ -63,7 +64,8 @@ def test_node_hash_key() -> None:
     node = Node(content="test", final_sender_alias="user", custom_field={"role": "user"})
     # print(json.dumps(node.model_dump(exclude={"forum_trees"}), ensure_ascii=False, sort_keys=True))
     expected_hash_key = hashlib.sha256(
-        '{"content": "test", "custom_field": {"role": "user"}, "final_sender_alias": "user"}'.encode("utf-8")
+        '{"class_": "Node", "content": "test", "custom_field": {"class_": "Node", "role": "user"}, '
+        '"final_sender_alias": "user"}'.encode("utf-8")
     ).hexdigest()
     assert node.hash_key == expected_hash_key
 
@@ -90,10 +92,10 @@ def test_hash_key_calculated_once() -> None:
         sample = SampleImmutable(some_req_field="test")
         mock_sha256.assert_not_called()  # not calculated yet
 
-        assert sample.hash_key == "ca85d50af7d8b17f35ecee07c489705fb1d137bf9e54b53558857abf2b3e672d"
+        assert sample.hash_key == "47118a5b852921320fdb2c31eac29526ef720d1a4f72782f8fed599207bdc22f"
         mock_sha256.assert_called_once()  # calculated once
 
-        assert sample.hash_key == "ca85d50af7d8b17f35ecee07c489705fb1d137bf9e54b53558857abf2b3e672d"
+        assert sample.hash_key == "47118a5b852921320fdb2c31eac29526ef720d1a4f72782f8fed599207bdc22f"
         mock_sha256.assert_called_once()  # check that it wasn't calculated again
 
 
