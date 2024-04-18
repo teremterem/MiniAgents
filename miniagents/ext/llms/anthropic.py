@@ -44,7 +44,7 @@ def create_anthropic_agent(
         async_client = anthropic_original.AsyncAnthropic()
 
     return miniagent(
-        partial(_anthropic_func, async_client=async_client, global_assistant_reply_metadata=assistant_reply_metadata),
+        partial(_anthropic_func, async_client=async_client, global_reply_metadata=assistant_reply_metadata),
         alias="ANTHROPIC_AGENT",
         **mini_agent_kwargs,
     )
@@ -53,22 +53,22 @@ def create_anthropic_agent(
 async def _anthropic_func(
     ctx: InteractionContext,
     async_client: "anthropic_original.AsyncAnthropic",
-    global_assistant_reply_metadata: Optional[dict[str, Any]],
-    assistant_reply_metadata: Optional[dict[str, Any]] = None,
+    global_reply_metadata: Optional[dict[str, Any]],
+    reply_metadata: Optional[dict[str, Any]] = None,
     stream: Optional[bool] = None,
     **kwargs,
 ) -> None:
     """
     Run text generation with Anthropic.
     """
-    global_assistant_reply_metadata = global_assistant_reply_metadata or {}
-    assistant_reply_metadata = assistant_reply_metadata or {}
+    global_reply_metadata = global_reply_metadata or {}
+    reply_metadata = reply_metadata or {}
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        metadata_so_far.update(global_assistant_reply_metadata)
-        metadata_so_far.update(assistant_reply_metadata)
+        metadata_so_far.update(global_reply_metadata)
+        metadata_so_far.update(reply_metadata)
         collected_messages = await ctx.messages.acollect_messages()
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
 
