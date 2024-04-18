@@ -9,6 +9,9 @@ class Sentinel:
     END_OF_QUEUE, etc.
     """
 
+    def __bool__(self) -> bool:
+        raise RuntimeError("Sentinels should not be used in boolean expressions.")
+
 
 NO_VALUE = Sentinel()
 DEFAULT = Sentinel()

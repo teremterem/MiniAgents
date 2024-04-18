@@ -2,7 +2,6 @@
 """
 Split this module into multiple modules.
 """
-
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
 from miniagents.promisegraph.node import Node
@@ -69,7 +68,23 @@ class Message(Node):
     A message that can be sent between agents.
     """
 
-    text: str
+    text: Optional[str] = None
+    text_template: Optional[str] = None
+
+    def _as_string(self) -> str:
+        if self.text is not None:
+            return self.text
+        if self.text_template is not None:
+            return self.text_template.format(**self.model_dump())
+        return super()._as_string()
+
+
+class AgentInteractionNode(Node):
+    """
+    TODO Oleksandr
+    """
+
+    agent_alias: str
 
 
 class AgentCallNode(Node):
@@ -77,7 +92,6 @@ class AgentCallNode(Node):
     TODO Oleksandr
     """
 
-    agent_alias: str
     message_hash_keys: tuple[str, ...]
 
 
@@ -116,7 +130,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         if prefill_message:
             super().__init__(
                 schedule_immediately=schedule_immediately,
-                prefill_pieces=[prefill_message.text],
+                prefill_pieces=[str(prefill_message)],
                 prefill_whole=prefill_message,
             )
         else:
@@ -234,12 +248,35 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             raise TypeError(f"unexpected message type: {type(zero_or_more_items)}")
 
 
+class InteractionContext:
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_producer: AppendProducer[MessageType]
+    ) -> None:
+        self.this_agent = this_agent
+        self.messages = messages
+        self._reply_producer = reply_producer
+
+    def reply(self, messages: MessageType) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        # TODO Oleksandr: add a warning that iterators, async iterators and generators, if passed as `messages` will
+        #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
+        #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
+        #  guarantee that it will be iterated over immediately)
+        self._reply_producer.append(messages)
+
+
 class AgentFunction(Protocol):
     """
     A protocol for agent functions.
     """
 
-    def __call__(self, messages: MessageSequencePromise, **kwargs) -> AsyncIterator[MessageType]: ...
+    async def __call__(self, ctx: InteractionContext, **kwargs) -> None: ...
 
 
 class MiniAgent:
@@ -252,10 +289,15 @@ class MiniAgent:
         func: AgentFunction,
         alias: Optional[str] = None,
         description: Optional[str] = None,
+        # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
         uppercase_func_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
+        interaction_metadata: Optional[dict[str, Any]] = None,
     ) -> None:
         self._func = func
+        # TODO Oleksandr: do deep copy ? freeze with Node ? yoo need to start putting these things down into the
+        #  "Philosophy" section of README
+        self._interaction_metadata = interaction_metadata or {}
 
         self.alias = alias
         if self.alias is None:
@@ -325,6 +367,7 @@ class MiniAgent:
         return agent_call
 
 
+# noinspection PyProtectedMember
 class AgentReplyMessageSequence(MessageSequence):
     """
     TODO Oleksandr: docstring
@@ -333,51 +376,61 @@ class AgentReplyMessageSequence(MessageSequence):
     def __init__(
         self,
         mini_agent: MiniAgent,
-        function_kwargs: dict[str, Any],
         input_sequence_promise: MessageSequencePromise,
+        function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
         super().__init__(
-            incoming_producer=self._agent_call_producer,
+            producer_capture_errors=True,  # we want `self.append_producer` not to let errors out of `run_the_agent`
             **kwargs,
         )
         self._mini_agent = mini_agent
-        self._function_kwargs = function_kwargs
         self._input_sequence_promise = input_sequence_promise
-
-    async def _agent_call_producer(self, _) -> AsyncIterator[MessageType]:
-        # noinspection PyProtectedMember
-        async for zero_or_more_reply_msgs in self._mini_agent._func(  # pylint: disable=protected-access
-            self._input_sequence_promise, **self._function_kwargs
-        ):
-            yield zero_or_more_reply_msgs
+        # TODO Oleksandr: freeze function_kwargs as a Node object ? or just do deep copy ?
+        self._function_kwargs = function_kwargs
 
     async def _producer(self, _) -> AsyncIterator[MessagePromise]:
-        async for reply_promise in super()._producer(_):
-            yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise
+        # pylint: disable=protected-access
+        async def run_the_agent(_) -> AgentCallNode:
+            ctx = InteractionContext(
+                this_agent=self._mini_agent,
+                messages=self._input_sequence_promise,
+                reply_producer=self.append_producer,
+            )
+            with self.append_producer:
+                # errors are not raised above this `with` block, thanks to `producer_capture_errors=True`
+                await self._mini_agent._func(ctx, **self._function_kwargs)
 
-        async def _create_agent_call_node(_) -> AgentCallNode:
             message_hash_keys = [
                 message.hash_key for message in await self._input_sequence_promise.acollect_messages()
             ]
             return AgentCallNode(
-                message_hash_keys=message_hash_keys, agent_alias=self._mini_agent.alias, **self._function_kwargs
+                message_hash_keys=message_hash_keys,
+                agent_alias=self._mini_agent.alias,
+                **self._mini_agent._interaction_metadata,
+                **self._function_kwargs,  # this will override any keys from `self._interaction_metadata`
             )
 
-        async def _create_agent_reply_node(_) -> AgentReplyNode:
+        agent_call_promise = Promise[AgentCallNode](
+            schedule_immediately=True,
+            fulfiller=run_the_agent,
+        )
+
+        async for reply_promise in super()._producer(_):
+            yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
+
+        async def create_agent_reply_node(_) -> AgentReplyNode:
             reply_hash_keys = [message.hash_key for message in await self.sequence_promise.acollect_messages()]
             return AgentReplyNode(
-                reply_hash_keys=reply_hash_keys, agent_call_hash_key=agent_call_node.hash_key, **self._function_kwargs
+                reply_hash_keys=reply_hash_keys,
+                agent_alias=self._mini_agent.alias,
+                agent_call_hash_key=(await agent_call_promise.acollect()).hash_key,
+                **self._mini_agent._interaction_metadata,
             )
 
-        agent_call_node = await Promise[AgentCallNode](
-            schedule_immediately=False,
-            fulfiller=_create_agent_call_node,
-        ).acollect()  # ensure on_collect handlers are called
-
         Promise[AgentReplyNode](
-            schedule_immediately=True,  # ensure on_collect handlers are called, but avoid deadlock
-            fulfiller=_create_agent_reply_node,
+            schedule_immediately=True,  # use a separate async task to avoid deadlock upon AgentReplyNode "collection"
+            fulfiller=create_agent_reply_node,
         )
 
 
@@ -388,6 +441,7 @@ def miniagent(
     description: Optional[str] = None,
     uppercase_func_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
+    interaction_metadata: Optional[dict[str, Any]] = None,
 ) -> Union["MiniAgent", Callable[[AgentFunction], MiniAgent]]:
     """
     A decorator that converts an agent function into an agent.
@@ -401,6 +455,7 @@ def miniagent(
                 description=description,
                 uppercase_func_name=uppercase_func_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+                interaction_metadata=interaction_metadata,
             )
 
         return _decorator
@@ -412,6 +467,7 @@ def miniagent(
         description=description,
         uppercase_func_name=uppercase_func_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+        interaction_metadata=interaction_metadata,
     )
 
 

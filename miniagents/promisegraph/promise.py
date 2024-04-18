@@ -82,6 +82,8 @@ class PromiseContext:
         async def awaitable_wrapper() -> Any:
             try:
                 return await awaitable
+                # TODO Oleksandr: memorize exceptions so they can be raised when PromiseContext is finalized ?
+                #  HUGE NO! that would be a memory leak
             finally:
                 self.child_tasks.remove(task)
 
@@ -106,10 +108,11 @@ class PromiseContext:
         Finalize the context (wait for all the child tasks to finish and reset the context). This method is called
         automatically at the end of the `async with` block.
         """
-        await asyncio.gather(
-            *self.child_tasks,
-            return_exceptions=True,  # this prevents waiting until the first exception and then giving up
-        )
+        while self.child_tasks:
+            await asyncio.gather(
+                *self.child_tasks,
+                return_exceptions=True,  # this prevents waiting until the first exception and then giving up
+            )  # TODO Oleksandr: log exceptions that `gather` may return ?
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
 
