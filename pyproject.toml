@@ -6,7 +6,7 @@ branch = true
 
 [tool.poetry]
 name = "miniagents"
-version = "0.0.5"
+version = "0.0.6"
 description = """\
 TODO Oleksandr\
 """
