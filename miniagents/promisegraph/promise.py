@@ -35,6 +35,7 @@ class PromiseContext:
         self,
         schedule_immediately_by_default: bool = True,
         producer_capture_errors_by_default: bool = False,
+        longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
         on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
@@ -45,6 +46,7 @@ class PromiseContext:
 
         self.schedule_immediately_by_default = schedule_immediately_by_default
         self.producer_capture_errors_by_default = producer_capture_errors_by_default
+        self.longer_node_hash_keys = longer_node_hash_keys
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 

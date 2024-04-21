@@ -122,7 +122,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         message_token_producer: MessageTokenProducer = None,
         prefill_message: Optional[Message] = None,
-        metadata_so_far: Optional[Node] = None,
+        metadata_so_far: Optional[dict[str, Any]] = None,
         message_class: type[Message] = Message,
     ) -> None:
         # TODO Oleksandr: raise an error if both ready_message and message_token_producer/metadata_so_far are not None
@@ -140,7 +140,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 packager=self._packager,
             )
             self._message_token_producer = message_token_producer
-            self._metadata_so_far: dict[str, Any] = metadata_so_far.model_dump() if metadata_so_far else {}
+            self._metadata_so_far = metadata_so_far or {}
             self._message_class = message_class
 
     def _producer(self, _) -> AsyncIterator[str]:
@@ -210,11 +210,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         )
 
     @classmethod
-    async def acollect_messages(cls, messages: MessageType) -> tuple[Message, ...]:
+    def turn_into_sequence_promise(cls, messages: MessageType) -> MessageSequencePromise:
         """
         Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
-        MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform tuple of
-        Message objects.
+        MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform
+        MessageSequencePromise object.
         """
         message_sequence = cls(
             producer_capture_errors=True,
@@ -222,7 +222,16 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         )
         with message_sequence.append_producer:
             message_sequence.append_producer.append(messages)
-        return await message_sequence.sequence_promise.acollect_messages()
+        return message_sequence.sequence_promise
+
+    @classmethod
+    async def acollect_messages(cls, messages: MessageType) -> tuple[Message, ...]:
+        """
+        Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
+        MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform tuple of
+        Message objects.
+        """
+        return await cls.turn_into_sequence_promise(messages).acollect_messages()
 
     @staticmethod
     async def _flattener(_, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
