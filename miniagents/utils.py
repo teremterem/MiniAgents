@@ -12,6 +12,7 @@ def join_messages(
     delimiter: Optional[str] = "\n\n",
     strip_leading_newlines: bool = False,
     collect_original_message_hash_keys: bool = True,
+    message_metadata: Optional[dict[str, Any]] = None,
 ) -> MessagePromise:
     """
     Join multiple messages into a single message using a delimiter.
@@ -23,6 +24,7 @@ def join_messages(
     :param delimiter: A string that will be inserted between messages.
     :param collect_original_message_hash_keys: If True, the hash keys of the original messages will be collected
     and stored in the metadata of the resulting message (`original_message_hash_keys` field).
+    :param message_metadata: Additional metadata to be added to the resulting message.
     """
 
     async def token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
@@ -46,5 +48,8 @@ def join_messages(
                 metadata_so_far["original_message_hash_keys"].append((await message_promise.acollect()).hash_key)
 
             first_message = False
+
+        if message_metadata:
+            metadata_so_far.update(message_metadata)
 
     return MessagePromise(message_token_producer=token_producer)
