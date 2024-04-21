@@ -122,7 +122,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         message_token_producer: MessageTokenProducer = None,
         prefill_message: Optional[Message] = None,
-        metadata_so_far: Optional[Node] = None,
+        metadata_so_far: Optional[dict[str, Any]] = None,
         message_class: type[Message] = Message,
     ) -> None:
         # TODO Oleksandr: raise an error if both ready_message and message_token_producer/metadata_so_far are not None
@@ -140,7 +140,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 packager=self._packager,
             )
             self._message_token_producer = message_token_producer
-            self._metadata_so_far: dict[str, Any] = metadata_so_far.model_dump() if metadata_so_far else {}
+            self._metadata_so_far = metadata_so_far or {}
             self._message_class = message_class
 
     def _producer(self, _) -> AsyncIterator[str]:
