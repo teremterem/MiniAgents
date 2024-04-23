@@ -48,7 +48,7 @@ class Node(BaseModel):
         """
         hash_key = hashlib.sha256(self.as_json.encode("utf-8")).hexdigest()
         if not PromiseContext.get_current().longer_node_hash_keys:
-            hash_key = hash_key[:32]
+            hash_key = hash_key[:40]
         return hash_key
 
     def serialize_node(self, **model_dump_kwargs) -> dict[str, Any]:
