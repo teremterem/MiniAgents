@@ -40,7 +40,8 @@ class Node(BaseModel):
         """
         Get the JSON representation of the object. Because it is a property and not a regular method, it always
         returns the complete JSON representation of the object (unlike `serialize_node(**model_dump_kwargs)`, whose
-        behaviour can be customized via `**model_dump_kwargs`).
+        behaviour can be customized via `**model_dump_kwargs`). This representation is also used to calculate the
+        hash key of the node.
         """
         return json.dumps(self.model_dump(), ensure_ascii=False, sort_keys=True)
 
