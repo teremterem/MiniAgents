@@ -9,8 +9,8 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from miniagents.promisegraph.node import Node
-from miniagents.promisegraph.promise import PromiseContext
+from miniagents.promising.node import Node
+from miniagents.promising.promise import PromiseContext
 
 
 class SampleImmutable(Node):

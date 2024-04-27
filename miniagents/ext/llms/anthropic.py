@@ -14,7 +14,7 @@ from miniagents.miniagents import (
     MiniAgents,
     InteractionContext,
 )
-from miniagents.promisegraph.node import Node
+from miniagents.promising.node import Node
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original

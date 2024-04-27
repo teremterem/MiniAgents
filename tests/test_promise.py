@@ -6,8 +6,8 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, PromiseContext
-from miniagents.promisegraph.sentinels import DEFAULT
+from miniagents.promising.promise import StreamedPromise, AppendProducer, PromiseContext
+from miniagents.promising.sentinels import DEFAULT
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])

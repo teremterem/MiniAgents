@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from miniagents.promisegraph.promise import PromiseContext
+from miniagents.promising.promise import PromiseContext
 
 
 class Node(BaseModel):

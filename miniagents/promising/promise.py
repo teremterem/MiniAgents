@@ -9,9 +9,9 @@ from contextvars import ContextVar
 from types import TracebackType
 from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
-from miniagents.promisegraph.errors import AppendClosedError, AppendNotOpenError
-from miniagents.promisegraph.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
-from miniagents.promisegraph.typing import (
+from miniagents.promising.errors import AppendClosedError, AppendNotOpenError
+from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
+from miniagents.promising.typing import (
     T,
     PIECE,
     WHOLE,
