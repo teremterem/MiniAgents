@@ -15,7 +15,7 @@ load_dotenv()
 
 from miniagents.ext.llms.anthropic import create_anthropic_agent
 from miniagents.miniagents import MiniAgents
-from miniagents.promisegraph.node import Node
+from miniagents.promising.node import Node
 
 anthropic_agent = create_anthropic_agent()
 

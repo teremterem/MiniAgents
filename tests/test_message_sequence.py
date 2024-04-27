@@ -5,8 +5,8 @@ Tests for the `MessageSequence` class.
 import pytest
 
 from miniagents.miniagents import MessageSequence, Message, MessagePromise
-from miniagents.promisegraph.promise import PromiseContext
-from miniagents.promisegraph.sentinels import DEFAULT
+from miniagents.promising.promise import PromiseContext
+from miniagents.promising.sentinels import DEFAULT
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])

@@ -4,9 +4,9 @@ The main class in this module is `FlatSequence`. See its docstring for more info
 
 from typing import Generic, AsyncIterator, Union
 
-from miniagents.promisegraph.promise import StreamedPromise
-from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
-from miniagents.promisegraph.typing import SequenceFlattener, IN, OUT, StreamedPieceProducer
+from miniagents.promising.promise import StreamedPromise
+from miniagents.promising.sentinels import Sentinel, DEFAULT
+from miniagents.promising.typing import SequenceFlattener, IN, OUT, StreamedPieceProducer
 
 
 class FlatSequence(Generic[IN, OUT]):

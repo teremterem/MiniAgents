@@ -8,7 +8,7 @@ from typing import Union
 import pytest
 
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
-from miniagents.promisegraph.sentinels import DEFAULT, Sentinel
+from miniagents.promising.sentinels import DEFAULT, Sentinel
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])

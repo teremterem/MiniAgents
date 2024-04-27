@@ -4,11 +4,11 @@ Split this module into multiple modules.
 """
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
-from miniagents.promisegraph.node import Node
-from miniagents.promisegraph.promise import StreamedPromise, AppendProducer, Promise, PromiseContext
-from miniagents.promisegraph.sentinels import Sentinel, DEFAULT
-from miniagents.promisegraph.sequence import FlatSequence
-from miniagents.promisegraph.typing import StreamedPieceProducer, PromiseBound
+from miniagents.promising.node import Node
+from miniagents.promising.promise import StreamedPromise, AppendProducer, Promise, PromiseContext
+from miniagents.promising.sentinels import Sentinel, DEFAULT
+from miniagents.promising.sequence import FlatSequence
+from miniagents.promising.typing import StreamedPieceProducer, PromiseBound
 
 
 class NodeCollectedEventHandler(Protocol):
