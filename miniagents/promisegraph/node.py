@@ -29,7 +29,8 @@ class Node(BaseModel):
     @cached_property
     def as_string(self) -> str:
         """
-        Return a string representation of this node.
+        Return a string representation of this node. This is usually the representation that will be used when
+        the node needs to be a part of an LLM prompts.
         """
         # NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         return self._as_string()
@@ -37,7 +38,9 @@ class Node(BaseModel):
     @cached_property
     def as_json(self) -> str:
         """
-        Get the JSON representation of the object.
+        Get the JSON representation of the object. Because it is a property and not a regular method, it always
+        returns the complete JSON representation of the object (unlike `serialize_node(**model_dump_kwargs)`, whose
+        behaviour can be customized via `**model_dump_kwargs`).
         """
         return json.dumps(self.model_dump(), ensure_ascii=False, sort_keys=True)
 
@@ -53,14 +56,15 @@ class Node(BaseModel):
 
     def serialize_node(self, **model_dump_kwargs) -> dict[str, Any]:
         """
-        TODO Oleksandr
+        Returns a dictionary representation of the node. This method is useful for serialization of the node in order
+        to store it in a database or to send it over the network.
         """
         return self.model_dump(**model_dump_kwargs)
 
     def _as_string(self) -> str:
         """
         Return the message as a string. This is the method that child classes should override to customize the string
-        representation of the message.
+        representation of the message for the LLM prompts.
         """
         return self.as_json
 
