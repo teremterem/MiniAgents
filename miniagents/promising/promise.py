@@ -4,12 +4,14 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 
 import asyncio
 import contextvars
+import logging
 from asyncio import Task
 from contextvars import ContextVar
 from types import TracebackType
 from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
 from miniagents.promising.errors import AppendClosedError, AppendNotOpenError
+from miniagents.promising.node import Node
 from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
 from miniagents.promising.typing import (
     T,
@@ -19,7 +21,10 @@ from miniagents.promising.typing import (
     StreamedWholePackager,
     PromiseCollectedEventHandler,
     PromiseFulfiller,
+    NodeCollectedEventHandler,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PromiseContext:
@@ -37,11 +42,19 @@ class PromiseContext:
         producer_capture_errors_by_default: bool = False,
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
         on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
+        on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
+
         self.on_promise_collected_handlers: list[PromiseCollectedEventHandler] = (
             [on_promise_collected] if callable(on_promise_collected) else list(on_promise_collected)
         )
+        self.on_promise_collected_handlers.insert(0, self._schedule_on_node_collected)
+
+        self.on_node_collected_handlers: list[NodeCollectedEventHandler] = (
+            [on_node_collected] if callable(on_node_collected) else list(on_node_collected)
+        )
+
         self.child_tasks: set[Task] = set()
 
         self.schedule_immediately_by_default = schedule_immediately_by_default
@@ -74,7 +87,23 @@ class PromiseContext:
         self.on_promise_collected_handlers.append(handler)
         return handler
 
-    def schedule_task(self, awaitable: Awaitable) -> Task:
+    def on_node_collected(self, handler: NodeCollectedEventHandler) -> NodeCollectedEventHandler:
+        """
+        Add a handler to be called after a promise of type Node is collected.
+        """
+        self.on_node_collected_handlers.append(handler)
+        return handler
+
+    async def _schedule_on_node_collected(self, _, result: Any) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        if not isinstance(result, Node):
+            return
+        for handler in self.on_node_collected_handlers:
+            self.schedule_task(handler(_, result))
+
+    def schedule_task(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
@@ -82,10 +111,14 @@ class PromiseContext:
         """
 
         async def awaitable_wrapper() -> Any:
+            # noinspection PyBroadException
             try:
                 return await awaitable
-                # TODO Oleksandr: memorize exceptions so they can be raised when PromiseContext is finalized ?
-                #  HUGE NO! that would be a memory leak
+            except BaseException:  # pylint: disable=broad-except
+                if suppress_errors:
+                    logger.debug("AN ERROR OCCURRED IN A SCHEDULED TASK BUT WAS SUPPRESSED", exc_info=True)
+                else:
+                    raise
             finally:
                 self.child_tasks.remove(task)
 
@@ -154,7 +187,7 @@ class Promise(Generic[T]):
         self._fulfiller_lock = asyncio.Lock()
 
         if schedule_immediately and prefill_result is NO_VALUE:
-            promise_context.schedule_task(self.acollect())
+            promise_context.schedule_task(self.acollect(), suppress_errors=True)
 
     async def acollect(self) -> T:
         """
@@ -201,7 +234,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     TODO Oleksandr: explain the `schedule_immediately` parameter
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
         self,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         producer: Optional[StreamedPieceProducer[PIECE]] = None,
