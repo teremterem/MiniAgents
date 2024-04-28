@@ -5,6 +5,8 @@ Split this module into multiple modules.
 from functools import cached_property
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
+from pydantic import BaseModel
+
 from miniagents.promising.node import Node
 from miniagents.promising.promising import StreamedPromise, AppendProducer, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
@@ -157,7 +159,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
 
 # TODO Oleksandr: add documentation somewhere that explains what MessageType and SingleMessageType represent
-SingleMessageType = Union[str, dict[str, Any], Message, MessagePromise, BaseException]
+SingleMessageType = Union[str, dict[str, Any], BaseModel, Message, MessagePromise, BaseException]
 MessageType = Union[SingleMessageType, Iterable["MessageType"], AsyncIterable["MessageType"]]
 
 
@@ -235,12 +237,14 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     async def _flattener(cls, _, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
         if isinstance(zero_or_more_items, MessagePromise):
             yield zero_or_more_items
-        elif isinstance(zero_or_more_items, Message):  # TODO Oleksandr: what if it's not a Message, but a Node ?
+        elif isinstance(zero_or_more_items, Message):
             yield zero_or_more_items.as_promise
-        elif isinstance(zero_or_more_items, str):
-            yield Message(text=zero_or_more_items).as_promise
+        elif isinstance(zero_or_more_items, BaseModel):
+            yield Message(**zero_or_more_items.model_dump()).as_promise
         elif isinstance(zero_or_more_items, dict):
             yield Message(**zero_or_more_items).as_promise
+        elif isinstance(zero_or_more_items, str):
+            yield Message(text=zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
             raise zero_or_more_items
         elif hasattr(zero_or_more_items, "__iter__"):
