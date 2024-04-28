@@ -5,7 +5,7 @@ Tests for the `MessageSequence` class.
 import pytest
 
 from miniagents.miniagents import MessageSequence, Message, MessagePromise
-from miniagents.promising.promise import PromiseContext
+from miniagents.promising.promise import PromisingContext
 from miniagents.promising.sentinels import DEFAULT
 
 
@@ -15,7 +15,7 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence.
     """
-    async with PromiseContext():
+    async with PromisingContext():
         msg_seq1 = MessageSequence(
             producer_capture_errors=True,
             schedule_immediately=schedule_immediately,
@@ -86,7 +86,7 @@ async def test_message_sequence_error(schedule_immediately: bool) -> None:
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
     the right place.
     """
-    async with PromiseContext():
+    async with PromisingContext():
         msg_seq1 = MessageSequence(
             producer_capture_errors=True,
             schedule_immediately=schedule_immediately,

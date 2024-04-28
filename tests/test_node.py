@@ -10,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from miniagents.promising.node import Node
-from miniagents.promising.promise import PromiseContext
+from miniagents.promising.promise import PromisingContext
 
 
 class SampleImmutable(Node):
@@ -55,7 +55,7 @@ async def test_sample_immutable_hash_key() -> None:
     """
     Test `SampleImmutable.hash_key` property.
     """
-    async with PromiseContext():
+    async with PromisingContext():
         sample = SampleImmutable(
             some_req_field="test", sub_immutable=SampleImmutable(some_req_field="юнікод", some_opt_field=3)
         )
@@ -74,7 +74,7 @@ async def test_node_hash_key() -> None:
     """
     Test the original `Node.hash_key` property.
     """
-    async with PromiseContext():
+    async with PromisingContext():
         node = Node(content="test", final_sender_alias="user", custom_field={"role": "user"})
         # print(json.dumps(node.model_dump(exclude={"forum_trees"}), ensure_ascii=False, sort_keys=True))
         expected_hash_key = hashlib.sha256(
@@ -104,7 +104,7 @@ async def test_hash_key_calculated_once() -> None:
     original_sha256 = hashlib.sha256
 
     with patch("hashlib.sha256", side_effect=original_sha256) as mock_sha256:
-        async with PromiseContext():
+        async with PromisingContext():
             sample = SampleImmutable(some_req_field="test")
             mock_sha256.assert_not_called()  # not calculated yet
 
@@ -120,7 +120,7 @@ async def test_node_hash_key_vs_key_ordering() -> None:
     """
     Test that `hash_key` of `Node` is not affected by the ordering of its fields.
     """
-    async with PromiseContext():
+    async with PromisingContext():
         node1 = Node(some_field="test", some_other_field=2)
         node2 = Node(some_other_field=2, some_field="test")
 

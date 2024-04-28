@@ -6,7 +6,8 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promising.promise import StreamedPromise, AppendProducer, PromiseContext
+from miniagents.promising.node import Node
+from miniagents.promising.promise import StreamedPromise, AppendProducer, PromisingContext, Promise
 from miniagents.promising.sentinels import DEFAULT
 
 
@@ -27,7 +28,7 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -71,7 +72,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
         with pytest.raises(StopAsyncIteration):
             await promise_iterator.__anext__()
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -116,7 +117,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
         with pytest.raises(StopAsyncIteration):
             await promise_iterator.__anext__()
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=broken_producer,
             packager=packager,
@@ -157,7 +158,7 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
         for i in range(1, 6):
             producer.append(i)
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=broken_packager,
@@ -197,7 +198,7 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
         packager_calls += 1
         return [piece async for piece in _streamed_promise]
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -233,7 +234,7 @@ async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -258,7 +259,7 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
         assert _streamed_promise is streamed_promise
         return [piece async for piece in _streamed_promise]
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -266,3 +267,94 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
         )
 
         await streamed_promise.acollect()
+
+
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.asyncio
+async def test_on_node_collected_event_called_once(schedule_immediately: bool) -> None:
+    """
+    Assert that the `on_node_collected` event is called only once if the same Node is collected multiple times.
+    """
+    promise_collected_calls = 0
+    node_collected_calls = 0
+
+    async def on_promise_collected(_, __) -> None:
+        nonlocal promise_collected_calls
+        promise_collected_calls += 1
+
+    async def on_node_collected(_, __) -> None:
+        nonlocal node_collected_calls
+        node_collected_calls += 1
+
+    some_node = Node()
+
+    async with PromisingContext(
+        on_promise_collected=on_promise_collected,
+        on_node_collected=on_node_collected,
+    ):
+        Promise(prefill_result=some_node, schedule_immediately=schedule_immediately)
+        Promise(prefill_result=some_node, schedule_immediately=schedule_immediately)
+
+    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
+    assert node_collected_calls == 1
+
+
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.asyncio
+async def test_on_node_collected_event_called_twice(schedule_immediately: bool) -> None:
+    """
+    Assert that the `on_node_collected` event is called twice if two different Nodes are collected.
+    """
+    promise_collected_calls = 0
+    node_collected_calls = 0
+
+    async def on_promise_collected(_, __) -> None:
+        nonlocal promise_collected_calls
+        promise_collected_calls += 1
+
+    async def on_node_collected(_, __) -> None:
+        nonlocal node_collected_calls
+        node_collected_calls += 1
+
+    node1 = Node()
+    node2 = Node()
+
+    async with PromisingContext(
+        on_promise_collected=on_promise_collected,
+        on_node_collected=on_node_collected,
+    ):
+        Promise(prefill_result=node1, schedule_immediately=schedule_immediately)
+        Promise(prefill_result=node2, schedule_immediately=schedule_immediately)
+
+    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
+    assert node_collected_calls == 2
+
+
+@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.asyncio
+async def test_on_node_collected_event_not_called(schedule_immediately: bool) -> None:
+    """
+    Assert that the `on_node_collected` event is not called if the collected value is not a Node.
+    """
+    promise_collected_calls = 0
+    node_collected_calls = 0
+
+    async def on_promise_collected(_, __) -> None:
+        nonlocal promise_collected_calls
+        promise_collected_calls += 1
+
+    async def on_node_collected(_, __) -> None:
+        nonlocal node_collected_calls
+        node_collected_calls += 1
+
+    value = "not a node"
+
+    async with PromisingContext(
+        on_promise_collected=on_promise_collected,
+        on_node_collected=on_node_collected,
+    ):
+        Promise(prefill_result=value, schedule_immediately=schedule_immediately)
+        Promise(prefill_result=value, schedule_immediately=schedule_immediately)
+
+    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
+    assert node_collected_calls == 0
