@@ -1,5 +1,5 @@
 """
-Types for the PromiseGraph part of the library.
+Types for the Promising part of the library.
 """
 
 import typing
