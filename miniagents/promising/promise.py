@@ -47,14 +47,13 @@ class PromiseContext:
         self.parent = self._current.get()
 
         self.on_promise_collected_handlers: list[PromiseCollectedEventHandler] = (
-            [on_promise_collected] if callable(on_promise_collected) else list(on_promise_collected)
+            [self._schedule_on_node_collected, on_promise_collected]
+            if callable(on_promise_collected)
+            else [self._schedule_on_node_collected, *on_promise_collected]
         )
-        self.on_promise_collected_handlers.insert(0, self._schedule_on_node_collected)
-
         self.on_node_collected_handlers: list[NodeCollectedEventHandler] = (
             [on_node_collected] if callable(on_node_collected) else list(on_node_collected)
         )
-
         self.child_tasks: set[Task] = set()
 
         self.schedule_immediately_by_default = schedule_immediately_by_default

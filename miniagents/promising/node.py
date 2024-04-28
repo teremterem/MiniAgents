@@ -7,7 +7,7 @@ import json
 from functools import cached_property
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator, PrivateAttr
 
 
 class Node(BaseModel):
@@ -18,6 +18,8 @@ class Node(BaseModel):
     """
 
     model_config = ConfigDict(frozen=True, extra="allow")
+
+    _node_collected: bool = PrivateAttr(default=False)
 
     class_: str
 
