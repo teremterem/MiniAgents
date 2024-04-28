@@ -4,7 +4,7 @@ Tests for the `MessageSequence` class.
 
 import pytest
 
-from miniagents.miniagents import MessageSequence, Message, MessagePromise
+from miniagents.miniagents import MessageSequence, Message
 from miniagents.promising.promising import PromisingContext
 from miniagents.promising.sentinels import DEFAULT
 
@@ -45,7 +45,7 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
                 msg_seq2.append_producer.append("msg9")
 
             msg_seq1.append_producer.append(msg_seq2.sequence_promise)
-            msg_seq1.append_producer.append(MessagePromise(prefill_message=Message(text="msg10", yet_another_attr=10)))
+            msg_seq1.append_producer.append(Message.promise(text="msg10", yet_another_attr=10))
             # msg_seq1.append_producer.append(ValueError("msg11"))
 
         message_result = [await msg_promise.acollect() async for msg_promise in msg_seq1.sequence_promise]
