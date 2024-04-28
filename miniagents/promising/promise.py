@@ -32,6 +32,9 @@ class PromiseContext:
     This is the main class for managing the context of promises. It is a context manager that is used to configure
     default settings for promises and to handle the lifecycle of promises (attach `on_promise_collected` handlers).
     TODO Oleksandr: explain this class in more detail
+    TODO Oleksandr: especially the fact that on_node_collected is called for each Node instance only once (Node
+     instances keep track of whether on_node_collected has been called for them or not, and if it has, it is not
+     called)
     """
 
     _current: ContextVar[Optional["PromiseContext"]] = ContextVar("PromiseContext._current", default=None)
@@ -99,8 +102,11 @@ class PromiseContext:
         """
         if not isinstance(result, Node):
             return
-        for handler in self.on_node_collected_handlers:
-            self.schedule_task(handler(_, result))
+        # pylint: disable=protected-access
+        if not hasattr(result, "_node_collected_event_triggered") or not result._node_collected_event_triggered:
+            for handler in self.on_node_collected_handlers:
+                self.schedule_task(handler(_, result))
+            result._node_collected_event_triggered = True
 
     def schedule_task(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
