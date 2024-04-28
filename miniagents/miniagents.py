@@ -231,11 +231,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         """
         return await cls.turn_into_sequence_promise(messages).acollect_messages()
 
-    @staticmethod
-    async def _flattener(_, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
+    @classmethod
+    async def _flattener(cls, _, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
         if isinstance(zero_or_more_items, MessagePromise):
             yield zero_or_more_items
-        elif isinstance(zero_or_more_items, Message):
+        elif isinstance(zero_or_more_items, Message):  # TODO Oleksandr: what if it's not a Message, but a Node ?
             yield zero_or_more_items.as_promise
         elif isinstance(zero_or_more_items, str):
             yield Message(text=zero_or_more_items).as_promise
@@ -245,14 +245,14 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             raise zero_or_more_items
         elif hasattr(zero_or_more_items, "__iter__"):
             for item in zero_or_more_items:
-                async for message_promise in MessageSequence._flattener(_, item):
+                async for message_promise in cls._flattener(_, item):
                     yield message_promise
         elif hasattr(zero_or_more_items, "__aiter__"):
             async for item in zero_or_more_items:
-                async for message_promise in MessageSequence._flattener(_, item):
+                async for message_promise in cls._flattener(_, item):
                     yield message_promise
         else:
-            raise TypeError(f"unexpected message type: {type(zero_or_more_items)}")
+            raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
 
 
 class InteractionContext:
