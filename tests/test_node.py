@@ -59,6 +59,13 @@ async def test_sample_immutable_hash_key() -> None:
         sample = SampleImmutable(
             some_req_field="test", sub_immutable=SampleImmutable(some_req_field="юнікод", some_opt_field=3)
         )
+        # Let's make sure that private instance attributes that were not declared in the model beforehand:
+        #  1) are settable despite the model being frozen;
+        #  2) do not influence the hash_key.
+        # PromisingContext.on_node_collected event sets a private attribute on Node instances, hence we want to
+        # ensure these properties.
+        # pylint: disable=protected-access,attribute-defined-outside-init
+        sample._some_private_attribute = "some value"
 
         # print(json.dumps(sample.model_dump(), ensure_ascii=False, sort_keys=True))
         expected_hash_key = hashlib.sha256(

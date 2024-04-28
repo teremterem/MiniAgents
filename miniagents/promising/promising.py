@@ -143,16 +143,23 @@ class PromisingContext:
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
         return self
 
-    async def afinalize(self) -> None:
+    async def aflush_tasks(self) -> None:
         """
-        Finalize the context (wait for all the child tasks to finish and reset the context). This method is called
-        automatically at the end of the `async with` block.
+        Wait for all the child tasks to finish. This is useful when you want to wait for all the child tasks to finish
+        before proceeding with the rest of the code.
         """
         while self.child_tasks:
             await asyncio.gather(
                 *self.child_tasks,
                 return_exceptions=True,  # this prevents waiting until the first exception and then giving up
             )  # TODO Oleksandr: log exceptions that `gather` may return ?
+
+    async def afinalize(self) -> None:
+        """
+        Finalize the context (wait for all the child tasks to finish and reset the context). This method is called
+        automatically at the end of the `async with` block.
+        """
+        await self.aflush_tasks()
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
 
