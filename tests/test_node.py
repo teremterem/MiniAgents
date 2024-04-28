@@ -10,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from miniagents.promising.node import Node
-from miniagents.promising.promise import PromisingContext
+from miniagents.promising.promising import PromisingContext
 
 
 class SampleImmutable(Node):

@@ -7,7 +7,7 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promising.node import Node
-from miniagents.promising.promise import StreamedPromise, AppendProducer, PromisingContext, Promise
+from miniagents.promising.promising import StreamedPromise, AppendProducer, PromisingContext, Promise
 from miniagents.promising.sentinels import DEFAULT
 
 

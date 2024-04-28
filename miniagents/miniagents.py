@@ -5,7 +5,7 @@ Split this module into multiple modules.
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
 
 from miniagents.promising.node import Node
-from miniagents.promising.promise import StreamedPromise, AppendProducer, Promise, PromisingContext
+from miniagents.promising.promising import StreamedPromise, AppendProducer, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
 from miniagents.promising.typing import StreamedPieceProducer

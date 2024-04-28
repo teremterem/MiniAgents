@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promising.promise import PromisingContext, AppendProducer
+from miniagents.promising.promising import PromisingContext, AppendProducer
 from miniagents.promising.sentinels import DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
