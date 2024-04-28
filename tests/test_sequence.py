@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promising.promise import PromiseContext, AppendProducer
+from miniagents.promising.promise import PromisingContext, AppendProducer
 from miniagents.promising.sentinels import DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
@@ -23,7 +23,7 @@ async def test_flat_sequence(schedule_immediately: bool) -> None:
         for _ in range(number):
             yield number
 
-    async with PromiseContext():
+    async with PromisingContext():
         append_producer = AppendProducer[int](capture_errors=True)
         flat_sequence = FlatSequence[int, int](
             incoming_producer=append_producer,

@@ -27,7 +27,7 @@ from miniagents.promising.typing import (
 logger = logging.getLogger(__name__)
 
 
-class PromiseContext:
+class PromisingContext:
     """
     This is the main class for managing the context of promises. It is a context manager that is used to configure
     default settings for promises and to handle the lifecycle of promises (attach `on_promise_collected` handlers).
@@ -37,7 +37,7 @@ class PromiseContext:
      called)
     """
 
-    _current: ContextVar[Optional["PromiseContext"]] = ContextVar("PromiseContext._current", default=None)
+    _current: ContextVar[Optional["PromisingContext"]] = ContextVar("PromisingContext._current", default=None)
 
     def __init__(
         self,
@@ -66,7 +66,7 @@ class PromiseContext:
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
     @classmethod
-    def get_current(cls) -> "PromiseContext":
+    def get_current(cls) -> "PromisingContext":
         """
         Get the current context. If no context is currently active, raise an error.
         """
@@ -131,15 +131,15 @@ class PromiseContext:
         self.child_tasks.add(task)
         return task
 
-    def activate(self) -> "PromiseContext":
+    def activate(self) -> "PromisingContext":
         """
         Activate the context. This is a context manager method that is used to activate the context for the duration
         of the `async with` block. Can be called as a regular method as well in cases where it is not possible to use
-        the `async with` block (e.g., if a PromiseContext needs to be activated for the duration of an async webserver
+        the `async with` block (e.g., if a PromisingContext needs to be activated for the duration of an async webserver
         being up).
         """
         if self._previous_ctx_token:
-            raise RuntimeError("PromiseContext is not reentrant")
+            raise RuntimeError("PromisingContext is not reentrant")
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
         return self
 
@@ -156,7 +156,7 @@ class PromiseContext:
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
 
-    async def __aenter__(self) -> "PromiseContext":
+    async def __aenter__(self) -> "PromisingContext":
         return self.activate()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -175,10 +175,10 @@ class Promise(Generic[T]):
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefilled_whole and packager are set (or both are not set)
-        promise_context = PromiseContext.get_current()
+        promising_context = PromisingContext.get_current()
 
         if schedule_immediately is DEFAULT:
-            schedule_immediately = promise_context.schedule_immediately_by_default
+            schedule_immediately = promising_context.schedule_immediately_by_default
 
         self.__fulfiller = fulfiller
 
@@ -192,7 +192,7 @@ class Promise(Generic[T]):
         self._fulfiller_lock = asyncio.Lock()
 
         if schedule_immediately and prefill_result is NO_VALUE:
-            promise_context.schedule_task(self.acollect(), suppress_errors=True)
+            promising_context.schedule_task(self.acollect(), suppress_errors=True)
 
     async def acollect(self) -> T:
         """
@@ -217,11 +217,11 @@ class Promise(Generic[T]):
         return self._result
 
     def _schedule_collected_event_handlers(self):
-        promise_ctx = PromiseContext.get_current()
-        while promise_ctx:
-            for handler in promise_ctx.on_promise_collected_handlers:
-                promise_ctx.schedule_task(handler(self, self._result))
-            promise_ctx = promise_ctx.parent
+        promising_context = PromisingContext.get_current()
+        while promising_context:
+            for handler in promising_context.on_promise_collected_handlers:
+                promising_context.schedule_task(handler(self, self._result))
+            promising_context = promising_context.parent
 
 
 class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
@@ -248,10 +248,10 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         prefill_whole: Union[Optional[WHOLE], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and producer are set (or both are not set)
-        promise_context = PromiseContext.get_current()
+        promising_context = PromisingContext.get_current()
 
         if schedule_immediately is DEFAULT:
-            schedule_immediately = promise_context.schedule_immediately_by_default
+            schedule_immediately = promising_context.schedule_immediately_by_default
 
         super().__init__(
             schedule_immediately=schedule_immediately,
@@ -271,7 +271,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promise_context.schedule_task(self._aproduce_the_stream())
+            promising_context.schedule_task(self._aproduce_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
@@ -387,7 +387,7 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
         self._append_open = False
         self._append_closed = False
         if capture_errors is DEFAULT:
-            self._capture_errors = PromiseContext.get_current().producer_capture_errors_by_default
+            self._capture_errors = PromisingContext.get_current().producer_capture_errors_by_default
         else:
             self._capture_errors = capture_errors
 

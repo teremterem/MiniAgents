@@ -7,7 +7,7 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promising.node import Node
-from miniagents.promising.promise import StreamedPromise, AppendProducer, PromiseContext, Promise
+from miniagents.promising.promise import StreamedPromise, AppendProducer, PromisingContext, Promise
 from miniagents.promising.sentinels import DEFAULT
 
 
@@ -28,7 +28,7 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -72,7 +72,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
         with pytest.raises(StopAsyncIteration):
             await promise_iterator.__anext__()
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -117,7 +117,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
         with pytest.raises(StopAsyncIteration):
             await promise_iterator.__anext__()
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=broken_producer,
             packager=packager,
@@ -158,7 +158,7 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
         for i in range(1, 6):
             producer.append(i)
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=broken_packager,
@@ -198,7 +198,7 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
         packager_calls += 1
         return [piece async for piece in _streamed_promise]
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -234,7 +234,7 @@ async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -
     async def packager(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -259,7 +259,7 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
         assert _streamed_promise is streamed_promise
         return [piece async for piece in _streamed_promise]
 
-    async with PromiseContext():
+    async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
             packager=packager,
@@ -288,7 +288,7 @@ async def test_on_node_collected_event_called_once(schedule_immediately: bool) -
 
     some_node = Node()
 
-    async with PromiseContext(
+    async with PromisingContext(
         on_promise_collected=on_promise_collected,
         on_node_collected=on_node_collected,
     ):
@@ -319,7 +319,7 @@ async def test_on_node_collected_event_called_twice(schedule_immediately: bool) 
     node1 = Node()
     node2 = Node()
 
-    async with PromiseContext(
+    async with PromisingContext(
         on_promise_collected=on_promise_collected,
         on_node_collected=on_node_collected,
     ):
@@ -349,7 +349,7 @@ async def test_on_node_collected_event_not_called(schedule_immediately: bool) ->
 
     value = "not a node"
 
-    async with PromiseContext(
+    async with PromisingContext(
         on_promise_collected=on_promise_collected,
         on_node_collected=on_node_collected,
     ):

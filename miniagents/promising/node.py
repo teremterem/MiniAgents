@@ -49,10 +49,10 @@ class Node(BaseModel):
         Get the hash key for this object. It is a hash of the JSON representation of the object.
         """
         # pylint: disable=cyclic-import,import-outside-toplevel
-        from miniagents.promising.promise import PromiseContext
+        from miniagents.promising.promise import PromisingContext
 
         hash_key = hashlib.sha256(self.as_json.encode("utf-8")).hexdigest()
-        if not PromiseContext.get_current().longer_node_hash_keys:
+        if not PromisingContext.get_current().longer_node_hash_keys:
             hash_key = hash_key[:40]
         return hash_key
 
