@@ -2,7 +2,10 @@
 Split this module into multiple modules.
 """
 
+from functools import cached_property
 from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Callable
+
+from pydantic import BaseModel
 
 from miniagents.promising.node import Node
 from miniagents.promising.promising import StreamedPromise, AppendProducer, Promise, PromisingContext
@@ -33,6 +36,14 @@ class MiniAgents(PromisingContext):
         return super().get_current()
 
 
+class MessageTokenProducer(Protocol):
+    """
+    A protocol for message piece producer functions.
+    """
+
+    def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
+
+
 class Message(Node):
     """
     A message that can be sent between agents.
@@ -47,6 +58,33 @@ class Message(Node):
         if self.text_template is not None:
             return self.text_template.format(**self.model_dump())
         return super()._as_string()
+
+    @cached_property
+    def as_promise(self) -> "MessagePromise":
+        """
+        Convert this message into a MessagePromise object.
+        """
+        return MessagePromise(prefill_message=self)
+
+    @classmethod
+    def promise(
+        cls,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        message_token_producer: MessageTokenProducer = None,
+        **message_kwargs,
+    ) -> "MessagePromise":
+        """
+        Create a MessagePromise object based on the Message class this method is called for and the provided
+        arguments.
+        """
+        if message_token_producer:
+            return MessagePromise(
+                schedule_immediately=schedule_immediately,
+                message_token_producer=message_token_producer,
+                message_class=cls,
+                **message_kwargs,
+            )
+        return cls(**message_kwargs).as_promise
 
 
 class AgentInteractionNode(Node):
@@ -74,14 +112,6 @@ class AgentReplyNode(Node):
     reply_hash_keys: tuple[str, ...]
 
 
-class MessageTokenProducer(Protocol):
-    """
-    A protocol for message piece producer functions.
-    """
-
-    def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
-
-
 class MessagePromise(StreamedPromise[str, Message]):
     """
     A promise of a message that can be streamed token by token.
@@ -92,8 +122,8 @@ class MessagePromise(StreamedPromise[str, Message]):
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         message_token_producer: MessageTokenProducer = None,
         prefill_message: Optional[Message] = None,
-        metadata_so_far: Optional[dict[str, Any]] = None,
         message_class: type[Message] = Message,
+        **metadata_so_far,
     ) -> None:
         # TODO Oleksandr: raise an error if both ready_message and message_token_producer/metadata_so_far are not None
         #  (or both are None)
@@ -110,7 +140,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 packager=self._packager,
             )
             self._message_token_producer = message_token_producer
-            self._metadata_so_far = metadata_so_far or {}
+            self._metadata_so_far = metadata_so_far
             self._message_class = message_class
 
     def _producer(self, _) -> AsyncIterator[str]:
@@ -129,7 +159,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
 
 # TODO Oleksandr: add documentation somewhere that explains what MessageType and SingleMessageType represent
-SingleMessageType = Union[str, dict[str, Any], Message, MessagePromise, BaseException]
+SingleMessageType = Union[str, dict[str, Any], BaseModel, Message, MessagePromise, BaseException]
 MessageType = Union[SingleMessageType, Iterable["MessageType"], AsyncIterable["MessageType"]]
 
 
@@ -203,28 +233,30 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         """
         return await cls.turn_into_sequence_promise(messages).acollect_messages()
 
-    @staticmethod
-    async def _flattener(_, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
+    @classmethod
+    async def _flattener(cls, _, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
         if isinstance(zero_or_more_items, MessagePromise):
             yield zero_or_more_items
         elif isinstance(zero_or_more_items, Message):
-            yield MessagePromise(prefill_message=zero_or_more_items)
-        elif isinstance(zero_or_more_items, str):
-            yield MessagePromise(prefill_message=Message(text=zero_or_more_items))
+            yield zero_or_more_items.as_promise
+        elif isinstance(zero_or_more_items, BaseModel):
+            yield Message(**zero_or_more_items.model_dump()).as_promise
         elif isinstance(zero_or_more_items, dict):
-            yield MessagePromise(prefill_message=Message(**zero_or_more_items))
+            yield Message(**zero_or_more_items).as_promise
+        elif isinstance(zero_or_more_items, str):
+            yield Message(text=zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
             raise zero_or_more_items
         elif hasattr(zero_or_more_items, "__iter__"):
             for item in zero_or_more_items:
-                async for message_promise in MessageSequence._flattener(_, item):
+                async for message_promise in cls._flattener(_, item):
                     yield message_promise
         elif hasattr(zero_or_more_items, "__aiter__"):
             async for item in zero_or_more_items:
-                async for message_promise in MessageSequence._flattener(_, item):
+                async for message_promise in cls._flattener(_, item):
                     yield message_promise
         else:
-            raise TypeError(f"unexpected message type: {type(zero_or_more_items)}")
+            raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
 
 
 class InteractionContext:

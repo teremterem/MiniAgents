@@ -7,7 +7,6 @@ from functools import partial
 from typing import AsyncIterator, Any, Optional
 
 from miniagents.miniagents import (
-    MessagePromise,
     Message,
     miniagent,
     MiniAgent,
@@ -100,10 +99,9 @@ async def _anthropic_func(
         metadata_so_far["anthropic"] = anthropic_final_message.model_dump(exclude={"content"})
 
     ctx.reply(
-        MessagePromise(
+        AnthropicMessage.promise(
             schedule_immediately=True,  # TODO Oleksandr: should this be customizable ?
             message_token_producer=message_token_producer,
-            message_class=AnthropicMessage,
         )
     )
 

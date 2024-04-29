@@ -4,7 +4,7 @@ Utility functions of the MiniAgents framework.
 
 from typing import AsyncIterator, Any, Optional
 
-from miniagents.miniagents import MessageType, MessageSequence, MessagePromise
+from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message
 
 
 def join_messages(
@@ -12,7 +12,7 @@ def join_messages(
     delimiter: Optional[str] = "\n\n",
     strip_leading_newlines: bool = False,
     collect_original_message_hash_keys: bool = True,
-    message_metadata: Optional[dict[str, Any]] = None,
+    **message_metadata,
 ) -> MessagePromise:
     """
     Join multiple messages into a single message using a delimiter.
@@ -49,7 +49,6 @@ def join_messages(
 
             first_message = False
 
-        if message_metadata:
-            metadata_so_far.update(message_metadata)
+        metadata_so_far.update(message_metadata)
 
-    return MessagePromise(message_token_producer=token_producer)
+    return Message.promise(message_token_producer=token_producer)
