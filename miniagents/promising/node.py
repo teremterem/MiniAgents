@@ -56,13 +56,6 @@ class Node(BaseModel):
             hash_key = hash_key[:40]
         return hash_key
 
-    def serialize_node(self, **model_dump_kwargs) -> dict[str, Any]:
-        """
-        Returns a dictionary representation of the node. This method is useful for serialization of the node in order
-        to store it in a database or to send it over the network.
-        """
-        return self.model_dump(**model_dump_kwargs)
-
     def _as_string(self) -> str:
         """
         Return the message as a string. This is the method that child classes should override to customize the string
