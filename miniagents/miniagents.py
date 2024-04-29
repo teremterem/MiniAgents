@@ -7,7 +7,6 @@ from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable
 from pydantic import BaseModel
 
 from miniagents.messages import MessageType, MessagePromise, MessageSequencePromise, Message
-from miniagents.promising.node import Node
 from miniagents.promising.promising import AppendProducer, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
@@ -239,7 +238,7 @@ class MiniAgent:
         return agent_call
 
 
-class AgentInteractionNode(Node):
+class AgentInteractionNode(Message):
     """
     TODO Oleksandr
     """
@@ -247,21 +246,21 @@ class AgentInteractionNode(Node):
     agent_alias: str
 
 
-class AgentCallNode(Node):
+class AgentCallNode(AgentInteractionNode):
     """
     TODO Oleksandr
     """
 
-    message_hash_keys: tuple[str, ...]
+    message_hash_keys: tuple[str, ...]  # TODO Oleksandr: put actual messages here
 
 
-class AgentReplyNode(Node):
+class AgentReplyNode(AgentInteractionNode):
     """
     TODO Oleksandr
     """
 
     agent_call_hash_key: str
-    reply_hash_keys: tuple[str, ...]
+    reply_hash_keys: tuple[str, ...]  # TODO Oleksandr: put actual messages here
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
