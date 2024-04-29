@@ -148,6 +148,7 @@ class PromisingContext:
         Wait for all the child tasks to finish. This is useful when you want to wait for all the child tasks to finish
         before proceeding with the rest of the code.
         """
+        # TODO Oleksandr: introduce `raise_if_errors` flag ?
         while self.child_tasks:
             await asyncio.gather(
                 *self.child_tasks,
