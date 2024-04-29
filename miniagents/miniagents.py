@@ -36,6 +36,209 @@ class MiniAgents(PromisingContext):
         return super().get_current()
 
 
+def miniagent(
+    func: Optional["AgentFunction"] = None,
+    /,  # TODO Oleksandr: do I really need to enforce positional-only upon `func` ?
+    alias: Optional[str] = None,
+    description: Optional[str] = None,
+    uppercase_func_name: bool = True,
+    normalize_spaces_in_docstring: bool = True,
+    interaction_metadata: Optional[dict[str, Any]] = None,
+) -> Union["MiniAgent", Callable[["AgentFunction"], "MiniAgent"]]:
+    """
+    A decorator that converts an agent function into an agent.
+    """
+    if func is None:
+        # the decorator `@miniagent(...)` was used with arguments
+        def _decorator(f: "AgentFunction") -> "MiniAgent":
+            return MiniAgent(
+                f,
+                alias=alias,
+                description=description,
+                uppercase_func_name=uppercase_func_name,
+                normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+                interaction_metadata=interaction_metadata,
+            )
+
+        return _decorator
+
+    # the decorator `@miniagent` was used either without arguments or as a direct function call
+    return MiniAgent(
+        func,
+        alias=alias,
+        description=description,
+        uppercase_func_name=uppercase_func_name,
+        normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+        interaction_metadata=interaction_metadata,
+    )
+
+
+class AgentFunction(Protocol):
+    """
+    A protocol for agent functions.
+    """
+
+    async def __call__(self, ctx: "InteractionContext", **kwargs) -> None: ...
+
+
+class InteractionContext:
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_producer: AppendProducer[MessageType]
+    ) -> None:
+        self.this_agent = this_agent
+        self.messages = messages
+        self._reply_producer = reply_producer
+
+    def reply(self, messages: MessageType) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        # TODO Oleksandr: add a warning that iterators, async iterators and generators, if passed as `messages` will
+        #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
+        #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
+        #  guarantee that it will be iterated over immediately)
+        self._reply_producer.append(messages)
+
+
+class AgentCall:
+    """
+    TODO Oleksandr: update this docstring
+    TODO Oleksandr: turn this into a context manager ?
+    A call to an agent. This object is returned by Agent.start_asking()/start_telling() methods. It is used to send
+    requests to the agent and receive its responses.
+    """
+
+    def __init__(
+        self,
+        message_producer: AppendProducer[MessageType],
+        reply_sequence_promise: MessageSequencePromise,
+    ) -> None:
+        self._message_producer = message_producer
+        self._reply_sequence_promise = reply_sequence_promise
+
+        self._message_producer.open()
+
+    def send_message(self, message: MessageType) -> "AgentCall":
+        """
+        TODO Oleksandr: update this docstring ?
+        Send a request to the agent.
+        """
+        self._message_producer.append(message)
+        return self
+
+    def reply_sequence(self) -> MessageSequencePromise:
+        """
+        TODO Oleksandr: update this docstring ?
+        Finish the agent call and return the agent's response(s).
+
+        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
+        """
+        self.finish()
+        return self._reply_sequence_promise
+
+    def finish(self) -> "AgentCall":
+        """
+        Finish the agent call.
+
+        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
+        """
+        # TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
+        self._message_producer.close()
+        return self
+
+
+class MiniAgent:
+    """
+    A wrapper for an agent function that allows calling the agent.
+    """
+
+    def __init__(
+        self,
+        func: AgentFunction,
+        alias: Optional[str] = None,
+        description: Optional[str] = None,
+        # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
+        uppercase_func_name: bool = True,
+        normalize_spaces_in_docstring: bool = True,
+        interaction_metadata: Optional[dict[str, Any]] = None,
+    ) -> None:
+        self._func = func
+        # TODO Oleksandr: do deep copy ? freeze with Node ? yoo need to start putting these things down into the
+        #  "Philosophy" section of README
+        self._interaction_metadata = interaction_metadata or {}
+
+        self.alias = alias
+        if self.alias is None:
+            self.alias = func.__name__
+            if uppercase_func_name:
+                self.alias = self.alias.upper()
+
+        self.description = description
+        if self.description is None:
+            self.description = func.__doc__
+            if self.description and normalize_spaces_in_docstring:
+                self.description = " ".join(self.description.split())
+        if self.description:
+            # replace all {AGENT_ALIAS} entries in the description with the actual agent alias
+            self.description = self.description.format(AGENT_ALIAS=self.alias)
+
+        self.__name__ = self.alias
+        self.__doc__ = self.description
+
+    def inquire(
+        self,
+        messages: Optional[MessageType] = None,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        **function_kwargs,
+    ) -> MessageSequencePromise:
+        """
+        TODO Oleksandr: update this docstring
+        "Ask" the agent and immediately receive an AsyncMessageSequence object that can be used to obtain the agent's
+        response(s). If blank_history is False and history_tracker/branch_from is not specified and pre-existing
+        messages are passed as requests (for ex. messages that came from other agents), then this agent call will be
+        automatically branched off of the conversation branch those pre-existing messages belong to (the history will
+        be inherited from those messages, in other words).
+        """
+        agent_call = self.initiate_inquiry(schedule_immediately=schedule_immediately, **function_kwargs)
+        if messages is not None:
+            agent_call.send_message(messages)
+        return agent_call.reply_sequence()
+
+    def initiate_inquiry(
+        self,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        **function_kwargs,
+    ) -> "AgentCall":
+        """
+        TODO Oleksandr: update this docstring
+        Initiate the process of "asking" the agent. Returns an AgentCall object that can be used to send requests to
+        the agent by calling `send_request()` zero or more times and receive its responses by calling
+        `response_sequence()` at the end. If blank_history is False and history_tracker/branch_from is not specified
+        and pre-existing messages are passed as requests (for ex. messages that came from other agents), then this
+        agent call will be automatically branched off of the conversation branch those pre-existing messages belong to
+        (the history will be inherited from those messages, in other words).
+        """
+        input_sequence = MessageSequence(
+            schedule_immediately=False,
+        )
+        reply_sequence = AgentReplyMessageSequence(
+            mini_agent=self,
+            function_kwargs=function_kwargs,
+            input_sequence_promise=input_sequence.sequence_promise,
+            schedule_immediately=schedule_immediately,
+        )
+
+        agent_call = AgentCall(
+            message_producer=input_sequence.append_producer,
+            reply_sequence_promise=reply_sequence.sequence_promise,
+        )
+        return agent_call
+
+
 class AgentInteractionNode(Node):
     """
     TODO Oleksandr
@@ -139,125 +342,6 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
 
 
-class InteractionContext:
-    """
-    TODO Oleksandr: docstring
-    """
-
-    def __init__(
-        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_producer: AppendProducer[MessageType]
-    ) -> None:
-        self.this_agent = this_agent
-        self.messages = messages
-        self._reply_producer = reply_producer
-
-    def reply(self, messages: MessageType) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
-        # TODO Oleksandr: add a warning that iterators, async iterators and generators, if passed as `messages` will
-        #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
-        #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
-        #  guarantee that it will be iterated over immediately)
-        self._reply_producer.append(messages)
-
-
-class AgentFunction(Protocol):
-    """
-    A protocol for agent functions.
-    """
-
-    async def __call__(self, ctx: InteractionContext, **kwargs) -> None: ...
-
-
-class MiniAgent:
-    """
-    A wrapper for an agent function that allows calling the agent.
-    """
-
-    def __init__(
-        self,
-        func: AgentFunction,
-        alias: Optional[str] = None,
-        description: Optional[str] = None,
-        # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
-        uppercase_func_name: bool = True,
-        normalize_spaces_in_docstring: bool = True,
-        interaction_metadata: Optional[dict[str, Any]] = None,
-    ) -> None:
-        self._func = func
-        # TODO Oleksandr: do deep copy ? freeze with Node ? yoo need to start putting these things down into the
-        #  "Philosophy" section of README
-        self._interaction_metadata = interaction_metadata or {}
-
-        self.alias = alias
-        if self.alias is None:
-            self.alias = func.__name__
-            if uppercase_func_name:
-                self.alias = self.alias.upper()
-
-        self.description = description
-        if self.description is None:
-            self.description = func.__doc__
-            if self.description and normalize_spaces_in_docstring:
-                self.description = " ".join(self.description.split())
-        if self.description:
-            # replace all {AGENT_ALIAS} entries in the description with the actual agent alias
-            self.description = self.description.format(AGENT_ALIAS=self.alias)
-
-        self.__name__ = self.alias
-        self.__doc__ = self.description
-
-    def inquire(
-        self,
-        messages: Optional[MessageType] = None,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        **function_kwargs,
-    ) -> MessageSequencePromise:
-        """
-        TODO Oleksandr: update this docstring
-        "Ask" the agent and immediately receive an AsyncMessageSequence object that can be used to obtain the agent's
-        response(s). If blank_history is False and history_tracker/branch_from is not specified and pre-existing
-        messages are passed as requests (for ex. messages that came from other agents), then this agent call will be
-        automatically branched off of the conversation branch those pre-existing messages belong to (the history will
-        be inherited from those messages, in other words).
-        """
-        agent_call = self.initiate_inquiry(schedule_immediately=schedule_immediately, **function_kwargs)
-        if messages is not None:
-            agent_call.send_message(messages)
-        return agent_call.reply_sequence()
-
-    def initiate_inquiry(
-        self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        **function_kwargs,
-    ) -> "AgentCall":
-        """
-        TODO Oleksandr: update this docstring
-        Initiate the process of "asking" the agent. Returns an AgentCall object that can be used to send requests to
-        the agent by calling `send_request()` zero or more times and receive its responses by calling
-        `response_sequence()` at the end. If blank_history is False and history_tracker/branch_from is not specified
-        and pre-existing messages are passed as requests (for ex. messages that came from other agents), then this
-        agent call will be automatically branched off of the conversation branch those pre-existing messages belong to
-        (the history will be inherited from those messages, in other words).
-        """
-        input_sequence = MessageSequence(
-            schedule_immediately=False,
-        )
-        reply_sequence = AgentReplyMessageSequence(
-            mini_agent=self,
-            function_kwargs=function_kwargs,
-            input_sequence_promise=input_sequence.sequence_promise,
-            schedule_immediately=schedule_immediately,
-        )
-
-        agent_call = AgentCall(
-            message_producer=input_sequence.append_producer,
-            reply_sequence_promise=reply_sequence.sequence_promise,
-        )
-        return agent_call
-
-
 # noinspection PyProtectedMember
 class AgentReplyMessageSequence(MessageSequence):
     """
@@ -323,87 +407,3 @@ class AgentReplyMessageSequence(MessageSequence):
             schedule_immediately=True,  # use a separate async task to avoid deadlock upon AgentReplyNode "collection"
             fulfiller=create_agent_reply_node,
         )
-
-
-def miniagent(
-    func: Optional[AgentFunction] = None,
-    /,  # TODO Oleksandr: do I really need to enforce positional-only upon `func` ?
-    alias: Optional[str] = None,
-    description: Optional[str] = None,
-    uppercase_func_name: bool = True,
-    normalize_spaces_in_docstring: bool = True,
-    interaction_metadata: Optional[dict[str, Any]] = None,
-) -> Union["MiniAgent", Callable[[AgentFunction], MiniAgent]]:
-    """
-    A decorator that converts an agent function into an agent.
-    """
-    if func is None:
-        # the decorator `@miniagent(...)` was used with arguments
-        def _decorator(f: "AgentFunction") -> "MiniAgent":
-            return MiniAgent(
-                f,
-                alias=alias,
-                description=description,
-                uppercase_func_name=uppercase_func_name,
-                normalize_spaces_in_docstring=normalize_spaces_in_docstring,
-                interaction_metadata=interaction_metadata,
-            )
-
-        return _decorator
-
-    # the decorator `@miniagent` was used either without arguments or as a direct function call
-    return MiniAgent(
-        func,
-        alias=alias,
-        description=description,
-        uppercase_func_name=uppercase_func_name,
-        normalize_spaces_in_docstring=normalize_spaces_in_docstring,
-        interaction_metadata=interaction_metadata,
-    )
-
-
-class AgentCall:
-    """
-    TODO Oleksandr: update this docstring
-    TODO Oleksandr: turn this into a context manager ?
-    A call to an agent. This object is returned by Agent.start_asking()/start_telling() methods. It is used to send
-    requests to the agent and receive its responses.
-    """
-
-    def __init__(
-        self,
-        message_producer: AppendProducer[MessageType],
-        reply_sequence_promise: MessageSequencePromise,
-    ) -> None:
-        self._message_producer = message_producer
-        self._reply_sequence_promise = reply_sequence_promise
-
-        self._message_producer.open()
-
-    def send_message(self, message: MessageType) -> "AgentCall":
-        """
-        TODO Oleksandr: update this docstring ?
-        Send a request to the agent.
-        """
-        self._message_producer.append(message)
-        return self
-
-    def reply_sequence(self) -> MessageSequencePromise:
-        """
-        TODO Oleksandr: update this docstring ?
-        Finish the agent call and return the agent's response(s).
-
-        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
-        """
-        self.finish()
-        return self._reply_sequence_promise
-
-    def finish(self) -> "AgentCall":
-        """
-        Finish the agent call.
-
-        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
-        """
-        # TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
-        self._message_producer.close()
-        return self
