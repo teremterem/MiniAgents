@@ -103,10 +103,12 @@ class PromisingContext:
         if not isinstance(result, Node):
             return
         # pylint: disable=protected-access
-        if not hasattr(result, "_node_collected_event_triggered") or not result._node_collected_event_triggered:
-            for handler in self.on_node_collected_handlers:
-                self.schedule_task(handler(_, result))
-            result._node_collected_event_triggered = True
+        if hasattr(result, "_node_collected_event_triggered") and result._node_collected_event_triggered:
+            return
+
+        for handler in self.on_node_collected_handlers:
+            self.schedule_task(handler(_, result))
+        result._node_collected_event_triggered = True
 
     def schedule_task(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
