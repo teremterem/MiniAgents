@@ -66,7 +66,7 @@ class Node(BaseModel):
     @classmethod
     def _preprocess_values(cls, values: dict[str, Any]) -> dict[str, Any]:
         """
-        Preprocess the values before validation.
+        Preprocess the values before validation and freezing.
         """
         # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
         if "class_" in values:
@@ -82,22 +82,22 @@ class Node(BaseModel):
     # noinspection PyNestedDecorators
     @model_validator(mode="before")
     @classmethod
-    def _validate_values(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_and_freeze_values(cls, values: dict[str, Any]) -> dict[str, Any]:
         """
-        Recursively make sure that the field values of the object are immutable.
+        Recursively make sure that the field values of the object are immutable and of allowed types.
         """
         values = cls._preprocess_values(values)
         for key, value in values.items():
-            values[key] = cls._validate_value(key, value)
+            values[key] = cls._validate_and_freeze_value(key, value)
         return values
 
     @classmethod
-    def _validate_value(cls, key: str, value: Any) -> Any:
+    def _validate_and_freeze_value(cls, key: str, value: Any) -> Any:
         """
-        Recursively make sure that the field value is immutable.
+        Recursively make sure that the field value is immutable and of allowed type.
         """
         if isinstance(value, (tuple, list)):
-            return tuple(cls._validate_value(key, sub_value) for sub_value in value)
+            return tuple(cls._validate_and_freeze_value(key, sub_value) for sub_value in value)
         if isinstance(value, dict):
             return Node(**value)
         if not isinstance(value, cls._allowed_value_types()):
