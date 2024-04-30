@@ -27,12 +27,6 @@ class Message(Node):
             return self.text_template.format(**self.model_dump())
         return super()._as_string()
 
-    def serialize(self, **model_dump_kwargs) -> dict[str, Any]:
-        """
-        TODO Oleksandr: docstring
-        """
-        return self.model_dump(**model_dump_kwargs)
-
     @cached_property
     def as_promise(self) -> "MessagePromise":
         """

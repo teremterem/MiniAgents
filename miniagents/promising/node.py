@@ -63,12 +63,10 @@ class Node(BaseModel):
         """
         return self.as_json
 
-    # noinspection PyNestedDecorators
-    @model_validator(mode="before")
     @classmethod
-    def _validate_immutable_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _preprocess_values(cls, values: dict[str, Any]) -> dict[str, Any]:
         """
-        Recursively make sure that the field values of the object are immutable.
+        Preprocess the values before validation.
         """
         # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
         if "class_" in values:
@@ -79,7 +77,16 @@ class Node(BaseModel):
                 )
         else:
             values = {"class_": cls.__name__, **values}
+        return values
 
+    # noinspection PyNestedDecorators
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_values(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """
+        Recursively make sure that the field values of the object are immutable.
+        """
+        values = cls._preprocess_values(values)
         for key, value in values.items():
             values[key] = cls._validate_value(key, value)
         return values
