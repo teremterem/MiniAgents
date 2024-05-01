@@ -3,9 +3,10 @@ The main class in this module is `Node`. See its docstring for more information.
 """
 
 import hashlib
+import itertools
 import json
 from functools import cached_property
-from typing import Any
+from typing import Any, Iterator
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -56,6 +57,23 @@ class Node(BaseModel):
             hash_key = hash_key[:40]
         return hash_key
 
+    def node_fields(self) -> Iterator[str]:
+        """
+        Get the list of field names of the object. This includes the model fields (both, explicitly set and the ones
+        with default values) and the extra fields that are not part of the model.
+        """
+        return itertools.chain(self.model_fields, self.__pydantic_extra__)
+
+    def node_fields_and_values(self) -> Iterator[tuple[str, Any]]:
+        """
+        Get the list of field names and values of the object. This includes the model fields (both, explicitly set
+        and the ones with default values) and the extra fields that are not part of the model.
+        """
+        for field in self.model_fields:
+            yield field, getattr(self, field)
+        for field, value in self.__pydantic_extra__.items():  # pylint: disable=no-member
+            yield field, value
+
     def _as_string(self) -> str:
         """
         Return the message as a string. This is the method that child classes should override to customize the string
@@ -97,6 +115,7 @@ class Node(BaseModel):
         Recursively make sure that the field value is immutable and of allowed type.
         """
         if isinstance(value, (tuple, list)):
+            # TODO Oleksandr: stop copying tuples if their content did not change ?
             return tuple(cls._validate_and_freeze_value(key, sub_value) for sub_value in value)
         if isinstance(value, dict):
             return Node(**value)

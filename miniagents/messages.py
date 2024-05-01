@@ -20,13 +20,6 @@ class Message(Node):
     text: Optional[str] = None
     text_template: Optional[str] = None
 
-    def _as_string(self) -> str:
-        if self.text is not None:
-            return self.text
-        if self.text_template is not None:
-            return self.text_template.format(**self.model_dump())
-        return super()._as_string()
-
     @cached_property
     def as_promise(self) -> "MessagePromise":
         """
@@ -53,6 +46,38 @@ class Message(Node):
                 **message_kwargs,
             )
         return cls(**message_kwargs).as_promise
+
+    def _as_string(self) -> str:
+        if self.text is not None:
+            return self.text
+        if self.text_template is not None:
+            return self.text_template.format(**self.model_dump())
+        return super()._as_string()
+
+    @classmethod
+    def _preprocess_values(cls, values: dict[str, Any]) -> dict[str, Any]:
+        values = super()._preprocess_values(values)
+
+        def look_for_messages(value: Any) -> Any:
+            if isinstance(value, Message):
+                print(f"Found a message: {value.hash_key}")
+            elif isinstance(value, Node):
+                for _, sub_value in value.node_fields_and_values():
+                    look_for_messages(sub_value)
+            elif isinstance(value, dict):
+                for _, sub_value in value.items():
+                    look_for_messages(sub_value)
+            elif isinstance(value, (list, tuple)):
+                for sub_value in value:
+                    look_for_messages(sub_value)
+            # any other types will not pass further validation in the Node, so no need to
+            # check them here
+            return value
+
+        for key, value in values.items():
+            values[key] = look_for_messages(value)
+
+        return values
 
 
 class MessagePromise(StreamedPromise[str, Message]):
