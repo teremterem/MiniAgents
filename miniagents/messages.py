@@ -56,30 +56,38 @@ class Message(Node):
 
     @classmethod
     def _preprocess_values(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """
+        Whenever there is a nested Message, add a field by the same name as the key of the nested Message, but with
+        "__hash_key" suffix, that contains the hash key of the nested Message. (Later, the original nested Messages
+        will be excluded from both the hash key calculation and the JSON representation of the Message.)
+        """
         values = super()._preprocess_values(values)
 
-        def look_for_messages(parent: dict[str, Any], key: str, value: Any) -> None:
-            if isinstance(value, Message):
-                parent[f"{key}__hash_key"] = value.hash_key
-            elif isinstance(value, Node):
-                for k, sub_value in value.node_fields_and_values():
-                    # TODO Oleksandr: replace the node if its content was changed
-                    look_for_messages(dict(value.node_fields_and_values()), k, sub_value)
-            elif isinstance(value, dict):
-                for k, sub_value in list(value.items()):
-                    look_for_messages(value, k, sub_value)
-            elif isinstance(value, (list, tuple)):
+        def add_hash_key_fields(value: Any) -> Any:
+            # NOTE: `value` will not be a Message, only "sub-values" may
+            if isinstance(value, (dict, Node)):
+                new_value = {}
+                sub_items = value.items() if isinstance(value, dict) else value.node_fields_and_values()
+                for sub_key, sub_value in sub_items:
+                    if isinstance(sub_value, Message):
+                        new_value[f"{sub_key}__hash_key"] = sub_value.hash_key
+                    else:
+                        new_value[sub_key] = add_hash_key_fields(sub_value)
+                if isinstance(value, Node):
+                    new_value = value.copy(update=new_value)
+                    # TODO TODO TODO Oleksandr: make sure to copy private attributes too (not copied automatically)
+                return new_value
+
+            if isinstance(value, (list, tuple)):
                 # TODO TODO TODO
                 # for sub_value in value:
                 #     look_for_messages(sub_value)
-                pass
-            # any other types will not pass further validation in the Node, so no need to
-            # check them here
+                return tuple(value)
 
-        for _k, _v in list(values.items()):
-            look_for_messages(values, _k, _v)
+            # any other types are either illegal and will not pass further validation or should remain unchanged
+            return value
 
-        return values
+        return add_hash_key_fields(values)
 
 
 class MessagePromise(StreamedPromise[str, Message]):

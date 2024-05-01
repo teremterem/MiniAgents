@@ -94,7 +94,7 @@ class Node(BaseModel):
                     f"instead of {cls.__name__}"
                 )
         else:
-            values["class_"] = cls.__name__
+            values = {"class_": cls.__name__, **values}
         return values
 
     # noinspection PyNestedDecorators
@@ -104,11 +104,8 @@ class Node(BaseModel):
         """
         Recursively make sure that the field values of the object are immutable and of allowed types.
         """
-        values = dict(values)
         values = cls._preprocess_values(values)
-        for key, value in values.items():
-            values[key] = cls._validate_and_freeze_value(key, value)
-        return values
+        return {key: cls._validate_and_freeze_value(key, value) for key, value in values.items()}
 
     @classmethod
     def _validate_and_freeze_value(cls, key: str, value: Any) -> Any:
