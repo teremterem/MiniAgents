@@ -58,24 +58,26 @@ class Message(Node):
     def _preprocess_values(cls, values: dict[str, Any]) -> dict[str, Any]:
         values = super()._preprocess_values(values)
 
-        def look_for_messages(value: Any) -> Any:
+        def look_for_messages(parent: dict[str, Any], key: str, value: Any) -> None:
             if isinstance(value, Message):
-                print(f"Found a message: {value.hash_key}")
+                parent[f"{key}__hash_key"] = value.hash_key
             elif isinstance(value, Node):
-                for _, sub_value in value.node_fields_and_values():
-                    look_for_messages(sub_value)
+                for k, sub_value in value.node_fields_and_values():
+                    # TODO Oleksandr: replace the node if its content was changed
+                    look_for_messages(dict(value.node_fields_and_values()), k, sub_value)
             elif isinstance(value, dict):
-                for _, sub_value in value.items():
-                    look_for_messages(sub_value)
+                for k, sub_value in list(value.items()):
+                    look_for_messages(value, k, sub_value)
             elif isinstance(value, (list, tuple)):
-                for sub_value in value:
-                    look_for_messages(sub_value)
+                # TODO TODO TODO
+                # for sub_value in value:
+                #     look_for_messages(sub_value)
+                pass
             # any other types will not pass further validation in the Node, so no need to
             # check them here
-            return value
 
-        for k, v in values.items():
-            values[k] = look_for_messages(v)
+        for _k, _v in list(values.items()):
+            look_for_messages(values, _k, _v)
 
         return values
 
