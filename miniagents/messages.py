@@ -74,8 +74,8 @@ class Message(Node):
             # check them here
             return value
 
-        for key, value in values.items():
-            values[key] = look_for_messages(value)
+        for k, v in values.items():
+            values[k] = look_for_messages(v)
 
         return values
 
