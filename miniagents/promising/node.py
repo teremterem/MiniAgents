@@ -35,14 +35,28 @@ class Node(BaseModel):
         return self._as_string()
 
     @cached_property
-    def as_json(self) -> str:
+    def full_json(self) -> str:
         """
-        Get the JSON representation of the object. Because it is a property and not a regular method, it always
-        returns the complete JSON representation of the object (unlike `serialize_node(**model_dump_kwargs)`, whose
-        behaviour can be customized via `**model_dump_kwargs`). This representation is also used to calculate the
-        hash key of the node.
+        Get the full JSON representation of this Node object together with all its nested objects. This is a cached
+        property, so it is calculated only the first time it is accessed.
         """
-        return json.dumps(self.model_dump(), ensure_ascii=False, sort_keys=True)
+        return self.json()
+
+    @cached_property
+    def serialized(self) -> str:
+        """
+        The representation of this Node object that you would usually get by calling `serialize()`, but as a string
+        with a JSON. This is a cached property, so it is calculated only the first time it is accessed.
+        """
+        return json.dumps(self.serialize(), ensure_ascii=False, sort_keys=True)
+
+    def serialize(self) -> dict[str, Any]:
+        """
+        Serialize the object into a dictionary. The default implementation does complete serialization of this
+        Node object and all its nested objects. Child classes may override this method to customize serialization
+        (e.g. externalize certain nested objects and only reference them by their hash keys - see Message).
+        """
+        return self.model_dump()
 
     @cached_property
     def hash_key(self) -> str:
@@ -52,7 +66,7 @@ class Node(BaseModel):
         # pylint: disable=cyclic-import,import-outside-toplevel
         from miniagents.promising.promising import PromisingContext
 
-        hash_key = hashlib.sha256(self.as_json.encode("utf-8")).hexdigest()
+        hash_key = hashlib.sha256(self.serialized.encode("utf-8")).hexdigest()
         if not PromisingContext.get_current().longer_node_hash_keys:
             hash_key = hash_key[:40]
         return hash_key
@@ -79,7 +93,7 @@ class Node(BaseModel):
         Return the message as a string. This is the method that child classes should override to customize the string
         representation of the message for the LLM prompts.
         """
-        return self.as_json
+        return self.full_json
 
     @classmethod
     def _preprocess_values(cls, values: dict[str, Any]) -> dict[str, Any]:
