@@ -3,7 +3,7 @@ Tests for the `Message`-based models.
 """
 
 import hashlib
-from pprint import pprint
+import json
 
 import pytest
 
@@ -26,7 +26,7 @@ async def test_message_nesting_vs_hash_key() -> None:
 
     async with PromisingContext():
         message = Message(
-            text="text",
+            text="юнікод",
             extra_field=[
                 15,
                 {
@@ -38,15 +38,32 @@ async def test_message_nesting_vs_hash_key() -> None:
             extra_node=SpecialNode(nested_nested=Message(text="nested_text3")),
             nested_message=Message(text="nested_text"),
         )
-        # print(json.dumps(message.serialize(), ensure_ascii=False, sort_keys=True))
-        pprint(message.serialize(), sort_dicts=True)
+
+        expected_structure = {
+            "class_": "Message",
+            "text": "юнікод",
+            "text_template": None,
+            "extra_field": (
+                15,
+                {
+                    "class_": "Node",
+                    "role": "user",
+                    "nested_nested__hash_keys": (
+                        "47e977f85cff13ea8980cf3d76959caec8a4984a",
+                        "91868c8c8398b49deb9a04a73c4ea95bdb2eaa65",
+                    ),
+                    "nested_nested2__hash_keys": ("91868c8c8398b49deb9a04a73c4ea95bdb2eaa65",),
+                },
+            ),
+            "extra_node": {
+                "class_": "SpecialNode",
+                "nested_nested__hash_key": "25a897f6457abf51fad6a28d86905918bb610038",
+            },
+            "nested_message__hash_key": "47e977f85cff13ea8980cf3d76959caec8a4984a",
+        }
+        assert message.serialize() == expected_structure
+
         expected_hash_key = hashlib.sha256(
-            '{"class_": "Message", "extra_field": [15, {"class_": "Node", "nested_nested": [{"class_": "Message", '
-            '"text": "nested_text", "text_template": null}, {"class_": "Message", "text": "nested_text2", '
-            '"text_template": null}], "nested_nested2": [{"class_": "Message", "text": "nested_text2", '
-            '"text_template": null}], "role": "user"}], "extra_node": {"class_": "SpecialNode", "nested_nested": '
-            '{"class_": "Message", "text": "nested_text3", "text_template": null}}, "nested_message": '
-            '{"class_": "Message", "text": "nested_text", "text_template": null}, "text": "text", '
-            '"text_template": null}'.encode("utf-8")
+            json.dumps(expected_structure, ensure_ascii=False, sort_keys=True).encode("utf-8")
         ).hexdigest()[:40]
         assert message.hash_key == expected_hash_key
