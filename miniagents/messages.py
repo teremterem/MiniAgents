@@ -48,13 +48,17 @@ class Message(Node):
         return cls(**message_kwargs).as_promise
 
     def serialize(self) -> dict[str, Any]:
-        include_into_serialization, sub_message_hash_keys, _ = self._serialization_metadata
+        include_into_serialization, sub_messages = self._serialization_metadata
         model_dump = self.model_dump(include=include_into_serialization)
-        for (path, field), hash_key_or_keys in sub_message_hash_keys.items():
+
+        for path, message_or_messages in sub_messages.items():
             sub_dict = model_dump
-            for path_part in path:
+            for path_part in path[:-1]:
                 sub_dict = sub_dict[path_part]
-            sub_dict[field] = hash_key_or_keys
+            if isinstance(message_or_messages, Message):
+                sub_dict[f"{path[-1]}__hash_key"] = message_or_messages.hash_key
+            else:
+                sub_dict[f"{path[-1]}__hash_keys"] = tuple(message.hash_key for message in message_or_messages)
         return model_dump
 
     @cached_property
@@ -62,13 +66,11 @@ class Message(Node):
         self,
     ) -> tuple[
         dict[Union[str, int], Any],
-        dict[tuple[tuple[Union[str, int], ...], str], Union[str, tuple[str, ...]]],
-        list["Message"],
+        dict[tuple[Union[str, int], ...], Union["Message", tuple["Message", ...]]],
     ]:
-        # TODO Oleksandr: introduce some NamedTuples to make the return type more readable
+        # TODO Oleksandr: introduce some NamedTuple(s) to make the return type more readable
         include_into_serialization = {}
-        sub_message_hash_keys = {}
-        sub_messages = []
+        sub_messages = {}
 
         def build_serialization_metadata(
             include_sub_dict: dict[Union[str, int], Any],
@@ -77,20 +79,19 @@ class Message(Node):
         ) -> None:
             for field, value in sub_node.node_fields_and_values():
                 if isinstance(value, Message):
-                    sub_message_hash_keys[(sub_node_path, f"{field}__hash_key")] = value.hash_key
-                    sub_messages.append(value)
+                    sub_messages[(*sub_node_path, field)] = value
+
                 elif isinstance(value, Node):
                     sub_sub_dict = {}
                     build_serialization_metadata(sub_sub_dict, value, (*sub_node_path, field))
                     include_sub_dict[field] = sub_sub_dict
+
                 elif isinstance(value, tuple):
                     if value and isinstance(value[0], Message):
                         # TODO Oleksandr: also introduce a validation that checks if Messages aren't mixed with other
                         #  types in the same tuple
-                        sub_message_hash_keys[(sub_node_path, f"{field}__hash_keys")] = tuple(
-                            msg.hash_key for msg in value
-                        )
-                        sub_messages.extend(value)
+                        sub_messages[(*sub_node_path, field)] = value
+
                     else:
                         sub_sub_dict = {}
                         for idx, sub_value in enumerate(value):
@@ -101,12 +102,13 @@ class Message(Node):
                             else:
                                 sub_sub_dict[idx] = ...
                         include_sub_dict[field] = sub_sub_dict
+
                 else:
                     # any other (primitive) type of value will be included into serialization in its entirety
                     include_sub_dict[field] = ...
 
         build_serialization_metadata(include_into_serialization, self, ())
-        return include_into_serialization, sub_message_hash_keys, sub_messages
+        return include_into_serialization, sub_messages
 
     def _as_string(self) -> str:
         if self.text is not None:

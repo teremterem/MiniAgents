@@ -41,8 +41,8 @@ async def test_message_nesting_vs_hash_key() -> None:
         # print(json.dumps(message.serialize(), ensure_ascii=False, sort_keys=True))
         pprint(message.serialize(), sort_dicts=True)
         expected_hash_key = hashlib.sha256(
-            '{"class_": "Message", "extra_field": {"class_": "Node", "nested_nested": [{"class_": "Message", '
-            '"text": "nested_text", "text_template": null}, {"class_": "Message", "text": "nested_text2", '
+            '{"class_": "Message", "extra_field": [15, {"class_": "Node", "nested_nested": [{"class_": "Message", '
+            '"text": "nested_text", "text_template": null}], {"class_": "Message", "text": "nested_text2", '
             '"text_template": null}], "nested_nested2": [{"class_": "Message", "text": "nested_text2", '
             '"text_template": null}], "role": "user"}, "extra_node": {"class_": "SpecialNode", "nested_nested": '
             '{"class_": "Message", "text": "nested_text3", "text_template": null}}, "nested_message": '
