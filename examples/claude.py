@@ -17,6 +17,8 @@ from miniagents.ext.llms.anthropic import create_anthropic_agent
 from miniagents.miniagents import MiniAgents
 from miniagents.promising.node import Node
 
+# logging.basicConfig(level=logging.DEBUG)
+
 anthropic_agent = create_anthropic_agent()
 
 mini_agents = MiniAgents()
@@ -29,7 +31,7 @@ async def on_node_collected(_, node: Node) -> None:
     """
     print("HASH KEY:", node.hash_key)
     print(type(node).__name__)
-    pprint(node.model_dump(), width=119)
+    pprint(node.serialize(), width=119)
     print()
 
 

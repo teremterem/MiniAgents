@@ -251,7 +251,7 @@ class AgentCallNode(AgentInteractionNode):
     TODO Oleksandr
     """
 
-    message_hash_keys: tuple[str, ...]  # TODO Oleksandr: put actual messages here
+    messages: tuple[Message, ...]
 
 
 class AgentReplyNode(AgentInteractionNode):
@@ -259,8 +259,8 @@ class AgentReplyNode(AgentInteractionNode):
     TODO Oleksandr
     """
 
-    agent_call_hash_key: str
-    reply_hash_keys: tuple[str, ...]  # TODO Oleksandr: put actual messages here
+    agent_call: AgentCallNode
+    replies: tuple[Message, ...]
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
@@ -375,11 +375,8 @@ class AgentReplyMessageSequence(MessageSequence):
                 # errors are not raised above this `with` block, thanks to `producer_capture_errors=True`
                 await self._mini_agent._func(ctx, **self._function_kwargs)
 
-            message_hash_keys = [
-                message.hash_key for message in await self._input_sequence_promise.acollect_messages()
-            ]
             return AgentCallNode(
-                message_hash_keys=message_hash_keys,
+                messages=await self._input_sequence_promise.acollect_messages(),
                 agent_alias=self._mini_agent.alias,
                 **self._mini_agent._interaction_metadata,
                 **self._function_kwargs,  # this will override any keys from `self._interaction_metadata`
@@ -394,11 +391,10 @@ class AgentReplyMessageSequence(MessageSequence):
             yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
 
         async def create_agent_reply_node(_) -> AgentReplyNode:
-            reply_hash_keys = [message.hash_key for message in await self.sequence_promise.acollect_messages()]
             return AgentReplyNode(
-                reply_hash_keys=reply_hash_keys,
+                replies=await self.sequence_promise.acollect_messages(),
                 agent_alias=self._mini_agent.alias,
-                agent_call_hash_key=(await agent_call_promise.acollect()).hash_key,
+                agent_call=await agent_call_promise.acollect(),
                 **self._mini_agent._interaction_metadata,
             )
 
