@@ -60,16 +60,20 @@ class Message(Node):
     @cached_property
     def _serialization_metadata(
         self,
-    ) -> tuple[dict[str, Any], dict[tuple[tuple[str, ...], str], Union[str, tuple[str, ...]]], list["Message"]]:
+    ) -> tuple[
+        dict[Union[str, int], Any],
+        dict[tuple[tuple[Union[str, int], ...], str], Union[str, tuple[str, ...]]],
+        list["Message"],
+    ]:
         # TODO Oleksandr: introduce some NamedTuples to make the return type more readable
         include_into_serialization = {}
         sub_message_hash_keys = {}
         sub_messages = []
 
         def build_serialization_metadata(
-            include_sub_dict: dict[str, Any],
+            include_sub_dict: dict[Union[str, int], Any],
             sub_node: Node,
-            sub_node_path: tuple[str, ...],
+            sub_node_path: tuple[Union[str, int], ...],
         ) -> None:
             for field, value in sub_node.node_fields_and_values():
                 if isinstance(value, Message):
@@ -77,11 +81,26 @@ class Message(Node):
                     sub_messages.append(value)
                 elif isinstance(value, Node):
                     sub_sub_dict = {}
-                    build_serialization_metadata(sub_sub_dict, value, tuple([*sub_node_path, field]))
+                    build_serialization_metadata(sub_sub_dict, value, (*sub_node_path, field))
                     include_sub_dict[field] = sub_sub_dict
                 elif isinstance(value, tuple):
-                    # TODO TODO TODO Oleksandr: go into it recursively
-                    include_sub_dict[field] = ...
+                    if value and isinstance(value[0], Message):
+                        # TODO Oleksandr: also introduce a validation that checks if Messages aren't mixed with other
+                        #  types in the same tuple
+                        sub_message_hash_keys[(sub_node_path, f"{field}__hash_keys")] = tuple(
+                            msg.hash_key for msg in value
+                        )
+                        sub_messages.extend(value)
+                    else:
+                        sub_sub_dict = {}
+                        for idx, sub_value in enumerate(value):
+                            if isinstance(sub_value, Node):
+                                sub_sub_sub_dict = {}
+                                build_serialization_metadata(sub_sub_sub_dict, sub_value, (*sub_node_path, field, idx))
+                                sub_sub_dict[idx] = sub_sub_sub_dict
+                            else:
+                                sub_sub_dict[idx] = ...
+                        include_sub_dict[field] = sub_sub_dict
                 else:
                     # any other (primitive) type of value will be included into serialization in its entirety
                     include_sub_dict[field] = ...

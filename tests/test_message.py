@@ -27,11 +27,14 @@ async def test_message_nesting_vs_hash_key() -> None:
     async with PromisingContext():
         message = Message(
             text="text",
-            extra_field={
-                "role": "user",
-                "nested_nested": (Message(text="nested_text"), Message(text="nested_text2")),
-                "nested_nested2": [Message(text="nested_text2")],
-            },
+            extra_field=[
+                15,
+                {
+                    "role": "user",
+                    "nested_nested": (Message(text="nested_text"), Message(text="nested_text2")),
+                    "nested_nested2": [Message(text="nested_text2")],
+                },
+            ],
             extra_node=SpecialNode(nested_nested=Message(text="nested_text3")),
             nested_message=Message(text="nested_text"),
         )
