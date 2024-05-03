@@ -202,7 +202,7 @@ class Promise(Generic[T]):
         self._fulfiller_lock = asyncio.Lock()
 
         if schedule_immediately and prefill_result is NO_VALUE:
-            promising_context.schedule_task(self.acollect(), suppress_errors=True)
+            promising_context.schedule_task(self.acollect())
 
     async def acollect(self) -> T:
         """
