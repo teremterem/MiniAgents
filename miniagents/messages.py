@@ -68,44 +68,43 @@ class Message(Node):
         dict[Union[str, int], Any],
         dict[tuple[Union[str, int], ...], Union["Message", tuple["Message", ...]]],
     ]:
-        # TODO Oleksandr: introduce some NamedTuple(s) to make the return type more readable
         include_into_serialization = {}
         sub_messages = {}
 
         def build_serialization_metadata(
-            include_sub_dict: dict[Union[str, int], Any],
-            sub_node: Node,
-            sub_node_path: tuple[Union[str, int], ...],
+            inclusion_dict: dict[Union[str, int], Any],
+            node: Node,
+            node_path: tuple[Union[str, int], ...],
         ) -> None:
-            for field, value in sub_node.node_fields_and_values():
+            for field, value in node.node_fields_and_values():
                 if isinstance(value, Message):
-                    sub_messages[(*sub_node_path, field)] = value
+                    sub_messages[(*node_path, field)] = value
 
                 elif isinstance(value, Node):
-                    sub_sub_dict = {}
-                    build_serialization_metadata(sub_sub_dict, value, (*sub_node_path, field))
-                    include_sub_dict[field] = sub_sub_dict
+                    sub_dict = {}
+                    build_serialization_metadata(sub_dict, value, (*node_path, field))
+                    inclusion_dict[field] = sub_dict
 
                 elif isinstance(value, tuple):
                     if value and isinstance(value[0], Message):
                         # TODO Oleksandr: also introduce a validation that checks if Messages aren't mixed with other
                         #  types in the same tuple
-                        sub_messages[(*sub_node_path, field)] = value
+                        sub_messages[(*node_path, field)] = value
 
                     else:
-                        sub_sub_dict = {}
+                        sub_dict = {}
                         for idx, sub_value in enumerate(value):
                             if isinstance(sub_value, Node):
-                                sub_sub_sub_dict = {}
-                                build_serialization_metadata(sub_sub_sub_dict, sub_value, (*sub_node_path, field, idx))
-                                sub_sub_dict[idx] = sub_sub_sub_dict
+                                sub_sub_dict = {}
+                                build_serialization_metadata(sub_sub_dict, sub_value, (*node_path, field, idx))
+                                sub_dict[idx] = sub_sub_dict
                             else:
-                                sub_sub_dict[idx] = ...
-                        include_sub_dict[field] = sub_sub_dict
+                                sub_dict[idx] = ...
+                        inclusion_dict[field] = sub_dict
 
                 else:
                     # any other (primitive) type of value will be included into serialization in its entirety
-                    include_sub_dict[field] = ...
+                    inclusion_dict[field] = ...
 
         build_serialization_metadata(include_into_serialization, self, ())
         return include_into_serialization, sub_messages
