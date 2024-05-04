@@ -103,7 +103,7 @@ class PromisingContext:
         if not isinstance(result, Node):
             return
         # pylint: disable=protected-access
-        if hasattr(result, "_node_collected_event_triggered") and result._node_collected_event_triggered:
+        if result._node_collected_event_triggered:
             return
 
         for handler in self.on_node_collected_handlers:
