@@ -103,6 +103,7 @@ class PromisingContext:
         if not isinstance(result, Node):
             return
         # pylint: disable=protected-access
+        # noinspection PyProtectedMember
         if result._node_collected_event_triggered:
             return
 
