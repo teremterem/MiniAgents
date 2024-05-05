@@ -53,21 +53,32 @@ class MiniAgents(PromisingContext):
         # noinspection PyTypeChecker
         return super().get_current()
 
+    def on_serialize_message(self, handler: SerializeMessageEventHandler) -> SerializeMessageEventHandler:
+        """
+        Add a handler that will be called every time a Message needs to be serialized.
+        """
+        self.on_serialize_message_handlers.append(handler)
+        return handler
+
+    # noinspection PyProtectedMember
     async def _schedule_serialize_message_event(self, _, node: Node) -> None:
         """
         TODO Oleksandr: docstring
         """
-        if not isinstance(node, Message):
-            return
         # pylint: disable=protected-access
-        # noinspection PyProtectedMember
-        if node._serialize_message_event_triggered:
+        if not isinstance(node, Message):
             return
 
         for sub_message in node.sub_messages():
+            if sub_message._serialize_message_event_triggered:
+                continue
+
             for handler in self.on_serialize_message_handlers:
                 self.schedule_task(handler(_, sub_message))
             sub_message._serialize_message_event_triggered = True
+
+        if node._serialize_message_event_triggered:
+            return
 
         for handler in self.on_serialize_message_handlers:
             self.schedule_task(handler(_, node))

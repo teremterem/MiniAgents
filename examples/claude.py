@@ -11,11 +11,12 @@ from pprint import pprint
 
 from dotenv import load_dotenv
 
+from miniagents.messages import Message
+
 load_dotenv()
 
 from miniagents.ext.llms.anthropic import create_anthropic_agent
 from miniagents.miniagents import MiniAgents
-from miniagents.promising.node import Node
 
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -24,14 +25,14 @@ anthropic_agent = create_anthropic_agent()
 mini_agents = MiniAgents()
 
 
-@mini_agents.on_node_collected
-async def on_node_collected(_, node: Node) -> None:
+@mini_agents.on_serialize_message
+async def serialize_message(_, message: Message) -> None:
     """
     TODO Oleksandr: docstring
     """
-    print("HASH KEY:", node.hash_key)
-    print(type(node).__name__)
-    pprint(node.serialize(), width=119)
+    print("HASH KEY:", message.hash_key)
+    print(type(message).__name__)
+    pprint(message.serialize(), width=119)
     print()
 
 
