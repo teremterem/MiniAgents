@@ -50,9 +50,9 @@ class PromisingContext:
         self.parent = self._current.get()
 
         self.on_promise_collected_handlers: list[PromiseCollectedEventHandler] = (
-            [self._schedule_on_node_collected, on_promise_collected]
+            [self._schedule_node_collected_event, on_promise_collected]
             if callable(on_promise_collected)
-            else [self._schedule_on_node_collected, *on_promise_collected]
+            else [self._schedule_node_collected_event, *on_promise_collected]
         )
         self.on_node_collected_handlers: list[NodeCollectedEventHandler] = (
             [on_node_collected] if callable(on_node_collected) else list(on_node_collected)
@@ -96,17 +96,20 @@ class PromisingContext:
         self.on_node_collected_handlers.append(handler)
         return handler
 
-    async def _schedule_on_node_collected(self, _, result: Any) -> None:
+    async def _schedule_node_collected_event(self, _, result: Any) -> None:
         """
         TODO Oleksandr: docstring
         """
         if not isinstance(result, Node):
             return
         # pylint: disable=protected-access
-        if not hasattr(result, "_node_collected_event_triggered") or not result._node_collected_event_triggered:
-            for handler in self.on_node_collected_handlers:
-                self.schedule_task(handler(_, result))
-            result._node_collected_event_triggered = True
+        # noinspection PyProtectedMember
+        if result._node_collected_event_triggered:
+            return
+
+        for handler in self.on_node_collected_handlers:
+            self.schedule_task(handler(_, result))
+        result._node_collected_event_triggered = True
 
     def schedule_task(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
@@ -200,7 +203,7 @@ class Promise(Generic[T]):
         self._fulfiller_lock = asyncio.Lock()
 
         if schedule_immediately and prefill_result is NO_VALUE:
-            promising_context.schedule_task(self.acollect(), suppress_errors=True)
+            promising_context.schedule_task(self.acollect())
 
     async def acollect(self) -> T:
         """

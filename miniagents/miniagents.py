@@ -2,15 +2,24 @@
 "Core" classes of the MiniAgents framework.
 """
 
-from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable
+from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
 
 from pydantic import BaseModel
 
 from miniagents.messages import MessageType, MessagePromise, MessageSequencePromise, Message
+from miniagents.promising.node import Node
 from miniagents.promising.promising import AppendProducer, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
-from miniagents.promising.typing import StreamedPieceProducer
+from miniagents.promising.typing import StreamedPieceProducer, NodeCollectedEventHandler
+
+
+class SerializeMessageEventHandler(Protocol):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    async def __call__(self, promise: MessagePromise, message: Message) -> None: ...
 
 
 class MiniAgents(PromisingContext):
@@ -21,10 +30,20 @@ class MiniAgents(PromisingContext):
     def __init__(
         self,
         stream_llm_tokens_by_default: bool = True,
+        on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
+        on_serialize_message: Union[SerializeMessageEventHandler, Iterable[SerializeMessageEventHandler]] = (),
         **kwargs,
     ) -> None:
-        super().__init__(**kwargs)
+        on_node_collected = (
+            [self._schedule_serialize_message_event, on_node_collected]
+            if callable(on_node_collected)
+            else [self._schedule_serialize_message_event, *on_node_collected]
+        )
+        super().__init__(on_node_collected=on_node_collected, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
+        self.on_serialize_message_handlers: list[SerializeMessageEventHandler] = (
+            [on_serialize_message] if callable(on_serialize_message) else list(on_serialize_message)
+        )
 
     @classmethod
     def get_current(cls) -> "MiniAgents":
@@ -33,6 +52,37 @@ class MiniAgents(PromisingContext):
         """
         # noinspection PyTypeChecker
         return super().get_current()
+
+    def on_serialize_message(self, handler: SerializeMessageEventHandler) -> SerializeMessageEventHandler:
+        """
+        Add a handler that will be called every time a Message needs to be serialized.
+        """
+        self.on_serialize_message_handlers.append(handler)
+        return handler
+
+    # noinspection PyProtectedMember
+    async def _schedule_serialize_message_event(self, _, node: Node) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        # pylint: disable=protected-access
+        if not isinstance(node, Message):
+            return
+
+        for sub_message in node.sub_messages():
+            if sub_message._serialize_message_event_triggered:
+                continue
+
+            for handler in self.on_serialize_message_handlers:
+                self.schedule_task(handler(_, sub_message))
+            sub_message._serialize_message_event_triggered = True
+
+        if node._serialize_message_event_triggered:
+            return
+
+        for handler in self.on_serialize_message_handlers:
+            self.schedule_task(handler(_, node))
+        node._serialize_message_event_triggered = True
 
 
 def miniagent(
@@ -105,10 +155,8 @@ class InteractionContext:
 
 class AgentCall:
     """
-    TODO Oleksandr: update this docstring
+    TODO Oleksandr: docstring
     TODO Oleksandr: turn this into a context manager ?
-    A call to an agent. This object is returned by Agent.start_asking()/start_telling() methods. It is used to send
-    requests to the agent and receive its responses.
     """
 
     def __init__(
@@ -123,15 +171,13 @@ class AgentCall:
 
     def send_message(self, message: MessageType) -> "AgentCall":
         """
-        TODO Oleksandr: update this docstring ?
-        Send a request to the agent.
+        Send an input message to the agent.
         """
         self._message_producer.append(message)
         return self
 
     def reply_sequence(self) -> MessageSequencePromise:
         """
-        TODO Oleksandr: update this docstring ?
         Finish the agent call and return the agent's response(s).
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
@@ -164,11 +210,12 @@ class MiniAgent:
         uppercase_func_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
         interaction_metadata: Optional[dict[str, Any]] = None,
+        # TODO Oleksandr: turn MiniAgent into a Node object so arbitrary agent level metadata can be stored in it ?
     ) -> None:
         self._func = func
         # TODO Oleksandr: do deep copy ? freeze with Node ? yoo need to start putting these things down into the
         #  "Philosophy" section of README
-        self._interaction_metadata = interaction_metadata or {}
+        self.interaction_metadata = interaction_metadata or {}
 
         self.alias = alias
         if self.alias is None:
@@ -195,12 +242,7 @@ class MiniAgent:
         **function_kwargs,
     ) -> MessageSequencePromise:
         """
-        TODO Oleksandr: update this docstring
-        "Ask" the agent and immediately receive an AsyncMessageSequence object that can be used to obtain the agent's
-        response(s). If blank_history is False and history_tracker/branch_from is not specified and pre-existing
-        messages are passed as requests (for ex. messages that came from other agents), then this agent call will be
-        automatically branched off of the conversation branch those pre-existing messages belong to (the history will
-        be inherited from those messages, in other words).
+        TODO Oleksandr: docstring
         """
         agent_call = self.initiate_inquiry(schedule_immediately=schedule_immediately, **function_kwargs)
         if messages is not None:
@@ -213,13 +255,7 @@ class MiniAgent:
         **function_kwargs,
     ) -> "AgentCall":
         """
-        TODO Oleksandr: update this docstring
-        Initiate the process of "asking" the agent. Returns an AgentCall object that can be used to send requests to
-        the agent by calling `send_request()` zero or more times and receive its responses by calling
-        `response_sequence()` at the end. If blank_history is False and history_tracker/branch_from is not specified
-        and pre-existing messages are passed as requests (for ex. messages that came from other agents), then this
-        agent call will be automatically branched off of the conversation branch those pre-existing messages belong to
-        (the history will be inherited from those messages, in other words).
+        TODO Oleksandr: docstring
         """
         input_sequence = MessageSequence(
             schedule_immediately=False,
@@ -251,7 +287,7 @@ class AgentCallNode(AgentInteractionNode):
     TODO Oleksandr
     """
 
-    message_hash_keys: tuple[str, ...]  # TODO Oleksandr: put actual messages here
+    messages: tuple[Message, ...]
 
 
 class AgentReplyNode(AgentInteractionNode):
@@ -259,8 +295,8 @@ class AgentReplyNode(AgentInteractionNode):
     TODO Oleksandr
     """
 
-    agent_call_hash_key: str
-    reply_hash_keys: tuple[str, ...]  # TODO Oleksandr: put actual messages here
+    agent_call: AgentCallNode
+    replies: tuple[Message, ...]
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
@@ -341,7 +377,6 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
 
 
-# noinspection PyProtectedMember
 class AgentReplyMessageSequence(MessageSequence):
     """
     TODO Oleksandr: docstring
@@ -364,7 +399,6 @@ class AgentReplyMessageSequence(MessageSequence):
         self._function_kwargs = function_kwargs
 
     async def _producer(self, _) -> AsyncIterator[MessagePromise]:
-        # pylint: disable=protected-access
         async def run_the_agent(_) -> AgentCallNode:
             ctx = InteractionContext(
                 this_agent=self._mini_agent,
@@ -373,16 +407,15 @@ class AgentReplyMessageSequence(MessageSequence):
             )
             with self.append_producer:
                 # errors are not raised above this `with` block, thanks to `producer_capture_errors=True`
+                # pylint: disable=protected-access
+                # noinspection PyProtectedMember
                 await self._mini_agent._func(ctx, **self._function_kwargs)
 
-            message_hash_keys = [
-                message.hash_key for message in await self._input_sequence_promise.acollect_messages()
-            ]
             return AgentCallNode(
-                message_hash_keys=message_hash_keys,
+                messages=await self._input_sequence_promise.acollect_messages(),
                 agent_alias=self._mini_agent.alias,
-                **self._mini_agent._interaction_metadata,
-                **self._function_kwargs,  # this will override any keys from `self._interaction_metadata`
+                **self._mini_agent.interaction_metadata,
+                **self._function_kwargs,  # this will override any keys from `self.interaction_metadata`
             )
 
         agent_call_promise = Promise[AgentCallNode](
@@ -394,12 +427,11 @@ class AgentReplyMessageSequence(MessageSequence):
             yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
 
         async def create_agent_reply_node(_) -> AgentReplyNode:
-            reply_hash_keys = [message.hash_key for message in await self.sequence_promise.acollect_messages()]
             return AgentReplyNode(
-                reply_hash_keys=reply_hash_keys,
+                replies=await self.sequence_promise.acollect_messages(),
                 agent_alias=self._mini_agent.alias,
-                agent_call_hash_key=(await agent_call_promise.acollect()).hash_key,
-                **self._mini_agent._interaction_metadata,
+                agent_call=await agent_call_promise.acollect(),
+                **self._mini_agent.interaction_metadata,
             )
 
         Promise[AgentReplyNode](
