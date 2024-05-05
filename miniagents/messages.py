@@ -3,7 +3,7 @@
 """
 
 from functools import cached_property
-from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional
+from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Iterator
 
 from pydantic import BaseModel
 
@@ -60,6 +60,21 @@ class Message(Node):
             else:
                 sub_dict[f"{path[-1]}__hash_keys"] = tuple(message.hash_key for message in message_or_messages)
         return model_dump
+
+    def sub_messages(self) -> Iterator["Message"]:
+        """
+        Iterate over all sub-messages of this message, no matter how deep they are nested. This is a depth-first
+        traversal.
+        """
+        _, sub_messages = self._serialization_metadata
+        for _, message_or_messages in sub_messages.items():
+            if isinstance(message_or_messages, Message):
+                yield from message_or_messages.sub_messages()
+                yield message_or_messages
+            else:
+                for message in message_or_messages:
+                    yield from message.sub_messages()
+                    yield message
 
     @cached_property
     def _serialization_metadata(

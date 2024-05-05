@@ -64,7 +64,11 @@ class MiniAgents(PromisingContext):
         if node._serialize_message_event_triggered:
             return
 
-        # TODO TODO TODO
+        for sub_message in node.sub_messages():
+            for handler in self.on_serialize_message_handlers:
+                self.schedule_task(handler(_, sub_message))
+            sub_message._serialize_message_event_triggered = True
+
         for handler in self.on_serialize_message_handlers:
             self.schedule_task(handler(_, node))
         node._serialize_message_event_triggered = True
