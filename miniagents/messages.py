@@ -116,10 +116,9 @@ class Message(Node):
             return self.text_template.format(**self.model_dump())
         return super()._as_string()
 
-    # # TODO TODO TODO Oleksandr
-    # def __init__(self, **data: Any) -> None:
-    #     super().__init__(**data)
-    #     self._serialize_message_event_triggered = False
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self._serialize_message_event_triggered = False
 
 
 class MessagePromise(StreamedPromise[str, Message]):

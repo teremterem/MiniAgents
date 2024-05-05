@@ -2,15 +2,24 @@
 "Core" classes of the MiniAgents framework.
 """
 
-from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable
+from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
 
 from pydantic import BaseModel
 
 from miniagents.messages import MessageType, MessagePromise, MessageSequencePromise, Message
+from miniagents.promising.node import Node
 from miniagents.promising.promising import AppendProducer, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
-from miniagents.promising.typing import StreamedPieceProducer
+from miniagents.promising.typing import StreamedPieceProducer, NodeCollectedEventHandler
+
+
+class SerializeMessageEventHandler(Protocol):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    async def __call__(self, promise: MessagePromise, message: Message) -> None: ...
 
 
 class MiniAgents(PromisingContext):
@@ -21,10 +30,20 @@ class MiniAgents(PromisingContext):
     def __init__(
         self,
         stream_llm_tokens_by_default: bool = True,
+        on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
+        on_serialize_message: Union[SerializeMessageEventHandler, Iterable[SerializeMessageEventHandler]] = (),
         **kwargs,
     ) -> None:
-        super().__init__(**kwargs)
+        on_node_collected = (
+            [self._schedule_serialize_message_event, on_node_collected]
+            if callable(on_node_collected)
+            else [self._schedule_serialize_message_event, *on_node_collected]
+        )
+        super().__init__(on_node_collected=on_node_collected, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
+        self.on_serialize_message_handlers: list[SerializeMessageEventHandler] = (
+            [on_serialize_message] if callable(on_serialize_message) else list(on_serialize_message)
+        )
 
     @classmethod
     def get_current(cls) -> "MiniAgents":
@@ -33,6 +52,22 @@ class MiniAgents(PromisingContext):
         """
         # noinspection PyTypeChecker
         return super().get_current()
+
+    async def _schedule_serialize_message_event(self, _, node: Node) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        if not isinstance(node, Message):
+            return
+        # pylint: disable=protected-access
+        # noinspection PyProtectedMember
+        if node._serialize_message_event_triggered:
+            return
+
+        # TODO TODO TODO
+        for handler in self.on_serialize_message_handlers:
+            self.schedule_task(handler(_, node))
+        node._serialize_message_event_triggered = True
 
 
 def miniagent(
