@@ -102,8 +102,8 @@ class Message(Node):
 
                 elif isinstance(value, tuple):
                     if value and isinstance(value[0], Message):
-                        # TODO Oleksandr: also introduce a validation that checks if Messages aren't mixed with other
-                        #  types in the same tuple
+                        # TODO Oleksandr: introduce a concept of MessageRef to also support "mixed" tuples (with
+                        #  both Messages and other types of values mixed together)
                         sub_messages[(*node_path, field)] = value
 
                     else:
