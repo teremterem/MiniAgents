@@ -2,8 +2,10 @@
 This module integrates Anthropic language models with MiniAgents.
 """
 
+import logging
 import typing
 from functools import partial
+from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
 from miniagents.miniagents import (
@@ -17,6 +19,8 @@ from miniagents.promising.node import Node
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicMessage(Message):
@@ -70,6 +74,9 @@ async def _anthropic_func(
         metadata_so_far.update(reply_metadata)
         collected_messages = await ctx.messages.acollect_messages()
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("SENDING TO ANTHROPIC:\n\n%s\n", pformat(message_dicts))
 
         if stream:
             # pylint: disable=not-async-context-manager
