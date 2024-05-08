@@ -111,7 +111,13 @@ def _message_to_anthropic_dict(message: Message) -> dict[str, Any]:
     try:
         role = message.role
     except AttributeError:
-        role = getattr(message, "anthropic_role", "user")
+        try:
+            role = message.anthropic_role
+        except AttributeError:
+            try:
+                role = message.anthropic.role
+            except AttributeError:
+                role = "user"
 
     return {
         "role": role,
