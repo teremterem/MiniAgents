@@ -112,26 +112,30 @@ def split_messages(
             return True
 
         try:
-            async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
-                if not current_text_producer:
-                    # we already know that there will be at least one message - time to make a promise
-                    current_text_producer = AppendProducer[str]()
-                    yield Message.promise(
-                        message_token_producer=current_text_producer,
-                        schedule_immediately=schedule_immediately,
-                    )
+            if not current_text_producer:
+                # we already know that there will be at least one message - time to make a promise
+                current_text_producer = AppendProducer[str]()
+                yield Message.promise(
+                    message_token_producer=current_text_producer,
+                    schedule_immediately=schedule_immediately,
+                )
 
-                async for token in message_promise:
-                    text_so_far += token
+            async for token in join_messages(
+                messages,
+                delimiter=delimiter,
+                reference_original_messages=False,
+                schedule_immediately=schedule_immediately,
+            ):
+                text_so_far += token
 
-                    while split_text_if_needed():  # repeat splitting until no more splitting is happening anymore
-                        if not current_text_producer and is_text_so_far_not_empty():
-                            # previous message was already sent - we need to start a new one (make a new promise)
-                            current_text_producer = AppendProducer[str]()
-                            yield Message.promise(
-                                message_token_producer=current_text_producer,
-                                schedule_immediately=schedule_immediately,
-                            )
+                while split_text_if_needed():  # repeat splitting until no more splitting is happening anymore
+                    if not current_text_producer and is_text_so_far_not_empty():
+                        # previous message was already sent - we need to start a new one (make a new promise)
+                        current_text_producer = AppendProducer[str]()
+                        yield Message.promise(
+                            message_token_producer=current_text_producer,
+                            schedule_immediately=schedule_immediately,
+                        )
 
             if is_text_so_far_not_empty():
                 # some text still remains after all the messages have been processed
