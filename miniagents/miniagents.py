@@ -11,7 +11,7 @@ from miniagents.promising.node import Node
 from miniagents.promising.promising import AppendProducer, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
-from miniagents.promising.typing import StreamedPieceProducer, NodeCollectedEventHandler
+from miniagents.promising.typing import StreamedPieceProducer, NodeCollectedEventHandler, PromiseBound
 
 
 class SerializeMessageEventHandler(Protocol):
@@ -19,7 +19,7 @@ class SerializeMessageEventHandler(Protocol):
     TODO Oleksandr: docstring
     """
 
-    async def __call__(self, promise: MessagePromise, message: Message) -> None: ...
+    async def __call__(self, promise: PromiseBound, message: Message) -> None: ...
 
 
 class MiniAgents(PromisingContext):

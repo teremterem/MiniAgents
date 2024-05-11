@@ -2,8 +2,10 @@
 This module integrates Anthropic language models with MiniAgents.
 """
 
+import logging
 import typing
 from functools import partial
+from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
 from miniagents.miniagents import (
@@ -17,6 +19,8 @@ from miniagents.promising.node import Node
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicMessage(Message):
@@ -55,6 +59,8 @@ async def _anthropic_func(
     global_reply_metadata: Optional[dict[str, Any]],
     reply_metadata: Optional[dict[str, Any]] = None,
     stream: Optional[bool] = None,
+    fake_first_user_message: str = "/start",
+    message_delimiter_for_same_role: str = "\n\n",
     **kwargs,
 ) -> None:
     """
@@ -69,7 +75,16 @@ async def _anthropic_func(
         metadata_so_far.update(global_reply_metadata)
         metadata_so_far.update(reply_metadata)
         collected_messages = await ctx.messages.acollect_messages()
+
         message_dicts = [_message_to_anthropic_dict(msg) for msg in collected_messages]
+        message_dicts = _fix_message_dicts(
+            message_dicts,
+            fake_first_user_message=fake_first_user_message,
+            message_delimiter_for_same_role=message_delimiter_for_same_role,
+        )
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("SENDING TO ANTHROPIC:\n\n%s\n", pformat(message_dicts))
 
         if stream:
             # pylint: disable=not-async-context-manager
@@ -123,3 +138,24 @@ def _message_to_anthropic_dict(message: Message) -> dict[str, Any]:
         "role": role,
         "content": str(message),
     }
+
+
+def _fix_message_dicts(
+    message_dicts: list[dict[str, Any]], fake_first_user_message: str, message_delimiter_for_same_role: str
+) -> list[dict[str, Any]]:
+    if not message_dicts:
+        return []
+
+    fixed_message_dicts = []
+    if message_dicts[0]["role"] != "user":
+        # Anthropic requires the first message to come from the user
+        fixed_message_dicts.append({"role": "user", "content": fake_first_user_message})
+
+    # if multiple messages with the same role are sent in a row, they should be concatenated
+    for message_dict in message_dicts:
+        if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
+            fixed_message_dicts[-1]["content"] += message_delimiter_for_same_role + message_dict["content"]
+        else:
+            fixed_message_dicts.append(message_dict)
+
+    return fixed_message_dicts
