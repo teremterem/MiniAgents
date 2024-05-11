@@ -68,29 +68,54 @@ def split_messages(
     code_block_delimiter: Optional[str] = "```",
     schedule_immediately: Union[bool, Sentinel] = DEFAULT,
 ) -> MessageSequencePromise:
+    """
+    TODO Oleksandr: docstring
+    """
+
+    # TODO Oleksandr: convert this function into a class ?
+    # TODO Oleksandr: simplify this function somehow ? it is not going to be easy to understand later
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
-        current_text_producer = None
+        current_text_producer: Optional[AppendProducer[str]] = None
+        inside_code_block = False
+
+        def is_text_so_far_not_empty() -> bool:
+            return bool(text_so_far.replace(delimiter, ""))
 
         def split_text_if_needed() -> bool:
-            nonlocal text_so_far, current_text_producer
+            nonlocal text_so_far, current_text_producer, inside_code_block
 
-            delimiter_idx = text_so_far.find(delimiter)
+            delimiter_idx = -1 if inside_code_block else text_so_far.find(delimiter)
+            delimiter_len = len(delimiter)
+
+            code_delimiter_idx = text_so_far.find(
+                code_block_delimiter,
+                len(code_block_delimiter) if inside_code_block else 0,  # skip the opening delimiter if we're inside
+            )
+            if code_delimiter_idx > -1 and (delimiter_idx < 0 or code_delimiter_idx < delimiter_idx):
+                delimiter_len = 0  # we want to include the code block delimiters into the text of the code message
+                if inside_code_block:
+                    delimiter_idx = code_delimiter_idx + len(code_block_delimiter)
+                else:
+                    delimiter_idx = code_delimiter_idx
+                inside_code_block = not inside_code_block
+
             if delimiter_idx < 0:
                 return False
 
             text = text_so_far[:delimiter_idx]
-            text_so_far = text_so_far[delimiter_idx + len(delimiter) :]
-            with current_text_producer:
-                current_text_producer.append(text)
-            current_text_producer = None
+            text_so_far = text_so_far[delimiter_idx + delimiter_len :]
+            if text:
+                with current_text_producer:
+                    current_text_producer.append(text)
+                current_text_producer = None
             return True
 
         try:
             async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
                 if not current_text_producer:
                     # we already know that there will be at least one message - time to make a promise
-                    current_text_producer = AppendProducer[str](capture_errors=True)
+                    current_text_producer = AppendProducer[str]()
                     yield Message.promise(
                         message_token_producer=current_text_producer,
                         schedule_immediately=schedule_immediately,
@@ -98,18 +123,17 @@ def split_messages(
 
                 async for token in message_promise:
                     text_so_far += token
-                    if text_so_far and not current_text_producer:
-                        # in case we are in the middle of a message and we need to start a new one
-                        current_text_producer = AppendProducer[str](capture_errors=True)
-                        yield Message.promise(
-                            message_token_producer=current_text_producer,
-                            schedule_immediately=schedule_immediately,
-                        )
 
-                    while split_text_if_needed():
-                        pass  # repeat splitting until no more splitting is happening anymore
+                    while split_text_if_needed():  # repeat splitting until no more splitting is happening anymore
+                        if not current_text_producer and is_text_so_far_not_empty():
+                            # previous message was already sent - we need to start a new one (make a new promise)
+                            current_text_producer = AppendProducer[str]()
+                            yield Message.promise(
+                                message_token_producer=current_text_producer,
+                                schedule_immediately=schedule_immediately,
+                            )
 
-            if text_so_far:
+            if is_text_so_far_not_empty():
                 # some text still remains after all the messages have been processed
                 if current_text_producer:
                     with current_text_producer:
