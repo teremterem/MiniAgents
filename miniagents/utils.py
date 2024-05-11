@@ -71,6 +71,21 @@ def split_messages(
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
         current_text_producer = None
+
+        def split_text_if_needed() -> bool:
+            nonlocal text_so_far, current_text_producer
+
+            delimiter_idx = text_so_far.find(delimiter)
+            if delimiter_idx < 0:
+                return False
+
+            text = text_so_far[:delimiter_idx]
+            text_so_far = text_so_far[delimiter_idx + len(delimiter) :]
+            with current_text_producer:
+                current_text_producer.append(text)
+            current_text_producer = None
+            return True
+
         try:
             async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
                 if not current_text_producer:
@@ -91,12 +106,8 @@ def split_messages(
                             schedule_immediately=schedule_immediately,
                         )
 
-                    while (delimiter_idx := text_so_far.find(delimiter)) > -1:
-                        text = text_so_far[:delimiter_idx]
-                        text_so_far = text_so_far[delimiter_idx + len(delimiter) :]
-                        with current_text_producer:
-                            current_text_producer.append(text)
-                        current_text_producer = None
+                    while split_text_if_needed():
+                        pass  # repeat splitting until no more splitting is happening anymore
 
             if text_so_far:
                 # some text still remains after all the messages have been processed
