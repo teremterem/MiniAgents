@@ -6,6 +6,7 @@ from typing import AsyncIterator, Any, Optional, Union
 
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message
+from miniagents.promising.promising import AppendProducer
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 
@@ -69,33 +70,46 @@ def split_messages(
 ) -> MessageSequencePromise:
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
-        async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
-            async for token in message_promise:
-                text_so_far += token
+        current_text_producer = None
+        try:
+            async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
+                if not current_text_producer:
+                    # we already know that there will be at least one message - time to make a promise
+                    current_text_producer = AppendProducer[str](capture_errors=True)
+                    yield Message.promise(
+                        message_token_producer=current_text_producer,
+                        schedule_immediately=schedule_immediately,
+                    )
 
-                while (delimiter_idx := text_so_far.find(delimiter)) > -1:
-                    text = text_so_far[:delimiter_idx]
-                    text_so_far = text_so_far[delimiter_idx + len(delimiter) :]
-                    # TODO Oleksandr: yield the promise first and produce its text later ?
-                    yield Message(text=text).as_promise
-        if text_so_far:
-            # TODO Oleksandr: yield the promise first and produce its text later ?
-            yield Message(text=text_so_far).as_promise
+                async for token in message_promise:
+                    text_so_far += token
+                    if text_so_far and not current_text_producer:
+                        # in case we are in the middle of a message and we need to start a new one
+                        current_text_producer = AppendProducer[str](capture_errors=True)
+                        yield Message.promise(
+                            message_token_producer=current_text_producer,
+                            schedule_immediately=schedule_immediately,
+                        )
 
-            # # TODO TODO TODO
-            #
-            # token_producer = AppendProducer[str](capture_errors=True)
-            # yield Message.promise(
-            #     message_token_producer=token_producer,
-            #     schedule_immediately=schedule_immediately,
-            # )
-            # with token_producer:
-            #     async for token in message_promise:
-            #         # TODO Oleksandr:
-            #         #  1) split by double newlines
-            #         #  2) don't split if we are inside a code block
-            #         #  3) don't stream sub-messages token by token, just return them when they are ready
-            #         token_producer.append(token)
+                    while (delimiter_idx := text_so_far.find(delimiter)) > -1:
+                        text = text_so_far[:delimiter_idx]
+                        text_so_far = text_so_far[delimiter_idx + len(delimiter) :]
+                        with current_text_producer:
+                            current_text_producer.append(text)
+                        current_text_producer = None
+
+            if text_so_far:
+                # some text still remains after all the messages have been processed
+                if current_text_producer:
+                    with current_text_producer:
+                        current_text_producer.append(text_so_far)
+                else:
+                    yield Message(text=text_so_far).as_promise
+
+        finally:
+            if current_text_producer:
+                # in case of an exception and the last MessagePromise "still hanging"
+                current_text_producer.close()
 
     async def sequence_packager(sequence_promise: MessageSequencePromise) -> tuple[MessagePromise, ...]:
         return tuple([item async for item in sequence_promise])  # pylint: disable=consider-using-generator
