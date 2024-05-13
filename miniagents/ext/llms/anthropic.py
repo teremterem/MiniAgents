@@ -111,7 +111,8 @@ async def _anthropic_func(
                 )
             yield anthropic_final_message.content[0].text  # yield the whole text as one "piece"
 
-        metadata_so_far["anthropic"] = anthropic_final_message.model_dump(exclude={"content"})
+        metadata_so_far["role"] = anthropic_final_message.role
+        metadata_so_far["anthropic"] = anthropic_final_message.model_dump(exclude={"content", "role"})
 
     ctx.reply(
         AnthropicMessage.promise(
@@ -126,13 +127,7 @@ def _message_to_anthropic_dict(message: Message) -> dict[str, Any]:
     try:
         role = message.role
     except AttributeError:
-        try:
-            role = message.anthropic_role
-        except AttributeError:
-            try:
-                role = message.anthropic.role
-            except AttributeError:
-                role = "user"
+        role = "user"
 
     return {
         "role": role,

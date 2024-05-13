@@ -2,12 +2,43 @@
 Utility functions of the MiniAgents framework.
 """
 
-from typing import AsyncIterator, Any, Optional, Union
+from typing import AsyncIterator, Any, Optional, Union, Iterable, Callable
 
 from miniagents.messages import MessageSequencePromise
-from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message
+from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message, MiniAgent
 from miniagents.promising.promising import AppendProducer
-from miniagents.promising.sentinels import Sentinel, DEFAULT
+from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT
+
+
+async def aloop_chain(
+    agents: Iterable[Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel]],
+    initial_input: MessageType = None,
+) -> None:
+    """
+    TODO Oleksandr: docstring
+    """
+    agents = list(agents)
+    if not any(agent is AWAIT for agent in agents):
+        raise ValueError(
+            "There should be at least one AWAIT sentinel in the list of agents in order for the loop not to "
+            "schedule the turns infinitely without actually running them."
+        )
+
+    messages = initial_input
+    while True:
+        for agent in agents:
+            if agent is AWAIT:
+                if isinstance(messages, MessageSequencePromise):
+                    # all the interactions happen here (here all the scheduled promises are awaited for)
+                    messages = await messages.acollect_messages()
+            elif callable(agent):
+                messages = agent(messages)
+            elif isinstance(agent, MiniAgent):
+                messages = agent.inquire(messages)
+            else:
+                raise ValueError(f"Invalid agent: {agent}")
+    # TODO Oleksandr: How should agents end the loop ? What message sequence should this utility return when the
+    #  loop is over ?
 
 
 def join_messages(
@@ -26,15 +57,18 @@ def join_messages(
     when prompted in a certain way, may produce leading newlines in the response. This parameter allows you to
     remove them.
     :param delimiter: A string that will be inserted between messages.
-    :param reference_original_messages: If True, the resulting message will contain a list of original messages.
+    :param reference_original_messages: If True, the resulting message will contain the list of original messages in
+    the `original_messages` field.
     :param schedule_immediately: If True, the resulting message will be scheduled for implicit collection regardless
     of when it is going to be collected explicitly.
     :param message_metadata: Additional metadata to be added to the resulting message.
     """
 
     async def token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+        metadata_so_far.update(message_metadata)
         if reference_original_messages:
             metadata_so_far["original_messages"] = []
+
         first_message = True
         async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
             if delimiter and not first_message:
@@ -54,8 +88,6 @@ def join_messages(
 
             first_message = False
 
-        metadata_so_far.update(message_metadata)
-
     return Message.promise(
         message_token_producer=token_producer,
         schedule_immediately=schedule_immediately,
@@ -67,13 +99,17 @@ def split_messages(
     delimiter: str = "\n\n",
     code_block_delimiter: Optional[str] = "```",
     schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+    **message_metadata,
 ) -> MessageSequencePromise:
     """
     TODO Oleksandr: docstring
     """
 
+    # pylint: disable=not-context-manager
+
     # TODO Oleksandr: convert this function into a class ?
     # TODO Oleksandr: simplify this function somehow ? it is not going to be easy to understand later
+    # TODO Oleksandr: but cover it with unit tests first
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
         current_text_producer: Optional[AppendProducer[str]] = None
@@ -111,14 +147,24 @@ def split_messages(
                 current_text_producer = None
             return True
 
+        def start_new_message_promise() -> MessagePromise:
+            nonlocal current_text_producer
+            current_text_producer = AppendProducer[str]()
+
+            async def token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+                metadata_so_far.update(message_metadata)
+                async for token in current_text_producer:
+                    yield token
+
+            return Message.promise(
+                message_token_producer=token_producer,
+                schedule_immediately=schedule_immediately,
+            )
+
         try:
             if not current_text_producer:
                 # we already know that there will be at least one message - time to make a promise
-                current_text_producer = AppendProducer[str]()
-                yield Message.promise(
-                    message_token_producer=current_text_producer,
-                    schedule_immediately=schedule_immediately,
-                )
+                yield start_new_message_promise()
 
             async for token in join_messages(
                 messages,
@@ -131,11 +177,7 @@ def split_messages(
                 while split_text_if_needed():  # repeat splitting until no more splitting is happening anymore
                     if not current_text_producer and is_text_so_far_not_empty():
                         # previous message was already sent - we need to start a new one (make a new promise)
-                        current_text_producer = AppendProducer[str]()
-                        yield Message.promise(
-                            message_token_producer=current_text_producer,
-                            schedule_immediately=schedule_immediately,
-                        )
+                        yield start_new_message_promise()
 
             if is_text_so_far_not_empty():
                 # some text still remains after all the messages have been processed
@@ -143,7 +185,7 @@ def split_messages(
                     with current_text_producer:
                         current_text_producer.append(text_so_far)
                 else:
-                    yield Message(text=text_so_far).as_promise
+                    yield Message(text=text_so_far, **message_metadata).as_promise
 
         finally:
             if current_text_producer:
