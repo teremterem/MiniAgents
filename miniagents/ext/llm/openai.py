@@ -94,8 +94,8 @@ async def _openai_func(
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
 
         openai_response = await async_client.chat.completions.create(messages=message_dicts, stream=stream, **kwargs)
+        # TODO TODO TODO Oleksandr: implement token streaming
         if stream:  # pylint: disable=no-else-raise
-            # TODO TODO TODO Oleksandr: implement token streaming
             raise NotImplementedError("streaming is not yet supported for OpenAI")
             # async for token in openai_response:
             #     yield token
