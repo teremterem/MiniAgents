@@ -90,7 +90,9 @@ async def _anthropic_func(
             # let's strip away the system message at the end
             system_message_dict = message_dicts.pop()
             system_combined = (
-                system_message_dict["content"] if system is None else f"{system}\n\n{system_message_dict['content']}"
+                system_message_dict["content"]
+                if system is None
+                else f"{system}{message_delimiter_for_same_role}{system_message_dict['content']}"
             )
         else:
             system_combined = system
