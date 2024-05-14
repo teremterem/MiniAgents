@@ -6,7 +6,9 @@ import logging
 import typing
 from functools import partial
 from pprint import pformat
-from typing import AsyncIterator, Any, Optional
+from typing import AsyncIterator, Any, Optional, Union
+
+from anthropic import NotGiven, NOT_GIVEN
 
 from miniagents.miniagents import (
     Message,
@@ -59,6 +61,7 @@ async def _anthropic_func(
     global_reply_metadata: Optional[dict[str, Any]],
     reply_metadata: Optional[dict[str, Any]] = None,
     stream: Optional[bool] = None,
+    system: Union[str, NotGiven] = NOT_GIVEN,
     fake_first_user_message: str = "/start",
     message_delimiter_for_same_role: str = "\n\n",
     **kwargs,
@@ -88,7 +91,7 @@ async def _anthropic_func(
 
         if stream:
             # pylint: disable=not-async-context-manager
-            async with async_client.messages.stream(messages=message_dicts, **kwargs) as response:
+            async with async_client.messages.stream(messages=message_dicts, system=system, **kwargs) as response:
                 async for token in response.text_stream:
                     yield token
                 anthropic_final_message = await response.get_final_message()
@@ -102,7 +105,7 @@ async def _anthropic_func(
             #         yield token.delta.text
         else:
             anthropic_final_message = await async_client.messages.create(
-                messages=message_dicts, stream=False, **kwargs
+                messages=message_dicts, stream=False, system=system, **kwargs
             )
             if len(anthropic_final_message.content) != 1:
                 raise RuntimeError(

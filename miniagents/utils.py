@@ -110,6 +110,8 @@ def split_messages(
     # TODO Oleksandr: convert this function into a class ?
     # TODO Oleksandr: simplify this function somehow ? it is not going to be easy to understand later
     # TODO Oleksandr: but cover it with unit tests first
+    # TODO Oleksandr: another problem - this function suppresses exceptions - they should be passed into the
+    #  resulting message promises instead
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
         current_text_producer: Optional[AppendProducer[str]] = None
