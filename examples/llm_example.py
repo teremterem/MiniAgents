@@ -23,7 +23,7 @@ from miniagents.miniagents import MiniAgents
 # llm_agent = create_anthropic_agent()
 llm_agent = create_openai_agent()
 
-mini_agents = MiniAgents(stream_llm_tokens_by_default=False)
+mini_agents = MiniAgents()
 
 
 @mini_agents.on_serialize_message

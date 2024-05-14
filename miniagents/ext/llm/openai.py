@@ -94,12 +94,17 @@ async def _openai_func(
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
 
         openai_response = await async_client.chat.completions.create(messages=message_dicts, stream=stream, **kwargs)
-        # TODO TODO TODO Oleksandr: implement token streaming
-        if stream:  # pylint: disable=no-else-raise
-            raise NotImplementedError("streaming is not yet supported for OpenAI")
-            # async for token in openai_response:
-            #     yield token
-            # openai_final_message = await response.get_final_message()
+        if stream:
+            async for chunk in openai_response:
+                if len(chunk.choices) != 1:  # TODO Oleksandr: do I really need to check it for every token ?
+                    raise RuntimeError(
+                        f"exactly one Choice was expected from OpenAI, "
+                        f"but {len(openai_response.choices)} were returned instead"
+                    )
+                token = chunk.choices[0].delta.content
+                if token:
+                    yield token
+            # TODO TODO TODO Oleksandr: collect metadata from streamed message too
         else:
             if len(openai_response.choices) != 1:
                 raise RuntimeError(
@@ -108,10 +113,14 @@ async def _openai_func(
                 )
             yield openai_response.choices[0].message.content  # yield the whole text as one "piece"
 
-        metadata_so_far["role"] = openai_response.choices[0].message.role
-        metadata_so_far["openai"] = openai_response.model_dump(
-            exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
-        )
+        if stream:  # TODO TODO TODO Oleksandr: get rid of this condition when streamed metadata is also collected
+            metadata_so_far["role"] = "assistant"
+            metadata_so_far["openai"] = {}
+        else:
+            metadata_so_far["role"] = openai_response.choices[0].message.role
+            metadata_so_far["openai"] = openai_response.model_dump(
+                exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
+            )
 
     ctx.reply(
         OpenAIMessage.promise(
