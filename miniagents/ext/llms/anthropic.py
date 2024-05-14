@@ -8,6 +8,8 @@ from functools import partial
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
+from anthropic import NOT_GIVEN
+
 from miniagents.miniagents import (
     Message,
     miniagent,
@@ -59,6 +61,7 @@ async def _anthropic_func(
     global_reply_metadata: Optional[dict[str, Any]],
     reply_metadata: Optional[dict[str, Any]] = None,
     stream: Optional[bool] = None,
+    system: Optional[str] = None,
     fake_first_user_message: str = "/start",
     message_delimiter_for_same_role: str = "\n\n",
     **kwargs,
@@ -83,12 +86,28 @@ async def _anthropic_func(
             message_delimiter_for_same_role=message_delimiter_for_same_role,
         )
 
+        if message_dicts and message_dicts[-1]["role"] == "system":
+            # let's strip away the system message at the end
+            system_message_dict = message_dicts.pop()
+            system_combined = (
+                system_message_dict["content"]
+                if system is None
+                else f"{system}{message_delimiter_for_same_role}{system_message_dict['content']}"
+            )
+        else:
+            system_combined = system
+
+        if system_combined is None:
+            system_combined = NOT_GIVEN
+
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("SENDING TO ANTHROPIC:\n\n%s\n", pformat(message_dicts))
 
         if stream:
             # pylint: disable=not-async-context-manager
-            async with async_client.messages.stream(messages=message_dicts, **kwargs) as response:
+            async with async_client.messages.stream(
+                messages=message_dicts, system=system_combined, **kwargs
+            ) as response:
                 async for token in response.text_stream:
                     yield token
                 anthropic_final_message = await response.get_final_message()
@@ -102,7 +121,7 @@ async def _anthropic_func(
             #         yield token.delta.text
         else:
             anthropic_final_message = await async_client.messages.create(
-                messages=message_dicts, stream=False, **kwargs
+                messages=message_dicts, stream=False, system=system_combined, **kwargs
             )
             if len(anthropic_final_message.content) != 1:
                 raise RuntimeError(
@@ -141,9 +160,15 @@ def _fix_message_dicts(
     if not message_dicts:
         return []
 
+    # let's put all the system messages at the end (they will be stripped away)
+    non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
+    system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
+    message_dicts = non_system_message_dicts + system_message_dicts
+
     fixed_message_dicts = []
     if message_dicts[0]["role"] != "user":
-        # Anthropic requires the first message to come from the user
+        # Anthropic requires the first message to come from the user (system messages don't count - their content
+        # will go into a separate, `system` parameter of the API call)
         fixed_message_dicts.append({"role": "user", "content": fake_first_user_message})
 
     # if multiple messages with the same role are sent in a row, they should be concatenated
