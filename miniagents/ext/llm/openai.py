@@ -95,6 +95,7 @@ async def _openai_func(
 
         openai_response = await async_client.chat.completions.create(messages=message_dicts, stream=stream, **kwargs)
         if stream:
+            metadata_so_far["openai"] = {}
             async for chunk in openai_response:
                 if len(chunk.choices) != 1:  # TODO Oleksandr: do I really need to check it for every token ?
                     raise RuntimeError(
@@ -104,7 +105,12 @@ async def _openai_func(
                 token = chunk.choices[0].delta.content
                 if token:
                     yield token
-            # TODO TODO TODO Oleksandr: collect metadata from streamed message too
+
+                metadata_so_far["role"] = chunk.choices[0].delta.role or metadata_so_far["role"]
+                _merge_openai_dicts(
+                    metadata_so_far["openai"],
+                    chunk.model_dump(exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}),
+                )
         else:
             if len(openai_response.choices) != 1:
                 raise RuntimeError(
@@ -113,10 +119,6 @@ async def _openai_func(
                 )
             yield openai_response.choices[0].message.content  # yield the whole text as one "piece"
 
-        if stream:  # TODO TODO TODO Oleksandr: get rid of this condition when streamed metadata is also collected
-            metadata_so_far["role"] = "assistant"
-            metadata_so_far["openai"] = {}
-        else:
             metadata_so_far["role"] = openai_response.choices[0].message.role
             metadata_so_far["openai"] = openai_response.model_dump(
                 exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
@@ -128,3 +130,23 @@ async def _openai_func(
             message_token_producer=message_token_producer,
         )
     )
+
+
+def _merge_openai_dicts(destination_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
+    """
+    Merge the dict_to_merge into the destination_dict.
+    """
+    for key, value in dict_to_merge.items():
+        if value is not None:
+            existing_value = destination_dict.get(key)
+            if isinstance(existing_value, dict):
+                _merge_openai_dicts(existing_value, value)
+            elif isinstance(existing_value, list):
+                if key == "choices":
+                    if not existing_value:
+                        destination_dict[key] = [{}]  # we only expect a single choice in our implementation
+                    _merge_openai_dicts(destination_dict[key][0], value[0])
+                else:
+                    destination_dict[key].extend(value)
+            else:
+                destination_dict[key] = value
