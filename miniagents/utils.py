@@ -10,7 +10,7 @@ from miniagents.promising.promising import AppendProducer
 from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT
 
 
-async def aloop_chain(
+async def achain_loop(
     agents: Iterable[Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel]],
     initial_input: MessageType = None,
 ) -> None:
@@ -176,10 +176,13 @@ def split_messages(
             ):
                 text_so_far += token
 
-                while split_text_if_needed():  # repeat splitting until no more splitting is happening anymore
+                while True:
                     if not current_text_producer and is_text_so_far_not_empty():
                         # previous message was already sent - we need to start a new one (make a new promise)
                         yield start_new_message_promise()
+                    if not split_text_if_needed():
+                        # repeat splitting until no more splitting is happening anymore in the text that we have so far
+                        break
 
             if is_text_so_far_not_empty():
                 # some text still remains after all the messages have been processed
