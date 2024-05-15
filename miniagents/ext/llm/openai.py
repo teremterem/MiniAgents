@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 This module integrates OpenAI language models with MiniAgents.
 """
@@ -34,7 +35,8 @@ class OpenAIMessage(LangModelMessage):
 def create_openai_agent(
     async_client: Optional["openai_original.AsyncOpenAI"] = None,
     assistant_reply_metadata: Optional[dict[str, Any]] = None,
-    **mini_agent_kwargs,
+    mini_agent_kwargs: Optional[dict[str, Any]] = None,
+    **static_openai_kwargs,
 ) -> MiniAgent:
     """
     Create an MiniAgent for OpenAI models (see MiniAgent class definition and docstring for usage details).
@@ -47,9 +49,14 @@ def create_openai_agent(
         async_client = openai_original.AsyncOpenAI()
 
     return miniagent(
-        partial(_openai_func, async_client=async_client, global_reply_metadata=assistant_reply_metadata),
+        partial(
+            _openai_func,
+            async_client=async_client,
+            global_reply_metadata=assistant_reply_metadata,
+            **static_openai_kwargs,
+        ),
         alias="OPENAI_AGENT",
-        **mini_agent_kwargs,
+        **(mini_agent_kwargs or {}),
     )
 
 

@@ -2,12 +2,10 @@
 Code example for using LLMs.
 """
 
-import asyncio
-
 # noinspection PyUnresolvedReferences
 import readline  # pylint: disable=unused-import
-from pprint import pprint
 
+import pytest
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,32 +13,16 @@ load_dotenv()
 # pylint: disable=wrong-import-position
 # from miniagents.ext.llm.anthropic import create_anthropic_agent
 from miniagents.ext.llm.openai import create_openai_agent
-from miniagents.messages import Message
 from miniagents.miniagents import MiniAgents
 
-# logging.basicConfig(level=logging.DEBUG)
-
-# llm_agent = create_anthropic_agent(model="claude-3-haiku-20240307")  # claude-3-opus-20240229
-llm_agent = create_openai_agent(model="gpt-4o-2024-05-13")  # gpt-3.5-turbo-0125
+# llm_agent = create_anthropic_agent(model="claude-3-haiku-20240307")
+llm_agent = create_openai_agent(model="gpt-3.5-turbo-0125")
 
 mini_agents = MiniAgents()
 
 
-@mini_agents.on_serialize_message
-async def serialize_message(_, message: Message) -> None:
-    """
-    TODO Oleksandr: docstring
-    """
-    print("HASH KEY:", message.hash_key)
-    print(type(message).__name__)
-    pprint(message.serialize(), width=119)
-    print()
-
-
-async def main() -> None:
-    """
-    Send a message to Claude and print the response.
-    """
+@pytest.mark.asyncio
+async def test_llm() -> None:
     async with mini_agents:
         reply_sequence = llm_agent.inquire(
             "How are you today?",
@@ -55,7 +37,3 @@ async def main() -> None:
                 print(token, end="", flush=True)
             print()
             print()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
