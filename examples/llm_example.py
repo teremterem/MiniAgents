@@ -1,6 +1,5 @@
-# pylint: disable=wrong-import-position
 """
-Code example for using Anthropic Claude.
+Code example for using LLMs.
 """
 
 import asyncio
@@ -12,15 +11,18 @@ from pprint import pprint
 from dotenv import load_dotenv
 
 from miniagents.messages import Message
+from miniagents.miniagents import MiniAgents
 
 load_dotenv()
 
-from miniagents.ext.llms.anthropic import create_anthropic_agent
-from miniagents.miniagents import MiniAgents
+# pylint: disable=wrong-import-position
+# from miniagents.ext.llm.anthropic import create_anthropic_agent
+from miniagents.ext.llm.openai import create_openai_agent
 
 # logging.basicConfig(level=logging.DEBUG)
 
-anthropic_agent = create_anthropic_agent()
+# llm_agent = create_anthropic_agent(model="claude-3-haiku-20240307")  # claude-3-opus-20240229
+llm_agent = create_openai_agent(model="gpt-4o-2024-05-13")  # gpt-3.5-turbo-0125
 
 mini_agents = MiniAgents()
 
@@ -41,9 +43,8 @@ async def main() -> None:
     Send a message to Claude and print the response.
     """
     async with mini_agents:
-        reply_sequence = anthropic_agent.inquire(
+        reply_sequence = llm_agent.inquire(
             "How are you today?",
-            model="claude-3-haiku-20240307",  # "claude-3-opus-20240229",
             max_tokens=1000,
             temperature=0.0,
             system="Respond only in Yoda-speak.",
