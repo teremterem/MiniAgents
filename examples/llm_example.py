@@ -27,8 +27,8 @@ llm_agent = create_openai_agent(model="gpt-4o-2024-05-13")  # gpt-3.5-turbo-0125
 mini_agents = MiniAgents()
 
 
-@mini_agents.on_serialize_message
-async def serialize_message(_, message: Message) -> None:
+@mini_agents.on_persist_message
+async def persist_message(_, message: Message) -> None:
     """
     TODO Oleksandr: docstring
     """
