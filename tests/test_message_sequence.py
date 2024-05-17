@@ -87,28 +87,19 @@ async def test_message_sequence_error(schedule_immediately: bool) -> None:
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
     the right place.
     """
-    async with PromisingContext():
-        msg_seq1 = MessageSequence(
-            producer_capture_errors=True,
-            schedule_immediately=schedule_immediately,
-        )
+    async with PromisingContext(producer_capture_errors_by_default=True):
+        msg_seq1 = MessageSequence(schedule_immediately=schedule_immediately)
         with msg_seq1.append_producer:
             msg_seq1.append_producer.append("msg1")
 
-            msg_seq2 = MessageSequence(
-                producer_capture_errors=True,
-                schedule_immediately=schedule_immediately,
-            )
+            msg_seq2 = MessageSequence(schedule_immediately=schedule_immediately)
             with msg_seq2.append_producer:
                 msg_seq2.append_producer.append("msg2")
 
-                msg_seq3 = MessageSequence(
-                    producer_capture_errors=True,
-                    schedule_immediately=schedule_immediately,
-                )
+                msg_seq3 = MessageSequence(schedule_immediately=schedule_immediately)
                 with msg_seq3.append_producer:
                     msg_seq3.append_producer.append("msg3")
-                    # msg_seq1.append_producer.append(TypeError("msg4"))
+                    # msg_seq3.append_producer.append(ValueError("msg4"))
                     raise ValueError("msg5")
 
                 msg_seq2.append_producer.append(msg_seq3.sequence_promise)

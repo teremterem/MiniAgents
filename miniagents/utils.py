@@ -6,7 +6,7 @@ from typing import AsyncIterator, Any, Optional, Union, Iterable, Callable
 
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message, MiniAgent
-from miniagents.promising.promising import AppendProducer
+from miniagents.promising.promising import AppendProducer, logger
 from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT
 
 
@@ -105,13 +105,11 @@ def split_messages(
     TODO Oleksandr: docstring
     """
 
-    # pylint: disable=not-context-manager
+    # pylint: disable=not-context-manager,too-many-statements
 
     # TODO Oleksandr: convert this function into a class ?
     # TODO Oleksandr: simplify this function somehow ? it is not going to be easy to understand later
     # TODO Oleksandr: but cover it with unit tests first
-    # TODO Oleksandr: another problem - this function suppresses exceptions - they should be passed into the
-    #  resulting message promises instead
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
         current_text_producer: Optional[AppendProducer[str]] = None
@@ -192,6 +190,13 @@ def split_messages(
                 else:
                     yield Message(text=text_so_far, **message_metadata).as_promise
 
+        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: should this be BaseException ?
+            if current_text_producer:
+                with current_text_producer:
+                    current_text_producer.append(exc)
+            else:
+                # TODO Oleksandr: what should actually be done in this case ? how to avoid losing the exception ?
+                logger.exception("Unhandled exception in split_messages()")
         finally:
             if current_text_producer:
                 # in case of an exception and the last MessagePromise "still hanging"
@@ -203,5 +208,5 @@ def split_messages(
     return MessageSequencePromise(
         producer=sequence_producer,
         packager=sequence_packager,
-        schedule_immediately=schedule_immediately,
+        schedule_immediately=True,  # allowing it to ever be False results in a deadlock
     )

@@ -87,7 +87,6 @@ class MiniAgents(PromisingContext):
 
 def miniagent(
     func: Optional["AgentFunction"] = None,
-    /,  # TODO Oleksandr: do I really need to enforce positional-only upon `func` ?
     alias: Optional[str] = None,
     description: Optional[str] = None,
     uppercase_func_name: bool = True,
