@@ -6,7 +6,7 @@ from typing import AsyncIterator, Any, Optional, Union, Iterable, Callable
 
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message, MiniAgent
-from miniagents.promising.promising import AppendProducer, logger
+from miniagents.promising.promising import AppendProducer
 from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT
 
 
@@ -193,10 +193,10 @@ def split_messages(
         except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: should this be BaseException ?
             if current_text_producer:
                 with current_text_producer:
-                    current_text_producer.append(exc)
+                    # noinspection PyTypeChecker
+                    current_text_producer.append(exc)  # TODO Oleksandr: update AppendProducer's signature ?
             else:
-                # TODO Oleksandr: what should actually be done in this case ? how to avoid losing the exception ?
-                logger.exception("Unhandled exception in split_messages()")
+                raise exc
         finally:
             if current_text_producer:
                 # in case of an exception and the last MessagePromise "still hanging"
