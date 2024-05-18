@@ -14,7 +14,7 @@ from miniagents.promising.sequence import FlatSequence
 from miniagents.promising.typing import StreamedPieceProducer, NodeCollectedEventHandler, PromiseBound
 
 
-class SerializeMessageEventHandler(Protocol):
+class PersistMessageEventHandler(Protocol):
     """
     TODO Oleksandr: docstring
     """
@@ -31,18 +31,18 @@ class MiniAgents(PromisingContext):
         self,
         stream_llm_tokens_by_default: bool = True,
         on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
-        on_serialize_message: Union[SerializeMessageEventHandler, Iterable[SerializeMessageEventHandler]] = (),
+        on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         **kwargs,
     ) -> None:
         on_node_collected = (
-            [self._schedule_serialize_message_event, on_node_collected]
+            [self._schedule_persist_message_event, on_node_collected]
             if callable(on_node_collected)
-            else [self._schedule_serialize_message_event, *on_node_collected]
+            else [self._schedule_persist_message_event, *on_node_collected]
         )
         super().__init__(on_node_collected=on_node_collected, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
-        self.on_serialize_message_handlers: list[SerializeMessageEventHandler] = (
-            [on_serialize_message] if callable(on_serialize_message) else list(on_serialize_message)
+        self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
+            [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
         )
 
     @classmethod
@@ -53,15 +53,15 @@ class MiniAgents(PromisingContext):
         # noinspection PyTypeChecker
         return super().get_current()
 
-    def on_serialize_message(self, handler: SerializeMessageEventHandler) -> SerializeMessageEventHandler:
+    def on_persist_message(self, handler: PersistMessageEventHandler) -> PersistMessageEventHandler:
         """
-        Add a handler that will be called every time a Message needs to be serialized.
+        Add a handler that will be called every time a Message needs to be persisted.
         """
-        self.on_serialize_message_handlers.append(handler)
+        self.on_persist_message_handlers.append(handler)
         return handler
 
     # noinspection PyProtectedMember
-    async def _schedule_serialize_message_event(self, _, node: Node) -> None:
+    async def _schedule_persist_message_event(self, _, node: Node) -> None:
         """
         TODO Oleksandr: docstring
         """
@@ -70,24 +70,23 @@ class MiniAgents(PromisingContext):
             return
 
         for sub_message in node.sub_messages():
-            if sub_message._serialize_message_event_triggered:
+            if sub_message._persist_message_event_triggered:
                 continue
 
-            for handler in self.on_serialize_message_handlers:
+            for handler in self.on_persist_message_handlers:
                 self.schedule_task(handler(_, sub_message))
-            sub_message._serialize_message_event_triggered = True
+            sub_message._persist_message_event_triggered = True
 
-        if node._serialize_message_event_triggered:
+        if node._persist_message_event_triggered:
             return
 
-        for handler in self.on_serialize_message_handlers:
+        for handler in self.on_persist_message_handlers:
             self.schedule_task(handler(_, node))
-        node._serialize_message_event_triggered = True
+        node._persist_message_event_triggered = True
 
 
 def miniagent(
     func: Optional["AgentFunction"] = None,
-    /,  # TODO Oleksandr: do I really need to enforce positional-only upon `func` ?
     alias: Optional[str] = None,
     description: Optional[str] = None,
     uppercase_func_name: bool = True,

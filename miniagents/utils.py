@@ -10,7 +10,7 @@ from miniagents.promising.promising import AppendProducer
 from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT
 
 
-async def aloop_chain(
+async def achain_loop(
     agents: Iterable[Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel]],
     initial_input: MessageType = None,
 ) -> None:
@@ -105,13 +105,11 @@ def split_messages(
     TODO Oleksandr: docstring
     """
 
-    # pylint: disable=not-context-manager
+    # pylint: disable=not-context-manager,too-many-statements
 
     # TODO Oleksandr: convert this function into a class ?
     # TODO Oleksandr: simplify this function somehow ? it is not going to be easy to understand later
     # TODO Oleksandr: but cover it with unit tests first
-    # TODO Oleksandr: another problem - this function suppresses exceptions - they should be passed into the
-    #  resulting message promises instead
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
         current_text_producer: Optional[AppendProducer[str]] = None
@@ -176,10 +174,13 @@ def split_messages(
             ):
                 text_so_far += token
 
-                while split_text_if_needed():  # repeat splitting until no more splitting is happening anymore
+                while True:
                     if not current_text_producer and is_text_so_far_not_empty():
                         # previous message was already sent - we need to start a new one (make a new promise)
                         yield start_new_message_promise()
+                    if not split_text_if_needed():
+                        # repeat splitting until no more splitting is happening anymore in the text that we have so far
+                        break
 
             if is_text_so_far_not_empty():
                 # some text still remains after all the messages have been processed
@@ -189,6 +190,13 @@ def split_messages(
                 else:
                     yield Message(text=text_so_far, **message_metadata).as_promise
 
+        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: should this be BaseException ?
+            if current_text_producer:
+                with current_text_producer:
+                    # noinspection PyTypeChecker
+                    current_text_producer.append(exc)  # TODO Oleksandr: update AppendProducer's signature ?
+            else:
+                raise exc
         finally:
             if current_text_producer:
                 # in case of an exception and the last MessagePromise "still hanging"
@@ -200,5 +208,5 @@ def split_messages(
     return MessageSequencePromise(
         producer=sequence_producer,
         packager=sequence_packager,
-        schedule_immediately=schedule_immediately,
+        schedule_immediately=True,  # allowing it to ever be False results in a deadlock
     )

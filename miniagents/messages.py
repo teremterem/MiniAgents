@@ -133,7 +133,7 @@ class Message(Node):
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
-        self._serialize_message_event_triggered = False
+        self._persist_message_event_triggered = False
 
 
 class MessagePromise(StreamedPromise[str, Message]):
