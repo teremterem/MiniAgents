@@ -13,6 +13,7 @@ class LangModelMessage(Message):
     """
 
     role: str
+    model: str
 
 
 def message_to_llm_dict(message: Message) -> dict[str, Any]:

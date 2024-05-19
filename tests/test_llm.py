@@ -20,12 +20,12 @@ from miniagents.ext.llm.openai import create_openai_agent
 
 def _check_openai_response(message: Message) -> None:
     assert message.text.strip() == "I AM ONLINE"
-    assert message.openai.choices[0].finish_reason == "stop"
+    assert message.choices[0].finish_reason == "stop"
 
 
 def _check_anthropic_response(message: Message) -> None:
     assert message.text.strip() == "I AM ONLINE"
-    assert message.anthropic.stop_reason == "end_turn"
+    assert message.stop_reason == "end_turn"
 
 
 @pytest.mark.parametrize(
