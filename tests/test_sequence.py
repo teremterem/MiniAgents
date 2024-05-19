@@ -36,5 +36,5 @@ async def test_flat_sequence(schedule_immediately: bool) -> None:
             append_producer.append(2)
             append_producer.append(3)
 
-        assert await flat_sequence.sequence_promise.acollect() == (1, 2, 2, 3, 3, 3)
+        assert await flat_sequence.sequence_promise == (1, 2, 2, 3, 3, 3)
         assert [i async for i in flat_sequence.sequence_promise] == [1, 2, 2, 3, 3, 3]

@@ -2,6 +2,7 @@
 "Core" classes of the MiniAgents framework.
 """
 
+from functools import partial
 from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
 
 from pydantic import BaseModel
@@ -92,6 +93,7 @@ def miniagent(
     uppercase_func_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
+    **partial_kwargs,
 ) -> Union["MiniAgent", Callable[["AgentFunction"], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
@@ -106,6 +108,7 @@ def miniagent(
                 uppercase_func_name=uppercase_func_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
                 interaction_metadata=interaction_metadata,
+                **partial_kwargs,
             )
 
         return _decorator
@@ -118,6 +121,7 @@ def miniagent(
         uppercase_func_name=uppercase_func_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
         interaction_metadata=interaction_metadata,
+        **partial_kwargs,
     )
 
 
@@ -209,11 +213,13 @@ class MiniAgent:
         uppercase_func_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
         interaction_metadata: Optional[dict[str, Any]] = None,
-        # TODO Oleksandr: turn MiniAgent into a Node object so arbitrary agent level metadata can be stored in it ?
+        **partial_kwargs,
     ) -> None:
         self._func = func
         # TODO Oleksandr: do deep copy ? freeze with Node ? yoo need to start putting these things down into the
         #  "Philosophy" section of README
+        if partial_kwargs:
+            self._func = partial(func, **partial_kwargs)
         self.interaction_metadata = interaction_metadata or {}
 
         self.alias = alias
@@ -429,7 +435,7 @@ class AgentReplyMessageSequence(MessageSequence):
             return AgentReplyNode(
                 replies=await self.sequence_promise.acollect_messages(),
                 agent_alias=self._mini_agent.alias,
-                agent_call=await agent_call_promise.acollect(),
+                agent_call=await agent_call_promise,
                 **self._mini_agent.interaction_metadata,
             )
 

@@ -166,13 +166,13 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
         )
 
         with pytest.raises(TypeError) as exc_info1:
-            await streamed_promise.acollect()
+            await streamed_promise
         error1 = exc_info1.value
 
         assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
 
         with pytest.raises(TypeError) as exc_info2:
-            await streamed_promise.acollect()
+            await streamed_promise
 
     assert error1 is exc_info2.value  # exact same error instance should be raised again
 
@@ -205,9 +205,9 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
             schedule_immediately=schedule_immediately,
         )
 
-        result1 = await streamed_promise.acollect()
+        result1 = await streamed_promise
         # "collect from the stream" again
-        result2 = await streamed_promise.acollect()
+        result2 = await streamed_promise
 
         # test that the packager is not called multiple times
         assert packager_calls == 1
@@ -241,7 +241,7 @@ async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -
             schedule_immediately=schedule_immediately,
         )
 
-        assert await streamed_promise.acollect() == [1, 2]
+        assert await streamed_promise == [1, 2]
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
@@ -266,7 +266,7 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
             schedule_immediately=schedule_immediately,
         )
 
-        await streamed_promise.acollect()
+        await streamed_promise
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
