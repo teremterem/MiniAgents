@@ -115,6 +115,7 @@ async def _openai_func(
                     metadata_so_far,
                     chunk.model_dump(exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}),
                 )
+                # TODO Oleksandr: in streaming mode `usage` always comes as None from OpenAI - what to do about it ?
         else:
             if len(openai_response.choices) != 1:
                 raise RuntimeError(

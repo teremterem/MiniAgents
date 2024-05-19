@@ -175,6 +175,9 @@ def split_messages(
                 text_so_far += token
 
                 while True:
+                    # TODO Oleksandr: this loop doesn't really work when we are not in streaming mode (when the whole
+                    #  message is available at once) - only the first and the last paragraph is returned, middle
+                    #  paragraphs are lost
                     if not current_text_producer and is_text_so_far_not_empty():
                         # previous message was already sent - we need to start a new one (make a new promise)
                         yield start_new_message_promise()
