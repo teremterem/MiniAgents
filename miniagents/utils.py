@@ -84,7 +84,7 @@ def join_messages(
                     yield token
 
             if reference_original_messages:
-                metadata_so_far["original_messages"].append(await message_promise.acollect())
+                metadata_so_far["original_messages"].append(await message_promise)
 
             first_message = False
 

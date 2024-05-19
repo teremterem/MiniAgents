@@ -192,7 +192,7 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
         Collect all messages from the sequence and return them as a tuple of Message objects.
         """
         # pylint: disable=consider-using-generator
-        return tuple([await message_promise.acollect() async for message_promise in self])
+        return tuple([await message_promise async for message_promise in self])
 
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
         # PyCharm fails to see that MessageSequencePromise inherits AsyncIterable protocol from StreamedPromise,

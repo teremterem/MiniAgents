@@ -49,7 +49,7 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
             msg_seq1.append_producer.append(Message.promise(text="msg10", yet_another_attr=10))
             # msg_seq1.append_producer.append(ValueError("msg11"))
 
-        message_result = [await msg_promise.acollect() async for msg_promise in msg_seq1.sequence_promise]
+        message_result = [await msg_promise async for msg_promise in msg_seq1.sequence_promise]
         assert message_result == [
             Message(text="msg1"),
             Message(text="msg2", some_attr=2),
@@ -111,7 +111,7 @@ async def test_message_sequence_error(schedule_immediately: bool) -> None:
         message_result = []
         with pytest.raises(ValueError, match="msg5"):
             async for msg_promise in msg_seq1.sequence_promise:
-                message_result.append(await msg_promise.acollect())
+                message_result.append(await msg_promise)
 
     assert message_result == [
         Message(text="msg1"),

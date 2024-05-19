@@ -435,7 +435,7 @@ class AgentReplyMessageSequence(MessageSequence):
             return AgentReplyNode(
                 replies=await self.sequence_promise.acollect_messages(),
                 agent_alias=self._mini_agent.alias,
-                agent_call=await agent_call_promise.acollect(),
+                agent_call=await agent_call_promise,
                 **self._mini_agent.interaction_metadata,
             )
 
