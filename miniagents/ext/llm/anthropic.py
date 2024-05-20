@@ -105,7 +105,9 @@ async def _anthropic_func(
             system_combined = NOT_GIVEN
 
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("SENDING TO ANTHROPIC:\n\n%s\n", pformat(message_dicts))
+            logger.debug(
+                "SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n", pformat(message_dicts), pformat(system_combined)
+            )
 
         if stream:
             # pylint: disable=not-async-context-manager
