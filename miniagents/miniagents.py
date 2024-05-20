@@ -153,7 +153,19 @@ class InteractionContext:
         #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
         #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
         #  guarantee that it will be iterated over immediately)
+        # TODO Oleksandr: implement a utility in MiniAgents that deep-copies/freezes mutable data containers
+        #  while keeping objects of other types intact and use it in AppendProducer to freeze the state of those
+        #  objects upon their submission (this way the user will not have to worry about things like `history[:]`
+        #  in the code below)
         self._reply_producer.append(messages)
+
+    def finish_early(self) -> None:
+        """
+        TODO Oleksandr: docstring
+        TODO Oleksandr: is this a good name for this method ?
+        TODO Oleksandr: what to do with exceptions in agent function that may happen after this method was called ?
+        """
+        self._reply_producer.close()
 
 
 class AgentCall:

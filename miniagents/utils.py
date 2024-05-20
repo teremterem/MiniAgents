@@ -7,7 +7,7 @@ from typing import AsyncIterator, Any, Optional, Union, Iterable, Callable
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message, MiniAgent
 from miniagents.promising.promising import AppendProducer
-from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT
+from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT, CLEAR
 
 
 async def achain_loop(
@@ -31,6 +31,8 @@ async def achain_loop(
                 if isinstance(messages, MessageSequencePromise):
                     # all the interactions happen here (here all the scheduled promises are awaited for)
                     messages = await messages.acollect_messages()
+            elif agent is CLEAR:
+                messages = None
             elif callable(agent):
                 messages = agent(messages)
             elif isinstance(agent, MiniAgent):
