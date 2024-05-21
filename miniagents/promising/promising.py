@@ -337,8 +337,9 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             return await self._producer_iterator.__anext__()
         except Exception as exc:
             if not isinstance(exc, StopAsyncIteration):
-                logger.exception(
-                    'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces producer.'
+                logger.debug(
+                    'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces producer.',
+                    exc_info=True,
                 )
             # Any exception, apart from `StopAsyncIteration`, will always be stored in the `_pieces_so_far` list
             # before the `StopAsyncIteration` and will not conclude the list (in other words, `StopAsyncIteration`
