@@ -2,12 +2,15 @@
 Utility functions of the MiniAgents framework.
 """
 
+import logging
 from typing import AsyncIterator, Any, Optional, Union, Iterable, Callable
 
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message, MiniAgent
 from miniagents.promising.promising import AppendProducer
-from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT
+from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT, CLEAR
+
+logger = logging.getLogger(__name__)
 
 
 async def achain_loop(
@@ -31,6 +34,8 @@ async def achain_loop(
                 if isinstance(messages, MessageSequencePromise):
                     # all the interactions happen here (here all the scheduled promises are awaited for)
                     messages = await messages.acollect_messages()
+            elif agent is CLEAR:
+                messages = None
             elif callable(agent):
                 messages = agent(messages)
             elif isinstance(agent, MiniAgent):
@@ -193,7 +198,8 @@ def split_messages(
                 else:
                     yield Message(text=text_so_far, **message_metadata).as_promise
 
-        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: should this be BaseException ?
+        except BaseException as exc:  # pylint: disable=broad-except
+            logger.debug("Error while processing a message sequence inside `split_messages`", exc_info=True)
             if current_text_producer:
                 with current_text_producer:
                     # noinspection PyTypeChecker

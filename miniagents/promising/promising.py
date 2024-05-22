@@ -123,9 +123,12 @@ class PromisingContext:
             try:
                 return await awaitable
             except BaseException:  # pylint: disable=broad-except
-                if suppress_errors:
-                    logger.debug("AN ERROR OCCURRED IN A SCHEDULED TASK BUT WAS SUPPRESSED", exc_info=True)
-                else:
+                logger.debug(
+                    "An error occurred in a scheduled task (suppress_errors=%s)",
+                    suppress_errors,
+                    exc_info=True,
+                )
+                if not suppress_errors:
                     raise
             finally:
                 self.child_tasks.remove(task)
@@ -219,6 +222,7 @@ class Promise(Generic[T]):
                     try:
                         self._result = await self.__fulfiller(self)
                     except BaseException as exc:  # pylint: disable=broad-except
+                        logger.debug("An error occurred while fulfilling a Promise", exc_info=True)
                         self._result = exc
 
                     self._schedule_collected_event_handlers()
@@ -321,6 +325,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
                 if not callable(self._producer_iterator.__anext__):
                     raise TypeError("The producer must return an async iterator")
             except BaseException as exc:
+                logger.debug("An error occurred while instantiating a producer for a StreamedPromise", exc_info=True)
                 self._producer_iterator = FAILED
                 return exc
 
@@ -331,6 +336,11 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         try:
             return await self._producer_iterator.__anext__()
         except BaseException as exc:
+            if not isinstance(exc, StopAsyncIteration):
+                logger.debug(
+                    'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces producer.',
+                    exc_info=True,
+                )
             # Any exception, apart from `StopAsyncIteration`, will always be stored in the `_pieces_so_far` list
             # before the `StopAsyncIteration` and will not conclude the list (in other words, `StopAsyncIteration`
             # will always conclude the `_pieces_so_far` list). This is because if you keep iterating over an
@@ -415,12 +425,16 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
         traceback: Optional[TracebackType],
     ) -> bool:
         is_append_closed_error = isinstance(exc_value, AppendClosedError)
-        if exc_value and not is_append_closed_error and self._capture_errors:
+        error_should_not_propagate = self._capture_errors and not is_append_closed_error
+
+        if exc_value and error_should_not_propagate:
+            logger.debug("An error occurred while appending pieces to an AppendProducer", exc_info=exc_value)
             self.append(exc_value)
         self.close()
-        # if `_capture_errors` is True, then we also return True, so that the exception is not propagated outside
+
+        # if `capture_errors` is True, then we also return True, so that the exception is not propagated outside
         # the `with` block (except if the error is an `AppendClosedError` - in this case, we do not suppress it)
-        return self._capture_errors and not is_append_closed_error
+        return error_should_not_propagate
 
     def append(self, piece: PIECE) -> "AppendProducer":
         """
