@@ -122,7 +122,7 @@ class PromisingContext:
             # noinspection PyBroadException
             try:
                 return await awaitable
-            except Exception:  # pylint: disable=broad-except
+            except BaseException:  # pylint: disable=broad-except
                 logger.debug(
                     "An error occurred in a scheduled task (suppress_errors=%s)",
                     suppress_errors,
@@ -221,7 +221,7 @@ class Promise(Generic[T]):
                 if self._result is NO_VALUE:
                     try:
                         self._result = await self.__fulfiller(self)
-                    except Exception as exc:  # pylint: disable=broad-except
+                    except BaseException as exc:  # pylint: disable=broad-except
                         logger.debug("An error occurred while fulfilling a Promise", exc_info=True)
                         self._result = exc
 
@@ -324,7 +324,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
                 self._producer_iterator = self.__producer(self)
                 if not callable(self._producer_iterator.__anext__):
                     raise TypeError("The producer must return an async iterator")
-            except Exception as exc:
+            except BaseException as exc:
                 logger.debug("An error occurred while instantiating a producer for a StreamedPromise", exc_info=True)
                 self._producer_iterator = FAILED
                 return exc
@@ -335,7 +335,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
         try:
             return await self._producer_iterator.__anext__()
-        except Exception as exc:
+        except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 logger.debug(
                     'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces producer.',

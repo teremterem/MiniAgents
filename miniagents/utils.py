@@ -198,7 +198,7 @@ def split_messages(
                 else:
                     yield Message(text=text_so_far, **message_metadata).as_promise
 
-        except Exception as exc:  # pylint: disable=broad-except
+        except BaseException as exc:  # pylint: disable=broad-except
             logger.debug("Error while processing a message sequence inside `split_messages`", exc_info=True)
             if current_text_producer:
                 with current_text_producer:
