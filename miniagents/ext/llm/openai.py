@@ -33,6 +33,7 @@ def create_openai_agent(
     async_client: Optional["openai_original.AsyncOpenAI"] = None,
     assistant_reply_metadata: Optional[dict[str, Any]] = None,
     mini_agent_kwargs: Optional[dict[str, Any]] = None,
+    interaction_metadata: Optional[dict[str, Any]] = None,
     **static_openai_kwargs,
 ) -> MiniAgent:
     """
@@ -53,6 +54,7 @@ def create_openai_agent(
             **static_openai_kwargs,
         ),
         alias="OPENAI_AGENT",
+        interaction_metadata=interaction_metadata,
         **(mini_agent_kwargs or {}),
     )
 

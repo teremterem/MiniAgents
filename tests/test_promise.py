@@ -269,6 +269,7 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
         await streamed_promise
 
 
+# noinspection PyAsyncCall
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
 async def test_on_node_collected_event_called_once(schedule_immediately: bool) -> None:

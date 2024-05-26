@@ -35,6 +35,7 @@ def create_anthropic_agent(
     async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
     assistant_reply_metadata: Optional[dict[str, Any]] = None,
     mini_agent_kwargs: Optional[dict[str, Any]] = None,
+    interaction_metadata: Optional[dict[str, Any]] = None,
     **static_anthropic_kwargs,
 ) -> MiniAgent:
     """
@@ -55,6 +56,7 @@ def create_anthropic_agent(
             **static_anthropic_kwargs,
         ),
         alias="ANTHROPIC_AGENT",
+        interaction_metadata=interaction_metadata,
         **(mini_agent_kwargs or {}),
     )
 
