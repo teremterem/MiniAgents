@@ -31,17 +31,17 @@ class Message(Node):
     def promise(
         cls,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_producer: "MessageTokenProducer" = None,
+        message_token_streamer: "MessageTokenStreamer" = None,
         **message_kwargs,
     ) -> "MessagePromise":
         """
         Create a MessagePromise object based on the Message class this method is called for and the provided
         arguments.
         """
-        if message_token_producer:
+        if message_token_streamer:
             return MessagePromise(
                 schedule_immediately=schedule_immediately,
-                message_token_producer=message_token_producer,
+                message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **message_kwargs,
             )
@@ -144,12 +144,12 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __init__(
         self,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_producer: "MessageTokenProducer" = None,
+        message_token_streamer: "MessageTokenStreamer" = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
         **metadata_so_far,
     ) -> None:
-        # TODO Oleksandr: raise an error if both ready_message and message_token_producer/metadata_so_far are not None
+        # TODO Oleksandr: raise an error if both ready_message and message_token_streamer/metadata_so_far are not None
         #  (or both are None)
         if prefill_message:
             super().__init__(
@@ -163,12 +163,12 @@ class MessagePromise(StreamedPromise[str, Message]):
                 producer=self._producer,
                 packager=self._packager,
             )
-            self._message_token_producer = message_token_producer
+            self._message_token_streamer = message_token_streamer
             self._metadata_so_far = metadata_so_far
             self._message_class = message_class
 
     def _producer(self, _) -> AsyncIterator[str]:
-        return self._message_token_producer(self._metadata_so_far)
+        return self._message_token_streamer(self._metadata_so_far)
 
     async def _packager(self, _) -> Message:
         return self._message_class(
@@ -200,9 +200,9 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
         return super().__aiter__()
 
 
-class MessageTokenProducer(Protocol):
+class MessageTokenStreamer(Protocol):
     """
-    A protocol for message piece producer functions.
+    A protocol for message token streamer functions.
     """
 
     def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...

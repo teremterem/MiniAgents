@@ -94,7 +94,7 @@ def join_messages(
             first_message = False
 
     return Message.promise(
-        message_token_producer=token_producer,
+        message_token_streamer=token_producer,
         schedule_immediately=schedule_immediately,
     )
 
@@ -162,7 +162,7 @@ def split_messages(
                     yield token
 
             return Message.promise(
-                message_token_producer=token_producer,
+                message_token_streamer=token_producer,
                 schedule_immediately=schedule_immediately,
             )
 

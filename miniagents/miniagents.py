@@ -437,7 +437,7 @@ class AgentReplyMessageSequence(MessageSequence):
 
         agent_call_promise = Promise[AgentCallNode](
             schedule_immediately=True,
-            fulfiller=run_the_agent,
+            resolver=run_the_agent,
         )
 
         async for reply_promise in super()._producer(_):
@@ -453,5 +453,5 @@ class AgentReplyMessageSequence(MessageSequence):
 
         Promise[AgentReplyNode](
             schedule_immediately=True,  # use a separate async task to avoid deadlock upon AgentReplyNode "collection"
-            fulfiller=create_agent_reply_node,
+            resolver=create_agent_reply_node,
         )

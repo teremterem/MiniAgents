@@ -21,7 +21,7 @@ from miniagents.promising.typing import (
     StreamedPieceProducer,
     StreamedWholePackager,
     PromiseCollectedEventHandler,
-    PromiseFulfiller,
+    PromiseResolver,
     NodeCollectedEventHandler,
 )
 
@@ -186,7 +186,7 @@ class Promise(Generic[T]):
     def __init__(
         self,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        fulfiller: Optional[PromiseFulfiller[T]] = None,
+        resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefilled_whole and packager are set (or both are not set)
@@ -195,8 +195,8 @@ class Promise(Generic[T]):
         if schedule_immediately is DEFAULT:
             schedule_immediately = promising_context.schedule_immediately_by_default
 
-        if fulfiller:
-            self._fulfiller = partial(fulfiller, self)
+        if resolver:
+            self._resolver = partial(resolver, self)
 
         if prefill_result is NO_VALUE:
             # NO_VALUE is used because `None` is also a legitimate value
@@ -205,15 +205,15 @@ class Promise(Generic[T]):
             self._result = prefill_result
             self._schedule_collected_event_handlers()
 
-        self._fulfiller_lock = asyncio.Lock()
+        self._resolver_lock = asyncio.Lock()
 
         if schedule_immediately and prefill_result is NO_VALUE:
             promising_context.schedule_task(self)
 
-    async def _fulfiller(self) -> T:  # pylint: disable=method-hidden
+    async def _resolver(self) -> T:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
-            "The `fulfiller` function should be provided either via the constructor "
-            "or by subclassing the Promise class."
+            "The `resolver` function should be provided either via the constructor "
+            "or by subclassing the `Promise` class."
         )
 
     async def acollect(self) -> T:
@@ -223,12 +223,12 @@ class Promise(Generic[T]):
         same object (the exact same instance) if called multiple times on the same instance of `StreamedPromise`.
         """
         # TODO Oleksandr: put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
-        #  `acollect()` from within the `fulfiller` function
+        #  `acollect()` from within the `resolver` function
         if self._result is NO_VALUE:
-            async with self._fulfiller_lock:
+            async with self._resolver_lock:
                 if self._result is NO_VALUE:
                     try:
-                        self._result = await self._fulfiller()
+                        self._result = await self._resolver()
                     except BaseException as exc:  # pylint: disable=broad-except
                         logger.debug("An error occurred while fulfilling a Promise", exc_info=True)
                         self._result = exc
@@ -281,7 +281,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
         super().__init__(
             schedule_immediately=schedule_immediately,
-            fulfiller=packager,
+            resolver=packager,
             prefill_result=prefill_whole,
         )
         self.__producer = producer

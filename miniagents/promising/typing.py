@@ -18,7 +18,7 @@ StreamedPromiseBound = TypeVar("StreamedPromiseBound", bound="StreamedPromise")
 FlatSequenceBound = TypeVar("FlatSequenceBound", bound="FlatSequence")
 
 
-class PromiseFulfiller(Protocol[T]):
+class PromiseResolver(Protocol[T]):
     """
     TODO Oleksandr: docstring
     """
