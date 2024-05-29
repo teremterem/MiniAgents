@@ -139,9 +139,10 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_stream_broken_packager(broken_packager, schedule_immediately: bool) -> None:
+async def test_broken_stream_resolver(broken_packager, schedule_immediately: bool) -> None:
     """
-    Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `aresolve()`.
+    Assert that if `packager` is broken, `StreamedPromise` still yields the stream and only fails upon `aresolve()`
+    (or bare `await`, for that matter).
     """
     expected_packager_call_count = 0  # we are not counting packager calls for completely broken packagers (too hard)
     actual_packager_call_count = 0
