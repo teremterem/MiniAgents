@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promising.promising import PromisingContext, AppendProducer
+from miniagents.promising.promising import PromisingContext, StreamAppender
 from miniagents.promising.sentinels import DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
@@ -24,17 +24,17 @@ async def test_flat_sequence(schedule_immediately: bool) -> None:
             yield number
 
     async with PromisingContext():
-        append_producer = AppendProducer[int](capture_errors=True)
+        stream_appender = StreamAppender[int](capture_errors=True)
         flat_sequence = FlatSequence[int, int](
-            incoming_producer=append_producer,
+            incoming_producer=stream_appender,
             flattener=flattener,
             schedule_immediately=schedule_immediately,
         )
-        with append_producer:
-            append_producer.append(0)
-            append_producer.append(1)
-            append_producer.append(2)
-            append_producer.append(3)
+        with stream_appender:
+            stream_appender.append(0)
+            stream_appender.append(1)
+            stream_appender.append(2)
+            stream_appender.append(3)
 
         assert await flat_sequence.sequence_promise == (1, 2, 2, 3, 3, 3)
         assert [i async for i in flat_sequence.sequence_promise] == [1, 2, 2, 3, 3, 3]

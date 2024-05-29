@@ -7,10 +7,11 @@ import contextvars
 import logging
 from asyncio import Task
 from contextvars import ContextVar
+from functools import partial
 from types import TracebackType
 from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
-from miniagents.promising.errors import AppendClosedError, AppendNotOpenError
+from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
 from miniagents.promising.node import Node
 from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
 from miniagents.promising.typing import (
@@ -194,7 +195,8 @@ class Promise(Generic[T]):
         if schedule_immediately is DEFAULT:
             schedule_immediately = promising_context.schedule_immediately_by_default
 
-        self.__fulfiller = fulfiller
+        if fulfiller:
+            self._fulfiller = partial(fulfiller, self)
 
         if prefill_result is NO_VALUE:
             # NO_VALUE is used because `None` is also a legitimate value
@@ -208,6 +210,12 @@ class Promise(Generic[T]):
         if schedule_immediately and prefill_result is NO_VALUE:
             promising_context.schedule_task(self)
 
+    async def _fulfiller(self) -> T:  # pylint: disable=method-hidden
+        raise FunctionNotProvidedError(
+            "The `fulfiller` function should be provided either via the constructor "
+            "or by subclassing the Promise class."
+        )
+
     async def acollect(self) -> T:
         """
         TODO Oleksandr: update this docstring
@@ -220,7 +228,7 @@ class Promise(Generic[T]):
             async with self._fulfiller_lock:
                 if self._result is NO_VALUE:
                     try:
-                        self._result = await self.__fulfiller(self)
+                        self._result = await self._fulfiller()
                     except BaseException as exc:  # pylint: disable=broad-except
                         logger.debug("An error occurred while fulfilling a Promise", exc_info=True)
                         self._result = exc
@@ -397,7 +405,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             return piece
 
 
-class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
+class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
     """
     This is a special kind of `producer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
@@ -415,7 +423,7 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
         else:
             self._capture_errors = capture_errors
 
-    def __enter__(self) -> "AppendProducer":
+    def __enter__(self) -> "StreamAppender":
         return self.open()
 
     def __exit__(
@@ -424,35 +432,35 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> bool:
-        is_append_closed_error = isinstance(exc_value, AppendClosedError)
+        is_append_closed_error = isinstance(exc_value, AppenderClosedError)
         error_should_not_propagate = self._capture_errors and not is_append_closed_error
 
         if exc_value and error_should_not_propagate:
-            logger.debug("An error occurred while appending pieces to an AppendProducer", exc_info=exc_value)
+            logger.debug("An error occurred while appending pieces to an StreamAppender", exc_info=exc_value)
             self.append(exc_value)
         self.close()
 
         # if `capture_errors` is True, then we also return True, so that the exception is not propagated outside
-        # the `with` block (except if the error is an `AppendClosedError` - in this case, we do not suppress it)
+        # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
         return error_should_not_propagate
 
-    def append(self, piece: PIECE) -> "AppendProducer":
+    def append(self, piece: PIECE) -> "StreamAppender":
         """
         Append a `piece` to the producer. This method can only be called when the producer is open for appending (and
         also not closed yet). Consequently, the `piece` is delivered to the `StreamedPromise` that is consuming from
         this producer.
         """
         if not self._append_open:
-            raise AppendNotOpenError(
-                "You need to put the `append()` operation inside a `with AppendProducer()` block "
+            raise AppenderNotOpenError(
+                "You need to put the `append()` operation inside a `with StreamAppender()` block "
                 "(or call `open()` and `close()` manually)."
             )
         if self._append_closed:
-            raise AppendClosedError("The AppendProducer has already been closed for appending.")
+            raise AppenderClosedError("The StreamAppender has already been closed for appending.")
         self._queue.put_nowait(piece)
         return self
 
-    def open(self) -> "AppendProducer":
+    def open(self) -> "StreamAppender":
         """
         Open the producer for appending.
 
@@ -463,7 +471,7 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
         (and the code that is consuming from it) waiting for more `pieces` forever.
         """
         if self._append_closed:
-            raise AppendClosedError("Once closed, the AppendProducer cannot be opened again.")
+            raise AppenderClosedError("Once closed, the StreamAppender cannot be opened again.")
         self._append_open = True
         return self
 

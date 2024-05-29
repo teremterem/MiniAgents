@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from miniagents.messages import MessageType, MessagePromise, MessageSequencePromise, Message
 from miniagents.promising.node import Node
-from miniagents.promising.promising import AppendProducer, Promise, PromisingContext
+from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
 from miniagents.promising.typing import StreamedPieceProducer, NodeCollectedEventHandler, PromiseBound
@@ -139,7 +139,7 @@ class InteractionContext:
     """
 
     def __init__(
-        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_producer: AppendProducer[MessageType]
+        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_producer: StreamAppender[MessageType]
     ) -> None:
         self.this_agent = this_agent
         self.messages = messages
@@ -154,7 +154,7 @@ class InteractionContext:
         #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
         #  guarantee that it will be iterated over immediately)
         # TODO Oleksandr: implement a utility in MiniAgents that deep-copies/freezes mutable data containers
-        #  while keeping objects of other types intact and use it in AppendProducer to freeze the state of those
+        #  while keeping objects of other types intact and use it in StreamAppender to freeze the state of those
         #  objects upon their submission (this way the user will not have to worry about things like `history[:]`
         #  in the code below)
         self._reply_producer.append(messages)
@@ -176,7 +176,7 @@ class AgentCall:
 
     def __init__(
         self,
-        message_producer: AppendProducer[MessageType],
+        message_producer: StreamAppender[MessageType],
         reply_sequence_promise: MessageSequencePromise,
     ) -> None:
         self._message_producer = message_producer
@@ -285,7 +285,7 @@ class MiniAgent:
         )
 
         agent_call = AgentCall(
-            message_producer=input_sequence.append_producer,
+            message_producer=input_sequence.message_appender,
             reply_sequence_promise=reply_sequence.sequence_promise,
         )
         return agent_call
@@ -321,7 +321,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     TODO Oleksandr: produce a docstring for this class after you actually use it in real agents
     """
 
-    append_producer: Optional[AppendProducer[MessageType]]
+    message_appender: Optional[StreamAppender[MessageType]]
     sequence_promise: MessageSequencePromise
 
     def __init__(
@@ -331,11 +331,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         incoming_producer: Optional[StreamedPieceProducer[MessageType]] = None,
     ) -> None:
         if incoming_producer:
-            # an external producer is provided, so we don't create the default AppendProducer
-            self.append_producer = None
+            # an external producer is provided, so we don't create the default StreamAppender
+            self.message_appender = None
         else:
-            self.append_producer = AppendProducer(capture_errors=producer_capture_errors)
-            incoming_producer = self.append_producer
+            self.message_appender = StreamAppender(capture_errors=producer_capture_errors)
+            incoming_producer = self.message_appender
 
         super().__init__(
             incoming_producer=incoming_producer,
@@ -355,8 +355,8 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             producer_capture_errors=True,
             schedule_immediately=False,
         )
-        with message_sequence.append_producer:
-            message_sequence.append_producer.append(messages)
+        with message_sequence.message_appender:
+            message_sequence.message_appender.append(messages)
         return message_sequence.sequence_promise
 
     @classmethod
@@ -407,7 +407,7 @@ class AgentReplyMessageSequence(MessageSequence):
         **kwargs,
     ) -> None:
         super().__init__(
-            producer_capture_errors=True,  # we want `self.append_producer` not to let errors out of `run_the_agent`
+            producer_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
             **kwargs,
         )
         self._mini_agent = mini_agent
@@ -420,9 +420,9 @@ class AgentReplyMessageSequence(MessageSequence):
             ctx = InteractionContext(
                 this_agent=self._mini_agent,
                 messages=self._input_sequence_promise,
-                reply_producer=self.append_producer,
+                reply_producer=self.message_appender,
             )
-            with self.append_producer:
+            with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `producer_capture_errors=True`
                 # pylint: disable=protected-access
                 # noinspection PyProtectedMember

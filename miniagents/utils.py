@@ -7,7 +7,7 @@ from typing import AsyncIterator, Any, Optional, Union, Iterable, Callable
 
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message, MiniAgent
-from miniagents.promising.promising import AppendProducer
+from miniagents.promising.promising import StreamAppender
 from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT, CLEAR
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ def split_messages(
     # TODO Oleksandr: but cover it with unit tests first
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
-        current_text_producer: Optional[AppendProducer[str]] = None
+        current_text_producer: Optional[StreamAppender[str]] = None
         inside_code_block = False
 
         def is_text_so_far_not_empty() -> bool:
@@ -154,7 +154,7 @@ def split_messages(
 
         def start_new_message_promise() -> MessagePromise:
             nonlocal current_text_producer
-            current_text_producer = AppendProducer[str]()
+            current_text_producer = StreamAppender[str]()
 
             async def token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
                 metadata_so_far.update(message_metadata)
@@ -203,7 +203,7 @@ def split_messages(
             if current_text_producer:
                 with current_text_producer:
                     # noinspection PyTypeChecker
-                    current_text_producer.append(exc)  # TODO Oleksandr: update AppendProducer's signature ?
+                    current_text_producer.append(exc)  # TODO Oleksandr: update StreamAppender's signature ?
             else:
                 raise exc
         finally:

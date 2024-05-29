@@ -21,33 +21,33 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
             producer_capture_errors=True,
             schedule_immediately=schedule_immediately,
         )
-        with msg_seq1.append_producer:
-            msg_seq1.append_producer.append("msg1")
-            msg_seq1.append_producer.append({"text": "msg2", "some_attr": 2})
-            msg_seq1.append_producer.append(Message(text="msg3", another_attr=3))
+        with msg_seq1.message_appender:
+            msg_seq1.message_appender.append("msg1")
+            msg_seq1.message_appender.append({"text": "msg2", "some_attr": 2})
+            msg_seq1.message_appender.append(Message(text="msg3", another_attr=3))
 
             msg_seq2 = MessageSequence(
                 producer_capture_errors=True,
                 schedule_immediately=schedule_immediately,
             )
-            with msg_seq2.append_producer:
-                msg_seq2.append_producer.append("msg4")
+            with msg_seq2.message_appender:
+                msg_seq2.message_appender.append("msg4")
 
                 msg_seq3 = MessageSequence(
                     producer_capture_errors=True,
                     schedule_immediately=schedule_immediately,
                 )
-                with msg_seq3.append_producer:
-                    msg_seq3.append_producer.append("msg5")
-                    msg_seq3.append_producer.append(["msg6", "msg7"])
-                    msg_seq3.append_producer.append([[Message(text="msg8", another_attr=8)]])
+                with msg_seq3.message_appender:
+                    msg_seq3.message_appender.append("msg5")
+                    msg_seq3.message_appender.append(["msg6", "msg7"])
+                    msg_seq3.message_appender.append([[Message(text="msg8", another_attr=8)]])
 
-                msg_seq2.append_producer.append(msg_seq3.sequence_promise)
-                msg_seq2.append_producer.append("msg9")
+                msg_seq2.message_appender.append(msg_seq3.sequence_promise)
+                msg_seq2.message_appender.append("msg9")
 
-            msg_seq1.append_producer.append(msg_seq2.sequence_promise)
-            msg_seq1.append_producer.append(Message.promise(text="msg10", yet_another_attr=10))
-            # msg_seq1.append_producer.append(ValueError("msg11"))
+            msg_seq1.message_appender.append(msg_seq2.sequence_promise)
+            msg_seq1.message_appender.append(Message.promise(text="msg10", yet_another_attr=10))
+            # msg_seq1.message_appender.append(ValueError("msg11"))
 
         message_result = [await msg_promise async for msg_promise in msg_seq1.sequence_promise]
         assert message_result == [
@@ -89,24 +89,24 @@ async def test_message_sequence_error(schedule_immediately: bool) -> None:
     """
     async with PromisingContext(producer_capture_errors_by_default=True):
         msg_seq1 = MessageSequence(schedule_immediately=schedule_immediately)
-        with msg_seq1.append_producer:
-            msg_seq1.append_producer.append("msg1")
+        with msg_seq1.message_appender:
+            msg_seq1.message_appender.append("msg1")
 
             msg_seq2 = MessageSequence(schedule_immediately=schedule_immediately)
-            with msg_seq2.append_producer:
-                msg_seq2.append_producer.append("msg2")
+            with msg_seq2.message_appender:
+                msg_seq2.message_appender.append("msg2")
 
                 msg_seq3 = MessageSequence(schedule_immediately=schedule_immediately)
-                with msg_seq3.append_producer:
-                    msg_seq3.append_producer.append("msg3")
-                    # msg_seq3.append_producer.append(ValueError("msg4"))
+                with msg_seq3.message_appender:
+                    msg_seq3.message_appender.append("msg3")
+                    # msg_seq3.message_appender.append(ValueError("msg4"))
                     raise ValueError("msg5")
 
-                msg_seq2.append_producer.append(msg_seq3.sequence_promise)
-                msg_seq2.append_producer.append("msg6")
+                msg_seq2.message_appender.append(msg_seq3.sequence_promise)
+                msg_seq2.message_appender.append("msg6")
 
-            msg_seq1.append_producer.append(msg_seq2.sequence_promise)
-            msg_seq1.append_producer.append("msg7")
+            msg_seq1.message_appender.append(msg_seq2.sequence_promise)
+            msg_seq1.message_appender.append("msg7")
 
         message_result = []
         with pytest.raises(ValueError, match="msg5"):

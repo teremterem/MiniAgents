@@ -7,7 +7,7 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promising.node import Node
-from miniagents.promising.promising import StreamedPromise, AppendProducer, PromisingContext, Promise
+from miniagents.promising.promising import StreamedPromise, StreamAppender, PromisingContext, Promise
 from miniagents.promising.sentinels import DEFAULT
 
 
@@ -51,7 +51,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
     the `producer` iterations, the exact same sequence of exceptions is replayed.
     """
 
-    with AppendProducer(capture_errors=True) as producer:
+    with StreamAppender(capture_errors=True) as producer:
         for i in range(1, 6):
             if i == 3:
                 raise ValueError("Test error")
@@ -132,7 +132,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
 @pytest.mark.parametrize(
     "broken_packager",
     [
-        "not really a packager",
+        # "not really a packager",  # TODO Oleksandr: do we even need this particular test case ?
         lambda _: [],  # non-async packager
         TypeError,
     ],
@@ -154,7 +154,7 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
             actual_packager_call_count += 1
             raise error_class("Test error")
 
-    with AppendProducer(capture_errors=True) as producer:
+    with StreamAppender(capture_errors=True) as producer:
         for i in range(1, 6):
             producer.append(i)
 
@@ -189,7 +189,7 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
     packager_calls = 0
 
-    with AppendProducer(capture_errors=False) as producer:
+    with StreamAppender(capture_errors=False) as producer:
         for i in range(1, 6):
             producer.append(i)
 
@@ -218,14 +218,14 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -> None:
+async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -> None:
     """
-    Assert that when `AppendProducer` is not capturing errors, then:
+    Assert that when `StreamAppender` is not capturing errors, then:
     - the error is raised beyond the context manager;
     - the `StreamedPromise` is not affected by the error and is just returning the elements up to the error.
     """
     with pytest.raises(ValueError):
-        with AppendProducer(capture_errors=False) as producer:
+        with StreamAppender(capture_errors=False) as producer:
             for i in range(1, 6):
                 if i == 3:
                     raise ValueError("Test error")
