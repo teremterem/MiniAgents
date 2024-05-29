@@ -83,7 +83,7 @@ async def _openai_func(
     async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         metadata_so_far.update(global_reply_metadata)
         metadata_so_far.update(reply_metadata)
-        collected_messages = await ctx.messages.acollect_messages()
+        resolved_messages = await ctx.messages.acollect_messages()
 
         if system is None:
             message_dicts = []
@@ -94,7 +94,7 @@ async def _openai_func(
                     "content": system,
                 },
             ]
-        message_dicts.extend(message_to_llm_dict(msg) for msg in collected_messages)
+        message_dicts.extend(message_to_llm_dict(msg) for msg in resolved_messages)
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))

@@ -64,8 +64,8 @@ def join_messages(
     :param delimiter: A string that will be inserted between messages.
     :param reference_original_messages: If True, the resulting message will contain the list of original messages in
     the `original_messages` field.
-    :param schedule_immediately: If True, the resulting message will be scheduled for implicit collection regardless
-    of when it is going to be collected explicitly.
+    :param schedule_immediately: If True, the resulting message will be scheduled for background resolution regardless
+    of when it is going to be consumed.
     :param message_metadata: Additional metadata to be added to the resulting message.
     """
 

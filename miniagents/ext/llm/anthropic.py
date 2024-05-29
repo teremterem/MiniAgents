@@ -83,9 +83,9 @@ async def _anthropic_func(
     async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         metadata_so_far.update(global_reply_metadata)
         metadata_so_far.update(reply_metadata)
-        collected_messages = await ctx.messages.acollect_messages()
+        resolved_messages = await ctx.messages.acollect_messages()
 
-        message_dicts = [message_to_llm_dict(msg) for msg in collected_messages]
+        message_dicts = [message_to_llm_dict(msg) for msg in resolved_messages]
         message_dicts = _fix_message_dicts(
             message_dicts,
             fake_first_user_message=fake_first_user_message,

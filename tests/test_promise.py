@@ -184,7 +184,7 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
 async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
     """
     Assert that:
-    - when a `StreamedPromise` is "collected" multiple times, the `packager` is only called once;
+    - when a `StreamedPromise` is "resolved" multiple times, the `packager` is only called once;
     - the exact same instance of the result object is returned from `acollect()` when it is called again.
     """
     packager_calls = 0
@@ -272,90 +272,90 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
 # noinspection PyAsyncCall
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_collected_event_called_once(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_called_once(schedule_immediately: bool) -> None:
     """
-    Assert that the `on_node_collected` event is called only once if the same Node is collected multiple times.
+    Assert that the `on_node_resolved` event is called only once if the same Node is resolved multiple times.
     """
-    promise_collected_calls = 0
-    node_collected_calls = 0
+    promise_resolved_calls = 0
+    node_resolved_calls = 0
 
-    async def on_promise_collected(_, __) -> None:
-        nonlocal promise_collected_calls
-        promise_collected_calls += 1
+    async def on_promise_resolved(_, __) -> None:
+        nonlocal promise_resolved_calls
+        promise_resolved_calls += 1
 
-    async def on_node_collected(_, __) -> None:
-        nonlocal node_collected_calls
-        node_collected_calls += 1
+    async def on_node_resolved(_, __) -> None:
+        nonlocal node_resolved_calls
+        node_resolved_calls += 1
 
     some_node = Node()
 
     async with PromisingContext(
-        on_promise_collected=on_promise_collected,
-        on_node_collected=on_node_collected,
+        on_promise_resolved=on_promise_resolved,
+        on_node_resolved=on_node_resolved,
     ):
         Promise(prefill_result=some_node, schedule_immediately=schedule_immediately)
         Promise(prefill_result=some_node, schedule_immediately=schedule_immediately)
 
-    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
-    assert node_collected_calls == 1
+    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
+    assert node_resolved_calls == 1
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_collected_event_called_twice(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_called_twice(schedule_immediately: bool) -> None:
     """
-    Assert that the `on_node_collected` event is called twice if two different Nodes are collected.
+    Assert that the `on_node_resolved` event is called twice if two different Nodes are resolved.
     """
-    promise_collected_calls = 0
-    node_collected_calls = 0
+    promise_resolved_calls = 0
+    node_resolved_calls = 0
 
-    async def on_promise_collected(_, __) -> None:
-        nonlocal promise_collected_calls
-        promise_collected_calls += 1
+    async def on_promise_resolved(_, __) -> None:
+        nonlocal promise_resolved_calls
+        promise_resolved_calls += 1
 
-    async def on_node_collected(_, __) -> None:
-        nonlocal node_collected_calls
-        node_collected_calls += 1
+    async def on_node_resolved(_, __) -> None:
+        nonlocal node_resolved_calls
+        node_resolved_calls += 1
 
     node1 = Node()
     node2 = Node()
 
     async with PromisingContext(
-        on_promise_collected=on_promise_collected,
-        on_node_collected=on_node_collected,
+        on_promise_resolved=on_promise_resolved,
+        on_node_resolved=on_node_resolved,
     ):
         Promise(prefill_result=node1, schedule_immediately=schedule_immediately)
         Promise(prefill_result=node2, schedule_immediately=schedule_immediately)
 
-    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
-    assert node_collected_calls == 2
+    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
+    assert node_resolved_calls == 2
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_collected_event_not_called(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_not_called(schedule_immediately: bool) -> None:
     """
-    Assert that the `on_node_collected` event is not called if the collected value is not a Node.
+    Assert that the `on_node_resolved` event is not called if the resolved value is not a Node.
     """
-    promise_collected_calls = 0
-    node_collected_calls = 0
+    promise_resolved_calls = 0
+    node_resolved_calls = 0
 
-    async def on_promise_collected(_, __) -> None:
-        nonlocal promise_collected_calls
-        promise_collected_calls += 1
+    async def on_promise_resolved(_, __) -> None:
+        nonlocal promise_resolved_calls
+        promise_resolved_calls += 1
 
-    async def on_node_collected(_, __) -> None:
-        nonlocal node_collected_calls
-        node_collected_calls += 1
+    async def on_node_resolved(_, __) -> None:
+        nonlocal node_resolved_calls
+        node_resolved_calls += 1
 
     value = "not a node"
 
     async with PromisingContext(
-        on_promise_collected=on_promise_collected,
-        on_node_collected=on_node_collected,
+        on_promise_resolved=on_promise_resolved,
+        on_node_resolved=on_node_resolved,
     ):
         Promise(prefill_result=value, schedule_immediately=schedule_immediately)
         Promise(prefill_result=value, schedule_immediately=schedule_immediately)
 
-    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
-    assert node_collected_calls == 0
+    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
+    assert node_resolved_calls == 0

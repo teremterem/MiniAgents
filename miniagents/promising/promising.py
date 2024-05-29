@@ -20,9 +20,9 @@ from miniagents.promising.typing import (
     WHOLE,
     StreamedPieceProducer,
     StreamedWholePackager,
-    PromiseCollectedEventHandler,
+    PromiseResolvedEventHandler,
     PromiseResolver,
-    NodeCollectedEventHandler,
+    NodeResolvedEventHandler,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 class PromisingContext:
     """
     This is the main class for managing the context of promises. It is a context manager that is used to configure
-    default settings for promises and to handle the lifecycle of promises (attach `on_promise_collected` handlers).
+    default settings for promises and to handle the lifecycle of promises (attach `on_promise_resolved` handlers).
     TODO Oleksandr: explain this class in more detail
-    TODO Oleksandr: especially the fact that on_node_collected is called for each Node instance only once (Node
-     instances keep track of whether on_node_collected has been called for them or not, and if it has, it is not
+    TODO Oleksandr: especially the fact that on_node_resolved is called for each Node instance only once (Node
+     instances keep track of whether on_node_resolved has been called for them or not, and if it has, it is not
      called)
     """
 
@@ -45,18 +45,18 @@ class PromisingContext:
         schedule_immediately_by_default: bool = True,
         producer_capture_errors_by_default: bool = False,
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
-        on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
-        on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
+        on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        on_node_resolved: Union[NodeResolvedEventHandler, Iterable[NodeResolvedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
 
-        self.on_promise_collected_handlers: list[PromiseCollectedEventHandler] = (
-            [self._schedule_node_collected_event, on_promise_collected]
-            if callable(on_promise_collected)
-            else [self._schedule_node_collected_event, *on_promise_collected]
+        self.on_promise_resolved_handlers: list[PromiseResolvedEventHandler] = (
+            [self._schedule_node_resolved_event, on_promise_resolved]
+            if callable(on_promise_resolved)
+            else [self._schedule_node_resolved_event, *on_promise_resolved]
         )
-        self.on_node_collected_handlers: list[NodeCollectedEventHandler] = (
-            [on_node_collected] if callable(on_node_collected) else list(on_node_collected)
+        self.on_node_resolved_handlers: list[NodeResolvedEventHandler] = (
+            [on_node_resolved] if callable(on_node_resolved) else list(on_node_resolved)
         )
         self.child_tasks: set[Task] = set()
 
@@ -83,21 +83,21 @@ class PromisingContext:
             )
         return current
 
-    def on_promise_collected(self, handler: PromiseCollectedEventHandler) -> PromiseCollectedEventHandler:
+    def on_promise_resolved(self, handler: PromiseResolvedEventHandler) -> PromiseResolvedEventHandler:
         """
-        Add a handler to be called after a promise is collected.
+        Add a handler to be called after a promise is resolved.
         """
-        self.on_promise_collected_handlers.append(handler)
+        self.on_promise_resolved_handlers.append(handler)
         return handler
 
-    def on_node_collected(self, handler: NodeCollectedEventHandler) -> NodeCollectedEventHandler:
+    def on_node_resolved(self, handler: NodeResolvedEventHandler) -> NodeResolvedEventHandler:
         """
-        Add a handler to be called after a promise of type Node is collected.
+        Add a handler to be called after a promise of type Node is resolved.
         """
-        self.on_node_collected_handlers.append(handler)
+        self.on_node_resolved_handlers.append(handler)
         return handler
 
-    async def _schedule_node_collected_event(self, _, result: Any) -> None:
+    async def _schedule_node_resolved_event(self, _, result: Any) -> None:
         """
         TODO Oleksandr: docstring
         """
@@ -105,12 +105,12 @@ class PromisingContext:
             return
         # pylint: disable=protected-access
         # noinspection PyProtectedMember
-        if result._node_collected_event_triggered:
+        if result._node_resolved_event_triggered:
             return
 
-        for handler in self.on_node_collected_handlers:
+        for handler in self.on_node_resolved_handlers:
             self.schedule_task(handler(_, result))
-        result._node_collected_event_triggered = True
+        result._node_resolved_event_triggered = True
 
     def schedule_task(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
@@ -203,7 +203,7 @@ class Promise(Generic[T]):
             self._result: Union[T, Sentinel, BaseException] = NO_VALUE
         else:
             self._result = prefill_result
-            self._schedule_collected_event_handlers()
+            self._schedule_resolved_event_handlers()
 
         self._resolver_lock = asyncio.Lock()
 
@@ -230,10 +230,10 @@ class Promise(Generic[T]):
                     try:
                         self._result = await self._resolver()
                     except BaseException as exc:  # pylint: disable=broad-except
-                        logger.debug("An error occurred while fulfilling a Promise", exc_info=True)
+                        logger.debug("An error occurred while resolving a Promise", exc_info=True)
                         self._result = exc
 
-                    self._schedule_collected_event_handlers()
+                    self._schedule_resolved_event_handlers()
 
         if isinstance(self._result, BaseException):
             raise self._result
@@ -242,10 +242,10 @@ class Promise(Generic[T]):
     def __await__(self):
         return self.acollect().__await__()
 
-    def _schedule_collected_event_handlers(self):
+    def _schedule_resolved_event_handlers(self):
         promising_context = PromisingContext.get_current()
         while promising_context:
-            for handler in promising_context.on_promise_collected_handlers:
+            for handler in promising_context.on_promise_resolved_handlers:
                 promising_context.schedule_task(handler(self, self._result))
             promising_context = promising_context.parent
 

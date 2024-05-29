@@ -189,7 +189,8 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
 
     async def acollect_messages(self) -> tuple[Message, ...]:
         """
-        Collect all messages from the sequence and return them as a tuple of Message objects.
+        Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
+        and return them as a tuple of Message objects.
         """
         # pylint: disable=consider-using-generator
         return tuple([await message_promise async for message_promise in self])

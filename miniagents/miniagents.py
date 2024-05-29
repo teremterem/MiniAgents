@@ -12,7 +12,7 @@ from miniagents.promising.node import Node
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
-from miniagents.promising.typing import StreamedPieceProducer, NodeCollectedEventHandler, PromiseBound
+from miniagents.promising.typing import StreamedPieceProducer, NodeResolvedEventHandler, PromiseBound
 
 
 class PersistMessageEventHandler(Protocol):
@@ -31,16 +31,16 @@ class MiniAgents(PromisingContext):
     def __init__(
         self,
         stream_llm_tokens_by_default: bool = True,
-        on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
+        on_node_resolved: Union[NodeResolvedEventHandler, Iterable[NodeResolvedEventHandler]] = (),
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         **kwargs,
     ) -> None:
-        on_node_collected = (
-            [self._schedule_persist_message_event, on_node_collected]
-            if callable(on_node_collected)
-            else [self._schedule_persist_message_event, *on_node_collected]
+        on_node_resolved = (
+            [self._schedule_persist_message_event, on_node_resolved]
+            if callable(on_node_resolved)
+            else [self._schedule_persist_message_event, *on_node_resolved]
         )
-        super().__init__(on_node_collected=on_node_collected, **kwargs)
+        super().__init__(on_node_resolved=on_node_resolved, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
             [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
@@ -452,6 +452,6 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         Promise[AgentReplyNode](
-            schedule_immediately=True,  # use a separate async task to avoid deadlock upon AgentReplyNode "collection"
+            schedule_immediately=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
             resolver=create_agent_reply_node,
         )
