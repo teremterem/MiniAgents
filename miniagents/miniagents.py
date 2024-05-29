@@ -360,13 +360,13 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         return message_sequence.sequence_promise
 
     @classmethod
-    async def acollect_messages(cls, messages: MessageType) -> tuple[Message, ...]:
+    async def aresolve_messages(cls, messages: MessageType) -> tuple[Message, ...]:
         """
         Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
         MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform tuple of
         Message objects.
         """
-        return await cls.turn_into_sequence_promise(messages).acollect_messages()
+        return await cls.turn_into_sequence_promise(messages).aresolve_messages()
 
     @classmethod
     async def _flattener(cls, _, zero_or_more_items: MessageType) -> AsyncIterator[MessagePromise]:
@@ -429,7 +429,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 await self._mini_agent._func(ctx, **self._function_kwargs)
 
             return AgentCallNode(
-                messages=await self._input_sequence_promise.acollect_messages(),
+                messages=await self._input_sequence_promise.aresolve_messages(),
                 agent_alias=self._mini_agent.alias,
                 **self._mini_agent.interaction_metadata,
                 **self._function_kwargs,  # this will override any keys from `self.interaction_metadata`
@@ -445,7 +445,7 @@ class AgentReplyMessageSequence(MessageSequence):
 
         async def create_agent_reply_node(_) -> AgentReplyNode:
             return AgentReplyNode(
-                replies=await self.sequence_promise.acollect_messages(),
+                replies=await self.sequence_promise.aresolve_messages(),
                 agent_alias=self._mini_agent.alias,
                 agent_call=await agent_call_promise,
                 **self._mini_agent.interaction_metadata,

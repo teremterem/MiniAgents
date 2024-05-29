@@ -33,7 +33,7 @@ async def achain_loop(
             if agent is AWAIT:
                 if isinstance(messages, MessageSequencePromise):
                     # all the interactions happen here (here all the scheduled promises are awaited for)
-                    messages = await messages.acollect_messages()
+                    messages = await messages.aresolve_messages()
             elif agent is CLEAR:
                 messages = None
             elif callable(agent):

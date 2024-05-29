@@ -216,14 +216,14 @@ class Promise(Generic[T]):
             "or by subclassing the `Promise` class."
         )
 
-    async def acollect(self) -> T:
+    async def aresolve(self) -> T:
         """
         TODO Oleksandr: update this docstring
         "Accumulates" all the pieces of the stream and returns the "whole" value. Will return the exact
         same object (the exact same instance) if called multiple times on the same instance of `StreamedPromise`.
         """
         # TODO Oleksandr: put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
-        #  `acollect()` from within the `resolver` function
+        #  `aresolve()` from within the `resolver` function
         if self._result is NO_VALUE:
             async with self._resolver_lock:
                 if self._result is NO_VALUE:
@@ -240,7 +240,7 @@ class Promise(Generic[T]):
         return self._result
 
     def __await__(self):
-        return self.acollect().__await__()
+        return self.aresolve().__await__()
 
     def _schedule_resolved_event_handlers(self):
         promising_context = PromisingContext.get_current()

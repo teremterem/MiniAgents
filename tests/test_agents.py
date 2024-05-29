@@ -37,8 +37,8 @@ async def test_agents_run_in_parallel(schedule_immediately: Union[bool, Sentinel
         if schedule_immediately is False:
             # when agents are not automatically scheduled, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
-            await replies1.acollect_messages()
-            await replies2.acollect_messages()
+            await replies1.aresolve_messages()
+            await replies2.aresolve_messages()
 
     if schedule_immediately is DEFAULT or schedule_immediately is True:
         # for MiniAgents() True is the DEFAULT
@@ -89,7 +89,7 @@ async def test_sub_agents_run_in_parallel(schedule_immediately: Union[bool, Sent
         if schedule_immediately is False:
             # when agents are not automatically scheduled, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
-            await replies.acollect_messages()
+            await replies.aresolve_messages()
 
     if schedule_immediately is DEFAULT or schedule_immediately is True:
         # for MiniAgents() True is the DEFAULT

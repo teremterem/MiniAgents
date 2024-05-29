@@ -141,7 +141,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
 @pytest.mark.asyncio
 async def test_stream_broken_packager(broken_packager, schedule_immediately: bool) -> None:
     """
-    Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `acollect()`.
+    Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `aresolve()`.
     """
     expected_packager_call_count = 0  # we are not counting packager calls for completely broken packagers (too hard)
     actual_packager_call_count = 0
@@ -181,11 +181,11 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
+async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
     """
     Assert that:
     - when a `StreamedPromise` is "resolved" multiple times, the `packager` is only called once;
-    - the exact same instance of the result object is returned from `acollect()` when it is called again.
+    - the exact same instance of the result object is returned from `aresolve()` when it is called again.
     """
     packager_calls = 0
 

@@ -83,7 +83,7 @@ async def _openai_func(
     async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         metadata_so_far.update(global_reply_metadata)
         metadata_so_far.update(reply_metadata)
-        resolved_messages = await ctx.messages.acollect_messages()
+        resolved_messages = await ctx.messages.aresolve_messages()
 
         if system is None:
             message_dicts = []

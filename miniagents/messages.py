@@ -187,7 +187,7 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
     A promise of a sequence of messages that can be streamed message by message.
     """
 
-    async def acollect_messages(self) -> tuple[Message, ...]:
+    async def aresolve_messages(self) -> tuple[Message, ...]:
         """
         Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
         and return them as a tuple of Message objects.
