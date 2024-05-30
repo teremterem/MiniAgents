@@ -188,7 +188,7 @@ class Promise(Generic[T]):
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefilled_whole and resolver are set (or both are not set)
+        # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
         if schedule_immediately is DEFAULT:
@@ -251,6 +251,7 @@ class Promise(Generic[T]):
 
 class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     """
+    # TODO Oleksandr: update this docstring
     A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
 
     The StreamedPromise allows for "replaying" the stream of pieces without involving the producer
