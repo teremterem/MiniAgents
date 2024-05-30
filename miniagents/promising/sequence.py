@@ -6,7 +6,7 @@ from typing import Generic, AsyncIterator, Union
 
 from miniagents.promising.promising import StreamedPromise
 from miniagents.promising.sentinels import Sentinel, DEFAULT
-from miniagents.promising.typing import SequenceFlattener, IN, OUT, StreamedPieceProducer
+from miniagents.promising.typing import SequenceFlattener, IN, OUT, PromiseStreamer
 
 
 class FlatSequence(Generic[IN, OUT]):
@@ -18,7 +18,7 @@ class FlatSequence(Generic[IN, OUT]):
 
     def __init__(
         self,
-        incoming_producer: StreamedPieceProducer[IN],
+        incoming_producer: PromiseStreamer[IN],
         flattener: SequenceFlattener[IN, OUT],
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         sequence_promise_class: type[StreamedPromise[OUT, tuple[OUT, ...]]] = StreamedPromise[OUT, tuple[OUT, ...]],

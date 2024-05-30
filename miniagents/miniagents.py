@@ -12,7 +12,7 @@ from miniagents.promising.node import Node
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
-from miniagents.promising.typing import StreamedPieceProducer, NodeResolvedEventHandler, PromiseBound
+from miniagents.promising.typing import PromiseStreamer, NodeResolvedEventHandler, PromiseBound
 
 
 class PersistMessageEventHandler(Protocol):
@@ -328,7 +328,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         self,
         producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        incoming_producer: Optional[StreamedPieceProducer[MessageType]] = None,
+        incoming_producer: Optional[PromiseStreamer[MessageType]] = None,
     ) -> None:
         if incoming_producer:
             # an external producer is provided, so we don't create the default StreamAppender

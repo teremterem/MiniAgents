@@ -18,7 +18,7 @@ from miniagents.promising.typing import (
     T,
     PIECE,
     WHOLE,
-    StreamedPieceProducer,
+    PromiseStreamer,
     PromiseResolvedEventHandler,
     PromiseResolver,
     NodeResolvedEventHandler,
@@ -251,7 +251,7 @@ class Promise(Generic[T]):
 
 class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     """
-    # TODO Oleksandr: update this docstring
+    # TODO Oleksandr: update this docstring ?
     A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
 
     The StreamedPromise allows for "replaying" the stream of pieces without involving the producer
@@ -267,7 +267,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
     def __init__(
         self,
-        producer: Optional[StreamedPieceProducer[PIECE]] = None,
+        producer: Optional[PromiseStreamer[PIECE]] = None,
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,

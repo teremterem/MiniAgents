@@ -26,8 +26,9 @@ class PromiseResolver(Protocol[T]):
     async def __call__(self, promise: PromiseBound) -> T: ...
 
 
-class StreamedPieceProducer(Protocol[PIECE]):
+class PromiseStreamer(Protocol[PIECE]):
     """
+    TODO Oleksandr: update this docstring ?
     A protocol for piece producers. A piece producer is a function that takes a `StreamedPromise` instance as an
     argument and returns an async iterator of pieces.
     """
