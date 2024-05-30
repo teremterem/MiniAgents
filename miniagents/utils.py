@@ -211,11 +211,11 @@ def split_messages(
                 # in case of an exception and the last MessagePromise "still hanging"
                 current_text_producer.close()
 
-    async def sequence_packager(sequence_promise: MessageSequencePromise) -> tuple[MessagePromise, ...]:
+    async def sequence_resolver(sequence_promise: MessageSequencePromise) -> tuple[MessagePromise, ...]:
         return tuple([item async for item in sequence_promise])  # pylint: disable=consider-using-generator
 
     return MessageSequencePromise(
         producer=sequence_producer,
-        packager=sequence_packager,
+        resolver=sequence_resolver,
         schedule_immediately=True,  # allowing it to ever be False results in a deadlock
     )

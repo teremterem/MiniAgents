@@ -155,13 +155,12 @@ class MessagePromise(StreamedPromise[str, Message]):
             super().__init__(
                 schedule_immediately=schedule_immediately,
                 prefill_pieces=[str(prefill_message)],
-                prefill_whole=prefill_message,
+                prefill_result=prefill_message,
             )
         else:
             super().__init__(
                 schedule_immediately=schedule_immediately,
                 producer=self._producer,
-                packager=self._packager,
             )
             self._message_token_streamer = message_token_streamer
             self._metadata_so_far = metadata_so_far
@@ -170,7 +169,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     def _producer(self, _) -> AsyncIterator[str]:
         return self._message_token_streamer(self._metadata_so_far)
 
-    async def _packager(self, _) -> Message:
+    async def _resolver(self) -> Message:
         return self._message_class(
             text="".join([token async for token in self]),
             **self._metadata_so_far,

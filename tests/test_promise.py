@@ -25,13 +25,13 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
             producer_iterations += 1
             yield i
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
-            packager=packager,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -57,7 +57,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
                 raise ValueError("Test error")
             producer.append(i)
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async def iterate_over_promise():
@@ -75,7 +75,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
     async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
-            packager=packager,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -104,7 +104,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
     raises an error and stops the stream.
     """
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async def iterate_over_promise():
@@ -120,7 +120,7 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
     async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=broken_producer,
-            packager=packager,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -130,29 +130,29 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
 
 
 @pytest.mark.parametrize(
-    "broken_packager",
+    "broken_resolver",
     [
-        # "not really a packager",  # TODO Oleksandr: do we even need this particular test case ?
-        lambda _: [],  # non-async packager
+        # "not really a resolver",  # TODO Oleksandr: do we even need this particular test case ?
+        lambda _: [],  # non-async resolver
         TypeError,
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_broken_stream_resolver(broken_packager, schedule_immediately: bool) -> None:
+async def test_broken_stream_resolver(broken_resolver, schedule_immediately: bool) -> None:
     """
-    Assert that if `packager` is broken, `StreamedPromise` still yields the stream and only fails upon `aresolve()`
+    Assert that if `resolver` is broken, `StreamedPromise` still yields the stream and only fails upon `aresolve()`
     (or bare `await`, for that matter).
     """
-    expected_packager_call_count = 0  # we are not counting packager calls for completely broken packagers (too hard)
-    actual_packager_call_count = 0
-    if isinstance(broken_packager, type):
-        expected_packager_call_count = 1  # we are counting packager calls for the partially broken packager
-        error_class = broken_packager
+    expected_resolver_call_count = 0  # we are not counting resolver calls for completely broken resolvers (too hard)
+    actual_resolver_call_count = 0
+    if isinstance(broken_resolver, type):
+        expected_resolver_call_count = 1  # we are counting resolver calls for the partially broken resolver
+        error_class = broken_resolver
 
-        async def broken_packager(_streamed_promise: StreamedPromise) -> None:  # pylint: disable=function-redefined
-            nonlocal actual_packager_call_count
-            actual_packager_call_count += 1
+        async def broken_resolver(_streamed_promise: StreamedPromise) -> None:  # pylint: disable=function-redefined
+            nonlocal actual_resolver_call_count
+            actual_resolver_call_count += 1
             raise error_class("Test error")
 
     with StreamAppender(capture_errors=True) as producer:
@@ -162,7 +162,7 @@ async def test_broken_stream_resolver(broken_packager, schedule_immediately: boo
     async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
-            packager=broken_packager,
+            resolver=broken_resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -177,7 +177,7 @@ async def test_broken_stream_resolver(broken_packager, schedule_immediately: boo
 
     assert error1 is exc_info2.value  # exact same error instance should be raised again
 
-    assert actual_packager_call_count == expected_packager_call_count
+    assert actual_resolver_call_count == expected_resolver_call_count
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
@@ -185,24 +185,24 @@ async def test_broken_stream_resolver(broken_packager, schedule_immediately: boo
 async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
     """
     Assert that:
-    - when a `StreamedPromise` is "resolved" multiple times, the `packager` is only called once;
+    - when a `StreamedPromise` is "resolved" multiple times, the `resolver` is only called once;
     - the exact same instance of the result object is returned from `aresolve()` when it is called again.
     """
-    packager_calls = 0
+    resolver_calls = 0
 
     with StreamAppender(capture_errors=False) as producer:
         for i in range(1, 6):
             producer.append(i)
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
-        nonlocal packager_calls
-        packager_calls += 1
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
+        nonlocal resolver_calls
+        resolver_calls += 1
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
-            packager=packager,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -210,8 +210,8 @@ async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
         # "collect from the stream" again
         result2 = await streamed_promise
 
-        # test that the packager is not called multiple times
-        assert packager_calls == 1
+        # test that the resolver is not called multiple times
+        assert resolver_calls == 1
 
         assert result1 == [1, 2, 3, 4, 5]
         assert result2 is result1  # the promise should always return the exact same instance of the result object
@@ -232,13 +232,13 @@ async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -
                     raise ValueError("Test error")
                 producer.append(i)
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
-            packager=packager,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -249,21 +249,21 @@ async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -
 @pytest.mark.asyncio
 async def test_streamed_promise_same_instance(schedule_immediately: bool) -> None:
     """
-    Assert that `producer` and `packager` receive the exact same instance of `StreamedPromise`.
+    Assert that `producer` and `resolver` receive the exact same instance of `StreamedPromise`.
     """
 
     async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
         assert _streamed_promise is streamed_promise
         yield 1
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         assert _streamed_promise is streamed_promise
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
             producer=producer,
-            packager=packager,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 

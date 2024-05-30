@@ -35,15 +35,6 @@ class StreamedPieceProducer(Protocol[PIECE]):
     def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE]: ...
 
 
-class StreamedWholePackager(Protocol[WHOLE]):
-    """
-    A protocol for packagers of the whole value. A whole packager is a function that takes a `StreamedPromise`
-    instance as an argument and returns the whole value.
-    """
-
-    async def __call__(self, streamed_promise: StreamedPromiseBound) -> WHOLE: ...
-
-
 class PromiseResolvedEventHandler(Protocol):
     """
     TODO Oleksandr: update this docstring

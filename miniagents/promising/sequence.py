@@ -26,7 +26,7 @@ class FlatSequence(Generic[IN, OUT]):
         self.__flattener = flattener
         self._input_promise = StreamedPromise(
             producer=self._producer,
-            packager=lambda _: None,
+            resolver=lambda _: None,
             schedule_immediately=False,
         )
         # TODO Oleksandr: should I really pass `self` here ? it is not of type `StreamedPromiseBound`
@@ -34,7 +34,7 @@ class FlatSequence(Generic[IN, OUT]):
 
         self.sequence_promise = sequence_promise_class(
             producer=self._input_promise,
-            packager=self._packager,
+            resolver=self._resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -43,5 +43,5 @@ class FlatSequence(Generic[IN, OUT]):
             async for item in self.__flattener(self, zero_or_more_items):
                 yield item
 
-    async def _packager(self, _) -> tuple[OUT, ...]:
+    async def _resolver(self, _) -> tuple[OUT, ...]:
         return tuple([item async for item in self.sequence_promise])  # pylint: disable=consider-using-generator

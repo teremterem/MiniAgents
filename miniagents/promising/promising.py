@@ -19,7 +19,6 @@ from miniagents.promising.typing import (
     PIECE,
     WHOLE,
     StreamedPieceProducer,
-    StreamedWholePackager,
     PromiseResolvedEventHandler,
     PromiseResolver,
     NodeResolvedEventHandler,
@@ -189,7 +188,7 @@ class Promise(Generic[T]):
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefilled_whole and packager are set (or both are not set)
+        # TODO Oleksandr: raise an error if both prefilled_whole and resolver are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
         if schedule_immediately is DEFAULT:
@@ -260,18 +259,18 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     even if some pieces were produced before the consumer started iterating.
 
     :param producer: A callable that returns an async iterator yielding the pieces of the whole value.
-    :param packager: A callable that takes an async iterable of pieces and returns the whole value
+    :param resolver: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
     TODO Oleksandr: explain the `schedule_immediately` parameter
     """
 
     def __init__(
         self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         producer: Optional[StreamedPieceProducer[PIECE]] = None,
-        packager: Optional[StreamedWholePackager[WHOLE]] = None,
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
-        prefill_whole: Union[Optional[WHOLE], Sentinel] = NO_VALUE,
+        resolver: Optional[PromiseResolver[T]] = None,
+        prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and producer are set (or both are not set)
         promising_context = PromisingContext.get_current()
@@ -281,8 +280,8 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
         super().__init__(
             schedule_immediately=schedule_immediately,
-            resolver=packager,
-            prefill_result=prefill_whole,
+            resolver=resolver,
+            prefill_result=prefill_result,
         )
         self.__producer = producer
 
