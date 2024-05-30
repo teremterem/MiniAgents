@@ -163,7 +163,7 @@ class MessagePromise(StreamedPromise[str, Message]):
             self._metadata_so_far = metadata_so_far
             self._message_class = message_class
 
-    def _streamer(self) -> AsyncIterator[str]:  # pylint: disable=invalid-overridden-method
+    def _streamer(self) -> AsyncIterator[str]:
         return self._message_token_streamer(self._metadata_so_far)
 
     async def _resolver(self) -> Message:

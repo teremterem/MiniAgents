@@ -306,7 +306,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
         self._streamer_aiter: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
-    async def _streamer(self) -> AsyncIterator[PIECE]:  # pylint: disable=method-hidden
+    def _streamer(self) -> AsyncIterator[PIECE]:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
             "The `streamer` function should be provided either via the constructor "
             "or by subclassing the `StreamedPromise` class."
