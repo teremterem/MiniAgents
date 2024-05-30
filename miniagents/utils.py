@@ -117,14 +117,14 @@ def split_messages(
     # TODO Oleksandr: but cover it with unit tests first
     async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
-        current_text_producer: Optional[StreamAppender[str]] = None
+        current_text_appender: Optional[StreamAppender[str]] = None
         inside_code_block = False
 
         def is_text_so_far_not_empty() -> bool:
             return bool(text_so_far.replace(delimiter, ""))
 
         def split_text_if_needed() -> bool:
-            nonlocal text_so_far, current_text_producer, inside_code_block
+            nonlocal text_so_far, current_text_appender, inside_code_block
 
             delimiter_idx = -1 if inside_code_block else text_so_far.find(delimiter)
             delimiter_len = len(delimiter)
@@ -147,18 +147,18 @@ def split_messages(
             text = text_so_far[:delimiter_idx]
             text_so_far = text_so_far[delimiter_idx + delimiter_len :]
             if text:
-                with current_text_producer:
-                    current_text_producer.append(text)
-                current_text_producer = None
+                with current_text_appender:
+                    current_text_appender.append(text)
+                current_text_appender = None
             return True
 
         def start_new_message_promise() -> MessagePromise:
-            nonlocal current_text_producer
-            current_text_producer = StreamAppender[str]()
+            nonlocal current_text_appender
+            current_text_appender = StreamAppender[str]()
 
             async def token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
                 metadata_so_far.update(message_metadata)
-                async for token in current_text_producer:
+                async for token in current_text_appender:
                     yield token
 
             return Message.promise(
@@ -167,7 +167,7 @@ def split_messages(
             )
 
         try:
-            if not current_text_producer:
+            if not current_text_appender:
                 # we already know that there will be at least one message - time to make a promise
                 yield start_new_message_promise()
 
@@ -183,7 +183,7 @@ def split_messages(
                     # TODO Oleksandr: this loop doesn't really work when we are not in streaming mode (when the whole
                     #  message is available at once) - only the first and the last paragraph is returned, middle
                     #  paragraphs are lost
-                    if not current_text_producer and is_text_so_far_not_empty():
+                    if not current_text_appender and is_text_so_far_not_empty():
                         # previous message was already sent - we need to start a new one (make a new promise)
                         yield start_new_message_promise()
                     if not split_text_if_needed():
@@ -192,24 +192,24 @@ def split_messages(
 
             if is_text_so_far_not_empty():
                 # some text still remains after all the messages have been processed
-                if current_text_producer:
-                    with current_text_producer:
-                        current_text_producer.append(text_so_far)
+                if current_text_appender:
+                    with current_text_appender:
+                        current_text_appender.append(text_so_far)
                 else:
                     yield Message(text=text_so_far, **message_metadata).as_promise
 
         except BaseException as exc:  # pylint: disable=broad-except
             logger.debug("Error while processing a message sequence inside `split_messages`", exc_info=True)
-            if current_text_producer:
-                with current_text_producer:
+            if current_text_appender:
+                with current_text_appender:
                     # noinspection PyTypeChecker
-                    current_text_producer.append(exc)  # TODO Oleksandr: update StreamAppender's signature ?
+                    current_text_appender.append(exc)  # TODO Oleksandr: update StreamAppender's signature ?
             else:
                 raise exc
         finally:
-            if current_text_producer:
+            if current_text_appender:
                 # in case of an exception and the last MessagePromise "still hanging"
-                current_text_producer.close()
+                current_text_appender.close()
 
     async def sequence_resolver(sequence_promise: MessageSequencePromise) -> tuple[MessagePromise, ...]:
         return tuple([item async for item in sequence_promise])  # pylint: disable=consider-using-generator

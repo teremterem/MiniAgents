@@ -51,11 +51,11 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
     the `producer` iterations, the exact same sequence of exceptions is replayed.
     """
 
-    with StreamAppender(capture_errors=True) as producer:
+    with StreamAppender(capture_errors=True) as appender:
         for i in range(1, 6):
             if i == 3:
                 raise ValueError("Test error")
-            producer.append(i)
+            appender.append(i)
 
     async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
@@ -74,7 +74,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
+            producer=appender,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -84,7 +84,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
         await iterate_over_promise()
 
 
-async def _async_producer_but_no_generator(_):
+async def _async_producer_but_not_generator(_):
     return  # not a generator
 
 
@@ -93,12 +93,12 @@ async def _async_producer_but_no_generator(_):
     [
         "not really a producer",
         lambda _: iter([]),  # non-async producer
-        _async_producer_but_no_generator,
+        _async_producer_but_not_generator,
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_stream_broken_producer(broken_producer, schedule_immediately: bool) -> None:
+async def test_broken_streamer(broken_producer, schedule_immediately: bool) -> None:
     """
     Assert that when a `StreamedPromise` tries to iterate over a broken `producer` it does not hang indefinitely, just
     raises an error and stops the stream.
@@ -155,13 +155,13 @@ async def test_broken_stream_resolver(broken_resolver, schedule_immediately: boo
             actual_resolver_call_count += 1
             raise error_class("Test error")
 
-    with StreamAppender(capture_errors=True) as producer:
+    with StreamAppender(capture_errors=True) as appender:
         for i in range(1, 6):
-            producer.append(i)
+            appender.append(i)
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
+            producer=appender,
             resolver=broken_resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -190,9 +190,9 @@ async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
     """
     resolver_calls = 0
 
-    with StreamAppender(capture_errors=False) as producer:
+    with StreamAppender(capture_errors=False) as appender:
         for i in range(1, 6):
-            producer.append(i)
+            appender.append(i)
 
     async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         nonlocal resolver_calls
@@ -201,7 +201,7 @@ async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
+            producer=appender,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -226,18 +226,18 @@ async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -
     - the `StreamedPromise` is not affected by the error and is just returning the elements up to the error.
     """
     with pytest.raises(ValueError):
-        with StreamAppender(capture_errors=False) as producer:
+        with StreamAppender(capture_errors=False) as appender:
             for i in range(1, 6):
                 if i == 3:
                     raise ValueError("Test error")
-                producer.append(i)
+                appender.append(i)
 
     async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
+            producer=appender,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )

@@ -297,12 +297,12 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.schedule_task(self._aproduce_the_stream())
+            promising_context.schedule_task(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
-        self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
+        self._streamer_aiter: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
         """
@@ -318,31 +318,31 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         """
         return self.__aiter__()
 
-    async def _aproduce_the_stream(self) -> None:
+    async def _aconsume_the_stream(self) -> None:
         while True:
-            piece = await self._aproducer_iterator_next()
+            piece = await self._streamer_aiter_anext()
             self._queue.put_nowait(piece)
             if isinstance(piece, StopAsyncIteration):
                 break
 
-    async def _aproducer_iterator_next(self) -> Union[PIECE, BaseException]:
+    async def _streamer_aiter_anext(self) -> Union[PIECE, BaseException]:
         # pylint: disable=broad-except
-        if self._producer_iterator is None:
+        if self._streamer_aiter is None:
             try:
-                self._producer_iterator = self.__producer(self)
-                if not callable(self._producer_iterator.__anext__):
+                self._streamer_aiter = self.__producer(self)
+                if not callable(self._streamer_aiter.__anext__):
                     raise TypeError("The producer must return an async iterator")
             except BaseException as exc:
                 logger.debug("An error occurred while instantiating a producer for a StreamedPromise", exc_info=True)
-                self._producer_iterator = FAILED
+                self._streamer_aiter = FAILED
                 return exc
 
-        elif self._producer_iterator is FAILED:
+        elif self._streamer_aiter is FAILED:
             # we were not able to instantiate the producer iterator at all - stopping the stream
             return StopAsyncIteration()
 
         try:
-            return await self._producer_iterator.__anext__()
+            return await self._streamer_aiter.__anext__()
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 logger.debug(
@@ -361,7 +361,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
         `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
         continues to retrieve new pieces from the original producer of the parent `StreamedPromise`
-        (`_producer_iterator` attribute of the parent `StreamedPromise`).
+        (`_streamer_aiter` attribute of the parent `StreamedPromise`).
         """
 
         def __init__(self, streamed_promise: "StreamedPromise") -> None:
@@ -392,7 +392,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             # pylint: disable=protected-access
             if self._streamed_promise._queue is None:
                 # the stream is being produced on demand, not beforehand
-                piece = await self._streamed_promise._aproducer_iterator_next()
+                piece = await self._streamed_promise._streamer_aiter_anext()
             else:
                 # the stream is being produced beforehand ("schedule immediately" option)
                 piece = await self._streamed_promise._queue.get()

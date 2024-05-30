@@ -30,7 +30,7 @@ class FlatSequence(Generic[IN, OUT]):
             schedule_immediately=False,
         )
         # TODO Oleksandr: should I really pass `self` here ? it is not of type `StreamedPromiseBound`
-        self._incoming_producer_iterator = incoming_producer(self)
+        self._incoming_streamer_aiter = incoming_producer(self)
 
         self.sequence_promise = sequence_promise_class(
             producer=self._input_promise,
@@ -39,7 +39,7 @@ class FlatSequence(Generic[IN, OUT]):
         )
 
     async def _producer(self, _) -> AsyncIterator[OUT]:
-        async for zero_or_more_items in self._incoming_producer_iterator:
+        async for zero_or_more_items in self._incoming_streamer_aiter:
             async for item in self.__flattener(self, zero_or_more_items):
                 yield item
 
