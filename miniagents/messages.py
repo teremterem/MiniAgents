@@ -158,15 +158,12 @@ class MessagePromise(StreamedPromise[str, Message]):
                 prefill_result=prefill_message,
             )
         else:
-            super().__init__(
-                schedule_immediately=schedule_immediately,
-                streamer=self._streamer,
-            )
+            super().__init__(schedule_immediately=schedule_immediately)
             self._message_token_streamer = message_token_streamer
             self._metadata_so_far = metadata_so_far
             self._message_class = message_class
 
-    def _streamer(self, _) -> AsyncIterator[str]:
+    def _streamer(self) -> AsyncIterator[str]:  # pylint: disable=invalid-overridden-method
         return self._message_token_streamer(self._metadata_so_far)
 
     async def _resolver(self) -> Message:
@@ -178,6 +175,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __aiter__(self) -> AsyncIterator[str]:
         # PyCharm fails to see that MessagePromise inherits AsyncIterable protocol from StreamedPromise,
         # hence the need to explicitly declare the __aiter__ method here
+        # TODO Oleksandr: is it really a good reason to have this meaningless method here ?
         return super().__aiter__()
 
 

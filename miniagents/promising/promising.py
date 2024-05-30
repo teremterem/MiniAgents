@@ -284,7 +284,9 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             resolver=resolver,
             prefill_result=prefill_result,
         )
-        self.__streamer = streamer
+
+        if streamer:
+            self._streamer = partial(streamer, self)
 
         if prefill_pieces is NO_VALUE:
             self._pieces_so_far: list[Union[PIECE, BaseException]] = []
@@ -303,6 +305,12 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             self._queue = None
 
         self._streamer_aiter: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
+
+    async def _streamer(self) -> AsyncIterator[PIECE]:  # pylint: disable=method-hidden
+        raise FunctionNotProvidedError(
+            "The `streamer` function should be provided either via the constructor "
+            "or by subclassing the `StreamedPromise` class."
+        )
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
         """
@@ -329,7 +337,8 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         # pylint: disable=broad-except
         if self._streamer_aiter is None:
             try:
-                self._streamer_aiter = self.__streamer(self)
+                self._streamer_aiter = self._streamer()
+                # noinspection PyUnresolvedReferences
                 if not callable(self._streamer_aiter.__anext__):
                     raise TypeError("The streamer must return an async iterator")
             except BaseException as exc:
