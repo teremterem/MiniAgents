@@ -18,7 +18,7 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
     """
     async with PromisingContext():
         msg_seq1 = MessageSequence(
-            producer_capture_errors=True,
+            appender_capture_errors=True,
             schedule_immediately=schedule_immediately,
         )
         with msg_seq1.message_appender:
@@ -27,14 +27,14 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
             msg_seq1.message_appender.append(Message(text="msg3", another_attr=3))
 
             msg_seq2 = MessageSequence(
-                producer_capture_errors=True,
+                appender_capture_errors=True,
                 schedule_immediately=schedule_immediately,
             )
             with msg_seq2.message_appender:
                 msg_seq2.message_appender.append("msg4")
 
                 msg_seq3 = MessageSequence(
-                    producer_capture_errors=True,
+                    appender_capture_errors=True,
                     schedule_immediately=schedule_immediately,
                 )
                 with msg_seq3.message_appender:
@@ -87,7 +87,7 @@ async def test_message_sequence_error(schedule_immediately: bool) -> None:
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
     the right place.
     """
-    async with PromisingContext(producer_capture_errors_by_default=True):
+    async with PromisingContext(appenders_capture_errors_by_default=True):
         msg_seq1 = MessageSequence(schedule_immediately=schedule_immediately)
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")

@@ -42,7 +42,7 @@ class PromisingContext:
     def __init__(
         self,
         schedule_immediately_by_default: bool = True,
-        producer_capture_errors_by_default: bool = False,
+        appenders_capture_errors_by_default: bool = False,
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         on_node_resolved: Union[NodeResolvedEventHandler, Iterable[NodeResolvedEventHandler]] = (),
@@ -60,7 +60,7 @@ class PromisingContext:
         self.child_tasks: set[Task] = set()
 
         self.schedule_immediately_by_default = schedule_immediately_by_default
-        self.producer_capture_errors_by_default = producer_capture_errors_by_default
+        self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_node_hash_keys = longer_node_hash_keys
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
@@ -419,7 +419,7 @@ class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
         self._append_open = False
         self._append_closed = False
         if capture_errors is DEFAULT:
-            self._capture_errors = PromisingContext.get_current().producer_capture_errors_by_default
+            self._capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
         else:
             self._capture_errors = capture_errors
 

@@ -326,7 +326,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
     def __init__(
         self,
-        producer_capture_errors: Union[bool, Sentinel] = DEFAULT,
+        appender_capture_errors: Union[bool, Sentinel] = DEFAULT,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         incoming_producer: Optional[PromiseStreamer[MessageType]] = None,
     ) -> None:
@@ -334,7 +334,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             # an external producer is provided, so we don't create the default StreamAppender
             self.message_appender = None
         else:
-            self.message_appender = StreamAppender(capture_errors=producer_capture_errors)
+            self.message_appender = StreamAppender(capture_errors=appender_capture_errors)
             incoming_producer = self.message_appender
 
         super().__init__(
@@ -352,7 +352,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         MessageSequencePromise object.
         """
         message_sequence = cls(
-            producer_capture_errors=True,
+            appender_capture_errors=True,
             schedule_immediately=False,
         )
         with message_sequence.message_appender:
@@ -407,7 +407,7 @@ class AgentReplyMessageSequence(MessageSequence):
         **kwargs,
     ) -> None:
         super().__init__(
-            producer_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
+            appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
             **kwargs,
         )
         self._mini_agent = mini_agent
@@ -423,7 +423,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 reply_producer=self.message_appender,
             )
             with self.message_appender:
-                # errors are not raised above this `with` block, thanks to `producer_capture_errors=True`
+                # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
                 # pylint: disable=protected-access
                 # noinspection PyProtectedMember
                 await self._mini_agent._func(ctx, **self._function_kwargs)
