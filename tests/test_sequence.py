@@ -26,7 +26,7 @@ async def test_flat_sequence(schedule_immediately: bool) -> None:
     async with PromisingContext():
         stream_appender = StreamAppender[int](capture_errors=True)
         flat_sequence = FlatSequence[int, int](
-            incoming_producer=stream_appender,
+            incoming_streamer=stream_appender,
             flattener=flattener,
             schedule_immediately=schedule_immediately,
         )

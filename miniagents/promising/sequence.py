@@ -18,27 +18,27 @@ class FlatSequence(Generic[IN, OUT]):
 
     def __init__(
         self,
-        incoming_producer: PromiseStreamer[IN],
+        incoming_streamer: PromiseStreamer[IN],
         flattener: SequenceFlattener[IN, OUT],
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
         sequence_promise_class: type[StreamedPromise[OUT, tuple[OUT, ...]]] = StreamedPromise[OUT, tuple[OUT, ...]],
     ) -> None:
         self.__flattener = flattener
         self._input_promise = StreamedPromise(
-            producer=self._producer,
+            streamer=self._streamer,
             resolver=lambda _: None,
             schedule_immediately=False,
         )
         # TODO Oleksandr: should I really pass `self` here ? it is not of type `StreamedPromiseBound`
-        self._incoming_streamer_aiter = incoming_producer(self)
+        self._incoming_streamer_aiter = incoming_streamer(self)
 
         self.sequence_promise = sequence_promise_class(
-            producer=self._input_promise,
+            streamer=self._input_promise,
             resolver=self._resolver,
             schedule_immediately=schedule_immediately,
         )
 
-    async def _producer(self, _) -> AsyncIterator[OUT]:
+    async def _streamer(self, _) -> AsyncIterator[OUT]:
         async for zero_or_more_items in self._incoming_streamer_aiter:
             async for item in self.__flattener(self, zero_or_more_items):
                 yield item

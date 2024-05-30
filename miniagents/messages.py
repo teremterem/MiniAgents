@@ -160,13 +160,13 @@ class MessagePromise(StreamedPromise[str, Message]):
         else:
             super().__init__(
                 schedule_immediately=schedule_immediately,
-                producer=self._producer,
+                streamer=self._streamer,
             )
             self._message_token_streamer = message_token_streamer
             self._metadata_so_far = metadata_so_far
             self._message_class = message_class
 
-    def _producer(self, _) -> AsyncIterator[str]:
+    def _streamer(self, _) -> AsyncIterator[str]:
         return self._message_token_streamer(self._metadata_so_far)
 
     async def _resolver(self) -> Message:

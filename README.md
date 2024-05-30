@@ -4,7 +4,7 @@ TODO
 
 ## Things to remember (for the developer of this framework)
 
-- **Different Promise and StreamedPromise resolvers, piece producers, appenders and what not should always catch
+- **Different Promise and StreamedPromise resolvers, piece streamers, appenders and what not should always catch
   BaseExceptions and not just Exceptions** when they capture errors to pass those errors as "pieces" in order for
   those errors to be raised at the "consumer side". This is because many of the aforementioned Promising "primitives"
   are often part of mechanisms that involve communications between async tasks via asyncio.Queue objects and just

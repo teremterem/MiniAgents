@@ -69,7 +69,7 @@ def join_messages(
     :param message_metadata: Additional metadata to be added to the resulting message.
     """
 
-    async def token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+    async def token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         metadata_so_far.update(message_metadata)
         if reference_original_messages:
             metadata_so_far["original_messages"] = []
@@ -94,7 +94,7 @@ def join_messages(
             first_message = False
 
     return Message.promise(
-        message_token_streamer=token_producer,
+        message_token_streamer=token_streamer,
         schedule_immediately=schedule_immediately,
     )
 
@@ -115,7 +115,7 @@ def split_messages(
     # TODO Oleksandr: convert this function into a class ?
     # TODO Oleksandr: simplify this function somehow ? it is not going to be easy to understand later
     # TODO Oleksandr: but cover it with unit tests first
-    async def sequence_producer(_) -> AsyncIterator[MessagePromise]:
+    async def sequence_streamer(_) -> AsyncIterator[MessagePromise]:
         text_so_far = ""
         current_text_appender: Optional[StreamAppender[str]] = None
         inside_code_block = False
@@ -156,13 +156,13 @@ def split_messages(
             nonlocal current_text_appender
             current_text_appender = StreamAppender[str]()
 
-            async def token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+            async def token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
                 metadata_so_far.update(message_metadata)
                 async for token in current_text_appender:
                     yield token
 
             return Message.promise(
-                message_token_streamer=token_producer,
+                message_token_streamer=token_streamer,
                 schedule_immediately=schedule_immediately,
             )
 
@@ -215,7 +215,7 @@ def split_messages(
         return tuple([item async for item in sequence_promise])  # pylint: disable=consider-using-generator
 
     return MessageSequencePromise(
-        producer=sequence_producer,
+        streamer=sequence_streamer,
         resolver=sequence_resolver,
         schedule_immediately=True,  # allowing it to ever be False results in a deadlock
     )

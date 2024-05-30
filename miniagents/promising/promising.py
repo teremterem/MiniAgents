@@ -254,12 +254,12 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     # TODO Oleksandr: update this docstring ?
     A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
 
-    The StreamedPromise allows for "replaying" the stream of pieces without involving the producer
+    The StreamedPromise allows for "replaying" the stream of pieces without involving the streamer
     for the pieces that have already been produced. This means that multiple consumers can iterate
     over the stream independently, and each consumer will receive all the pieces from the beginning,
     even if some pieces were produced before the consumer started iterating.
 
-    :param producer: A callable that returns an async iterator yielding the pieces of the whole value.
+    :param streamer: A callable that returns an async iterator yielding the pieces of the whole value.
     :param resolver: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
     TODO Oleksandr: explain the `schedule_immediately` parameter
@@ -267,13 +267,13 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
     def __init__(
         self,
-        producer: Optional[PromiseStreamer[PIECE]] = None,
+        streamer: Optional[PromiseStreamer[PIECE]] = None,
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefill_pieces and producer are set (or both are not set)
+        # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
         if schedule_immediately is DEFAULT:
@@ -284,7 +284,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             resolver=resolver,
             prefill_result=prefill_result,
         )
-        self.__producer = producer
+        self.__streamer = streamer
 
         if prefill_pieces is NO_VALUE:
             self._pieces_so_far: list[Union[PIECE, BaseException]] = []
@@ -292,7 +292,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             self._pieces_so_far: list[Union[PIECE, BaseException]] = [*prefill_pieces, StopAsyncIteration()]
 
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
-        self._producer_lock = asyncio.Lock()
+        self._streamer_lock = asyncio.Lock()
 
         if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
@@ -313,7 +313,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE]:
         """
-        This enables the `StreamedPromise` to be used as a piece producer for another `StreamedPromise`, effectively
+        This enables the `StreamedPromise` to be used as a piece streamer for another `StreamedPromise`, effectively
         chaining them together.
         """
         return self.__aiter__()
@@ -329,16 +329,16 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         # pylint: disable=broad-except
         if self._streamer_aiter is None:
             try:
-                self._streamer_aiter = self.__producer(self)
+                self._streamer_aiter = self.__streamer(self)
                 if not callable(self._streamer_aiter.__anext__):
-                    raise TypeError("The producer must return an async iterator")
+                    raise TypeError("The streamer must return an async iterator")
             except BaseException as exc:
-                logger.debug("An error occurred while instantiating a producer for a StreamedPromise", exc_info=True)
+                logger.debug("An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True)
                 self._streamer_aiter = FAILED
                 return exc
 
         elif self._streamer_aiter is FAILED:
-            # we were not able to instantiate the producer iterator at all - stopping the stream
+            # we were not able to instantiate the streamer iterator at all - stopping the stream
             return StopAsyncIteration()
 
         try:
@@ -346,7 +346,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 logger.debug(
-                    'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces producer.',
+                    'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces streamer.',
                     exc_info=True,
                 )
             # Any exception, apart from `StopAsyncIteration`, will always be stored in the `_pieces_so_far` list
@@ -360,7 +360,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         """
         The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
         `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
-        continues to retrieve new pieces from the original producer of the parent `StreamedPromise`
+        continues to retrieve new pieces from the original streamer of the parent `StreamedPromise`
         (`_streamer_aiter` attribute of the parent `StreamedPromise`).
         """
 
@@ -376,7 +376,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
                 # we know that `StopAsyncIteration` was stored as the last piece in the piece list
                 raise self._streamed_promise._pieces_so_far[-1]
             else:
-                async with self._streamed_promise._producer_lock:
+                async with self._streamed_promise._streamer_lock:
                     if self._index < len(self._streamed_promise._pieces_so_far):
                         piece = self._streamed_promise._pieces_so_far[self._index]
                     else:
@@ -407,7 +407,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
 class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
     """
-    This is a special kind of `producer` that can be fed into `StreamedPromise` constructor. Objects of this class
+    This is a special kind of `streamer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
     `StreamedPromise` constructor while also keeping a reference to it in the outside code in order to `feed` the
     pieces into it (and, consequently, into the `StreamedPromise`) later using `append()`.
@@ -446,9 +446,9 @@ class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
 
     def append(self, piece: PIECE) -> "StreamAppender":
         """
-        Append a `piece` to the producer. This method can only be called when the producer is open for appending (and
+        Append a `piece` to the streamer. This method can only be called when the streamer is open for appending (and
         also not closed yet). Consequently, the `piece` is delivered to the `StreamedPromise` that is consuming from
-        this producer.
+        this streamer.
         """
         if not self._append_open:
             raise AppenderNotOpenError(
@@ -462,7 +462,7 @@ class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
 
     def open(self) -> "StreamAppender":
         """
-        Open the producer for appending.
+        Open the streamer for appending.
 
         ATTENTION! It is highly recommended to use the `with` statement instead of calling `open()` and `close()`
         manually.
@@ -477,7 +477,7 @@ class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
 
     def close(self) -> None:
         """
-        Close the producer after all the pieces have been appended.
+        Close the streamer after all the pieces have been appended.
 
         ATTENTION! It is highly recommended to use the `with` statement instead of calling `open()` and `close()`
         manually.

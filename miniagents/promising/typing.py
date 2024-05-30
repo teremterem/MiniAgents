@@ -29,7 +29,7 @@ class PromiseResolver(Protocol[T]):
 class PromiseStreamer(Protocol[PIECE]):
     """
     TODO Oleksandr: update this docstring ?
-    A protocol for piece producers. A piece producer is a function that takes a `StreamedPromise` instance as an
+    A protocol for piece streamers. A piece streamer is a function that takes a `StreamedPromise` instance as an
     argument and returns an async iterator of pieces.
     """
 

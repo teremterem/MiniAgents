@@ -15,14 +15,14 @@ from miniagents.promising.sentinels import DEFAULT
 @pytest.mark.asyncio
 async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     """
-    Assert that when a `StreamedPromise` is iterated over multiple times, the `producer` is only called once.
+    Assert that when a `StreamedPromise` is iterated over multiple times, the `streamer` is only called once.
     """
-    producer_iterations = 0
+    streamer_iterations = 0
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
-        nonlocal producer_iterations
+    async def streamer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+        nonlocal streamer_iterations
         for i in range(1, 6):
-            producer_iterations += 1
+            streamer_iterations += 1
             yield i
 
     async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
@@ -30,7 +30,7 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
+            streamer=streamer,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -39,8 +39,8 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
         # iterate over the promise again
         assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
 
-    # test that the producer is not called multiple times (only 5 real iterations should happen)
-    assert producer_iterations == 5
+    # test that the streamer is not called multiple times (only 5 real iterations should happen)
+    assert streamer_iterations == 5
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
@@ -48,7 +48,7 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
 async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times and an exception is raised in the middle of
-    the `producer` iterations, the exact same sequence of exceptions is replayed.
+    the `streamer` iterations, the exact same sequence of exceptions is replayed.
     """
 
     with StreamAppender(capture_errors=True) as appender:
@@ -74,7 +74,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=appender,
+            streamer=appender,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -84,23 +84,23 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
         await iterate_over_promise()
 
 
-async def _async_producer_but_not_generator(_):
+async def _async_streamer_but_not_generator(_):
     return  # not a generator
 
 
 @pytest.mark.parametrize(
-    "broken_producer",
+    "broken_streamer",
     [
-        "not really a producer",
-        lambda _: iter([]),  # non-async producer
-        _async_producer_but_not_generator,
+        "not really a streamer",
+        lambda _: iter([]),  # non-async streamer
+        _async_streamer_but_not_generator,
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_broken_streamer(broken_producer, schedule_immediately: bool) -> None:
+async def test_broken_streamer(broken_streamer, schedule_immediately: bool) -> None:
     """
-    Assert that when a `StreamedPromise` tries to iterate over a broken `producer` it does not hang indefinitely, just
+    Assert that when a `StreamedPromise` tries to iterate over a broken `streamer` it does not hang indefinitely, just
     raises an error and stops the stream.
     """
 
@@ -119,7 +119,7 @@ async def test_broken_streamer(broken_producer, schedule_immediately: bool) -> N
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=broken_producer,
+            streamer=broken_streamer,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -161,7 +161,7 @@ async def test_broken_stream_resolver(broken_resolver, schedule_immediately: boo
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=appender,
+            streamer=appender,
             resolver=broken_resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -201,7 +201,7 @@ async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=appender,
+            streamer=appender,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -237,7 +237,7 @@ async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=appender,
+            streamer=appender,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
@@ -249,10 +249,10 @@ async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -
 @pytest.mark.asyncio
 async def test_streamed_promise_same_instance(schedule_immediately: bool) -> None:
     """
-    Assert that `producer` and `resolver` receive the exact same instance of `StreamedPromise`.
+    Assert that `streamer` and `resolver` receive the exact same instance of `StreamedPromise`.
     """
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+    async def streamer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
         assert _streamed_promise is streamed_promise
         yield 1
 
@@ -262,7 +262,7 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
+            streamer=streamer,
             resolver=resolver,
             schedule_immediately=schedule_immediately,
         )

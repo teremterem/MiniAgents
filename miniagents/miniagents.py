@@ -139,11 +139,11 @@ class InteractionContext:
     """
 
     def __init__(
-        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_producer: StreamAppender[MessageType]
+        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_streamer: StreamAppender[MessageType]
     ) -> None:
         self.this_agent = this_agent
         self.messages = messages
-        self._reply_producer = reply_producer
+        self._reply_streamer = reply_streamer
 
     def reply(self, messages: MessageType) -> None:
         """
@@ -157,7 +157,7 @@ class InteractionContext:
         #  while keeping objects of other types intact and use it in StreamAppender to freeze the state of those
         #  objects upon their submission (this way the user will not have to worry about things like `history[:]`
         #  in the code below)
-        self._reply_producer.append(messages)
+        self._reply_streamer.append(messages)
 
     def finish_early(self) -> None:
         """
@@ -165,7 +165,7 @@ class InteractionContext:
         TODO Oleksandr: is this a good name for this method ?
         TODO Oleksandr: what to do with exceptions in agent function that may happen after this method was called ?
         """
-        self._reply_producer.close()
+        self._reply_streamer.close()
 
 
 class AgentCall:
@@ -176,19 +176,19 @@ class AgentCall:
 
     def __init__(
         self,
-        message_producer: StreamAppender[MessageType],
+        message_streamer: StreamAppender[MessageType],
         reply_sequence_promise: MessageSequencePromise,
     ) -> None:
-        self._message_producer = message_producer
+        self._message_streamer = message_streamer
         self._reply_sequence_promise = reply_sequence_promise
 
-        self._message_producer.open()
+        self._message_streamer.open()
 
     def send_message(self, message: MessageType) -> "AgentCall":
         """
         Send an input message to the agent.
         """
-        self._message_producer.append(message)
+        self._message_streamer.append(message)
         return self
 
     def reply_sequence(self) -> MessageSequencePromise:
@@ -206,8 +206,8 @@ class AgentCall:
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
         """
-        # TODO Oleksandr: also make sure to close the producer when the parent agent call is finished
-        self._message_producer.close()
+        # TODO Oleksandr: also make sure to close the streamer when the parent agent call is finished
+        self._message_streamer.close()
         return self
 
 
@@ -285,7 +285,7 @@ class MiniAgent:
         )
 
         agent_call = AgentCall(
-            message_producer=input_sequence.message_appender,
+            message_streamer=input_sequence.message_appender,
             reply_sequence_promise=reply_sequence.sequence_promise,
         )
         return agent_call
@@ -328,17 +328,17 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         self,
         appender_capture_errors: Union[bool, Sentinel] = DEFAULT,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        incoming_producer: Optional[PromiseStreamer[MessageType]] = None,
+        incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
     ) -> None:
-        if incoming_producer:
-            # an external producer is provided, so we don't create the default StreamAppender
+        if incoming_streamer:
+            # an external streamer is provided, so we don't create the default StreamAppender
             self.message_appender = None
         else:
             self.message_appender = StreamAppender(capture_errors=appender_capture_errors)
-            incoming_producer = self.message_appender
+            incoming_streamer = self.message_appender
 
         super().__init__(
-            incoming_producer=incoming_producer,
+            incoming_streamer=incoming_streamer,
             flattener=self._flattener,
             schedule_immediately=schedule_immediately,
             sequence_promise_class=MessageSequencePromise,
@@ -415,12 +415,12 @@ class AgentReplyMessageSequence(MessageSequence):
         # TODO Oleksandr: freeze function_kwargs as a Node object ? or just do deep copy ?
         self._function_kwargs = function_kwargs
 
-    async def _producer(self, _) -> AsyncIterator[MessagePromise]:
+    async def _streamer(self, _) -> AsyncIterator[MessagePromise]:
         async def run_the_agent(_) -> AgentCallNode:
             ctx = InteractionContext(
                 this_agent=self._mini_agent,
                 messages=self._input_sequence_promise,
-                reply_producer=self.message_appender,
+                reply_streamer=self.message_appender,
             )
             with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
@@ -440,7 +440,7 @@ class AgentReplyMessageSequence(MessageSequence):
             resolver=run_the_agent,
         )
 
-        async for reply_promise in super()._producer(_):
+        async for reply_promise in super()._streamer(_):
             yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
 
         async def create_agent_reply_node(_) -> AgentReplyNode:
