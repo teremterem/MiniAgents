@@ -175,7 +175,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __aiter__(self) -> AsyncIterator[str]:
         # PyCharm fails to see that MessagePromise inherits AsyncIterable protocol from StreamedPromise,
         # hence the need to explicitly declare the __aiter__ method here
-        # TODO Oleksandr: is it really a good reason to have this meaningless method here ?
+        # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
         return super().__aiter__()
 
 
@@ -195,6 +195,7 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
         # PyCharm fails to see that MessageSequencePromise inherits AsyncIterable protocol from StreamedPromise,
         # hence the need to explicitly declare the __aiter__ method here
+        # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
         return super().__aiter__()
 
 
