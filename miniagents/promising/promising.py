@@ -7,21 +7,21 @@ import contextvars
 import logging
 from asyncio import Task
 from contextvars import ContextVar
+from functools import partial
 from types import TracebackType
 from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
-from miniagents.promising.errors import AppendClosedError, AppendNotOpenError
+from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
 from miniagents.promising.node import Node
 from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
 from miniagents.promising.typing import (
     T,
     PIECE,
     WHOLE,
-    StreamedPieceProducer,
-    StreamedWholePackager,
-    PromiseCollectedEventHandler,
-    PromiseFulfiller,
-    NodeCollectedEventHandler,
+    PromiseStreamer,
+    PromiseResolvedEventHandler,
+    PromiseResolver,
+    NodeResolvedEventHandler,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,10 +30,10 @@ logger = logging.getLogger(__name__)
 class PromisingContext:
     """
     This is the main class for managing the context of promises. It is a context manager that is used to configure
-    default settings for promises and to handle the lifecycle of promises (attach `on_promise_collected` handlers).
+    default settings for promises and to handle the lifecycle of promises (attach `on_promise_resolved` handlers).
     TODO Oleksandr: explain this class in more detail
-    TODO Oleksandr: especially the fact that on_node_collected is called for each Node instance only once (Node
-     instances keep track of whether on_node_collected has been called for them or not, and if it has, it is not
+    TODO Oleksandr: especially the fact that on_node_resolved is called for each Node instance only once (Node
+     instances keep track of whether on_node_resolved has been called for them or not, and if it has, it is not
      called)
     """
 
@@ -42,25 +42,25 @@ class PromisingContext:
     def __init__(
         self,
         schedule_immediately_by_default: bool = True,
-        producer_capture_errors_by_default: bool = False,
+        appenders_capture_errors_by_default: bool = False,
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
-        on_promise_collected: Union[PromiseCollectedEventHandler, Iterable[PromiseCollectedEventHandler]] = (),
-        on_node_collected: Union[NodeCollectedEventHandler, Iterable[NodeCollectedEventHandler]] = (),
+        on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        on_node_resolved: Union[NodeResolvedEventHandler, Iterable[NodeResolvedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
 
-        self.on_promise_collected_handlers: list[PromiseCollectedEventHandler] = (
-            [self._schedule_node_collected_event, on_promise_collected]
-            if callable(on_promise_collected)
-            else [self._schedule_node_collected_event, *on_promise_collected]
+        self.on_promise_resolved_handlers: list[PromiseResolvedEventHandler] = (
+            [self._schedule_node_resolved_event, on_promise_resolved]
+            if callable(on_promise_resolved)
+            else [self._schedule_node_resolved_event, *on_promise_resolved]
         )
-        self.on_node_collected_handlers: list[NodeCollectedEventHandler] = (
-            [on_node_collected] if callable(on_node_collected) else list(on_node_collected)
+        self.on_node_resolved_handlers: list[NodeResolvedEventHandler] = (
+            [on_node_resolved] if callable(on_node_resolved) else list(on_node_resolved)
         )
         self.child_tasks: set[Task] = set()
 
         self.schedule_immediately_by_default = schedule_immediately_by_default
-        self.producer_capture_errors_by_default = producer_capture_errors_by_default
+        self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_node_hash_keys = longer_node_hash_keys
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
@@ -82,21 +82,21 @@ class PromisingContext:
             )
         return current
 
-    def on_promise_collected(self, handler: PromiseCollectedEventHandler) -> PromiseCollectedEventHandler:
+    def on_promise_resolved(self, handler: PromiseResolvedEventHandler) -> PromiseResolvedEventHandler:
         """
-        Add a handler to be called after a promise is collected.
+        Add a handler to be called after a promise is resolved.
         """
-        self.on_promise_collected_handlers.append(handler)
+        self.on_promise_resolved_handlers.append(handler)
         return handler
 
-    def on_node_collected(self, handler: NodeCollectedEventHandler) -> NodeCollectedEventHandler:
+    def on_node_resolved(self, handler: NodeResolvedEventHandler) -> NodeResolvedEventHandler:
         """
-        Add a handler to be called after a promise of type Node is collected.
+        Add a handler to be called after a promise of type Node is resolved.
         """
-        self.on_node_collected_handlers.append(handler)
+        self.on_node_resolved_handlers.append(handler)
         return handler
 
-    async def _schedule_node_collected_event(self, _, result: Any) -> None:
+    async def _schedule_node_resolved_event(self, _, result: Any) -> None:
         """
         TODO Oleksandr: docstring
         """
@@ -104,12 +104,12 @@ class PromisingContext:
             return
         # pylint: disable=protected-access
         # noinspection PyProtectedMember
-        if result._node_collected_event_triggered:
+        if result._node_resolved_event_triggered:
             return
 
-        for handler in self.on_node_collected_handlers:
+        for handler in self.on_node_resolved_handlers:
             self.schedule_task(handler(_, result))
-        result._node_collected_event_triggered = True
+        result._node_resolved_event_triggered = True
 
     def schedule_task(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
@@ -185,87 +185,95 @@ class Promise(Generic[T]):
     def __init__(
         self,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        fulfiller: Optional[PromiseFulfiller[T]] = None,
+        resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefilled_whole and packager are set (or both are not set)
+        # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
         if schedule_immediately is DEFAULT:
             schedule_immediately = promising_context.schedule_immediately_by_default
 
-        self.__fulfiller = fulfiller
+        if resolver:
+            self._resolver = partial(resolver, self)
 
         if prefill_result is NO_VALUE:
             # NO_VALUE is used because `None` is also a legitimate value
             self._result: Union[T, Sentinel, BaseException] = NO_VALUE
         else:
             self._result = prefill_result
-            self._schedule_collected_event_handlers()
+            self._schedule_resolved_event_handlers()
 
-        self._fulfiller_lock = asyncio.Lock()
+        self._resolver_lock = asyncio.Lock()
 
         if schedule_immediately and prefill_result is NO_VALUE:
             promising_context.schedule_task(self)
 
-    async def acollect(self) -> T:
+    async def _resolver(self) -> T:  # pylint: disable=method-hidden
+        raise FunctionNotProvidedError(
+            "The `resolver` function should be provided either via the constructor "
+            "or by subclassing the `Promise` class."
+        )
+
+    async def aresolve(self) -> T:
         """
         TODO Oleksandr: update this docstring
         "Accumulates" all the pieces of the stream and returns the "whole" value. Will return the exact
         same object (the exact same instance) if called multiple times on the same instance of `StreamedPromise`.
         """
         # TODO Oleksandr: put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
-        #  `acollect()` from within the `fulfiller` function
+        #  `aresolve()` from within the `resolver` function
         if self._result is NO_VALUE:
-            async with self._fulfiller_lock:
+            async with self._resolver_lock:
                 if self._result is NO_VALUE:
                     try:
-                        self._result = await self.__fulfiller(self)
+                        self._result = await self._resolver()
                     except BaseException as exc:  # pylint: disable=broad-except
-                        logger.debug("An error occurred while fulfilling a Promise", exc_info=True)
+                        logger.debug("An error occurred while resolving a Promise", exc_info=True)
                         self._result = exc
 
-                    self._schedule_collected_event_handlers()
+                    self._schedule_resolved_event_handlers()
 
         if isinstance(self._result, BaseException):
             raise self._result
         return self._result
 
     def __await__(self):
-        return self.acollect().__await__()
+        return self.aresolve().__await__()
 
-    def _schedule_collected_event_handlers(self):
+    def _schedule_resolved_event_handlers(self):
         promising_context = PromisingContext.get_current()
         while promising_context:
-            for handler in promising_context.on_promise_collected_handlers:
+            for handler in promising_context.on_promise_resolved_handlers:
                 promising_context.schedule_task(handler(self, self._result))
             promising_context = promising_context.parent
 
 
 class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     """
+    # TODO Oleksandr: update this docstring ?
     A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
 
-    The StreamedPromise allows for "replaying" the stream of pieces without involving the producer
+    The StreamedPromise allows for "replaying" the stream of pieces without involving the streamer
     for the pieces that have already been produced. This means that multiple consumers can iterate
     over the stream independently, and each consumer will receive all the pieces from the beginning,
     even if some pieces were produced before the consumer started iterating.
 
-    :param producer: A callable that returns an async iterator yielding the pieces of the whole value.
-    :param packager: A callable that takes an async iterable of pieces and returns the whole value
+    :param streamer: A callable that returns an async iterator yielding the pieces of the whole value.
+    :param resolver: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
     TODO Oleksandr: explain the `schedule_immediately` parameter
     """
 
     def __init__(
         self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        producer: Optional[StreamedPieceProducer[PIECE]] = None,
-        packager: Optional[StreamedWholePackager[WHOLE]] = None,
+        streamer: Optional[PromiseStreamer[PIECE]] = None,
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
-        prefill_whole: Union[Optional[WHOLE], Sentinel] = NO_VALUE,
+        resolver: Optional[PromiseResolver[T]] = None,
+        prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
+        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefill_pieces and producer are set (or both are not set)
+        # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
         if schedule_immediately is DEFAULT:
@@ -273,10 +281,12 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
         super().__init__(
             schedule_immediately=schedule_immediately,
-            fulfiller=packager,
-            prefill_result=prefill_whole,
+            resolver=resolver,
+            prefill_result=prefill_result,
         )
-        self.__producer = producer
+
+        if streamer:
+            self._streamer = partial(streamer, self)
 
         if prefill_pieces is NO_VALUE:
             self._pieces_so_far: list[Union[PIECE, BaseException]] = []
@@ -284,17 +294,23 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             self._pieces_so_far: list[Union[PIECE, BaseException]] = [*prefill_pieces, StopAsyncIteration()]
 
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
-        self._producer_lock = asyncio.Lock()
+        self._streamer_lock = asyncio.Lock()
 
         if schedule_immediately and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.schedule_task(self._aproduce_the_stream())
+            promising_context.schedule_task(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
-        self._producer_iterator: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
+        self._streamer_aiter: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
+
+    def _streamer(self) -> AsyncIterator[PIECE]:  # pylint: disable=method-hidden
+        raise FunctionNotProvidedError(
+            "The `streamer` function should be provided either via the constructor "
+            "or by subclassing the `StreamedPromise` class."
+        )
 
     def __aiter__(self) -> AsyncIterator[PIECE]:
         """
@@ -305,40 +321,41 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE]:
         """
-        This enables the `StreamedPromise` to be used as a piece producer for another `StreamedPromise`, effectively
+        This enables the `StreamedPromise` to be used as a piece streamer for another `StreamedPromise`, effectively
         chaining them together.
         """
         return self.__aiter__()
 
-    async def _aproduce_the_stream(self) -> None:
+    async def _aconsume_the_stream(self) -> None:
         while True:
-            piece = await self._aproducer_iterator_next()
+            piece = await self._streamer_aiter_anext()
             self._queue.put_nowait(piece)
             if isinstance(piece, StopAsyncIteration):
                 break
 
-    async def _aproducer_iterator_next(self) -> Union[PIECE, BaseException]:
+    async def _streamer_aiter_anext(self) -> Union[PIECE, BaseException]:
         # pylint: disable=broad-except
-        if self._producer_iterator is None:
+        if self._streamer_aiter is None:
             try:
-                self._producer_iterator = self.__producer(self)
-                if not callable(self._producer_iterator.__anext__):
-                    raise TypeError("The producer must return an async iterator")
+                self._streamer_aiter = self._streamer()
+                # noinspection PyUnresolvedReferences
+                if not callable(self._streamer_aiter.__anext__):
+                    raise TypeError("The streamer must return an async iterator")
             except BaseException as exc:
-                logger.debug("An error occurred while instantiating a producer for a StreamedPromise", exc_info=True)
-                self._producer_iterator = FAILED
+                logger.debug("An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True)
+                self._streamer_aiter = FAILED
                 return exc
 
-        elif self._producer_iterator is FAILED:
-            # we were not able to instantiate the producer iterator at all - stopping the stream
+        elif self._streamer_aiter is FAILED:
+            # we were not able to instantiate the streamer iterator at all - stopping the stream
             return StopAsyncIteration()
 
         try:
-            return await self._producer_iterator.__anext__()
+            return await self._streamer_aiter.__anext__()
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 logger.debug(
-                    'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces producer.',
+                    'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces streamer.',
                     exc_info=True,
                 )
             # Any exception, apart from `StopAsyncIteration`, will always be stored in the `_pieces_so_far` list
@@ -352,8 +369,8 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         """
         The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
         `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
-        continues to retrieve new pieces from the original producer of the parent `StreamedPromise`
-        (`_producer_iterator` attribute of the parent `StreamedPromise`).
+        continues to retrieve new pieces from the original streamer of the parent `StreamedPromise`
+        (`_streamer_aiter` attribute of the parent `StreamedPromise`).
         """
 
         def __init__(self, streamed_promise: "StreamedPromise") -> None:
@@ -368,7 +385,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
                 # we know that `StopAsyncIteration` was stored as the last piece in the piece list
                 raise self._streamed_promise._pieces_so_far[-1]
             else:
-                async with self._streamed_promise._producer_lock:
+                async with self._streamed_promise._streamer_lock:
                     if self._index < len(self._streamed_promise._pieces_so_far):
                         piece = self._streamed_promise._pieces_so_far[self._index]
                     else:
@@ -384,7 +401,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             # pylint: disable=protected-access
             if self._streamed_promise._queue is None:
                 # the stream is being produced on demand, not beforehand
-                piece = await self._streamed_promise._aproducer_iterator_next()
+                piece = await self._streamed_promise._streamer_aiter_anext()
             else:
                 # the stream is being produced beforehand ("schedule immediately" option)
                 piece = await self._streamed_promise._queue.get()
@@ -397,9 +414,9 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             return piece
 
 
-class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
+class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
     """
-    This is a special kind of `producer` that can be fed into `StreamedPromise` constructor. Objects of this class
+    This is a special kind of `streamer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
     `StreamedPromise` constructor while also keeping a reference to it in the outside code in order to `feed` the
     pieces into it (and, consequently, into the `StreamedPromise`) later using `append()`.
@@ -411,11 +428,11 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
         self._append_open = False
         self._append_closed = False
         if capture_errors is DEFAULT:
-            self._capture_errors = PromisingContext.get_current().producer_capture_errors_by_default
+            self._capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
         else:
             self._capture_errors = capture_errors
 
-    def __enter__(self) -> "AppendProducer":
+    def __enter__(self) -> "StreamAppender":
         return self.open()
 
     def __exit__(
@@ -424,37 +441,37 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> bool:
-        is_append_closed_error = isinstance(exc_value, AppendClosedError)
+        is_append_closed_error = isinstance(exc_value, AppenderClosedError)
         error_should_not_propagate = self._capture_errors and not is_append_closed_error
 
         if exc_value and error_should_not_propagate:
-            logger.debug("An error occurred while appending pieces to an AppendProducer", exc_info=exc_value)
+            logger.debug("An error occurred while appending pieces to an StreamAppender", exc_info=exc_value)
             self.append(exc_value)
         self.close()
 
         # if `capture_errors` is True, then we also return True, so that the exception is not propagated outside
-        # the `with` block (except if the error is an `AppendClosedError` - in this case, we do not suppress it)
+        # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
         return error_should_not_propagate
 
-    def append(self, piece: PIECE) -> "AppendProducer":
+    def append(self, piece: PIECE) -> "StreamAppender":
         """
-        Append a `piece` to the producer. This method can only be called when the producer is open for appending (and
+        Append a `piece` to the streamer. This method can only be called when the streamer is open for appending (and
         also not closed yet). Consequently, the `piece` is delivered to the `StreamedPromise` that is consuming from
-        this producer.
+        this streamer.
         """
         if not self._append_open:
-            raise AppendNotOpenError(
-                "You need to put the `append()` operation inside a `with AppendProducer()` block "
+            raise AppenderNotOpenError(
+                "You need to put the `append()` operation inside a `with StreamAppender()` block "
                 "(or call `open()` and `close()` manually)."
             )
         if self._append_closed:
-            raise AppendClosedError("The AppendProducer has already been closed for appending.")
+            raise AppenderClosedError("The StreamAppender has already been closed for appending.")
         self._queue.put_nowait(piece)
         return self
 
-    def open(self) -> "AppendProducer":
+    def open(self) -> "StreamAppender":
         """
-        Open the producer for appending.
+        Open the streamer for appending.
 
         ATTENTION! It is highly recommended to use the `with` statement instead of calling `open()` and `close()`
         manually.
@@ -463,13 +480,13 @@ class AppendProducer(Generic[PIECE], AsyncIterator[PIECE]):
         (and the code that is consuming from it) waiting for more `pieces` forever.
         """
         if self._append_closed:
-            raise AppendClosedError("Once closed, the AppendProducer cannot be opened again.")
+            raise AppenderClosedError("Once closed, the StreamAppender cannot be opened again.")
         self._append_open = True
         return self
 
     def close(self) -> None:
         """
-        Close the producer after all the pieces have been appended.
+        Close the streamer after all the pieces have been appended.
 
         ATTENTION! It is highly recommended to use the `with` statement instead of calling `open()` and `close()`
         manually.

@@ -18,7 +18,7 @@ StreamedPromiseBound = TypeVar("StreamedPromiseBound", bound="StreamedPromise")
 FlatSequenceBound = TypeVar("FlatSequenceBound", bound="FlatSequence")
 
 
-class PromiseFulfiller(Protocol[T]):
+class PromiseResolver(Protocol[T]):
     """
     TODO Oleksandr: docstring
     """
@@ -26,36 +26,28 @@ class PromiseFulfiller(Protocol[T]):
     async def __call__(self, promise: PromiseBound) -> T: ...
 
 
-class StreamedPieceProducer(Protocol[PIECE]):
+class PromiseStreamer(Protocol[PIECE]):
     """
-    A protocol for piece producers. A piece producer is a function that takes a `StreamedPromise` instance as an
+    TODO Oleksandr: update this docstring ?
+    A protocol for piece streamers. A piece streamer is a function that takes a `StreamedPromise` instance as an
     argument and returns an async iterator of pieces.
     """
 
     def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE]: ...
 
 
-class StreamedWholePackager(Protocol[WHOLE]):
-    """
-    A protocol for packagers of the whole value. A whole packager is a function that takes a `StreamedPromise`
-    instance as an argument and returns the whole value.
-    """
-
-    async def __call__(self, streamed_promise: StreamedPromiseBound) -> WHOLE: ...
-
-
-class PromiseCollectedEventHandler(Protocol):
+class PromiseResolvedEventHandler(Protocol):
     """
     TODO Oleksandr: update this docstring
-    A protocol for StreamedPromise collection event handlers. A promise collection event is a function that is
-    scheduled to be called after StreamedPromise.acollect() finishes collecting the promise. "Scheduled" means
+    A protocol for StreamedPromise resolution event handlers. A promise resolution event is a function that is
+    scheduled to be called after StreamedPromise.aresolve() finishes resolving the promise. "Scheduled" means
     that the function is passed to the event loop for execution without blocking the current coroutine.
     """
 
     async def __call__(self, promise: PromiseBound, result: Any) -> None: ...
 
 
-class NodeCollectedEventHandler(Protocol):
+class NodeResolvedEventHandler(Protocol):
     """
     TODO Oleksandr: docstring
     """

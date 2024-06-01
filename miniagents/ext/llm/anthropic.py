@@ -80,12 +80,12 @@ async def _anthropic_func(
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
-    async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+    async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         metadata_so_far.update(global_reply_metadata)
         metadata_so_far.update(reply_metadata)
-        collected_messages = await ctx.messages.acollect_messages()
+        resolved_messages = await ctx.messages.aresolve_messages()
 
-        message_dicts = [message_to_llm_dict(msg) for msg in collected_messages]
+        message_dicts = [message_to_llm_dict(msg) for msg in resolved_messages]
         message_dicts = _fix_message_dicts(
             message_dicts,
             fake_first_user_message=fake_first_user_message,
@@ -143,7 +143,7 @@ async def _anthropic_func(
     ctx.reply(
         AnthropicMessage.promise(
             schedule_immediately=True,  # TODO Oleksandr: should this be customizable ?
-            message_token_producer=message_token_producer,
+            message_token_streamer=message_token_streamer,
         )
     )
 

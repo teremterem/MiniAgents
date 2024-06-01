@@ -144,4 +144,4 @@ class Node(BaseModel):
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
-        self._node_collected_event_triggered = False
+        self._node_resolved_event_triggered = False

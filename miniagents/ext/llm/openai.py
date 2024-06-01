@@ -80,10 +80,10 @@ async def _openai_func(
     if n != 1:
         raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
-    async def message_token_producer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+    async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         metadata_so_far.update(global_reply_metadata)
         metadata_so_far.update(reply_metadata)
-        collected_messages = await ctx.messages.acollect_messages()
+        resolved_messages = await ctx.messages.aresolve_messages()
 
         if system is None:
             message_dicts = []
@@ -94,7 +94,7 @@ async def _openai_func(
                     "content": system,
                 },
             ]
-        message_dicts.extend(message_to_llm_dict(msg) for msg in collected_messages)
+        message_dicts.extend(message_to_llm_dict(msg) for msg in resolved_messages)
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
@@ -136,7 +136,7 @@ async def _openai_func(
     ctx.reply(
         OpenAIMessage.promise(
             schedule_immediately=True,  # TODO Oleksandr: should this be customizable ?
-            message_token_producer=message_token_producer,
+            message_token_streamer=message_token_streamer,
         )
     )
 

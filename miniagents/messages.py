@@ -31,17 +31,17 @@ class Message(Node):
     def promise(
         cls,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_producer: "MessageTokenProducer" = None,
+        message_token_streamer: Optional["MessageTokenStreamer"] = None,
         **message_kwargs,
     ) -> "MessagePromise":
         """
         Create a MessagePromise object based on the Message class this method is called for and the provided
         arguments.
         """
-        if message_token_producer:
+        if message_token_streamer:
             return MessagePromise(
                 schedule_immediately=schedule_immediately,
-                message_token_producer=message_token_producer,
+                message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **message_kwargs,
             )
@@ -144,33 +144,29 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __init__(
         self,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_producer: "MessageTokenProducer" = None,
+        message_token_streamer: Optional["MessageTokenStreamer"] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
         **metadata_so_far,
     ) -> None:
-        # TODO Oleksandr: raise an error if both ready_message and message_token_producer/metadata_so_far are not None
+        # TODO Oleksandr: raise an error if both ready_message and message_token_streamer/metadata_so_far are not None
         #  (or both are None)
         if prefill_message:
             super().__init__(
                 schedule_immediately=schedule_immediately,
                 prefill_pieces=[str(prefill_message)],
-                prefill_whole=prefill_message,
+                prefill_result=prefill_message,
             )
         else:
-            super().__init__(
-                schedule_immediately=schedule_immediately,
-                producer=self._producer,
-                packager=self._packager,
-            )
-            self._message_token_producer = message_token_producer
+            super().__init__(schedule_immediately=schedule_immediately)
+            self._message_token_streamer = message_token_streamer
             self._metadata_so_far = metadata_so_far
             self._message_class = message_class
 
-    def _producer(self, _) -> AsyncIterator[str]:
-        return self._message_token_producer(self._metadata_so_far)
+    def _streamer(self) -> AsyncIterator[str]:
+        return self._message_token_streamer(self._metadata_so_far)
 
-    async def _packager(self, _) -> Message:
+    async def _resolver(self) -> Message:
         return self._message_class(
             text="".join([token async for token in self]),
             **self._metadata_so_far,
@@ -179,6 +175,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __aiter__(self) -> AsyncIterator[str]:
         # PyCharm fails to see that MessagePromise inherits AsyncIterable protocol from StreamedPromise,
         # hence the need to explicitly declare the __aiter__ method here
+        # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
         return super().__aiter__()
 
 
@@ -187,9 +184,10 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
     A promise of a sequence of messages that can be streamed message by message.
     """
 
-    async def acollect_messages(self) -> tuple[Message, ...]:
+    async def aresolve_messages(self) -> tuple[Message, ...]:
         """
-        Collect all messages from the sequence and return them as a tuple of Message objects.
+        Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
+        and return them as a tuple of Message objects.
         """
         # pylint: disable=consider-using-generator
         return tuple([await message_promise async for message_promise in self])
@@ -197,12 +195,13 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
         # PyCharm fails to see that MessageSequencePromise inherits AsyncIterable protocol from StreamedPromise,
         # hence the need to explicitly declare the __aiter__ method here
+        # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
         return super().__aiter__()
 
 
-class MessageTokenProducer(Protocol):
+class MessageTokenStreamer(Protocol):
     """
-    A protocol for message piece producer functions.
+    A protocol for message token streamer functions.
     """
 
     def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...

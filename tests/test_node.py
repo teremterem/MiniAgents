@@ -62,7 +62,7 @@ async def test_sample_immutable_hash_key() -> None:
         # Let's make sure that private instance attributes that were not declared in the model beforehand:
         #  1) are settable despite the model being frozen;
         #  2) do not influence the hash_key.
-        # PromisingContext.on_node_collected event sets a private attribute on Node instances, hence we want to
+        # PromisingContext.on_node_resolved event sets a private attribute on Node instances, hence we want to
         # ensure these properties.
         # pylint: disable=protected-access,attribute-defined-outside-init
         sample._some_private_attribute = "some value"

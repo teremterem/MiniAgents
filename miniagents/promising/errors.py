@@ -9,13 +9,19 @@ class PromisingError(Exception):
     """
 
 
-class AppendNotOpenError(PromisingError):
+class FunctionNotProvidedError(PromisingError):
     """
-    Raised when an `AppendProducer` is not open for appending yet and an attempt is made to append to it.
+    TODO Oleksandr: docstring
     """
 
 
-class AppendClosedError(PromisingError):
+class AppenderNotOpenError(PromisingError):
     """
-    Raised when an `AppendProducer` has already been closed for appending and an attempt is made to append to it.
+    Raised when an `StreamAppender` is not open for appending yet and an attempt is made to append to it.
+    """
+
+
+class AppenderClosedError(PromisingError):
+    """
+    Raised when an `StreamAppender` has already been closed for appending and an attempt is made to append to it.
     """

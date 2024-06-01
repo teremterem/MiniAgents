@@ -7,7 +7,7 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promising.node import Node
-from miniagents.promising.promising import StreamedPromise, AppendProducer, PromisingContext, Promise
+from miniagents.promising.promising import StreamedPromise, StreamAppender, PromisingContext, Promise
 from miniagents.promising.sentinels import DEFAULT
 
 
@@ -15,23 +15,23 @@ from miniagents.promising.sentinels import DEFAULT
 @pytest.mark.asyncio
 async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     """
-    Assert that when a `StreamedPromise` is iterated over multiple times, the `producer` is only called once.
+    Assert that when a `StreamedPromise` is iterated over multiple times, the `streamer` is only called once.
     """
-    producer_iterations = 0
+    streamer_iterations = 0
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
-        nonlocal producer_iterations
+    async def streamer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+        nonlocal streamer_iterations
         for i in range(1, 6):
-            producer_iterations += 1
+            streamer_iterations += 1
             yield i
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
-            packager=packager,
+            streamer=streamer,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -39,8 +39,8 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
         # iterate over the promise again
         assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
 
-    # test that the producer is not called multiple times (only 5 real iterations should happen)
-    assert producer_iterations == 5
+    # test that the streamer is not called multiple times (only 5 real iterations should happen)
+    assert streamer_iterations == 5
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
@@ -48,16 +48,16 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
 async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times and an exception is raised in the middle of
-    the `producer` iterations, the exact same sequence of exceptions is replayed.
+    the `streamer` iterations, the exact same sequence of exceptions is replayed.
     """
 
-    with AppendProducer(capture_errors=True) as producer:
+    with StreamAppender(capture_errors=True) as appender:
         for i in range(1, 6):
             if i == 3:
                 raise ValueError("Test error")
-            producer.append(i)
+            appender.append(i)
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async def iterate_over_promise():
@@ -74,8 +74,8 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
-            packager=packager,
+            streamer=appender,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -84,27 +84,27 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
         await iterate_over_promise()
 
 
-async def _async_producer_but_no_generator(_):
+async def _async_streamer_but_not_generator(_):
     return  # not a generator
 
 
 @pytest.mark.parametrize(
-    "broken_producer",
+    "broken_streamer",
     [
-        "not really a producer",
-        lambda _: iter([]),  # non-async producer
-        _async_producer_but_no_generator,
+        # "not really a streamer",  # TODO Oleksandr: do we even need this particular test case ?
+        lambda _: iter([]),  # non-async streamer
+        _async_streamer_but_not_generator,
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_stream_broken_producer(broken_producer, schedule_immediately: bool) -> None:
+async def test_broken_streamer(broken_streamer, schedule_immediately: bool) -> None:
     """
-    Assert that when a `StreamedPromise` tries to iterate over a broken `producer` it does not hang indefinitely, just
+    Assert that when a `StreamedPromise` tries to iterate over a broken `streamer` it does not hang indefinitely, just
     raises an error and stops the stream.
     """
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async def iterate_over_promise():
@@ -119,8 +119,8 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=broken_producer,
-            packager=packager,
+            streamer=broken_streamer,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -130,38 +130,39 @@ async def test_stream_broken_producer(broken_producer, schedule_immediately: boo
 
 
 @pytest.mark.parametrize(
-    "broken_packager",
+    "broken_resolver",
     [
-        "not really a packager",
-        lambda _: [],  # non-async packager
+        # "not really a resolver",  # TODO Oleksandr: do we even need this particular test case ?
+        lambda _: [],  # non-async resolver
         TypeError,
     ],
 )
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_stream_broken_packager(broken_packager, schedule_immediately: bool) -> None:
+async def test_broken_stream_resolver(broken_resolver, schedule_immediately: bool) -> None:
     """
-    Assert that if `packager` is broken, `StreamedPromise` still functions and only fails upon `acollect()`.
+    Assert that if `resolver` is broken, `StreamedPromise` still yields the stream and only fails upon `aresolve()`
+    (or bare `await`, for that matter).
     """
-    expected_packager_call_count = 0  # we are not counting packager calls for completely broken packagers (too hard)
-    actual_packager_call_count = 0
-    if isinstance(broken_packager, type):
-        expected_packager_call_count = 1  # we are counting packager calls for the partially broken packager
-        error_class = broken_packager
+    expected_resolver_call_count = 0  # we are not counting resolver calls for completely broken resolvers (too hard)
+    actual_resolver_call_count = 0
+    if isinstance(broken_resolver, type):
+        expected_resolver_call_count = 1  # we are counting resolver calls for the partially broken resolver
+        error_class = broken_resolver
 
-        async def broken_packager(_streamed_promise: StreamedPromise) -> None:  # pylint: disable=function-redefined
-            nonlocal actual_packager_call_count
-            actual_packager_call_count += 1
+        async def broken_resolver(_streamed_promise: StreamedPromise) -> None:  # pylint: disable=function-redefined
+            nonlocal actual_resolver_call_count
+            actual_resolver_call_count += 1
             raise error_class("Test error")
 
-    with AppendProducer(capture_errors=True) as producer:
+    with StreamAppender(capture_errors=True) as appender:
         for i in range(1, 6):
-            producer.append(i)
+            appender.append(i)
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
-            packager=broken_packager,
+            streamer=appender,
+            resolver=broken_resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -176,32 +177,32 @@ async def test_stream_broken_packager(broken_packager, schedule_immediately: boo
 
     assert error1 is exc_info2.value  # exact same error instance should be raised again
 
-    assert actual_packager_call_count == expected_packager_call_count
+    assert actual_resolver_call_count == expected_resolver_call_count
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
+async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
     """
     Assert that:
-    - when a `StreamedPromise` is "collected" multiple times, the `packager` is only called once;
-    - the exact same instance of the result object is returned from `acollect()` when it is called again.
+    - when a `StreamedPromise` is "resolved" multiple times, the `resolver` is only called once;
+    - the exact same instance of the result object is returned from `aresolve()` when it is called again.
     """
-    packager_calls = 0
+    resolver_calls = 0
 
-    with AppendProducer(capture_errors=False) as producer:
+    with StreamAppender(capture_errors=False) as appender:
         for i in range(1, 6):
-            producer.append(i)
+            appender.append(i)
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
-        nonlocal packager_calls
-        packager_calls += 1
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
+        nonlocal resolver_calls
+        resolver_calls += 1
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
-            packager=packager,
+            streamer=appender,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -209,8 +210,8 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
         # "collect from the stream" again
         result2 = await streamed_promise
 
-        # test that the packager is not called multiple times
-        assert packager_calls == 1
+        # test that the resolver is not called multiple times
+        assert resolver_calls == 1
 
         assert result1 == [1, 2, 3, 4, 5]
         assert result2 is result1  # the promise should always return the exact same instance of the result object
@@ -218,26 +219,26 @@ async def test_streamed_promise_acollect(schedule_immediately: bool) -> None:
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -> None:
+async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -> None:
     """
-    Assert that when `AppendProducer` is not capturing errors, then:
+    Assert that when `StreamAppender` is not capturing errors, then:
     - the error is raised beyond the context manager;
     - the `StreamedPromise` is not affected by the error and is just returning the elements up to the error.
     """
     with pytest.raises(ValueError):
-        with AppendProducer(capture_errors=False) as producer:
+        with StreamAppender(capture_errors=False) as appender:
             for i in range(1, 6):
                 if i == 3:
                     raise ValueError("Test error")
-                producer.append(i)
+                appender.append(i)
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
-            packager=packager,
+            streamer=appender,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -248,21 +249,21 @@ async def test_append_producer_dont_capture_errors(schedule_immediately: bool) -
 @pytest.mark.asyncio
 async def test_streamed_promise_same_instance(schedule_immediately: bool) -> None:
     """
-    Assert that `producer` and `packager` receive the exact same instance of `StreamedPromise`.
+    Assert that `streamer` and `resolver` receive the exact same instance of `StreamedPromise`.
     """
 
-    async def producer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+    async def streamer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
         assert _streamed_promise is streamed_promise
         yield 1
 
-    async def packager(_streamed_promise: StreamedPromise) -> list[int]:
+    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
         assert _streamed_promise is streamed_promise
         return [piece async for piece in _streamed_promise]
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
-            producer=producer,
-            packager=packager,
+            streamer=streamer,
+            resolver=resolver,
             schedule_immediately=schedule_immediately,
         )
 
@@ -272,90 +273,90 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
 # noinspection PyAsyncCall
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_collected_event_called_once(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_called_once(schedule_immediately: bool) -> None:
     """
-    Assert that the `on_node_collected` event is called only once if the same Node is collected multiple times.
+    Assert that the `on_node_resolved` event is called only once if the same Node is resolved multiple times.
     """
-    promise_collected_calls = 0
-    node_collected_calls = 0
+    promise_resolved_calls = 0
+    node_resolved_calls = 0
 
-    async def on_promise_collected(_, __) -> None:
-        nonlocal promise_collected_calls
-        promise_collected_calls += 1
+    async def on_promise_resolved(_, __) -> None:
+        nonlocal promise_resolved_calls
+        promise_resolved_calls += 1
 
-    async def on_node_collected(_, __) -> None:
-        nonlocal node_collected_calls
-        node_collected_calls += 1
+    async def on_node_resolved(_, __) -> None:
+        nonlocal node_resolved_calls
+        node_resolved_calls += 1
 
     some_node = Node()
 
     async with PromisingContext(
-        on_promise_collected=on_promise_collected,
-        on_node_collected=on_node_collected,
+        on_promise_resolved=on_promise_resolved,
+        on_node_resolved=on_node_resolved,
     ):
         Promise(prefill_result=some_node, schedule_immediately=schedule_immediately)
         Promise(prefill_result=some_node, schedule_immediately=schedule_immediately)
 
-    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
-    assert node_collected_calls == 1
+    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
+    assert node_resolved_calls == 1
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_collected_event_called_twice(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_called_twice(schedule_immediately: bool) -> None:
     """
-    Assert that the `on_node_collected` event is called twice if two different Nodes are collected.
+    Assert that the `on_node_resolved` event is called twice if two different Nodes are resolved.
     """
-    promise_collected_calls = 0
-    node_collected_calls = 0
+    promise_resolved_calls = 0
+    node_resolved_calls = 0
 
-    async def on_promise_collected(_, __) -> None:
-        nonlocal promise_collected_calls
-        promise_collected_calls += 1
+    async def on_promise_resolved(_, __) -> None:
+        nonlocal promise_resolved_calls
+        promise_resolved_calls += 1
 
-    async def on_node_collected(_, __) -> None:
-        nonlocal node_collected_calls
-        node_collected_calls += 1
+    async def on_node_resolved(_, __) -> None:
+        nonlocal node_resolved_calls
+        node_resolved_calls += 1
 
     node1 = Node()
     node2 = Node()
 
     async with PromisingContext(
-        on_promise_collected=on_promise_collected,
-        on_node_collected=on_node_collected,
+        on_promise_resolved=on_promise_resolved,
+        on_node_resolved=on_node_resolved,
     ):
         Promise(prefill_result=node1, schedule_immediately=schedule_immediately)
         Promise(prefill_result=node2, schedule_immediately=schedule_immediately)
 
-    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
-    assert node_collected_calls == 2
+    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
+    assert node_resolved_calls == 2
 
 
 @pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_collected_event_not_called(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_not_called(schedule_immediately: bool) -> None:
     """
-    Assert that the `on_node_collected` event is not called if the collected value is not a Node.
+    Assert that the `on_node_resolved` event is not called if the resolved value is not a Node.
     """
-    promise_collected_calls = 0
-    node_collected_calls = 0
+    promise_resolved_calls = 0
+    node_resolved_calls = 0
 
-    async def on_promise_collected(_, __) -> None:
-        nonlocal promise_collected_calls
-        promise_collected_calls += 1
+    async def on_promise_resolved(_, __) -> None:
+        nonlocal promise_resolved_calls
+        promise_resolved_calls += 1
 
-    async def on_node_collected(_, __) -> None:
-        nonlocal node_collected_calls
-        node_collected_calls += 1
+    async def on_node_resolved(_, __) -> None:
+        nonlocal node_resolved_calls
+        node_resolved_calls += 1
 
     value = "not a node"
 
     async with PromisingContext(
-        on_promise_collected=on_promise_collected,
-        on_node_collected=on_node_collected,
+        on_promise_resolved=on_promise_resolved,
+        on_node_resolved=on_node_resolved,
     ):
         Promise(prefill_result=value, schedule_immediately=schedule_immediately)
         Promise(prefill_result=value, schedule_immediately=schedule_immediately)
 
-    assert promise_collected_calls == 2  # on_promise_collected should be called twice regardless
-    assert node_collected_calls == 0
+    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
+    assert node_resolved_calls == 0
