@@ -41,7 +41,7 @@ class PromisingContext:
 
     def __init__(
         self,
-        schedule_immediately_by_default: bool = True,
+        start_everything_asap_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
@@ -59,7 +59,7 @@ class PromisingContext:
         )
         self.child_tasks: set[Task] = set()
 
-        self.schedule_immediately_by_default = schedule_immediately_by_default
+        self.start_everything_asap_by_default = start_everything_asap_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_node_hash_keys = longer_node_hash_keys
 
@@ -184,15 +184,15 @@ class Promise(Generic[T]):
 
     def __init__(
         self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if schedule_immediately is DEFAULT:
-            schedule_immediately = promising_context.schedule_immediately_by_default
+        if start_asap is DEFAULT:
+            start_asap = promising_context.start_everything_asap_by_default
 
         if resolver:
             self._resolver = partial(resolver, self)
@@ -206,7 +206,7 @@ class Promise(Generic[T]):
 
         self._resolver_lock = asyncio.Lock()
 
-        if schedule_immediately and prefill_result is NO_VALUE:
+        if start_asap and prefill_result is NO_VALUE:
             promising_context.schedule_task(self)
 
     async def _resolver(self) -> T:  # pylint: disable=method-hidden
@@ -262,7 +262,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     :param streamer: A callable that returns an async iterator yielding the pieces of the whole value.
     :param resolver: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
-    TODO Oleksandr: explain the `schedule_immediately` parameter
+    TODO Oleksandr: explain the `start_asap` parameter
     """
 
     def __init__(
@@ -271,16 +271,16 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if schedule_immediately is DEFAULT:
-            schedule_immediately = promising_context.schedule_immediately_by_default
+        if start_asap is DEFAULT:
+            start_asap = promising_context.start_everything_asap_by_default
 
         super().__init__(
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
             resolver=resolver,
             prefill_result=prefill_result,
         )
@@ -296,7 +296,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._streamer_lock = asyncio.Lock()
 
-        if schedule_immediately and prefill_pieces is NO_VALUE:
+        if start_asap and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
             promising_context.schedule_task(self._aconsume_the_stream())

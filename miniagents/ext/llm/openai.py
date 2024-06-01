@@ -135,7 +135,7 @@ async def _openai_func(
 
     ctx.reply(
         OpenAIMessage.promise(
-            schedule_immediately=True,  # TODO Oleksandr: should this be customizable ?
+            start_asap=True,  # TODO Oleksandr: should this be customizable ?
             message_token_streamer=message_token_streamer,
         )
     )

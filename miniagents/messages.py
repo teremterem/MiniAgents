@@ -29,7 +29,7 @@ class Message(Node):
     @classmethod
     def promise(
         cls,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **message_kwargs,
     ) -> "MessagePromise":
@@ -39,7 +39,7 @@ class Message(Node):
         """
         if message_token_streamer:
             return MessagePromise(
-                schedule_immediately=schedule_immediately,
+                start_asap=start_asap,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **message_kwargs,
@@ -142,7 +142,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     def __init__(
         self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
@@ -152,12 +152,12 @@ class MessagePromise(StreamedPromise[str, Message]):
         #  (or both are None)
         if prefill_message:
             super().__init__(
-                schedule_immediately=schedule_immediately,
+                start_asap=start_asap,
                 prefill_pieces=[str(prefill_message)],
                 prefill_result=prefill_message,
             )
         else:
-            super().__init__(schedule_immediately=schedule_immediately)
+            super().__init__(start_asap=start_asap)
             self._message_token_streamer = message_token_streamer
             self._metadata_so_far = metadata_so_far
             self._message_class = message_class

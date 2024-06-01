@@ -256,33 +256,33 @@ class MiniAgent:
     def inquire(
         self,
         messages: Optional[MessageType] = None,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         **function_kwargs,
     ) -> MessageSequencePromise:
         """
         TODO Oleksandr: docstring
         """
-        agent_call = self.initiate_inquiry(schedule_immediately=schedule_immediately, **function_kwargs)
+        agent_call = self.initiate_inquiry(start_asap=start_asap, **function_kwargs)
         if messages is not None:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
     def initiate_inquiry(
         self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         **function_kwargs,
     ) -> "AgentCall":
         """
         TODO Oleksandr: docstring
         """
         input_sequence = MessageSequence(
-            schedule_immediately=False,
+            start_asap=False,
         )
         reply_sequence = AgentReplyMessageSequence(
             mini_agent=self,
             function_kwargs=function_kwargs,
             input_sequence_promise=input_sequence.sequence_promise,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         agent_call = AgentCall(
@@ -328,7 +328,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     def __init__(
         self,
         appender_capture_errors: Union[bool, Sentinel] = DEFAULT,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
     ) -> None:
         if incoming_streamer:
@@ -340,7 +340,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
         super().__init__(
             incoming_streamer=incoming_streamer,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
             sequence_promise_class=MessageSequencePromise,
         )
 
@@ -353,7 +353,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         """
         message_sequence = cls(
             appender_capture_errors=True,
-            schedule_immediately=False,
+            start_asap=False,
         )
         with message_sequence.message_appender:
             message_sequence.message_appender.append(messages)
@@ -437,7 +437,7 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         agent_call_promise = Promise[AgentCallNode](
-            schedule_immediately=True,
+            start_asap=True,
             resolver=run_the_agent,
         )
 
@@ -453,6 +453,6 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         Promise[AgentReplyNode](
-            schedule_immediately=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
+            start_asap=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
             resolver=create_agent_reply_node,
         )

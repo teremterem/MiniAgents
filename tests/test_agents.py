@@ -11,9 +11,9 @@ from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 from miniagents.promising.sentinels import DEFAULT, Sentinel
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_agents_run_in_parallel(schedule_immediately: Union[bool, Sentinel]) -> None:
+async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None:
     """
     Test that agents can run in parallel.
     """
@@ -32,15 +32,15 @@ async def test_agents_run_in_parallel(schedule_immediately: Union[bool, Sentinel
         event_sequence.append("agent2 - end")
 
     async with MiniAgents():
-        replies1 = agent1.inquire(schedule_immediately=schedule_immediately)
-        replies2 = agent2.inquire(schedule_immediately=schedule_immediately)
-        if schedule_immediately is False:
+        replies1 = agent1.inquire(start_asap=start_asap)
+        replies2 = agent2.inquire(start_asap=start_asap)
+        if start_asap is False:
             # when agents are not automatically scheduled, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
             await replies1.aresolve_messages()
             await replies2.aresolve_messages()
 
-    if schedule_immediately is DEFAULT or schedule_immediately is True:
+    if start_asap is DEFAULT or start_asap is True:
         # for MiniAgents() True is the DEFAULT
         assert event_sequence == [
             "agent1 - start",
@@ -58,9 +58,9 @@ async def test_agents_run_in_parallel(schedule_immediately: Union[bool, Sentinel
         ]
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_sub_agents_run_in_parallel(schedule_immediately: Union[bool, Sentinel]) -> None:
+async def test_sub_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None:
     """
     Test that two agents that were called by the third agent can run in parallel.
     """
@@ -82,16 +82,16 @@ async def test_sub_agents_run_in_parallel(schedule_immediately: Union[bool, Sent
     async def aggregation_agent(ctx: InteractionContext) -> None:
         # wrapping this generator into a list comprehension is necessary to make sure that the agents are called
         # immediately (and are executed in parallel as a result)
-        ctx.reply([agent.inquire(schedule_immediately=schedule_immediately) for agent in [agent1, agent2]])
+        ctx.reply([agent.inquire(start_asap=start_asap) for agent in [agent1, agent2]])
 
     async with MiniAgents():
-        replies = aggregation_agent.inquire(schedule_immediately=schedule_immediately)
-        if schedule_immediately is False:
+        replies = aggregation_agent.inquire(start_asap=start_asap)
+        if start_asap is False:
             # when agents are not automatically scheduled, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
             await replies.aresolve_messages()
 
-    if schedule_immediately is DEFAULT or schedule_immediately is True:
+    if start_asap is DEFAULT or start_asap is True:
         # for MiniAgents() True is the DEFAULT
         assert event_sequence == [
             "agent1 - start",

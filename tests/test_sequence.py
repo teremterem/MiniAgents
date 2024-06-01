@@ -11,9 +11,9 @@ from miniagents.promising.sentinels import DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_flat_sequence(schedule_immediately: bool) -> None:
+async def test_flat_sequence(start_asap: bool) -> None:
     """
     Assert that `FlatSequence` "flattens" the input sequence of (0, 1, 2, 3) into the output sequence of
     (1, 2, 2, 3, 3, 3), in accordance with the flattener function that is passed to its constructor.
@@ -28,7 +28,7 @@ async def test_flat_sequence(schedule_immediately: bool) -> None:
         flat_sequence = FlatSequence[int, int](
             incoming_streamer=stream_appender,
             flattener=flattener,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
         with stream_appender:
             stream_appender.append(0)
