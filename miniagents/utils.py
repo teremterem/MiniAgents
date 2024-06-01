@@ -51,10 +51,11 @@ def join_messages(
     delimiter: Optional[str] = "\n\n",
     strip_leading_newlines: bool = False,
     reference_original_messages: bool = True,
-    schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+    start_asap: Union[bool, Sentinel] = DEFAULT,
     **message_metadata,
 ) -> MessagePromise:
     """
+    TODO Oleksandr: improve this docstring ?
     Join multiple messages into a single message using a delimiter.
 
     :param messages: A list of messages to join.
@@ -64,7 +65,7 @@ def join_messages(
     :param delimiter: A string that will be inserted between messages.
     :param reference_original_messages: If True, the resulting message will contain the list of original messages in
     the `original_messages` field.
-    :param schedule_immediately: If True, the resulting message will be scheduled for background resolution regardless
+    :param start_asap: If True, the resulting message will be scheduled for background resolution regardless
     of when it is going to be consumed.
     :param message_metadata: Additional metadata to be added to the resulting message.
     """
@@ -95,7 +96,7 @@ def join_messages(
 
     return Message.promise(
         message_token_streamer=token_streamer,
-        schedule_immediately=schedule_immediately,
+        start_asap=start_asap,
     )
 
 
@@ -103,7 +104,7 @@ def split_messages(
     messages: MessageType,
     delimiter: str = "\n\n",
     code_block_delimiter: Optional[str] = "```",
-    schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+    start_asap: Union[bool, Sentinel] = DEFAULT,
     **message_metadata,
 ) -> MessageSequencePromise:
     """
@@ -163,7 +164,7 @@ def split_messages(
 
             return Message.promise(
                 message_token_streamer=token_streamer,
-                schedule_immediately=schedule_immediately,
+                start_asap=start_asap,
             )
 
         try:
@@ -175,7 +176,7 @@ def split_messages(
                 messages,
                 delimiter=delimiter,
                 reference_original_messages=False,
-                schedule_immediately=schedule_immediately,
+                start_asap=start_asap,
             ):
                 text_so_far += token
 
@@ -217,5 +218,5 @@ def split_messages(
     return MessageSequencePromise(
         streamer=sequence_streamer,
         resolver=sequence_resolver,
-        schedule_immediately=True,  # allowing it to ever be False results in a deadlock
+        start_asap=True,  # allowing it to ever be False results in a deadlock
     )

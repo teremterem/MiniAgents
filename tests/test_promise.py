@@ -11,9 +11,9 @@ from miniagents.promising.promising import StreamedPromise, StreamAppender, Prom
 from miniagents.promising.sentinels import DEFAULT
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
+async def test_stream_replay_iterator(start_asap: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times, the `streamer` is only called once.
     """
@@ -32,7 +32,7 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
         streamed_promise = StreamedPromise(
             streamer=streamer,
             resolver=resolver,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         assert [i async for i in streamed_promise] == [1, 2, 3, 4, 5]
@@ -43,9 +43,9 @@ async def test_stream_replay_iterator(schedule_immediately: bool) -> None:
     assert streamer_iterations == 5
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> None:
+async def test_stream_replay_iterator_exception(start_asap: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times and an exception is raised in the middle of
     the `streamer` iterations, the exact same sequence of exceptions is replayed.
@@ -76,7 +76,7 @@ async def test_stream_replay_iterator_exception(schedule_immediately: bool) -> N
         streamed_promise = StreamedPromise(
             streamer=appender,
             resolver=resolver,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         await iterate_over_promise()
@@ -96,9 +96,9 @@ async def _async_streamer_but_not_generator(_):
         _async_streamer_but_not_generator,
     ],
 )
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_broken_streamer(broken_streamer, schedule_immediately: bool) -> None:
+async def test_broken_streamer(broken_streamer, start_asap: bool) -> None:
     """
     Assert that when a `StreamedPromise` tries to iterate over a broken `streamer` it does not hang indefinitely, just
     raises an error and stops the stream.
@@ -121,7 +121,7 @@ async def test_broken_streamer(broken_streamer, schedule_immediately: bool) -> N
         streamed_promise = StreamedPromise(
             streamer=broken_streamer,
             resolver=resolver,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         await iterate_over_promise()
@@ -137,9 +137,9 @@ async def test_broken_streamer(broken_streamer, schedule_immediately: bool) -> N
         TypeError,
     ],
 )
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_broken_stream_resolver(broken_resolver, schedule_immediately: bool) -> None:
+async def test_broken_stream_resolver(broken_resolver, start_asap: bool) -> None:
     """
     Assert that if `resolver` is broken, `StreamedPromise` still yields the stream and only fails upon `aresolve()`
     (or bare `await`, for that matter).
@@ -163,7 +163,7 @@ async def test_broken_stream_resolver(broken_resolver, schedule_immediately: boo
         streamed_promise = StreamedPromise(
             streamer=appender,
             resolver=broken_resolver,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         with pytest.raises(TypeError) as exc_info1:
@@ -180,9 +180,9 @@ async def test_broken_stream_resolver(broken_resolver, schedule_immediately: boo
     assert actual_resolver_call_count == expected_resolver_call_count
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
+async def test_streamed_promise_aresolve(start_asap: bool) -> None:
     """
     Assert that:
     - when a `StreamedPromise` is "resolved" multiple times, the `resolver` is only called once;
@@ -203,7 +203,7 @@ async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
         streamed_promise = StreamedPromise(
             streamer=appender,
             resolver=resolver,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         result1 = await streamed_promise
@@ -217,9 +217,9 @@ async def test_streamed_promise_aresolve(schedule_immediately: bool) -> None:
         assert result2 is result1  # the promise should always return the exact same instance of the result object
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -> None:
+async def test_stream_appender_dont_capture_errors(start_asap: bool) -> None:
     """
     Assert that when `StreamAppender` is not capturing errors, then:
     - the error is raised beyond the context manager;
@@ -239,15 +239,15 @@ async def test_stream_appender_dont_capture_errors(schedule_immediately: bool) -
         streamed_promise = StreamedPromise(
             streamer=appender,
             resolver=resolver,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         assert await streamed_promise == [1, 2]
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_streamed_promise_same_instance(schedule_immediately: bool) -> None:
+async def test_streamed_promise_same_instance(start_asap: bool) -> None:
     """
     Assert that `streamer` and `resolver` receive the exact same instance of `StreamedPromise`.
     """
@@ -264,16 +264,16 @@ async def test_streamed_promise_same_instance(schedule_immediately: bool) -> Non
         streamed_promise = StreamedPromise(
             streamer=streamer,
             resolver=resolver,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         await streamed_promise
 
 
 # noinspection PyAsyncCall
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_resolved_event_called_once(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_called_once(start_asap: bool) -> None:
     """
     Assert that the `on_node_resolved` event is called only once if the same Node is resolved multiple times.
     """
@@ -294,16 +294,16 @@ async def test_on_node_resolved_event_called_once(schedule_immediately: bool) ->
         on_promise_resolved=on_promise_resolved,
         on_node_resolved=on_node_resolved,
     ):
-        Promise(prefill_result=some_node, schedule_immediately=schedule_immediately)
-        Promise(prefill_result=some_node, schedule_immediately=schedule_immediately)
+        Promise(prefill_result=some_node, start_asap=start_asap)
+        Promise(prefill_result=some_node, start_asap=start_asap)
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
     assert node_resolved_calls == 1
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_resolved_event_called_twice(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_called_twice(start_asap: bool) -> None:
     """
     Assert that the `on_node_resolved` event is called twice if two different Nodes are resolved.
     """
@@ -325,16 +325,16 @@ async def test_on_node_resolved_event_called_twice(schedule_immediately: bool) -
         on_promise_resolved=on_promise_resolved,
         on_node_resolved=on_node_resolved,
     ):
-        Promise(prefill_result=node1, schedule_immediately=schedule_immediately)
-        Promise(prefill_result=node2, schedule_immediately=schedule_immediately)
+        Promise(prefill_result=node1, start_asap=start_asap)
+        Promise(prefill_result=node2, start_asap=start_asap)
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
     assert node_resolved_calls == 2
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_on_node_resolved_event_not_called(schedule_immediately: bool) -> None:
+async def test_on_node_resolved_event_not_called(start_asap: bool) -> None:
     """
     Assert that the `on_node_resolved` event is not called if the resolved value is not a Node.
     """
@@ -355,8 +355,8 @@ async def test_on_node_resolved_event_not_called(schedule_immediately: bool) -> 
         on_promise_resolved=on_promise_resolved,
         on_node_resolved=on_node_resolved,
     ):
-        Promise(prefill_result=value, schedule_immediately=schedule_immediately)
-        Promise(prefill_result=value, schedule_immediately=schedule_immediately)
+        Promise(prefill_result=value, start_asap=start_asap)
+        Promise(prefill_result=value, start_asap=start_asap)
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
     assert node_resolved_calls == 0

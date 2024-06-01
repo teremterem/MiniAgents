@@ -10,16 +10,16 @@ from miniagents.promising.promising import PromisingContext
 from miniagents.promising.sentinels import DEFAULT
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_message_sequence(schedule_immediately: bool) -> None:
+async def test_message_sequence(start_asap: bool) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence.
     """
     async with PromisingContext():
         msg_seq1 = MessageSequence(
             appender_capture_errors=True,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
@@ -28,14 +28,14 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
 
             msg_seq2 = MessageSequence(
                 appender_capture_errors=True,
-                schedule_immediately=schedule_immediately,
+                start_asap=start_asap,
             )
             with msg_seq2.message_appender:
                 msg_seq2.message_appender.append("msg4")
 
                 msg_seq3 = MessageSequence(
                     appender_capture_errors=True,
-                    schedule_immediately=schedule_immediately,
+                    start_asap=start_asap,
                 )
                 with msg_seq3.message_appender:
                     msg_seq3.message_appender.append("msg5")
@@ -80,23 +80,23 @@ async def test_message_sequence(schedule_immediately: bool) -> None:
         ]
 
 
-@pytest.mark.parametrize("schedule_immediately", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
 @pytest.mark.asyncio
-async def test_message_sequence_error(schedule_immediately: bool) -> None:
+async def test_message_sequence_error(start_asap: bool) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
     the right place.
     """
     async with PromisingContext(appenders_capture_errors_by_default=True):
-        msg_seq1 = MessageSequence(schedule_immediately=schedule_immediately)
+        msg_seq1 = MessageSequence(start_asap=start_asap)
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
 
-            msg_seq2 = MessageSequence(schedule_immediately=schedule_immediately)
+            msg_seq2 = MessageSequence(start_asap=start_asap)
             with msg_seq2.message_appender:
                 msg_seq2.message_appender.append("msg2")
 
-                msg_seq3 = MessageSequence(schedule_immediately=schedule_immediately)
+                msg_seq3 = MessageSequence(start_asap=start_asap)
                 with msg_seq3.message_appender:
                     msg_seq3.message_appender.append("msg3")
                     # msg_seq3.message_appender.append(ValueError("msg4"))

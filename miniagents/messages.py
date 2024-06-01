@@ -3,10 +3,9 @@
 """
 
 from functools import cached_property
-from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Iterator
+from typing import AsyncIterator, Any, Union, Optional, Iterator
 
-from pydantic import BaseModel
-
+from miniagents.miniagent_typing import MessageTokenStreamer
 from miniagents.promising.node import Node
 from miniagents.promising.promising import StreamedPromise
 from miniagents.promising.sentinels import Sentinel, DEFAULT
@@ -30,8 +29,8 @@ class Message(Node):
     @classmethod
     def promise(
         cls,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_streamer: Optional["MessageTokenStreamer"] = None,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
+        message_token_streamer: Optional[MessageTokenStreamer] = None,
         **message_kwargs,
     ) -> "MessagePromise":
         """
@@ -40,7 +39,7 @@ class Message(Node):
         """
         if message_token_streamer:
             return MessagePromise(
-                schedule_immediately=schedule_immediately,
+                start_asap=start_asap,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **message_kwargs,
@@ -143,8 +142,8 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     def __init__(
         self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_streamer: Optional["MessageTokenStreamer"] = None,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
+        message_token_streamer: Optional[MessageTokenStreamer] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
         **metadata_so_far,
@@ -153,12 +152,12 @@ class MessagePromise(StreamedPromise[str, Message]):
         #  (or both are None)
         if prefill_message:
             super().__init__(
-                schedule_immediately=schedule_immediately,
+                start_asap=start_asap,
                 prefill_pieces=[str(prefill_message)],
                 prefill_result=prefill_message,
             )
         else:
-            super().__init__(schedule_immediately=schedule_immediately)
+            super().__init__(start_asap=start_asap)
             self._message_token_streamer = message_token_streamer
             self._metadata_so_far = metadata_so_far
             self._message_class = message_class
@@ -197,16 +196,3 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
         # hence the need to explicitly declare the __aiter__ method here
         # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
         return super().__aiter__()
-
-
-class MessageTokenStreamer(Protocol):
-    """
-    A protocol for message token streamer functions.
-    """
-
-    def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
-
-
-# TODO Oleksandr: add documentation somewhere that explains what MessageType and SingleMessageType represent
-SingleMessageType = Union[str, dict[str, Any], BaseModel, Message, MessagePromise, BaseException]
-MessageType = Union[SingleMessageType, Iterable["MessageType"], AsyncIterable["MessageType"]]

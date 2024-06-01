@@ -13,8 +13,7 @@ from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable,
 
 from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
 from miniagents.promising.node import Node
-from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
-from miniagents.promising.typing import (
+from miniagents.promising.promise_typing import (
     T,
     PIECE,
     WHOLE,
@@ -23,6 +22,7 @@ from miniagents.promising.typing import (
     PromiseResolver,
     NodeResolvedEventHandler,
 )
+from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class PromisingContext:
 
     def __init__(
         self,
-        schedule_immediately_by_default: bool = True,
+        start_everything_asap_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
@@ -50,16 +50,16 @@ class PromisingContext:
         self.parent = self._current.get()
 
         self.on_promise_resolved_handlers: list[PromiseResolvedEventHandler] = (
-            [self._schedule_node_resolved_event, on_promise_resolved]
+            [self._trigger_node_resolved_event, on_promise_resolved]
             if callable(on_promise_resolved)
-            else [self._schedule_node_resolved_event, *on_promise_resolved]
+            else [self._trigger_node_resolved_event, *on_promise_resolved]
         )
         self.on_node_resolved_handlers: list[NodeResolvedEventHandler] = (
             [on_node_resolved] if callable(on_node_resolved) else list(on_node_resolved)
         )
         self.child_tasks: set[Task] = set()
 
-        self.schedule_immediately_by_default = schedule_immediately_by_default
+        self.start_everything_asap_by_default = start_everything_asap_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_node_hash_keys = longer_node_hash_keys
 
@@ -96,7 +96,7 @@ class PromisingContext:
         self.on_node_resolved_handlers.append(handler)
         return handler
 
-    async def _schedule_node_resolved_event(self, _, result: Any) -> None:
+    async def _trigger_node_resolved_event(self, _, result: Any) -> None:
         """
         TODO Oleksandr: docstring
         """
@@ -108,11 +108,12 @@ class PromisingContext:
             return
 
         for handler in self.on_node_resolved_handlers:
-            self.schedule_task(handler(_, result))
+            self.start_asap(handler(_, result))
         result._node_resolved_event_triggered = True
 
-    def schedule_task(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
+    def start_asap(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
+        TODO Oleksandr: improve this docstring ?
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
         before finalizing the context.
@@ -124,7 +125,7 @@ class PromisingContext:
                 return await awaitable
             except BaseException:  # pylint: disable=broad-except
                 logger.debug(
-                    "An error occurred in a scheduled task (suppress_errors=%s)",
+                    "An error occurred in a background async task (suppress_errors=%s)",
                     suppress_errors,
                     exc_info=True,
                 )
@@ -184,15 +185,15 @@ class Promise(Generic[T]):
 
     def __init__(
         self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if schedule_immediately is DEFAULT:
-            schedule_immediately = promising_context.schedule_immediately_by_default
+        if start_asap is DEFAULT:
+            start_asap = promising_context.start_everything_asap_by_default
 
         if resolver:
             self._resolver = partial(resolver, self)
@@ -202,12 +203,12 @@ class Promise(Generic[T]):
             self._result: Union[T, Sentinel, BaseException] = NO_VALUE
         else:
             self._result = prefill_result
-            self._schedule_resolved_event_handlers()
+            self._trigger_resolved_event_handlers()
 
         self._resolver_lock = asyncio.Lock()
 
-        if schedule_immediately and prefill_result is NO_VALUE:
-            promising_context.schedule_task(self)
+        if start_asap and prefill_result is NO_VALUE:
+            promising_context.start_asap(self)
 
     async def _resolver(self) -> T:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -232,7 +233,7 @@ class Promise(Generic[T]):
                         logger.debug("An error occurred while resolving a Promise", exc_info=True)
                         self._result = exc
 
-                    self._schedule_resolved_event_handlers()
+                    self._trigger_resolved_event_handlers()
 
         if isinstance(self._result, BaseException):
             raise self._result
@@ -241,11 +242,11 @@ class Promise(Generic[T]):
     def __await__(self):
         return self.aresolve().__await__()
 
-    def _schedule_resolved_event_handlers(self):
+    def _trigger_resolved_event_handlers(self):
         promising_context = PromisingContext.get_current()
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
-                promising_context.schedule_task(handler(self, self._result))
+                promising_context.start_asap(handler(self, self._result))
             promising_context = promising_context.parent
 
 
@@ -262,7 +263,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     :param streamer: A callable that returns an async iterator yielding the pieces of the whole value.
     :param resolver: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
-    TODO Oleksandr: explain the `schedule_immediately` parameter
+    TODO Oleksandr: explain the `start_asap` parameter
     """
 
     def __init__(
@@ -271,16 +272,16 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if schedule_immediately is DEFAULT:
-            schedule_immediately = promising_context.schedule_immediately_by_default
+        if start_asap is DEFAULT:
+            start_asap = promising_context.start_everything_asap_by_default
 
         super().__init__(
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
             resolver=resolver,
             prefill_result=prefill_result,
         )
@@ -296,10 +297,10 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._streamer_lock = asyncio.Lock()
 
-        if schedule_immediately and prefill_pieces is NO_VALUE:
+        if start_asap and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.schedule_task(self._aconsume_the_stream())
+            promising_context.start_asap(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
@@ -400,10 +401,10 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         async def _real_anext(self) -> Union[PIECE, BaseException]:
             # pylint: disable=protected-access
             if self._streamed_promise._queue is None:
-                # the stream is being produced on demand, not beforehand
+                # the stream is being produced on demand, not beforehand (`start_asap` is False)
                 piece = await self._streamed_promise._streamer_aiter_anext()
             else:
-                # the stream is being produced beforehand ("schedule immediately" option)
+                # the stream is being produced beforehand (`start_asap` is True)
                 piece = await self._streamed_promise._queue.get()
 
             if isinstance(piece, StopAsyncIteration):

@@ -37,9 +37,9 @@ def _check_anthropic_response(message: Message) -> None:
 )
 @pytest.mark.asyncio
 @pytest.mark.parametrize("stream", [False, True])
-@pytest.mark.parametrize("schedule_immediately", [False, True])
+@pytest.mark.parametrize("start_asap", [False, True])
 async def test_llm(
-    schedule_immediately: bool,
+    start_asap: bool,
     stream: bool,
     llm_agent: MiniAgent,
     check_response_func: Callable[[Message], None],
@@ -47,7 +47,7 @@ async def test_llm(
     """
     Assert that all the LLM agents can respond to a simple prompt.
     """
-    async with MiniAgents(schedule_immediately_by_default=schedule_immediately):
+    async with MiniAgents(start_everything_asap_by_default=start_asap):
         reply_sequence = llm_agent.inquire(
             Message(text="ANSWER:", role="assistant"),
             system=(

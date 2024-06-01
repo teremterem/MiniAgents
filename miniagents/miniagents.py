@@ -7,12 +7,13 @@ from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iter
 
 from pydantic import BaseModel
 
-from miniagents.messages import MessageType, MessagePromise, MessageSequencePromise, Message
+from miniagents.messages import MessagePromise, MessageSequencePromise, Message
+from miniagents.miniagent_typing import MessageType, AgentFunction
 from miniagents.promising.node import Node
+from miniagents.promising.promise_typing import PromiseStreamer, NodeResolvedEventHandler, PromiseBound
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
-from miniagents.promising.typing import PromiseStreamer, NodeResolvedEventHandler, PromiseBound
 
 
 class PersistMessageEventHandler(Protocol):
@@ -36,9 +37,9 @@ class MiniAgents(PromisingContext):
         **kwargs,
     ) -> None:
         on_node_resolved = (
-            [self._schedule_persist_message_event, on_node_resolved]
+            [self._trigger_persist_message_event, on_node_resolved]
             if callable(on_node_resolved)
-            else [self._schedule_persist_message_event, *on_node_resolved]
+            else [self._trigger_persist_message_event, *on_node_resolved]
         )
         super().__init__(on_node_resolved=on_node_resolved, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
@@ -62,7 +63,7 @@ class MiniAgents(PromisingContext):
         return handler
 
     # noinspection PyProtectedMember
-    async def _schedule_persist_message_event(self, _, node: Node) -> None:
+    async def _trigger_persist_message_event(self, _, node: Node) -> None:
         """
         TODO Oleksandr: docstring
         """
@@ -75,32 +76,32 @@ class MiniAgents(PromisingContext):
                 continue
 
             for handler in self.on_persist_message_handlers:
-                self.schedule_task(handler(_, sub_message))
+                self.start_asap(handler(_, sub_message))
             sub_message._persist_message_event_triggered = True
 
         if node._persist_message_event_triggered:
             return
 
         for handler in self.on_persist_message_handlers:
-            self.schedule_task(handler(_, node))
+            self.start_asap(handler(_, node))
         node._persist_message_event_triggered = True
 
 
 def miniagent(
-    func: Optional["AgentFunction"] = None,
+    func: Optional[AgentFunction] = None,
     alias: Optional[str] = None,
     description: Optional[str] = None,
     uppercase_func_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
     **partial_kwargs,
-) -> Union["MiniAgent", Callable[["AgentFunction"], "MiniAgent"]]:
+) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
     """
     if func is None:
         # the decorator `@miniagent(...)` was used with arguments
-        def _decorator(f: "AgentFunction") -> "MiniAgent":
+        def _decorator(f: AgentFunction) -> "MiniAgent":
             return MiniAgent(
                 f,
                 alias=alias,
@@ -123,14 +124,6 @@ def miniagent(
         interaction_metadata=interaction_metadata,
         **partial_kwargs,
     )
-
-
-class AgentFunction(Protocol):
-    """
-    A protocol for agent functions.
-    """
-
-    async def __call__(self, ctx: "InteractionContext", **kwargs) -> None: ...
 
 
 class InteractionContext:
@@ -255,33 +248,33 @@ class MiniAgent:
     def inquire(
         self,
         messages: Optional[MessageType] = None,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         **function_kwargs,
     ) -> MessageSequencePromise:
         """
         TODO Oleksandr: docstring
         """
-        agent_call = self.initiate_inquiry(schedule_immediately=schedule_immediately, **function_kwargs)
+        agent_call = self.initiate_inquiry(start_asap=start_asap, **function_kwargs)
         if messages is not None:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
     def initiate_inquiry(
         self,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         **function_kwargs,
     ) -> "AgentCall":
         """
         TODO Oleksandr: docstring
         """
         input_sequence = MessageSequence(
-            schedule_immediately=False,
+            start_asap=False,
         )
         reply_sequence = AgentReplyMessageSequence(
             mini_agent=self,
             function_kwargs=function_kwargs,
             input_sequence_promise=input_sequence.sequence_promise,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
         )
 
         agent_call = AgentCall(
@@ -327,7 +320,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     def __init__(
         self,
         appender_capture_errors: Union[bool, Sentinel] = DEFAULT,
-        schedule_immediately: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Union[bool, Sentinel] = DEFAULT,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
     ) -> None:
         if incoming_streamer:
@@ -339,7 +332,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
         super().__init__(
             incoming_streamer=incoming_streamer,
-            schedule_immediately=schedule_immediately,
+            start_asap=start_asap,
             sequence_promise_class=MessageSequencePromise,
         )
 
@@ -352,7 +345,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         """
         message_sequence = cls(
             appender_capture_errors=True,
-            schedule_immediately=False,
+            start_asap=False,
         )
         with message_sequence.message_appender:
             message_sequence.message_appender.append(messages)
@@ -436,7 +429,7 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         agent_call_promise = Promise[AgentCallNode](
-            schedule_immediately=True,
+            start_asap=True,
             resolver=run_the_agent,
         )
 
@@ -452,6 +445,6 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         Promise[AgentReplyNode](
-            schedule_immediately=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
+            start_asap=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
             resolver=create_agent_reply_node,
         )
