@@ -113,6 +113,7 @@ class PromisingContext:
 
     def start_asap(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
+        TODO Oleksandr: improve this docstring ?
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
         before finalizing the context.
@@ -124,7 +125,7 @@ class PromisingContext:
                 return await awaitable
             except BaseException:  # pylint: disable=broad-except
                 logger.debug(
-                    "An error occurred in a scheduled task (suppress_errors=%s)",
+                    "An error occurred in a background async task (suppress_errors=%s)",
                     suppress_errors,
                     exc_info=True,
                 )
@@ -400,10 +401,10 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         async def _real_anext(self) -> Union[PIECE, BaseException]:
             # pylint: disable=protected-access
             if self._streamed_promise._queue is None:
-                # the stream is being produced on demand, not beforehand
+                # the stream is being produced on demand, not beforehand (`start_asap` is False)
                 piece = await self._streamed_promise._streamer_aiter_anext()
             else:
-                # the stream is being produced beforehand ("schedule immediately" option)
+                # the stream is being produced beforehand (`start_asap` is True)
                 piece = await self._streamed_promise._queue.get()
 
             if isinstance(piece, StopAsyncIteration):

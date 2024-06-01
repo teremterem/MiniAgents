@@ -35,7 +35,7 @@ async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None
         replies1 = agent1.inquire(start_asap=start_asap)
         replies2 = agent2.inquire(start_asap=start_asap)
         if start_asap is False:
-            # when agents are not automatically scheduled, their result needs to be awaited for explicitly in order
+            # when agents are not scheduled to start ASAP, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
             await replies1.aresolve_messages()
             await replies2.aresolve_messages()
@@ -49,7 +49,7 @@ async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None
             "agent2 - end",
         ]
     else:
-        # if agents aren't scheduled for execution "immediately" then they are processed sequentially
+        # if agents aren't scheduled to start ASAP, then they are processed in this test sequentially
         assert event_sequence == [
             "agent1 - start",
             "agent1 - end",
@@ -87,7 +87,7 @@ async def test_sub_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> 
     async with MiniAgents():
         replies = aggregation_agent.inquire(start_asap=start_asap)
         if start_asap is False:
-            # when agents are not automatically scheduled, their result needs to be awaited for explicitly in order
+            # when agents are not scheduled to start ASAP, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
             await replies.aresolve_messages()
 
@@ -100,7 +100,7 @@ async def test_sub_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> 
             "agent2 - end",
         ]
     else:
-        # if agents aren't scheduled for execution "immediately" then they are processed sequentially
+        # if agents aren't scheduled to start ASAP, then they are processed in this test sequentially
         assert event_sequence == [
             "agent1 - start",
             "agent1 - end",

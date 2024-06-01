@@ -55,6 +55,7 @@ def join_messages(
     **message_metadata,
 ) -> MessagePromise:
     """
+    TODO Oleksandr: improve this docstring ?
     Join multiple messages into a single message using a delimiter.
 
     :param messages: A list of messages to join.
