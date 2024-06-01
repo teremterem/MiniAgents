@@ -11,7 +11,7 @@ from typing import Any, Iterator
 from pydantic import BaseModel, ConfigDict, model_validator
 
 
-class Node(BaseModel):
+class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
     """
     A frozen pydantic model that allows arbitrary fields, has a git-style hash key that is calculated from the
     JSON representation of its data. The data is recursively validated to be immutable. Dicts are converted to
