@@ -3,10 +3,9 @@
 """
 
 from functools import cached_property
-from typing import Protocol, AsyncIterator, Any, Union, Iterable, AsyncIterable, Optional, Iterator
+from typing import AsyncIterator, Any, Union, Optional, Iterator
 
-from pydantic import BaseModel
-
+from miniagents.miniagent_typing import MessageTokenStreamer
 from miniagents.promising.node import Node
 from miniagents.promising.promising import StreamedPromise
 from miniagents.promising.sentinels import Sentinel, DEFAULT
@@ -31,7 +30,7 @@ class Message(Node):
     def promise(
         cls,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_streamer: Optional["MessageTokenStreamer"] = None,
+        message_token_streamer: Optional[MessageTokenStreamer] = None,
         **message_kwargs,
     ) -> "MessagePromise":
         """
@@ -144,7 +143,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __init__(
         self,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_streamer: Optional["MessageTokenStreamer"] = None,
+        message_token_streamer: Optional[MessageTokenStreamer] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
         **metadata_so_far,
@@ -197,16 +196,3 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
         # hence the need to explicitly declare the __aiter__ method here
         # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
         return super().__aiter__()
-
-
-class MessageTokenStreamer(Protocol):
-    """
-    A protocol for message token streamer functions.
-    """
-
-    def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
-
-
-# TODO Oleksandr: add documentation somewhere that explains what MessageType and SingleMessageType represent
-SingleMessageType = Union[str, dict[str, Any], BaseModel, Message, MessagePromise, BaseException]
-MessageType = Union[SingleMessageType, Iterable["MessageType"], AsyncIterable["MessageType"]]

@@ -6,9 +6,9 @@ from functools import partial
 from typing import Generic, AsyncIterator, Union, Optional
 
 from miniagents.promising.errors import FunctionNotProvidedError
+from miniagents.promising.promise_typing import SequenceFlattener, IN, OUT, PromiseStreamer
 from miniagents.promising.promising import StreamedPromise
 from miniagents.promising.sentinels import Sentinel, DEFAULT
-from miniagents.promising.typing import SequenceFlattener, IN, OUT, PromiseStreamer
 
 
 class FlatSequence(Generic[IN, OUT]):

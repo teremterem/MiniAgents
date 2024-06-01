@@ -7,12 +7,13 @@ from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iter
 
 from pydantic import BaseModel
 
-from miniagents.messages import MessageType, MessagePromise, MessageSequencePromise, Message
+from miniagents.messages import MessagePromise, MessageSequencePromise, Message
+from miniagents.miniagent_typing import MessageType
 from miniagents.promising.node import Node
+from miniagents.promising.promise_typing import PromiseStreamer, NodeResolvedEventHandler, PromiseBound
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
-from miniagents.promising.typing import PromiseStreamer, NodeResolvedEventHandler, PromiseBound
 
 
 class PersistMessageEventHandler(Protocol):

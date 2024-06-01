@@ -13,8 +13,7 @@ from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable,
 
 from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
 from miniagents.promising.node import Node
-from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
-from miniagents.promising.typing import (
+from miniagents.promising.promise_typing import (
     T,
     PIECE,
     WHOLE,
@@ -23,6 +22,7 @@ from miniagents.promising.typing import (
     PromiseResolver,
     NodeResolvedEventHandler,
 )
+from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 """
-Types for the Promising part of the library.
+Types of the Promising part of the library.
 """
 
 import typing
