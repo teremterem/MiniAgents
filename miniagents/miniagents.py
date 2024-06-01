@@ -8,7 +8,7 @@ from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iter
 from pydantic import BaseModel
 
 from miniagents.messages import MessagePromise, MessageSequencePromise, Message
-from miniagents.miniagent_typing import MessageType
+from miniagents.miniagent_typing import MessageType, AgentFunction
 from miniagents.promising.node import Node
 from miniagents.promising.promise_typing import PromiseStreamer, NodeResolvedEventHandler, PromiseBound
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
@@ -88,20 +88,20 @@ class MiniAgents(PromisingContext):
 
 
 def miniagent(
-    func: Optional["AgentFunction"] = None,
+    func: Optional[AgentFunction] = None,
     alias: Optional[str] = None,
     description: Optional[str] = None,
     uppercase_func_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
     **partial_kwargs,
-) -> Union["MiniAgent", Callable[["AgentFunction"], "MiniAgent"]]:
+) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
     """
     if func is None:
         # the decorator `@miniagent(...)` was used with arguments
-        def _decorator(f: "AgentFunction") -> "MiniAgent":
+        def _decorator(f: AgentFunction) -> "MiniAgent":
             return MiniAgent(
                 f,
                 alias=alias,
@@ -124,14 +124,6 @@ def miniagent(
         interaction_metadata=interaction_metadata,
         **partial_kwargs,
     )
-
-
-class AgentFunction(Protocol):
-    """
-    A protocol for agent functions.
-    """
-
-    async def __call__(self, ctx: "InteractionContext", **kwargs) -> None: ...
 
 
 class InteractionContext:

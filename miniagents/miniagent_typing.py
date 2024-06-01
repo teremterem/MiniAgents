@@ -10,6 +10,15 @@ from pydantic import BaseModel
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
     from miniagents.messages import Message, MessagePromise
+    from miniagents.miniagents import InteractionContext
+
+
+class AgentFunction(Protocol):
+    """
+    A protocol for agent functions.
+    """
+
+    async def __call__(self, ctx: "InteractionContext", **kwargs) -> None: ...
 
 
 class MessageTokenStreamer(Protocol):
