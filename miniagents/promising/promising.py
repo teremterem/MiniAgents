@@ -50,9 +50,9 @@ class PromisingContext:
         self.parent = self._current.get()
 
         self.on_promise_resolved_handlers: list[PromiseResolvedEventHandler] = (
-            [self._schedule_node_resolved_event, on_promise_resolved]
+            [self._trigger_node_resolved_event, on_promise_resolved]
             if callable(on_promise_resolved)
-            else [self._schedule_node_resolved_event, *on_promise_resolved]
+            else [self._trigger_node_resolved_event, *on_promise_resolved]
         )
         self.on_node_resolved_handlers: list[NodeResolvedEventHandler] = (
             [on_node_resolved] if callable(on_node_resolved) else list(on_node_resolved)
@@ -96,7 +96,7 @@ class PromisingContext:
         self.on_node_resolved_handlers.append(handler)
         return handler
 
-    async def _schedule_node_resolved_event(self, _, result: Any) -> None:
+    async def _trigger_node_resolved_event(self, _, result: Any) -> None:
         """
         TODO Oleksandr: docstring
         """
@@ -108,10 +108,10 @@ class PromisingContext:
             return
 
         for handler in self.on_node_resolved_handlers:
-            self.schedule_task(handler(_, result))
+            self.start_asap(handler(_, result))
         result._node_resolved_event_triggered = True
 
-    def schedule_task(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
+    def start_asap(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
@@ -202,12 +202,12 @@ class Promise(Generic[T]):
             self._result: Union[T, Sentinel, BaseException] = NO_VALUE
         else:
             self._result = prefill_result
-            self._schedule_resolved_event_handlers()
+            self._trigger_resolved_event_handlers()
 
         self._resolver_lock = asyncio.Lock()
 
         if start_asap and prefill_result is NO_VALUE:
-            promising_context.schedule_task(self)
+            promising_context.start_asap(self)
 
     async def _resolver(self) -> T:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -232,7 +232,7 @@ class Promise(Generic[T]):
                         logger.debug("An error occurred while resolving a Promise", exc_info=True)
                         self._result = exc
 
-                    self._schedule_resolved_event_handlers()
+                    self._trigger_resolved_event_handlers()
 
         if isinstance(self._result, BaseException):
             raise self._result
@@ -241,11 +241,11 @@ class Promise(Generic[T]):
     def __await__(self):
         return self.aresolve().__await__()
 
-    def _schedule_resolved_event_handlers(self):
+    def _trigger_resolved_event_handlers(self):
         promising_context = PromisingContext.get_current()
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
-                promising_context.schedule_task(handler(self, self._result))
+                promising_context.start_asap(handler(self, self._result))
             promising_context = promising_context.parent
 
 
@@ -299,7 +299,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         if start_asap and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.schedule_task(self._aconsume_the_stream())
+            promising_context.start_asap(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None

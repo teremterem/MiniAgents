@@ -37,9 +37,9 @@ class MiniAgents(PromisingContext):
         **kwargs,
     ) -> None:
         on_node_resolved = (
-            [self._schedule_persist_message_event, on_node_resolved]
+            [self._trigger_persist_message_event, on_node_resolved]
             if callable(on_node_resolved)
-            else [self._schedule_persist_message_event, *on_node_resolved]
+            else [self._trigger_persist_message_event, *on_node_resolved]
         )
         super().__init__(on_node_resolved=on_node_resolved, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
@@ -63,7 +63,7 @@ class MiniAgents(PromisingContext):
         return handler
 
     # noinspection PyProtectedMember
-    async def _schedule_persist_message_event(self, _, node: Node) -> None:
+    async def _trigger_persist_message_event(self, _, node: Node) -> None:
         """
         TODO Oleksandr: docstring
         """
@@ -76,14 +76,14 @@ class MiniAgents(PromisingContext):
                 continue
 
             for handler in self.on_persist_message_handlers:
-                self.schedule_task(handler(_, sub_message))
+                self.start_asap(handler(_, sub_message))
             sub_message._persist_message_event_triggered = True
 
         if node._persist_message_event_triggered:
             return
 
         for handler in self.on_persist_message_handlers:
-            self.schedule_task(handler(_, node))
+            self.start_asap(handler(_, node))
         node._persist_message_event_triggered = True
 
 
