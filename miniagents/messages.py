@@ -31,7 +31,7 @@ class Message(Node):
     def promise(
         cls,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_streamer: "MessageTokenStreamer" = None,
+        message_token_streamer: Optional["MessageTokenStreamer"] = None,
         **message_kwargs,
     ) -> "MessagePromise":
         """
@@ -144,7 +144,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __init__(
         self,
         schedule_immediately: Union[bool, Sentinel] = DEFAULT,
-        message_token_streamer: "MessageTokenStreamer" = None,
+        message_token_streamer: Optional["MessageTokenStreamer"] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
         **metadata_so_far,

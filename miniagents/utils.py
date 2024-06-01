@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 async def achain_loop(
     agents: Iterable[Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel]],
-    initial_input: MessageType = None,
+    initial_input: Optional[MessageType] = None,
 ) -> None:
     """
     TODO Oleksandr: docstring
