@@ -3,9 +3,6 @@ Code example for using LLMs.
 """
 
 import asyncio
-
-# noinspection PyUnresolvedReferences
-import readline  # pylint: disable=unused-import
 from pprint import pprint
 
 from dotenv import load_dotenv
