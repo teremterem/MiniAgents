@@ -4,6 +4,7 @@
 
 import copy
 import logging
+from asyncio import CancelledError
 from functools import partial
 from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
 
@@ -427,11 +428,12 @@ class AgentReplyMessageSequence(MessageSequence):
                     # noinspection PyProtectedMember
                     await self._mini_agent._func(ctx, **self._function_kwargs)
                 except BaseException as exc:
-                    # TODO Oleksandr: should it be a warning instead ?
-                    logger.exception(
-                        "AN ERROR OCCURRED WHILE PROCESSING A REQUEST TO %r MINIAGENT",
-                        self._mini_agent.alias,
-                    )
+                    if not isinstance(exc, CancelledError):
+                        # TODO Oleksandr: should it be a warning instead ?
+                        logger.exception(
+                            "AN ERROR OCCURRED WHILE PROCESSING A REQUEST TO %r MINIAGENT",
+                            self._mini_agent.alias,
+                        )
                     raise exc
 
             return AgentCallNode(
