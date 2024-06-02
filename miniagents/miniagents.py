@@ -2,6 +2,7 @@
 "Core" classes of the MiniAgents framework.
 """
 
+import copy
 from functools import partial
 from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
 
@@ -399,14 +400,15 @@ class AgentReplyMessageSequence(MessageSequence):
         function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
+        self._frozen_func_kwargs = Node(**function_kwargs)  # this also validates the input
+        self._function_kwargs = copy.deepcopy(function_kwargs)
+
+        self._mini_agent = mini_agent
+        self._input_sequence_promise = input_sequence_promise
         super().__init__(
             appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
             **kwargs,
         )
-        self._mini_agent = mini_agent
-        self._input_sequence_promise = input_sequence_promise
-        # TODO Oleksandr: freeze function_kwargs as a Node object ? or just do deep copy ?
-        self._function_kwargs = function_kwargs
 
     async def _streamer(self, _) -> AsyncIterator[MessagePromise]:
         async def run_the_agent(_) -> AgentCallNode:
@@ -425,7 +427,8 @@ class AgentReplyMessageSequence(MessageSequence):
                 messages=await self._input_sequence_promise.aresolve_messages(),
                 agent_alias=self._mini_agent.alias,
                 **self._mini_agent.interaction_metadata,
-                **self._function_kwargs,  # this will override any keys from `self.interaction_metadata`
+                # NOTE: the next line will override any keys from `self.interaction_metadata` if names collide
+                **dict(self._frozen_func_kwargs.node_fields_and_values(exclude_class=True)),
             )
 
         agent_call_promise = Promise[AgentCallNode](

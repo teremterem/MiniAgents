@@ -71,20 +71,30 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
             hash_key = hash_key[:40]
         return hash_key
 
-    def node_fields(self) -> Iterator[str]:
+    def node_fields(self, exclude_class: bool = False) -> Iterator[str]:
         """
         Get the list of field names of the object. This includes the model fields (both, explicitly set and the ones
         with default values) and the extra fields that are not part of the model.
         """
+        if exclude_class:
+            return itertools.chain(
+                (field for field in self.model_fields if field != "class_"), self.__pydantic_extra__
+            )
         return itertools.chain(self.model_fields, self.__pydantic_extra__)
 
-    def node_fields_and_values(self) -> Iterator[tuple[str, Any]]:
+    def node_fields_and_values(self, exclude_class: bool = False) -> Iterator[tuple[str, Any]]:
         """
         Get the list of field names and values of the object. This includes the model fields (both, explicitly set
         and the ones with default values) and the extra fields that are not part of the model.
         """
-        for field in self.model_fields:
-            yield field, getattr(self, field)
+        if exclude_class:
+            for field in self.model_fields:
+                if field != "class_":
+                    yield field, getattr(self, field)
+        else:
+            for field in self.model_fields:
+                yield field, getattr(self, field)
+
         for field, value in self.__pydantic_extra__.items():  # pylint: disable=no-member
             yield field, value
 
