@@ -4,7 +4,6 @@
 
 import copy
 import logging
-from asyncio import CancelledError
 from functools import partial
 from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
 
@@ -76,19 +75,23 @@ class MiniAgents(PromisingContext):
         if not isinstance(node, Message):
             return
 
+        log_level_for_errors = MiniAgents.get_current().log_level_for_errors
+
         for sub_message in node.sub_messages():
             if sub_message._persist_message_event_triggered:
                 continue
 
             for handler in self.on_persist_message_handlers:
-                self.start_asap(handler(_, sub_message))
+                self.start_asap(
+                    handler(_, sub_message), suppress_errors=True, log_level_for_errors=log_level_for_errors
+                )
             sub_message._persist_message_event_triggered = True
 
         if node._persist_message_event_triggered:
             return
 
         for handler in self.on_persist_message_handlers:
-            self.start_asap(handler(_, node))
+            self.start_asap(handler(_, node), suppress_errors=True, log_level_for_errors=log_level_for_errors)
         node._persist_message_event_triggered = True
 
 
@@ -423,18 +426,9 @@ class AgentReplyMessageSequence(MessageSequence):
             )
             with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
-                try:
-                    # pylint: disable=protected-access
-                    # noinspection PyProtectedMember
-                    await self._mini_agent._func(ctx, **self._function_kwargs)
-                except BaseException as exc:
-                    if not isinstance(exc, CancelledError):
-                        # TODO Oleksandr: should it be a warning instead ?
-                        logger.exception(
-                            "AN ERROR OCCURRED WHILE PROCESSING A REQUEST TO %r MINIAGENT",
-                            self._mini_agent.alias,
-                        )
-                    raise exc
+                # pylint: disable=protected-access
+                # noinspection PyProtectedMember
+                await self._mini_agent._func(ctx, **self._function_kwargs)
 
             return AgentCallNode(
                 messages=await self._input_sequence_promise.aresolve_messages(),

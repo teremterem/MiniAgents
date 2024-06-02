@@ -40,7 +40,7 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
         Get the full JSON representation of this Node object together with all its nested objects. This is a cached
         property, so it is calculated only the first time it is accessed.
         """
-        return self.json()
+        return self.model_dump_json()
 
     @cached_property
     def serialized(self) -> str:

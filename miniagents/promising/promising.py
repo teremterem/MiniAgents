@@ -44,6 +44,7 @@ class PromisingContext:
         start_everything_asap_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
+        log_level_for_errors: int = logging.ERROR,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         on_node_resolved: Union[NodeResolvedEventHandler, Iterable[NodeResolvedEventHandler]] = (),
     ) -> None:
@@ -62,6 +63,7 @@ class PromisingContext:
         self.start_everything_asap_by_default = start_everything_asap_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_node_hash_keys = longer_node_hash_keys
+        self.log_level_for_errors = log_level_for_errors
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
@@ -107,11 +109,18 @@ class PromisingContext:
         if result._node_resolved_event_triggered:
             return
 
+        log_level_for_errors = PromisingContext.get_current().log_level_for_errors
+
         for handler in self.on_node_resolved_handlers:
-            self.start_asap(handler(_, result))
+            self.start_asap(handler(_, result), suppress_errors=True, log_level_for_errors=log_level_for_errors)
         result._node_resolved_event_triggered = True
 
-    def start_asap(self, awaitable: Awaitable, suppress_errors: bool = False) -> Task:
+    def start_asap(
+        self,
+        awaitable: Awaitable,
+        suppress_errors: bool = False,
+        log_level_for_errors: int = logging.DEBUG,
+    ) -> Task:
         """
         TODO Oleksandr: improve this docstring ?
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
@@ -120,15 +129,19 @@ class PromisingContext:
         """
 
         async def awaitable_wrapper() -> Any:
+            # pylint: disable=broad-except
             # noinspection PyBroadException
             try:
                 return await awaitable
-            except BaseException:  # pylint: disable=broad-except
-                logger.debug(
-                    "An error occurred in a background async task (suppress_errors=%s)",
-                    suppress_errors,
+            except Exception:
+                logger.log(
+                    log_level_for_errors,
+                    "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK",
                     exc_info=True,
                 )
+                if not suppress_errors:
+                    raise
+            except BaseException:
                 if not suppress_errors:
                     raise
             finally:
@@ -203,12 +216,14 @@ class Promise(Generic[T]):
             self._result: Union[T, Sentinel, BaseException] = NO_VALUE
         else:
             self._result = prefill_result
-            self._trigger_resolved_event_handlers()
+            self._trigger_promise_resolved_event()
 
         self._resolver_lock = asyncio.Lock()
 
         if start_asap and prefill_result is NO_VALUE:
-            promising_context.start_asap(self)
+            promising_context.start_asap(
+                self, suppress_errors=True, log_level_for_errors=promising_context.log_level_for_errors
+            )
 
     async def _resolver(self) -> T:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -233,7 +248,7 @@ class Promise(Generic[T]):
                         logger.debug("An error occurred while resolving a Promise", exc_info=True)
                         self._result = exc
 
-                    self._trigger_resolved_event_handlers()
+                    self._trigger_promise_resolved_event()
 
         if isinstance(self._result, BaseException):
             raise self._result
@@ -242,11 +257,15 @@ class Promise(Generic[T]):
     def __await__(self):
         return self.aresolve().__await__()
 
-    def _trigger_resolved_event_handlers(self):
+    def _trigger_promise_resolved_event(self):
         promising_context = PromisingContext.get_current()
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
-                promising_context.start_asap(handler(self, self._result))
+                promising_context.start_asap(
+                    handler(self, self._result),
+                    suppress_errors=True,
+                    log_level_for_errors=promising_context.log_level_for_errors,
+                )
             promising_context = promising_context.parent
 
 
@@ -300,7 +319,11 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
         if start_asap and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.start_asap(self._aconsume_the_stream())
+            promising_context.start_asap(
+                self._aconsume_the_stream(),
+                suppress_errors=True,
+                log_level_for_errors=promising_context.log_level_for_errors,
+            )
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
