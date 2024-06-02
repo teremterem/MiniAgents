@@ -5,7 +5,6 @@ This module integrates OpenAI language models with MiniAgents.
 
 import logging
 import typing
-from functools import partial
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
@@ -32,9 +31,8 @@ class OpenAIMessage(LangModelMessage):
 def create_openai_agent(
     async_client: Optional["openai_original.AsyncOpenAI"] = None,
     assistant_reply_metadata: Optional[dict[str, Any]] = None,
-    mini_agent_kwargs: Optional[dict[str, Any]] = None,
-    interaction_metadata: Optional[dict[str, Any]] = None,
-    **static_openai_kwargs,
+    alias: str = "OPENAI_AGENT",
+    **mini_agent_kwargs,
 ) -> MiniAgent:
     """
     Create an MiniAgent for OpenAI models (see MiniAgent class definition and docstring for usage details).
@@ -47,15 +45,11 @@ def create_openai_agent(
         async_client = openai_original.AsyncOpenAI()
 
     return miniagent(
-        partial(
-            _openai_func,
-            async_client=async_client,
-            global_reply_metadata=assistant_reply_metadata,
-            **static_openai_kwargs,
-        ),
-        alias="OPENAI_AGENT",
-        interaction_metadata=interaction_metadata,
-        **(mini_agent_kwargs or {}),
+        _openai_func,
+        async_client=async_client,
+        global_reply_metadata=assistant_reply_metadata,
+        alias=alias,
+        **mini_agent_kwargs,
     )
 
 

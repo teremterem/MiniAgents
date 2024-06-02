@@ -61,7 +61,9 @@ async def amain() -> None:
                 ]
             )
         except KeyboardInterrupt:
-            print("exit\n\033[0m")
+            pass
+        finally:
+            print("\n\033[0m")
 
 
 if __name__ == "__main__":

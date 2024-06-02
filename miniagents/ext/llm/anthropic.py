@@ -5,7 +5,6 @@ This module integrates Anthropic language models with MiniAgents.
 
 import logging
 import typing
-from functools import partial
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
@@ -34,9 +33,8 @@ class AnthropicMessage(LangModelMessage):
 def create_anthropic_agent(
     async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
     assistant_reply_metadata: Optional[dict[str, Any]] = None,
-    mini_agent_kwargs: Optional[dict[str, Any]] = None,
-    interaction_metadata: Optional[dict[str, Any]] = None,
-    **static_anthropic_kwargs,
+    alias: str = "ANTHROPIC_AGENT",
+    **mini_agent_kwargs,
 ) -> MiniAgent:
     """
     Create an MiniAgent for Anthropic models (see MiniAgent class definition and docstring for usage details).
@@ -49,15 +47,11 @@ def create_anthropic_agent(
         async_client = anthropic_original.AsyncAnthropic()
 
     return miniagent(
-        partial(
-            _anthropic_func,
-            async_client=async_client,
-            global_reply_metadata=assistant_reply_metadata,
-            **static_anthropic_kwargs,
-        ),
-        alias="ANTHROPIC_AGENT",
-        interaction_metadata=interaction_metadata,
-        **(mini_agent_kwargs or {}),
+        _anthropic_func,
+        async_client=async_client,
+        global_reply_metadata=assistant_reply_metadata,
+        alias=alias,
+        **mini_agent_kwargs,
     )
 
 
