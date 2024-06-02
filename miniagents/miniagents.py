@@ -3,6 +3,7 @@
 """
 
 import copy
+import logging
 from functools import partial
 from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
 
@@ -15,6 +16,8 @@ from miniagents.promising.promise_typing import PromiseStreamer, NodeResolvedEve
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
+
+logger = logging.getLogger(__name__)
 
 
 class PersistMessageEventHandler(Protocol):
@@ -400,7 +403,7 @@ class AgentReplyMessageSequence(MessageSequence):
         function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
-        self._frozen_func_kwargs = Node(**function_kwargs)  # this also validates the input
+        self._frozen_func_kwargs = Node(**function_kwargs)  # this validates the agent function kwargs
         self._function_kwargs = copy.deepcopy(function_kwargs)
 
         self._mini_agent = mini_agent
@@ -419,9 +422,17 @@ class AgentReplyMessageSequence(MessageSequence):
             )
             with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
-                # pylint: disable=protected-access
-                # noinspection PyProtectedMember
-                await self._mini_agent._func(ctx, **self._function_kwargs)
+                try:
+                    # pylint: disable=protected-access
+                    # noinspection PyProtectedMember
+                    await self._mini_agent._func(ctx, **self._function_kwargs)
+                except BaseException as exc:
+                    # TODO Oleksandr: should it be a warning instead ?
+                    logger.exception(
+                        "AN ERROR OCCURRED WHILE PROCESSING A REQUEST TO %r MINIAGENT",
+                        self._mini_agent.alias,
+                    )
+                    raise exc
 
             return AgentCallNode(
                 messages=await self._input_sequence_promise.aresolve_messages(),
