@@ -2,6 +2,9 @@
 "Core" classes of the MiniAgents framework.
 """
 
+import copy
+import logging
+from asyncio import CancelledError
 from functools import partial
 from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
 
@@ -14,6 +17,8 @@ from miniagents.promising.promise_typing import PromiseStreamer, NodeResolvedEve
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
+
+logger = logging.getLogger(__name__)
 
 
 class PersistMessageEventHandler(Protocol):
@@ -399,14 +404,15 @@ class AgentReplyMessageSequence(MessageSequence):
         function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
+        self._frozen_func_kwargs = Node(**function_kwargs)  # this validates the agent function kwargs
+        self._function_kwargs = copy.deepcopy(function_kwargs)
+
+        self._mini_agent = mini_agent
+        self._input_sequence_promise = input_sequence_promise
         super().__init__(
             appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
             **kwargs,
         )
-        self._mini_agent = mini_agent
-        self._input_sequence_promise = input_sequence_promise
-        # TODO Oleksandr: freeze function_kwargs as a Node object ? or just do deep copy ?
-        self._function_kwargs = function_kwargs
 
     async def _streamer(self, _) -> AsyncIterator[MessagePromise]:
         async def run_the_agent(_) -> AgentCallNode:
@@ -417,15 +423,25 @@ class AgentReplyMessageSequence(MessageSequence):
             )
             with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
-                # pylint: disable=protected-access
-                # noinspection PyProtectedMember
-                await self._mini_agent._func(ctx, **self._function_kwargs)
+                try:
+                    # pylint: disable=protected-access
+                    # noinspection PyProtectedMember
+                    await self._mini_agent._func(ctx, **self._function_kwargs)
+                except BaseException as exc:
+                    if not isinstance(exc, CancelledError):
+                        # TODO Oleksandr: should it be a warning instead ?
+                        logger.exception(
+                            "AN ERROR OCCURRED WHILE PROCESSING A REQUEST TO %r MINIAGENT",
+                            self._mini_agent.alias,
+                        )
+                    raise exc
 
             return AgentCallNode(
                 messages=await self._input_sequence_promise.aresolve_messages(),
                 agent_alias=self._mini_agent.alias,
                 **self._mini_agent.interaction_metadata,
-                **self._function_kwargs,  # this will override any keys from `self.interaction_metadata`
+                # NOTE: the next line will override any keys from `self.interaction_metadata` if names collide
+                **dict(self._frozen_func_kwargs.node_fields_and_values(exclude_class=True)),
             )
 
         agent_call_promise = Promise[AgentCallNode](

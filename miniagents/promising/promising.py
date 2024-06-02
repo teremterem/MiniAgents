@@ -446,7 +446,7 @@ class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
         error_should_not_propagate = self._capture_errors and not is_append_closed_error
 
         if exc_value and error_should_not_propagate:
-            logger.debug("An error occurred while appending pieces to an StreamAppender", exc_info=exc_value)
+            logger.debug("An error occurred while appending pieces to a StreamAppender", exc_info=exc_value)
             self.append(exc_value)
         self.close()
 
