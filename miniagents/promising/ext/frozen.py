@@ -19,7 +19,7 @@ def freeze_dict_values(d: dict[str, Any]) -> dict[str, FrozenType]:
     the "freezability" of those values). Useful for freezing function kwargs that are going to be supplied
     as (extra) fields of some Frozen object (e.g. a Message) which is meant to be constructed at a later time.
     """
-    return dict(Frozen(**d).node_fields_and_values(exclude_class=True))
+    return dict(Frozen(**d).frozen_fields_and_values(exclude_class=True))
 
 
 class Frozen(BaseModel):  # TODO Oleksandr: come up with a different class name ?
@@ -39,8 +39,8 @@ class Frozen(BaseModel):  # TODO Oleksandr: come up with a different class name 
     @cached_property
     def as_string(self) -> str:
         """
-        Return a string representation of this node. This is usually the representation that will be used when
-        the node needs to be a part of an LLM prompts.
+        Return a string representation of this model. This is usually the representation that will be used when
+        the model needs to be a part of an LLM prompts.
         """
         # NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         return self._as_string()
@@ -78,11 +78,11 @@ class Frozen(BaseModel):  # TODO Oleksandr: come up with a different class name 
         from miniagents.promising.promising import PromisingContext
 
         hash_key = hashlib.sha256(self.serialized.encode("utf-8")).hexdigest()
-        if not PromisingContext.get_current().longer_node_hash_keys:
+        if not PromisingContext.get_current().longer_hash_keys:
             hash_key = hash_key[:40]
         return hash_key
 
-    def node_fields(self, exclude_class: bool = False) -> Iterator[str]:
+    def frozen_fields(self, exclude_class: bool = False) -> Iterator[str]:
         """
         Get the list of field names of the object. This includes the model fields (both, explicitly set and the ones
         with default values) and the extra fields that are not part of the model.
@@ -93,7 +93,7 @@ class Frozen(BaseModel):  # TODO Oleksandr: come up with a different class name 
             )
         return itertools.chain(self.model_fields, self.__pydantic_extra__)
 
-    def node_fields_and_values(self, exclude_class: bool = False) -> Iterator[tuple[str, Any]]:
+    def frozen_fields_and_values(self, exclude_class: bool = False) -> Iterator[tuple[str, Any]]:
         """
         Get the list of field names and values of the object. This includes the model fields (both, explicitly set
         and the ones with default values) and the extra fields that are not part of the model.

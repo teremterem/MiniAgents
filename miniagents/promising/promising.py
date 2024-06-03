@@ -38,7 +38,7 @@ class PromisingContext:
         self,
         start_everything_asap_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
-        longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
+        longer_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
         log_level_for_errors: int = logging.ERROR,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
     ) -> None:
@@ -51,7 +51,7 @@ class PromisingContext:
 
         self.start_everything_asap_by_default = start_everything_asap_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
-        self.longer_node_hash_keys = longer_node_hash_keys
+        self.longer_hash_keys = longer_hash_keys
         self.log_level_for_errors = log_level_for_errors
 
         self._previous_ctx_token: Optional[contextvars.Token] = None

@@ -38,16 +38,16 @@ def test_sample_model_frozen() -> None:
     assert sample.some_opt_field == 2
 
 
-def test_node_frozen() -> None:
+def test_model_frozen() -> None:
     """
     Test that the models of the original `Frozen` class are frozen.
     """
-    node = Frozen(some_field="some value")
+    model = Frozen(some_field="some value")
 
     with pytest.raises(ValidationError):
-        node.some_other_field = "some other value"
+        model.some_other_field = "some other value"
 
-    assert node.some_field == "some value"
+    assert model.some_field == "some value"
 
 
 @pytest.mark.asyncio
@@ -75,18 +75,18 @@ async def test_sample_model_hash_key() -> None:
 
 
 @pytest.mark.asyncio
-async def test_node_hash_key() -> None:
+async def test_model_hash_key() -> None:
     """
     Test the original `Frozen.hash_key` property.
     """
     async with PromisingContext():
-        node = Frozen(content="test", final_sender_alias="user", custom_field={"role": "user"})
-        # print(json.dumps(node.model_dump(exclude={"forum_trees"}), ensure_ascii=False, sort_keys=True))
+        model = Frozen(content="test", final_sender_alias="user", custom_field={"role": "user"})
+        # print(json.dumps(model.model_dump(exclude={"forum_trees"}), ensure_ascii=False, sort_keys=True))
         expected_hash_key = hashlib.sha256(
             '{"class_": "Frozen", "content": "test", "custom_field": {"class_": "Frozen", "role": "user"}, '
             '"final_sender_alias": "user"}'.encode("utf-8")
         ).hexdigest()[:40]
-        assert node.hash_key == expected_hash_key
+        assert model.hash_key == expected_hash_key
 
 
 def test_nested_object_not_copied() -> None:
@@ -121,12 +121,12 @@ async def test_hash_key_calculated_once() -> None:
 
 
 @pytest.mark.asyncio
-async def test_node_hash_key_vs_key_ordering() -> None:
+async def test_model_hash_key_vs_key_ordering() -> None:
     """
     Test that `hash_key` of `Frozen` is not affected by the ordering of its fields.
     """
     async with PromisingContext():
-        node1 = Frozen(some_field="test", some_other_field=2)
-        node2 = Frozen(some_other_field=2, some_field="test")
+        model1 = Frozen(some_field="test", some_other_field=2)
+        model2 = Frozen(some_other_field=2, some_field="test")
 
-        assert node1.hash_key == node2.hash_key
+        assert model1.hash_key == model2.hash_key

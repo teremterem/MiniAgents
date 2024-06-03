@@ -91,7 +91,7 @@ class Message(Frozen):
             node: Frozen,
             node_path: tuple[Union[str, int], ...],
         ) -> None:
-            for field, value in node.node_fields_and_values():
+            for field, value in node.frozen_fields_and_values():
                 if isinstance(value, Message):
                     sub_messages[(*node_path, field)] = value
 
