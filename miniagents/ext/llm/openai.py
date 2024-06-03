@@ -8,7 +8,7 @@ import typing
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
-from miniagents.ext.llm.llm_common import message_to_llm_dict, LangModelMessage, build_preliminary_reply_metadata
+from miniagents.ext.llm.llm_common import message_to_llm_dict, LangModelMessage
 from miniagents.miniagents import (
     miniagent,
     MiniAgent,
@@ -127,11 +127,10 @@ async def _openai_func(
         OpenAIMessage.promise(
             start_asap=True,  # TODO Oleksandr: should this be customizable ?
             message_token_streamer=message_token_streamer,
-            **build_preliminary_reply_metadata(
-                ctx,
-                global_reply_metadata=global_reply_metadata,
-                reply_metadata=reply_metadata,
-            ),
+            # preliminary metadata:
+            agent_alias=ctx.this_agent.alias,
+            **(global_reply_metadata or {}),
+            **(reply_metadata or {}),
         )
     )
 

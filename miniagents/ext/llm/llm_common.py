@@ -2,10 +2,9 @@
 TODO Oleksandr: docstring
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from miniagents.messages import Message
-from miniagents.miniagents import InteractionContext
 
 
 class LangModelMessage(Message):
@@ -30,19 +29,4 @@ def message_to_llm_dict(message: Message) -> dict[str, Any]:
     return {
         "role": role,
         "content": str(message),
-    }
-
-
-def build_preliminary_reply_metadata(
-    ctx: InteractionContext,
-    global_reply_metadata: Optional[dict[str, Any]] = None,
-    reply_metadata: Optional[dict[str, Any]] = None,
-) -> dict[str, Any]:
-    """
-    TODO Oleksandr: docstring
-    """
-    return {
-        "agent_alias": ctx.this_agent.alias,
-        **(global_reply_metadata or {}),
-        **(reply_metadata or {}),
     }
