@@ -6,9 +6,20 @@ import hashlib
 import itertools
 import json
 from functools import cached_property
-from typing import Any, Iterator
+from typing import Any, Iterator, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
+
+FrozenType = Optional[Union[str, int, float, bool, tuple["FrozenType", ...], "Node"]]
+
+
+def freeze_dict_values(d: dict[str, Any]) -> dict[str, FrozenType]:
+    """
+    Freeze the values of the dictionary using the Node class where necessary (and also recursively validate
+    the "freezability" of those values). Useful for freezing function kwargs that are going to be supplied
+    as (extra) fields of some Node object (e.g. a Message) which is meant to be constructed at a later time.
+    """
+    return dict(Node(**d).node_fields_and_values(exclude_class=True))
 
 
 class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
@@ -124,7 +135,7 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
     # noinspection PyNestedDecorators
     @model_validator(mode="before")
     @classmethod
-    def _validate_and_freeze_values(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_and_freeze_values(cls, values: dict[str, Any]) -> dict[str, FrozenType]:
         """
         Recursively make sure that the field values of the object are immutable and of allowed types.
         """
@@ -132,7 +143,7 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
         return {key: cls._validate_and_freeze_value(key, value) for key, value in values.items()}
 
     @classmethod
-    def _validate_and_freeze_value(cls, key: str, value: Any) -> Any:
+    def _validate_and_freeze_value(cls, key: str, value: Any) -> FrozenType:
         """
         Recursively make sure that the field value is immutable and of allowed type.
         """

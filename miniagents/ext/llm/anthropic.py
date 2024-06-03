@@ -32,7 +32,7 @@ class AnthropicMessage(LangModelMessage):
 
 def create_anthropic_agent(
     async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
-    assistant_reply_metadata: Optional[dict[str, Any]] = None,
+    reply_metadata: Optional[dict[str, Any]] = None,
     alias: str = "ANTHROPIC_AGENT",
     **mini_agent_kwargs,
 ) -> MiniAgent:
@@ -49,7 +49,7 @@ def create_anthropic_agent(
     return miniagent(
         _anthropic_func,
         async_client=async_client,
-        global_reply_metadata=assistant_reply_metadata,
+        global_reply_metadata=reply_metadata,
         alias=alias,
         **mini_agent_kwargs,
     )

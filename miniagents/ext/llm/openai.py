@@ -30,7 +30,7 @@ class OpenAIMessage(LangModelMessage):
 
 def create_openai_agent(
     async_client: Optional["openai_original.AsyncOpenAI"] = None,
-    assistant_reply_metadata: Optional[dict[str, Any]] = None,
+    reply_metadata: Optional[dict[str, Any]] = None,
     alias: str = "OPENAI_AGENT",
     **mini_agent_kwargs,
 ) -> MiniAgent:
@@ -47,7 +47,7 @@ def create_openai_agent(
     return miniagent(
         _openai_func,
         async_client=async_client,
-        global_reply_metadata=assistant_reply_metadata,
+        global_reply_metadata=reply_metadata,
         alias=alias,
         **mini_agent_kwargs,
     )
