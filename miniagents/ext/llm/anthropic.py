@@ -10,7 +10,7 @@ from typing import AsyncIterator, Any, Optional
 
 from anthropic import NOT_GIVEN
 
-from miniagents.ext.llm.llm_common import message_to_llm_dict, LangModelMessage
+from miniagents.ext.llm.llm_common import message_to_llm_dict, LangModelMessage, build_preliminary_reply_metadata
 from miniagents.miniagents import (
     miniagent,
     MiniAgent,
@@ -69,11 +69,6 @@ async def _anthropic_func(
     """
     Run text generation with Anthropic.
     """
-    preliminary_reply_metadata = {
-        "miniagent_alias": ctx.this_agent.alias,
-        **(global_reply_metadata or {}),
-        **(reply_metadata or {}),
-    }
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
@@ -139,7 +134,11 @@ async def _anthropic_func(
         AnthropicMessage.promise(
             start_asap=True,  # TODO Oleksandr: should this be customizable ?
             message_token_streamer=message_token_streamer,
-            **preliminary_reply_metadata,
+            **build_preliminary_reply_metadata(
+                ctx,
+                global_reply_metadata=global_reply_metadata,
+                reply_metadata=reply_metadata,
+            ),
         )
     )
 
