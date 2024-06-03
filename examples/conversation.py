@@ -31,7 +31,7 @@ async def user_agent(ctx: InteractionContext) -> None:
     """
     print("\033[92;1m", end="", flush=True)
     async for msg_promise in ctx.messages:
-        print(f"\n{msg_promise.preliminary_metadata.miniagent_alias}: ", end="", flush=True)
+        print(f"\n{msg_promise.preliminary_metadata.agent_alias}: ", end="", flush=True)
         async for token in msg_promise:
             print(token, end="", flush=True)
         print("\n")
