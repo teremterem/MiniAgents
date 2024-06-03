@@ -2,11 +2,7 @@
 Types of the Promising part of the library.
 """
 
-import typing
 from typing import TypeVar, AsyncIterator, Protocol, Union, Any
-
-if typing.TYPE_CHECKING:
-    from miniagents.promising.node import Node
 
 T = TypeVar("T")
 PIECE = TypeVar("PIECE")
@@ -45,14 +41,6 @@ class PromiseResolvedEventHandler(Protocol):
     """
 
     async def __call__(self, promise: PromiseBound, result: Any) -> None: ...
-
-
-class NodeResolvedEventHandler(Protocol):
-    """
-    TODO Oleksandr: docstring
-    """
-
-    async def __call__(self, promise: PromiseBound, node: "Node") -> None: ...
 
 
 class SequenceFlattener(Protocol[IN, OUT]):
