@@ -13,21 +13,21 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import PromisingContext
 
 
-class SampleImmutable(Frozen):
+class SampleModel(Frozen):
     """
     A sample immutable subclass that is derived from `Frozen`.
     """
 
     some_req_field: str
     some_opt_field: int = 2
-    sub_immutable: Optional["SampleImmutable"] = None
+    sub_model: Optional["SampleModel"] = None
 
 
-def test_immutable_frozen() -> None:
+def test_sample_model_frozen() -> None:
     """
-    Test that the models of `SampleImmutable`, which is derived from `Frozen`, are frozen.
+    Test that the models of `SampleModel`, which is derived from `Frozen`, are frozen.
     """
-    sample = SampleImmutable(some_req_field="test")
+    sample = SampleModel(some_req_field="test")
 
     with pytest.raises(ValidationError):
         sample.some_req_field = "test2"
@@ -51,14 +51,12 @@ def test_node_frozen() -> None:
 
 
 @pytest.mark.asyncio
-async def test_sample_immutable_hash_key() -> None:
+async def test_sample_model_hash_key() -> None:
     """
-    Test `SampleImmutable.hash_key` property.
+    Test `SampleModel.hash_key` property.
     """
     async with PromisingContext():
-        sample = SampleImmutable(
-            some_req_field="test", sub_immutable=SampleImmutable(some_req_field="юнікод", some_opt_field=3)
-        )
+        sample = SampleModel(some_req_field="test", sub_model=SampleModel(some_req_field="юнікод", some_opt_field=3))
         # Let's make sure that private instance attributes that were not declared in the model beforehand:
         #  1) are settable despite the model being frozen;
         #  2) do not influence the hash_key.
@@ -69,8 +67,8 @@ async def test_sample_immutable_hash_key() -> None:
 
         # print(json.dumps(sample.model_dump(), ensure_ascii=False, sort_keys=True))
         expected_hash_key = hashlib.sha256(
-            '{"class_": "SampleImmutable", "some_opt_field": 2, "some_req_field": "test", "sub_immutable": '
-            '{"class_": "SampleImmutable", "some_opt_field": 3, "some_req_field": "юнікод", "sub_immutable": null}}'
+            '{"class_": "SampleModel", "some_opt_field": 2, "some_req_field": "test", "sub_model": '
+            '{"class_": "SampleModel", "some_opt_field": 3, "some_req_field": "юнікод", "sub_model": null}}'
             "".encode("utf-8")
         ).hexdigest()[:40]
         assert sample.hash_key == expected_hash_key
@@ -96,29 +94,29 @@ def test_nested_object_not_copied() -> None:
     Test that nested objects are not copied when the outer pydantic model is created.
     TODO Oleksandr: why do you care about this ?
     """
-    sub_immutable = SampleImmutable(some_req_field="test")
-    sample = SampleImmutable(some_req_field="test", sub_immutable=sub_immutable)
+    sub_model = SampleModel(some_req_field="test")
+    sample = SampleModel(some_req_field="test", sub_model=sub_model)
 
-    assert sample.sub_immutable is sub_immutable
+    assert sample.sub_model is sub_model
 
 
 @pytest.mark.asyncio
 async def test_hash_key_calculated_once() -> None:
     """
-    Test that `SampleImmutable.hash_key` property is calculated only once and all subsequent calls return the same
+    Test that `SampleModel.hash_key` property is calculated only once and all subsequent calls return the same
     value without calculating it again.
     """
     original_sha256 = hashlib.sha256
 
     with patch("hashlib.sha256", side_effect=original_sha256) as mock_sha256:
         async with PromisingContext():
-            sample = SampleImmutable(some_req_field="test")
+            sample = SampleModel(some_req_field="test")
             mock_sha256.assert_not_called()  # not calculated yet
 
-            assert sample.hash_key == "47118a5b852921320fdb2c31eac29526ef720d1a"
+            assert sample.hash_key == "2f9753c92f0452bacafaa606b6076d2bf266e095"
             mock_sha256.assert_called_once()  # calculated once
 
-            assert sample.hash_key == "47118a5b852921320fdb2c31eac29526ef720d1a"
+            assert sample.hash_key == "2f9753c92f0452bacafaa606b6076d2bf266e095"
             mock_sha256.assert_called_once()  # check that it wasn't calculated again
 
 
