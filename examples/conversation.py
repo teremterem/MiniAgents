@@ -31,10 +31,7 @@ async def user_agent(ctx: InteractionContext) -> None:
     """
     print("\033[92;1m", end="", flush=True)
     async for msg_promise in ctx.messages:
-        # TODO Oleksandr: MessagePromise should have a way to expose the portion of metadata that is available
-        #  before all tokens are collected. This way it would be possible to pass the name of the assistant to
-        #  be printed before the tokens.
-        print("\nASSISTANT: ", end="", flush=True)
+        print(f"\n{msg_promise.preliminary_metadata.miniagent_alias}: ", end="", flush=True)
         async for token in msg_promise:
             print(token, end="", flush=True)
         print("\n")
@@ -61,9 +58,9 @@ async def amain() -> None:
                 ]
             )
         except KeyboardInterrupt:
-            pass
+            ...
         finally:
-            print("\n\033[0m")
+            print("\033[0m\n")
 
 
 if __name__ == "__main__":

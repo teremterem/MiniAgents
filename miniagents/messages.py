@@ -2,6 +2,7 @@
 `Message` class and other classes related to messages.
 """
 
+import copy
 from functools import cached_property
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
@@ -31,7 +32,7 @@ class Message(Node):
         cls,
         start_asap: Union[bool, Sentinel] = DEFAULT,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
-        **message_kwargs,
+        **preliminary_metadata,
     ) -> "MessagePromise":
         """
         Create a MessagePromise object based on the Message class this method is called for and the provided
@@ -42,9 +43,9 @@ class Message(Node):
                 start_asap=start_asap,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
-                **message_kwargs,
+                **preliminary_metadata,
             )
-        return cls(**message_kwargs).as_promise
+        return cls(**preliminary_metadata).as_promise
 
     def serialize(self) -> dict[str, Any]:
         include_into_serialization, sub_messages = self._serialization_metadata
@@ -140,27 +141,33 @@ class MessagePromise(StreamedPromise[str, Message]):
     A promise of a message that can be streamed token by token.
     """
 
+    preliminary_metadata: Node
+
     def __init__(
         self,
         start_asap: Union[bool, Sentinel] = DEFAULT,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
-        **metadata_so_far,
+        **preliminary_metadata,
     ) -> None:
-        # TODO Oleksandr: raise an error if both ready_message and message_token_streamer/metadata_so_far are not None
-        #  (or both are None)
+        # TODO Oleksandr: raise an error if both ready_message and message_token_streamer/preliminary_metadata
+        #  are not None (or both are None)
         if prefill_message:
+            self.preliminary_metadata = prefill_message
+
             super().__init__(
                 start_asap=start_asap,
                 prefill_pieces=[str(prefill_message)],
                 prefill_result=prefill_message,
             )
         else:
-            super().__init__(start_asap=start_asap)
+            self.preliminary_metadata = Node(**preliminary_metadata)
+            self._metadata_so_far = copy.deepcopy(preliminary_metadata)
+
             self._message_token_streamer = message_token_streamer
-            self._metadata_so_far = metadata_so_far
             self._message_class = message_class
+            super().__init__(start_asap=start_asap)
 
     def _streamer(self) -> AsyncIterator[str]:
         return self._message_token_streamer(self._metadata_so_far)

@@ -69,14 +69,15 @@ async def _anthropic_func(
     """
     Run text generation with Anthropic.
     """
-    global_reply_metadata = global_reply_metadata or {}
-    reply_metadata = reply_metadata or {}
+    preliminary_reply_metadata = {
+        "miniagent_alias": ctx.this_agent.alias,
+        **(global_reply_metadata or {}),
+        **(reply_metadata or {}),
+    }
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        metadata_so_far.update(global_reply_metadata)
-        metadata_so_far.update(reply_metadata)
         resolved_messages = await ctx.messages.aresolve_messages()
 
         message_dicts = [message_to_llm_dict(msg) for msg in resolved_messages]
@@ -138,6 +139,7 @@ async def _anthropic_func(
         AnthropicMessage.promise(
             start_asap=True,  # TODO Oleksandr: should this be customizable ?
             message_token_streamer=message_token_streamer,
+            **preliminary_reply_metadata,
         )
     )
 
