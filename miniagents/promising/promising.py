@@ -46,6 +46,8 @@ class PromisingContext:
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
         log_level_for_errors: int = logging.ERROR,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        # TODO Oleksandr: are you sure it makes sense to distinguish on_node_resolved from on_promise_resolved ?
+        #  and even if it is, maybe this whole Node concept should be moved to the level of MiniAgents ?
         on_node_resolved: Union[NodeResolvedEventHandler, Iterable[NodeResolvedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()

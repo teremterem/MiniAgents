@@ -5,7 +5,6 @@ This module integrates OpenAI language models with MiniAgents.
 
 import logging
 import typing
-from functools import partial
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
@@ -31,10 +30,9 @@ class OpenAIMessage(LangModelMessage):
 
 def create_openai_agent(
     async_client: Optional["openai_original.AsyncOpenAI"] = None,
-    assistant_reply_metadata: Optional[dict[str, Any]] = None,
-    mini_agent_kwargs: Optional[dict[str, Any]] = None,
-    interaction_metadata: Optional[dict[str, Any]] = None,
-    **static_openai_kwargs,
+    reply_metadata: Optional[dict[str, Any]] = None,
+    alias: str = "OPENAI_AGENT",
+    **mini_agent_kwargs,
 ) -> MiniAgent:
     """
     Create an MiniAgent for OpenAI models (see MiniAgent class definition and docstring for usage details).
@@ -47,15 +45,11 @@ def create_openai_agent(
         async_client = openai_original.AsyncOpenAI()
 
     return miniagent(
-        partial(
-            _openai_func,
-            async_client=async_client,
-            global_reply_metadata=assistant_reply_metadata,
-            **static_openai_kwargs,
-        ),
-        alias="OPENAI_AGENT",
-        interaction_metadata=interaction_metadata,
-        **(mini_agent_kwargs or {}),
+        _openai_func,
+        async_client=async_client,
+        global_reply_metadata=reply_metadata,
+        alias=alias,
+        **mini_agent_kwargs,
     )
 
 
@@ -72,8 +66,6 @@ async def _openai_func(
     """
     Run text generation with OpenAI.
     """
-    global_reply_metadata = global_reply_metadata or {}
-    reply_metadata = reply_metadata or {}
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
@@ -81,8 +73,6 @@ async def _openai_func(
         raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
     async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        metadata_so_far.update(global_reply_metadata)
-        metadata_so_far.update(reply_metadata)
         resolved_messages = await ctx.messages.aresolve_messages()
 
         if system is None:
@@ -137,6 +127,10 @@ async def _openai_func(
         OpenAIMessage.promise(
             start_asap=True,  # TODO Oleksandr: should this be customizable ?
             message_token_streamer=message_token_streamer,
+            # preliminary metadata:
+            agent_alias=ctx.this_agent.alias,
+            **(global_reply_metadata or {}),
+            **(reply_metadata or {}),
         )
     )
 

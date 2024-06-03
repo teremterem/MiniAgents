@@ -5,7 +5,6 @@ This module integrates Anthropic language models with MiniAgents.
 
 import logging
 import typing
-from functools import partial
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
@@ -33,10 +32,9 @@ class AnthropicMessage(LangModelMessage):
 
 def create_anthropic_agent(
     async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
-    assistant_reply_metadata: Optional[dict[str, Any]] = None,
-    mini_agent_kwargs: Optional[dict[str, Any]] = None,
-    interaction_metadata: Optional[dict[str, Any]] = None,
-    **static_anthropic_kwargs,
+    reply_metadata: Optional[dict[str, Any]] = None,
+    alias: str = "ANTHROPIC_AGENT",
+    **mini_agent_kwargs,
 ) -> MiniAgent:
     """
     Create an MiniAgent for Anthropic models (see MiniAgent class definition and docstring for usage details).
@@ -49,15 +47,11 @@ def create_anthropic_agent(
         async_client = anthropic_original.AsyncAnthropic()
 
     return miniagent(
-        partial(
-            _anthropic_func,
-            async_client=async_client,
-            global_reply_metadata=assistant_reply_metadata,
-            **static_anthropic_kwargs,
-        ),
-        alias="ANTHROPIC_AGENT",
-        interaction_metadata=interaction_metadata,
-        **(mini_agent_kwargs or {}),
+        _anthropic_func,
+        async_client=async_client,
+        global_reply_metadata=reply_metadata,
+        alias=alias,
+        **mini_agent_kwargs,
     )
 
 
@@ -75,14 +69,10 @@ async def _anthropic_func(
     """
     Run text generation with Anthropic.
     """
-    global_reply_metadata = global_reply_metadata or {}
-    reply_metadata = reply_metadata or {}
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        metadata_so_far.update(global_reply_metadata)
-        metadata_so_far.update(reply_metadata)
         resolved_messages = await ctx.messages.aresolve_messages()
 
         message_dicts = [message_to_llm_dict(msg) for msg in resolved_messages]
@@ -144,6 +134,10 @@ async def _anthropic_func(
         AnthropicMessage.promise(
             start_asap=True,  # TODO Oleksandr: should this be customizable ?
             message_token_streamer=message_token_streamer,
+            # preliminary metadata:
+            agent_alias=ctx.this_agent.alias,
+            **(global_reply_metadata or {}),
+            **(reply_metadata or {}),
         )
     )
 

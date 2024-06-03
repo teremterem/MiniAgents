@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from miniagents.messages import MessagePromise, MessageSequencePromise, Message
 from miniagents.miniagent_typing import MessageType, AgentFunction
-from miniagents.promising.node import Node
+from miniagents.promising.node import Node, freeze_dict_values
 from miniagents.promising.promise_typing import PromiseStreamer, NodeResolvedEventHandler, PromiseBound
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
@@ -229,11 +229,9 @@ class MiniAgent:
         **partial_kwargs,
     ) -> None:
         self._func = func
-        # TODO Oleksandr: do deep copy ? freeze with Node ? yoo need to start putting these things down into the
-        #  "Philosophy" section of README
         if partial_kwargs:
             self._func = partial(func, **partial_kwargs)
-        self.interaction_metadata = interaction_metadata or {}
+        self.frozen_interact_metadata = freeze_dict_values(interaction_metadata or {})  # validate the metadata
 
         self.alias = alias
         if self.alias is None:
@@ -407,7 +405,7 @@ class AgentReplyMessageSequence(MessageSequence):
         function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
-        self._frozen_func_kwargs = Node(**function_kwargs)  # this validates the agent function kwargs
+        self._frozen_func_kwargs = freeze_dict_values(function_kwargs)  # this validates the agent function kwargs
         self._function_kwargs = copy.deepcopy(function_kwargs)
 
         self._mini_agent = mini_agent
@@ -433,9 +431,9 @@ class AgentReplyMessageSequence(MessageSequence):
             return AgentCallNode(
                 messages=await self._input_sequence_promise.aresolve_messages(),
                 agent_alias=self._mini_agent.alias,
-                **self._mini_agent.interaction_metadata,
+                **self._mini_agent.frozen_interact_metadata,
                 # NOTE: the next line will override any keys from `self.interaction_metadata` if names collide
-                **dict(self._frozen_func_kwargs.node_fields_and_values(exclude_class=True)),
+                **self._frozen_func_kwargs,
             )
 
         agent_call_promise = Promise[AgentCallNode](
@@ -451,7 +449,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 replies=await self.sequence_promise.aresolve_messages(),
                 agent_alias=self._mini_agent.alias,
                 agent_call=await agent_call_promise,
-                **self._mini_agent.interaction_metadata,
+                **self._mini_agent.frozen_interact_metadata,
             )
 
         Promise[AgentReplyNode](
