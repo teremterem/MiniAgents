@@ -7,12 +7,12 @@ from functools import cached_property
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
 from miniagents.miniagent_typing import MessageTokenStreamer
-from miniagents.promising.ext.frozen import Node
+from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import StreamedPromise
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 
-class Message(Node):
+class Message(Frozen):
     """
     A message that can be sent between agents.
     """
@@ -88,14 +88,14 @@ class Message(Node):
 
         def build_serialization_metadata(
             inclusion_dict: dict[Union[str, int], Any],
-            node: Node,
+            node: Frozen,
             node_path: tuple[Union[str, int], ...],
         ) -> None:
             for field, value in node.node_fields_and_values():
                 if isinstance(value, Message):
                     sub_messages[(*node_path, field)] = value
 
-                elif isinstance(value, Node):
+                elif isinstance(value, Frozen):
                     sub_dict = {}
                     build_serialization_metadata(sub_dict, value, (*node_path, field))
                     inclusion_dict[field] = sub_dict
@@ -109,7 +109,7 @@ class Message(Node):
                     else:
                         sub_dict = {}
                         for idx, sub_value in enumerate(value):
-                            if isinstance(sub_value, Node):
+                            if isinstance(sub_value, Frozen):
                                 sub_sub_dict = {}
                                 build_serialization_metadata(sub_sub_dict, sub_value, (*node_path, field, idx))
                                 sub_dict[idx] = sub_sub_dict
@@ -141,7 +141,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     A promise of a message that can be streamed token by token.
     """
 
-    preliminary_metadata: Node
+    preliminary_metadata: Frozen
 
     def __init__(
         self,
@@ -162,7 +162,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 prefill_result=prefill_message,
             )
         else:
-            self.preliminary_metadata = Node(**preliminary_metadata)
+            self.preliminary_metadata = Frozen(**preliminary_metadata)
             self._metadata_so_far = copy.deepcopy(preliminary_metadata)
 
             self._message_token_streamer = message_token_streamer

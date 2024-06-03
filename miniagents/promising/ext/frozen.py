@@ -1,5 +1,5 @@
 """
-The main class in this module is `Node`. See its docstring for more information.
+The main class in this module is `Frozen`. See its docstring for more information.
 """
 
 import hashlib
@@ -10,23 +10,23 @@ from typing import Any, Iterator, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-FrozenType = Optional[Union[str, int, float, bool, tuple["FrozenType", ...], "Node"]]
+FrozenType = Optional[Union[str, int, float, bool, tuple["FrozenType", ...], "Frozen"]]
 
 
 def freeze_dict_values(d: dict[str, Any]) -> dict[str, FrozenType]:
     """
-    Freeze the values of the dictionary using the Node class where necessary (and also recursively validate
+    Freeze the values of the dictionary using the Frozen class where necessary (and also recursively validate
     the "freezability" of those values). Useful for freezing function kwargs that are going to be supplied
-    as (extra) fields of some Node object (e.g. a Message) which is meant to be constructed at a later time.
+    as (extra) fields of some Frozen object (e.g. a Message) which is meant to be constructed at a later time.
     """
-    return dict(Node(**d).node_fields_and_values(exclude_class=True))
+    return dict(Frozen(**d).node_fields_and_values(exclude_class=True))
 
 
-class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
+class Frozen(BaseModel):  # TODO Oleksandr: come up with a different class name ?
     """
     A frozen pydantic model that allows arbitrary fields, has a git-style hash key that is calculated from the
     JSON representation of its data. The data is recursively validated to be immutable. Dicts are converted to
-    `Node` instances, lists and tuples are converted to tuples of immutable values, sets are prohibited.
+    `Frozen` instances, lists and tuples are converted to tuples of immutable values, sets are prohibited.
     """
 
     model_config = ConfigDict(frozen=True, extra="allow")
@@ -48,7 +48,7 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
     @cached_property
     def full_json(self) -> str:
         """
-        Get the full JSON representation of this Node object together with all its nested objects. This is a cached
+        Get the full JSON representation of this Frozen object together with all its nested objects. This is a cached
         property, so it is calculated only the first time it is accessed.
         """
         return self.model_dump_json()
@@ -56,7 +56,7 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
     @cached_property
     def serialized(self) -> str:
         """
-        The representation of this Node object that you would usually get by calling `serialize()`, but as a string
+        The representation of this Frozen object that you would usually get by calling `serialize()`, but as a string
         with a JSON. This is a cached property, so it is calculated only the first time it is accessed.
         """
         return json.dumps(self.serialize(), ensure_ascii=False, sort_keys=True)
@@ -64,7 +64,7 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
     def serialize(self) -> dict[str, Any]:
         """
         Serialize the object into a dictionary. The default implementation does complete serialization of this
-        Node object and all its nested objects. Child classes may override this method to customize serialization
+        Frozen object and all its nested objects. Child classes may override this method to customize serialization
         (e.g. externalize certain nested objects and only reference them by their hash keys - see Message).
         """
         return self.model_dump()
@@ -125,7 +125,7 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
         if "class_" in values:
             if values["class_"] != cls.__name__:
                 raise ValueError(
-                    f"the `class_` field of a Node must be equal to its actual class name, got {values['class_']} "
+                    f"the `class_` field of a Frozen must be equal to its actual class name, got {values['class_']} "
                     f"instead of {cls.__name__}"
                 )
         else:
@@ -151,7 +151,7 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
             # TODO Oleksandr: stop copying tuples if their content did not change ?
             return tuple(cls._validate_and_freeze_value(key, sub_value) for sub_value in value)
         if isinstance(value, dict):
-            return Node(**value)
+            return Frozen(**value)
         if not isinstance(value, cls._allowed_value_types()):
             raise ValueError(
                 f"only {{{', '.join([t.__name__ for t in cls._allowed_value_types()])}}} "
@@ -161,4 +161,4 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
 
     @classmethod
     def _allowed_value_types(cls) -> tuple[type[Any], ...]:
-        return type(None), str, int, float, bool, tuple, list, dict, Node
+        return type(None), str, int, float, bool, tuple, list, dict, Frozen

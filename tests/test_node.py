@@ -1,5 +1,5 @@
 """
-Tests for the `Node`-based models.
+Tests for the `Frozen`-based models.
 """
 
 import hashlib
@@ -9,13 +9,13 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from miniagents.promising.ext.frozen import Node
+from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import PromisingContext
 
 
-class SampleImmutable(Node):
+class SampleImmutable(Frozen):
     """
-    A sample immutable subclass that is derived from `Node`.
+    A sample immutable subclass that is derived from `Frozen`.
     """
 
     some_req_field: str
@@ -25,7 +25,7 @@ class SampleImmutable(Node):
 
 def test_immutable_frozen() -> None:
     """
-    Test that the models of `SampleImmutable`, which is derived from `Node`, are frozen.
+    Test that the models of `SampleImmutable`, which is derived from `Frozen`, are frozen.
     """
     sample = SampleImmutable(some_req_field="test")
 
@@ -40,9 +40,9 @@ def test_immutable_frozen() -> None:
 
 def test_node_frozen() -> None:
     """
-    Test that the models of the original `Node` class are frozen.
+    Test that the models of the original `Frozen` class are frozen.
     """
-    node = Node(some_field="some value")
+    node = Frozen(some_field="some value")
 
     with pytest.raises(ValidationError):
         node.some_other_field = "some other value"
@@ -62,7 +62,7 @@ async def test_sample_immutable_hash_key() -> None:
         # Let's make sure that private instance attributes that were not declared in the model beforehand:
         #  1) are settable despite the model being frozen;
         #  2) do not influence the hash_key.
-        # PromisingContext.on_node_resolved event sets a private attribute on Node instances, hence we want to
+        # MiniAgents.on_persist_message event sets a private attribute on Message instances, hence we want to
         # ensure these properties.
         # pylint: disable=protected-access,attribute-defined-outside-init
         sample._some_private_attribute = "some value"
@@ -79,13 +79,13 @@ async def test_sample_immutable_hash_key() -> None:
 @pytest.mark.asyncio
 async def test_node_hash_key() -> None:
     """
-    Test the original `Node.hash_key` property.
+    Test the original `Frozen.hash_key` property.
     """
     async with PromisingContext():
-        node = Node(content="test", final_sender_alias="user", custom_field={"role": "user"})
+        node = Frozen(content="test", final_sender_alias="user", custom_field={"role": "user"})
         # print(json.dumps(node.model_dump(exclude={"forum_trees"}), ensure_ascii=False, sort_keys=True))
         expected_hash_key = hashlib.sha256(
-            '{"class_": "Node", "content": "test", "custom_field": {"class_": "Node", "role": "user"}, '
+            '{"class_": "Frozen", "content": "test", "custom_field": {"class_": "Frozen", "role": "user"}, '
             '"final_sender_alias": "user"}'.encode("utf-8")
         ).hexdigest()[:40]
         assert node.hash_key == expected_hash_key
@@ -125,10 +125,10 @@ async def test_hash_key_calculated_once() -> None:
 @pytest.mark.asyncio
 async def test_node_hash_key_vs_key_ordering() -> None:
     """
-    Test that `hash_key` of `Node` is not affected by the ordering of its fields.
+    Test that `hash_key` of `Frozen` is not affected by the ordering of its fields.
     """
     async with PromisingContext():
-        node1 = Node(some_field="test", some_other_field=2)
-        node2 = Node(some_other_field=2, some_field="test")
+        node1 = Frozen(some_field="test", some_other_field=2)
+        node2 = Frozen(some_other_field=2, some_field="test")
 
         assert node1.hash_key == node2.hash_key

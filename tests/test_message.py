@@ -9,7 +9,7 @@ import pytest
 
 from miniagents.messages import Message
 from miniagents.miniagents import MiniAgents
-from miniagents.promising.ext.frozen import Node
+from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import PromisingContext, Promise
 from miniagents.promising.sentinels import DEFAULT
 
@@ -21,7 +21,7 @@ async def test_message_nesting_vs_hash_key() -> None:
     should be replaced with their respective hash keys when the hash is calculated for the ).
     """
 
-    class SpecialNode(Node):
+    class SpecialNode(Frozen):
         """
         Needed to check if concrete classes are preserved during copying.
         """
@@ -48,7 +48,7 @@ async def test_message_nesting_vs_hash_key() -> None:
             "extra_field": (
                 15,
                 {
-                    "class_": "Node",
+                    "class_": "Frozen",
                     "role": "user",
                     "nested_nested__hash_keys": (
                         "47e977f85cff13ea8980cf3d76959caec8a4984a",
@@ -150,7 +150,7 @@ async def test_on_persist_message_event_not_called(start_asap: bool) -> None:
         nonlocal persist_message_calls
         persist_message_calls += 1
 
-    not_a_message = Node(some_field="not a message")
+    not_a_message = Frozen(some_field="not a message")
 
     async with MiniAgents(
         on_promise_resolved=on_promise_resolved,
