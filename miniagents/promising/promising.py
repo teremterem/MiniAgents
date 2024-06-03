@@ -12,7 +12,6 @@ from types import TracebackType
 from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
 from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
-from miniagents.promising.ext.frozen import Node
 from miniagents.promising.promise_typing import (
     T,
     PIECE,
@@ -20,7 +19,6 @@ from miniagents.promising.promise_typing import (
     PromiseStreamer,
     PromiseResolvedEventHandler,
     PromiseResolver,
-    NodeResolvedEventHandler,
 )
 from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
 
@@ -32,9 +30,6 @@ class PromisingContext:
     This is the main class for managing the context of promises. It is a context manager that is used to configure
     default settings for promises and to handle the lifecycle of promises (attach `on_promise_resolved` handlers).
     TODO Oleksandr: explain this class in more detail
-    TODO Oleksandr: especially the fact that on_node_resolved is called for each Node instance only once (Node
-     instances keep track of whether on_node_resolved has been called for them or not, and if it has, it is not
-     called)
     """
 
     _current: ContextVar[Optional["PromisingContext"]] = ContextVar("PromisingContext._current", default=None)
@@ -46,19 +41,11 @@ class PromisingContext:
         longer_node_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
         log_level_for_errors: int = logging.ERROR,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
-        # TODO Oleksandr: are you sure it makes sense to distinguish on_node_resolved from on_promise_resolved ?
-        #  and even if it is, maybe this whole Node concept should be moved to the level of MiniAgents ?
-        on_node_resolved: Union[NodeResolvedEventHandler, Iterable[NodeResolvedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
 
         self.on_promise_resolved_handlers: list[PromiseResolvedEventHandler] = (
-            [self._trigger_node_resolved_event, on_promise_resolved]
-            if callable(on_promise_resolved)
-            else [self._trigger_node_resolved_event, *on_promise_resolved]
-        )
-        self.on_node_resolved_handlers: list[NodeResolvedEventHandler] = (
-            [on_node_resolved] if callable(on_node_resolved) else list(on_node_resolved)
+            [on_promise_resolved] if callable(on_promise_resolved) else [*on_promise_resolved]
         )
         self.child_tasks: set[Task] = set()
 
@@ -92,30 +79,6 @@ class PromisingContext:
         """
         self.on_promise_resolved_handlers.append(handler)
         return handler
-
-    def on_node_resolved(self, handler: NodeResolvedEventHandler) -> NodeResolvedEventHandler:
-        """
-        Add a handler to be called after a promise of type Node is resolved.
-        """
-        self.on_node_resolved_handlers.append(handler)
-        return handler
-
-    async def _trigger_node_resolved_event(self, _, result: Any) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
-        if not isinstance(result, Node):
-            return
-        # pylint: disable=protected-access
-        # noinspection PyProtectedMember
-        if result._node_resolved_event_triggered:
-            return
-
-        log_level_for_errors = PromisingContext.get_current().log_level_for_errors
-
-        for handler in self.on_node_resolved_handlers:
-            self.start_asap(handler(_, result), suppress_errors=True, log_level_for_errors=log_level_for_errors)
-        result._node_resolved_event_triggered = True
 
     def start_asap(
         self,

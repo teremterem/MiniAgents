@@ -162,7 +162,3 @@ class Node(BaseModel):  # TODO Oleksandr: come up with a different class name ?
     @classmethod
     def _allowed_value_types(cls) -> tuple[type[Any], ...]:
         return type(None), str, int, float, bool, tuple, list, dict, Node
-
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
-        self._node_resolved_event_triggered = False

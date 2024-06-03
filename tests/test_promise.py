@@ -6,8 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promising.ext.frozen import Node
-from miniagents.promising.promising import StreamedPromise, StreamAppender, PromisingContext, Promise
+from miniagents.promising.promising import StreamedPromise, StreamAppender, PromisingContext
 from miniagents.promising.sentinels import DEFAULT
 
 
@@ -268,95 +267,3 @@ async def test_streamed_promise_same_instance(start_asap: bool) -> None:
         )
 
         await streamed_promise
-
-
-# noinspection PyAsyncCall
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
-@pytest.mark.asyncio
-async def test_on_node_resolved_event_called_once(start_asap: bool) -> None:
-    """
-    Assert that the `on_node_resolved` event is called only once if the same Node is resolved multiple times.
-    """
-    promise_resolved_calls = 0
-    node_resolved_calls = 0
-
-    async def on_promise_resolved(_, __) -> None:
-        nonlocal promise_resolved_calls
-        promise_resolved_calls += 1
-
-    async def on_node_resolved(_, __) -> None:
-        nonlocal node_resolved_calls
-        node_resolved_calls += 1
-
-    some_node = Node()
-
-    async with PromisingContext(
-        on_promise_resolved=on_promise_resolved,
-        on_node_resolved=on_node_resolved,
-    ):
-        Promise(prefill_result=some_node, start_asap=start_asap)
-        Promise(prefill_result=some_node, start_asap=start_asap)
-
-    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
-    assert node_resolved_calls == 1
-
-
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
-@pytest.mark.asyncio
-async def test_on_node_resolved_event_called_twice(start_asap: bool) -> None:
-    """
-    Assert that the `on_node_resolved` event is called twice if two different Nodes are resolved.
-    """
-    promise_resolved_calls = 0
-    node_resolved_calls = 0
-
-    async def on_promise_resolved(_, __) -> None:
-        nonlocal promise_resolved_calls
-        promise_resolved_calls += 1
-
-    async def on_node_resolved(_, __) -> None:
-        nonlocal node_resolved_calls
-        node_resolved_calls += 1
-
-    node1 = Node()
-    node2 = Node()
-
-    async with PromisingContext(
-        on_promise_resolved=on_promise_resolved,
-        on_node_resolved=on_node_resolved,
-    ):
-        Promise(prefill_result=node1, start_asap=start_asap)
-        Promise(prefill_result=node2, start_asap=start_asap)
-
-    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
-    assert node_resolved_calls == 2
-
-
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
-@pytest.mark.asyncio
-async def test_on_node_resolved_event_not_called(start_asap: bool) -> None:
-    """
-    Assert that the `on_node_resolved` event is not called if the resolved value is not a Node.
-    """
-    promise_resolved_calls = 0
-    node_resolved_calls = 0
-
-    async def on_promise_resolved(_, __) -> None:
-        nonlocal promise_resolved_calls
-        promise_resolved_calls += 1
-
-    async def on_node_resolved(_, __) -> None:
-        nonlocal node_resolved_calls
-        node_resolved_calls += 1
-
-    value = "not a node"
-
-    async with PromisingContext(
-        on_promise_resolved=on_promise_resolved,
-        on_node_resolved=on_node_resolved,
-    ):
-        Promise(prefill_result=value, start_asap=start_asap)
-        Promise(prefill_result=value, start_asap=start_asap)
-
-    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
-    assert node_resolved_calls == 0
