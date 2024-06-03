@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from miniagents.messages import MessagePromise, MessageSequencePromise, Message
 from miniagents.miniagent_typing import MessageType, AgentFunction
-from miniagents.promising.node import Node, freeze_dict_values
+from miniagents.promising.ext.frozen import Node, freeze_dict_values
 from miniagents.promising.promise_typing import PromiseStreamer, NodeResolvedEventHandler, PromiseBound
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT

@@ -12,7 +12,7 @@ from types import TracebackType
 from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
 from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
-from miniagents.promising.node import Node
+from miniagents.promising.ext.frozen import Node
 from miniagents.promising.promise_typing import (
     T,
     PIECE,

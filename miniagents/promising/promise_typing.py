@@ -6,7 +6,7 @@ import typing
 from typing import TypeVar, AsyncIterator, Protocol, Union, Any
 
 if typing.TYPE_CHECKING:
-    from miniagents.promising.node import Node
+    from miniagents.promising.ext.frozen import Node
 
 T = TypeVar("T")
 PIECE = TypeVar("PIECE")

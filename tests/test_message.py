@@ -8,7 +8,7 @@ import json
 import pytest
 
 from miniagents.messages import Message
-from miniagents.promising.node import Node
+from miniagents.promising.ext.frozen import Node
 from miniagents.promising.promising import PromisingContext
 
 

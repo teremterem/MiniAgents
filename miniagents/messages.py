@@ -7,7 +7,7 @@ from functools import cached_property
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
 from miniagents.miniagent_typing import MessageTokenStreamer
-from miniagents.promising.node import Node
+from miniagents.promising.ext.frozen import Node
 from miniagents.promising.promising import StreamedPromise
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 

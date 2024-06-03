@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promising.node import Node
+from miniagents.promising.ext.frozen import Node
 from miniagents.promising.promising import StreamedPromise, StreamAppender, PromisingContext, Promise
 from miniagents.promising.sentinels import DEFAULT
 

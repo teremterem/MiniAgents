@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from miniagents.promising.node import Node
+from miniagents.promising.ext.frozen import Node
 from miniagents.promising.promising import PromisingContext
 
 
