@@ -2,7 +2,6 @@
 `Message` class and other classes related to messages.
 """
 
-import copy
 from functools import cached_property
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
@@ -163,7 +162,7 @@ class MessagePromise(StreamedPromise[str, Message]):
             )
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
-            self._metadata_so_far = copy.deepcopy(preliminary_metadata)
+            self._metadata_so_far = dict(self.preliminary_metadata.frozen_fields_and_values(exclude_class=True))
 
             self._message_token_streamer = message_token_streamer
             self._message_class = message_class
