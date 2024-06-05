@@ -44,9 +44,13 @@ class FullRepoMessage(Message):
             RepoFileMessage(file_posix_path=file_posix_path, text=file.read_text(encoding="utf-8"))
             for file_posix_path, file in miniagent_files
             if (
-                not any(file_posix_path.startswith(prefix) for prefix in [".", "venv/", "dist/", "htmlcov/"])
+                not any(
+                    file_posix_path.startswith(prefix) for prefix in [".", "venv/", "dist/", "htmlcov/", "transient/"]
+                )
                 and not any(file_posix_path.endswith(suffix) for suffix in [".pyc"])
-                and not any(file_posix_path in full_path for full_path in ["poetry.lock"])
+                # skip the `poetry.lock` file
+                # skip the prompt file in order not to throw off the LLM
+                and not (file_posix_path in ["poetry.lock", "examples/self_developer/self_dev_prompts.py"])
             )
         ]
         # TODO Oleksandr: put `examples` folder content at the end of the message ?
