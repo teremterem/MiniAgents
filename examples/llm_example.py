@@ -47,7 +47,7 @@ async def main() -> None:
         print()
         async for msg_promise in reply_sequence:
             async for token in msg_promise:
-                print(token, end="", flush=True)
+                print(f"\033[92;1m{token}\033[0m", end="", flush=True)
             print()
             print()
 
