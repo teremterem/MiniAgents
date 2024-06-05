@@ -56,7 +56,10 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
     for idx, (model, model_agent) in enumerate(MODEL_AGENTS.items()):
         echo_agent.inquire(
             file_agent.inquire(
-                model_agent.inquire(inpt),
+                model_agent.inquire(
+                    inpt,
+                    temperature=0,
+                ),
                 file=str(SELF_DEV_OUTPUT / f"README-{model}.md"),
             ),
             color=f"{92 + idx};1",
