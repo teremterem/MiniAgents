@@ -88,6 +88,6 @@ def relative_posix_path(file: Path) -> str:
 
 if __name__ == "__main__":
     full_repo_message = FullRepoMessage.create()
-    full_repo_md_file = SELF_DEV_ROOT / "transient/full-repo.md"
+    full_repo_md_file = SELF_DEV_TRANSIENT / "full-repo.md"
     full_repo_md_file.parent.mkdir(parents=True, exist_ok=True)
     full_repo_md_file.write_text(str(full_repo_message), encoding="utf-8")
