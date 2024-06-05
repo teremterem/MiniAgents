@@ -6,7 +6,11 @@ from pathlib import Path
 
 from miniagents.messages import Message
 
-MINIAGENTS_ROOT = Path(__file__).parent.parent.parent
+SELF_DEV_ROOT = Path(__file__).parent
+MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent
+
+SELF_DEV_TRANSIENT = SELF_DEV_ROOT / "transient"
+SELF_DEV_OUTPUT = SELF_DEV_ROOT / "output"
 
 
 class RepoFileMessage(Message):
@@ -36,7 +40,7 @@ class FullRepoMessage(Message):
         of the files as they currently are, in other words.)
         """
         miniagent_files = [
-            (file.relative_to(MINIAGENTS_ROOT).as_posix(), file)
+            (relative_posix_path(file), file)
             for file in MINIAGENTS_ROOT.rglob("*")
             if file.is_file() and file.stat().st_size > 0
         ]
@@ -45,12 +49,19 @@ class FullRepoMessage(Message):
             for file_posix_path, file in miniagent_files
             if (
                 not any(
-                    file_posix_path.startswith(prefix) for prefix in [".", "venv/", "dist/", "htmlcov/", "transient/"]
+                    file_posix_path.startswith(prefix)
+                    for prefix in [
+                        ".",
+                        "dist/",
+                        relative_posix_path(SELF_DEV_OUTPUT),
+                        relative_posix_path(SELF_DEV_TRANSIENT),
+                        "htmlcov/",
+                        "venv/",
+                    ]
                 )
                 and not any(file_posix_path.endswith(suffix) for suffix in [".pyc"])
-                # skip the `poetry.lock` file
-                # skip the prompt file in order not to throw off the LLM
-                and not (file_posix_path in ["poetry.lock", "examples/self_developer/self_dev_prompts.py"])
+                # skip the prompt file in order not to throw off the LLM, and also skip the `poetry.lock` file
+                and not (file_posix_path in ["examples/self_developer/self_dev_prompts.py", "poetry.lock"])
             )
         ]
         # TODO Oleksandr: put `examples` folder content at the end of the message ?
@@ -68,8 +79,15 @@ class FullRepoMessage(Message):
         )
 
 
+def relative_posix_path(file: Path) -> str:
+    """
+    Get the path of a file as a POSIX path relative to the MiniAgents repository root.
+    """
+    return file.relative_to(MINIAGENTS_ROOT).as_posix()
+
+
 if __name__ == "__main__":
     full_repo_message = FullRepoMessage.create()
-    full_repo_md_file = MINIAGENTS_ROOT / "transient/full-repo.md"
+    full_repo_md_file = SELF_DEV_ROOT / "transient/full-repo.md"
     full_repo_md_file.parent.mkdir(parents=True, exist_ok=True)
     full_repo_md_file.write_text(str(full_repo_message), encoding="utf-8")
