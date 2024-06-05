@@ -7,14 +7,11 @@ from pprint import pprint
 
 from dotenv import load_dotenv
 
+from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.messages import Message
 from miniagents.miniagents import MiniAgents
 
 load_dotenv()
-
-# pylint: disable=wrong-import-position
-# from miniagents.ext.llm.anthropic import create_anthropic_agent
-from miniagents.ext.llm.openai import create_openai_agent
 
 # logging.basicConfig(level=logging.DEBUG)
 

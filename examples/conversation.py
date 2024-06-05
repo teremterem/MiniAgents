@@ -9,15 +9,13 @@ import readline  # pylint: disable=unused-import
 
 from dotenv import load_dotenv
 
+from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 from miniagents.promising.sentinels import AWAIT
 from miniagents.utils import achain_loop
 
 load_dotenv()
-
-# pylint: disable=wrong-import-position
-from miniagents.ext.llm.openai import create_openai_agent
 
 mini_agents = MiniAgents()
 

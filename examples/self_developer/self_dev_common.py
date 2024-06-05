@@ -2,9 +2,24 @@
 This module contains common code for the self-developer example.
 """
 
+from functools import partial
 from pathlib import Path
 
+from dotenv import load_dotenv
+from pydantic._internal._model_construction import ModelMetaclass
+
+from miniagents.ext.llm.anthropic import create_anthropic_agent
+from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.messages import Message
+
+load_dotenv()
+
+MODEL_AGENT_FACTORIES = {
+    "gpt-4o-2024-05-13": create_openai_agent,
+    "claude-3-opus-20240229": partial(create_anthropic_agent, max_tokens=2000),
+    # "claude-3-haiku-20240307": partial(create_anthropic_agent, max_tokens=2000),
+}
+MODEL_AGENTS = {model: factory(model=model) for model, factory in MODEL_AGENT_FACTORIES.items()}
 
 SELF_DEV_ROOT = Path(__file__).parent
 MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent
@@ -26,15 +41,27 @@ class RepoFileMessage(Message):
         return f"{self.file_posix_path}\n```{snippet_type}\n{self.text}{extra_newline}```"
 
 
-class FullRepoMessage(Message):
+class ModelSingletonMeta(ModelMetaclass):
+    """
+    A metaclass that ensures that only one instance of a Pydantic model of a certain class is created.
+    """
+
+    _instance = None
+
+    def __call__(cls):  # , *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__call__()  # *args, **kwargs)
+        return cls._instance
+
+
+class FullRepoMessage(Message, metaclass=ModelSingletonMeta):
     """
     A message that represents the full content of the MiniAgents repository.
     """
 
     repo_files: tuple[RepoFileMessage, ...]
 
-    @classmethod
-    def create(cls) -> "FullRepoMessage":
+    def __init__(self) -> None:
         """
         Create a FullRepoMessage object that contains the full content of the MiniAgents repository. (Take a snapshot
         of the files as they currently are, in other words.)
@@ -66,7 +93,11 @@ class FullRepoMessage(Message):
         ]
         # TODO Oleksandr: put `examples` folder content at the end of the message ?
         miniagent_files.sort(key=lambda file_message: file_message.file_posix_path)
-        return cls(repo_files=miniagent_files)
+        super().__init__(repo_files=miniagent_files)
+
+        full_repo_md_file = SELF_DEV_TRANSIENT / "full-repo.md"
+        full_repo_md_file.parent.mkdir(parents=True, exist_ok=True)
+        full_repo_md_file.write_text(str(self), encoding="utf-8")
 
     def _as_string(self) -> str:
         miniagent_files_str = "\n".join([file_message.file_posix_path for file_message in self.repo_files])
@@ -87,7 +118,5 @@ def relative_posix_path(file: Path) -> str:
 
 
 if __name__ == "__main__":
-    full_repo_message = FullRepoMessage.create()
-    full_repo_md_file = SELF_DEV_TRANSIENT / "full-repo.md"
-    full_repo_md_file.parent.mkdir(parents=True, exist_ok=True)
-    full_repo_md_file.write_text(str(full_repo_message), encoding="utf-8")
+    FullRepoMessage()
+    print("FullRepoMessage created and saved")
