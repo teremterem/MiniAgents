@@ -2,7 +2,6 @@
 Code example for using LLMs.
 """
 
-import asyncio
 from pprint import pprint
 
 from dotenv import load_dotenv
@@ -32,25 +31,24 @@ async def persist_message(_, message: Message) -> None:
     print()
 
 
-async def main() -> None:
+async def amain() -> None:
     """
     Send a message to Claude and print the response.
     """
-    async with mini_agents:
-        reply_sequence = llm_agent.inquire(
-            "How are you today?",
-            max_tokens=1000,
-            temperature=0.0,
-            system="Respond only in Yoda-speak.",
-        )
+    reply_sequence = llm_agent.inquire(
+        "How are you today?",
+        max_tokens=1000,
+        temperature=0.0,
+        system="Respond only in Yoda-speak.",
+    )
 
+    print()
+    async for msg_promise in reply_sequence:
+        async for token in msg_promise:
+            print(f"\033[92;1m{token}\033[0m", end="", flush=True)
         print()
-        async for msg_promise in reply_sequence:
-            async for token in msg_promise:
-                print(f"\033[92;1m{token}\033[0m", end="", flush=True)
-            print()
-            print()
+        print()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    mini_agents.run(amain())
