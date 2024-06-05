@@ -80,11 +80,11 @@ class FullRepoMessage(Message, metaclass=ModelSingletonMeta):
                     for prefix in [
                         ".",
                         "dist/",
-                        "examples/",
+                        # "examples/",
                         relative_posix_path(SELF_DEV_OUTPUT),
                         relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
-                        "tests/",
+                        # "tests/",
                         "venv/",
                     ]
                 )
