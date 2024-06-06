@@ -3,6 +3,7 @@ This module contains MiniAgents that specialize in producing documentation for t
 """
 
 import asyncio
+import logging
 from pathlib import Path
 from typing import Union
 
@@ -78,4 +79,7 @@ async def amain() -> None:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
+
     asyncio.run(amain())
