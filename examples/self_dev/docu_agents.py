@@ -80,6 +80,6 @@ async def amain() -> None:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
+    # logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
 
     asyncio.run(amain())
