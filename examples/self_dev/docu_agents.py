@@ -65,8 +65,10 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
         sleep_after_variation = False
         # start all model agents in parallel
         for model_idx, (model, model_agent) in enumerate(MODEL_AGENTS.items()):
+
             md_file = SELF_DEV_OUTPUT / experiment_name / f"README-{repo_variation_msg.variation_name}-{model}.md"
-            if md_file.exists():
+
+            if md_file.exists() and md_file.stat().st_size > 0 and not md_file.read_text(encoding="utf-8").strip():
                 continue
 
             sleep_after_variation = True  # at least one model was used - let's sleep afterward
