@@ -53,14 +53,14 @@ class ModelSingletonMeta(ModelMetaclass):
         return cls._instance
 
 
-class FullRepoMessage(Message, metaclass=ModelSingletonMeta):
+class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSingletonMeta` ?
     """
     A message that represents the full content of the MiniAgents repository.
     """
 
     repo_files: tuple[RepoFileMessage, ...]
 
-    def __init__(self) -> None:
+    def __init__(self, experiment_name: str, variation_name: str) -> None:
         """
         Create a FullRepoMessage object that contains the full content of the MiniAgents repository. (Take a snapshot
         of the files as they currently are, in other words.)
@@ -101,7 +101,7 @@ class FullRepoMessage(Message, metaclass=ModelSingletonMeta):
         miniagent_files.sort(key=lambda file_message: file_message.file_posix_path)
         super().__init__(repo_files=miniagent_files)
 
-        full_repo_md_file = SELF_DEV_TRANSIENT / "full-repo.md"
+        full_repo_md_file = SELF_DEV_TRANSIENT / experiment_name / f"REPO-{variation_name}.md"
         full_repo_md_file.parent.mkdir(parents=True, exist_ok=True)
         full_repo_md_file.write_text(str(self), encoding="utf-8")
 
@@ -124,5 +124,5 @@ def relative_posix_path(file: Path) -> str:
 
 
 if __name__ == "__main__":
-    FullRepoMessage()
+    FullRepoMessage(experiment_name="test", variation_name="complete")
     print("FullRepoMessage created and saved")
