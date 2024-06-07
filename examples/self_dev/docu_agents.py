@@ -48,7 +48,7 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
     MiniAgent that produces variants of README using different large language models.
     """
     experiment_name = input("\nEnter experiment folder name: ")
-    experiment_name = experiment_name.strip().replace(" ", "_")
+    experiment_name = "-".join(experiment_name.lower().split())
     if not experiment_name:
         experiment_name = "DEFAULT"
 
