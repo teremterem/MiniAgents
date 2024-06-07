@@ -62,23 +62,31 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
             SystemMessage(PRODUCE_README_SYSTEM_FOOTER),
         ]
 
+        sleep_after_variation = False
         # start all model agents in parallel
         for model_idx, (model, model_agent) in enumerate(MODEL_AGENTS.items()):
+            md_file = SELF_DEV_OUTPUT / experiment_name / f"README-{repo_variation_msg.variation_name}-{model}.md"
+            if md_file.exists():
+                continue
+
+            sleep_after_variation = True  # at least one model was used - let's sleep afterward
             echo_agent.inquire(
                 file_agent.inquire(
                     model_agent.inquire(
                         inpt,
                         temperature=0,
                     ),
-                    file=str(
-                        SELF_DEV_OUTPUT / experiment_name / f"README-{repo_variation_msg.variation_name}-{model}.md"
-                    ),
+                    file=str(md_file),
                 ),
                 color=f"{90 + len(MODEL_AGENTS) * variation_idx + model_idx};1",
             )
-        await asyncio.sleep(5)  # TODO Oleksandr: implement LLM agent throttling instead
 
-    # await ctx.await_children()  # TODO Oleksandr: support this feature
+        # TODO Oleksandr: implement LLM agent throttling instead
+        if sleep_after_variation:
+            await asyncio.sleep(30)
+
+    # TODO Oleksandr: support this feature
+    # await ctx.await_children()
 
 
 async def amain() -> None:
