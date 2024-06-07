@@ -87,7 +87,7 @@ async def amain() -> None:
     """
     async with MiniAgents():
         readme_agent.inquire()
-    print("Readme file(s) produced")
+    print("Readme file(s) produced\n")
 
 
 if __name__ == "__main__":
