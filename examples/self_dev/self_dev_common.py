@@ -88,8 +88,13 @@ class FullRepoMessage(Message, metaclass=ModelSingletonMeta):
                     ]
                 )
                 and not any(file_posix_path.endswith(suffix) for suffix in [".pyc"])
-                # skip the prompt file in order not to throw off the LLM, and also skip the `poetry.lock` file
-                and not (file_posix_path in ["examples/self_developer/self_dev_prompts.py", "poetry.lock"])
+                and file_posix_path
+                not in {
+                    # skip the prompt file in order not to throw off the LLM
+                    "examples/self_developer/self_dev_prompts.py",
+                    "LICENSE",  # TODO Oleksandr: include the license file back ?
+                    "poetry.lock",
+                }
             )
         ]
         # TODO Oleksandr: put `examples` folder content at the end of the message ?
