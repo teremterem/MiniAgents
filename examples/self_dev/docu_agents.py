@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from examples.self_dev.self_dev_common import FullRepoMessage, MODEL_AGENTS, SELF_DEV_OUTPUT
+from examples.self_dev.self_dev_common import MODEL_AGENTS, SELF_DEV_OUTPUT, get_repo_variation_messages
 from examples.self_dev.self_dev_prompts import GLOBAL_SYSTEM_HEADER, PRODUCE_README_SYSTEM_FOOTER
 from miniagents.ext.llm.llm_common import SystemMessage
 from miniagents.miniagents import miniagent, MiniAgents, InteractionContext
@@ -48,25 +48,34 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
     MiniAgent that produces variants of README using different large language models.
     """
     experiment_name = input("\nEnter experiment folder name: ")
+    experiment_name = experiment_name.strip().replace(" ", "_")
+    if not experiment_name:
+        experiment_name = "DEFAULT"
 
-    inpt = [
-        SystemMessage(GLOBAL_SYSTEM_HEADER),
-        FullRepoMessage(),
-        SystemMessage(PRODUCE_README_SYSTEM_FOOTER),
-    ]
+    repo_variations = get_repo_variation_messages(experiment_name)
 
-    # start all model agents in parallel
-    for idx, (model, model_agent) in enumerate(MODEL_AGENTS.items()):
-        echo_agent.inquire(
-            file_agent.inquire(
-                model_agent.inquire(
-                    inpt,
-                    temperature=0,
+    # try all repo variations simultaneously
+    for variation_idx, repo_variation_msg in enumerate(repo_variations):
+        inpt = [
+            SystemMessage(GLOBAL_SYSTEM_HEADER),
+            repo_variation_msg,
+            SystemMessage(PRODUCE_README_SYSTEM_FOOTER),
+        ]
+
+        # start all model agents in parallel
+        for model_idx, (model, model_agent) in enumerate(MODEL_AGENTS.items()):
+            echo_agent.inquire(
+                file_agent.inquire(
+                    model_agent.inquire(
+                        inpt,
+                        temperature=0,
+                    ),
+                    file=str(
+                        SELF_DEV_OUTPUT / experiment_name / f"README-{repo_variation_msg.variation_name}-{model}.md"
+                    ),
                 ),
-                file=str(SELF_DEV_OUTPUT / experiment_name / f"README-{model}.md"),
-            ),
-            color=f"{92 + idx};1",
-        )
+                color=f"{92 + len(MODEL_AGENTS) * variation_idx + model_idx};1",
+            )
 
     # await ctx.await_children()  # TODO Oleksandr: support this feature
 

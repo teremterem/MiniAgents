@@ -53,11 +53,16 @@ class ModelSingletonMeta(ModelMetaclass):
         return cls._instance
 
 
+def get_repo_variation_messages(experiment_name: str) -> tuple["FullRepoMessage", ...]:
+    return (FullRepoMessage(experiment_name=experiment_name, variation_name="complete"),)
+
+
 class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSingletonMeta` ?
     """
     A message that represents the full content of the MiniAgents repository.
     """
 
+    variation_name: str
     repo_files: tuple[RepoFileMessage, ...]
 
     def __init__(self, experiment_name: str, variation_name: str) -> None:
@@ -99,7 +104,7 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSi
         ]
         # TODO Oleksandr: put `examples` folder content at the end of the message ?
         miniagent_files.sort(key=lambda file_message: file_message.file_posix_path)
-        super().__init__(repo_files=miniagent_files)
+        super().__init__(repo_files=miniagent_files, variation_name=variation_name)
 
         full_repo_md_file = SELF_DEV_TRANSIENT / experiment_name / f"REPO-{variation_name}.md"
         full_repo_md_file.parent.mkdir(parents=True, exist_ok=True)
