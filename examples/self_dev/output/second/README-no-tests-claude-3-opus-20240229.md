@@ -1,5 +1,3 @@
-Here's a README.md for your MiniAgents framework:
-
 # MiniAgents
 
 MiniAgents is a Python framework for building agent-based systems. It provides a simple and flexible way to define agents, chain them together, and manage their interactions.
