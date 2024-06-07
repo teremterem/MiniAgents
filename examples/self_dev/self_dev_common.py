@@ -4,6 +4,7 @@ This module contains common code for the self-developer example.
 
 from functools import partial
 from pathlib import Path
+from typing import Iterable
 
 from dotenv import load_dotenv
 from pydantic._internal._model_construction import ModelMetaclass
@@ -53,8 +54,32 @@ class ModelSingletonMeta(ModelMetaclass):
         return cls._instance
 
 
-def get_repo_variation_messages(experiment_name: str) -> tuple["FullRepoMessage", ...]:
-    return (FullRepoMessage(experiment_name=experiment_name, variation_name="complete"),)
+def get_repo_variation_messages(experiment_name: str) -> list["FullRepoMessage"]:
+    """
+    Produce a list of FullRepoMessage objects that represent the full content of the MiniAgents repository with
+    different variations (e.g., with or without examples or tests).
+    """
+    return [
+        FullRepoMessage(
+            experiment_name=experiment_name,
+            variation_name="complete",
+        ),
+        FullRepoMessage(
+            experiment_name=experiment_name,
+            variation_name="no-examples-no-tests",
+            skip_if_starts_with=["examples/", "tests/"],
+        ),
+        FullRepoMessage(
+            experiment_name=experiment_name,
+            variation_name="no-examples",
+            skip_if_starts_with=["examples/"],
+        ),
+        FullRepoMessage(
+            experiment_name=experiment_name,
+            variation_name="no-tests",
+            skip_if_starts_with=["tests/"],
+        ),
+    ]
 
 
 class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSingletonMeta` ?
@@ -65,7 +90,7 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSi
     variation_name: str
     repo_files: tuple[RepoFileMessage, ...]
 
-    def __init__(self, experiment_name: str, variation_name: str) -> None:
+    def __init__(self, experiment_name: str, variation_name: str, skip_if_starts_with: Iterable[str] = ()) -> None:
         """
         Create a FullRepoMessage object that contains the full content of the MiniAgents repository. (Take a snapshot
         of the files as they currently are, in other words.)
@@ -84,12 +109,11 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSi
                     for prefix in [
                         ".",
                         "dist/",
-                        # "examples/",
                         relative_posix_path(SELF_DEV_OUTPUT),
                         relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
-                        # "tests/",
                         "venv/",
+                        *skip_if_starts_with,
                     ]
                 )
                 and not any(file_posix_path.endswith(suffix) for suffix in [".pyc"])

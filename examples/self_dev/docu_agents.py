@@ -74,8 +74,9 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
                         SELF_DEV_OUTPUT / experiment_name / f"README-{repo_variation_msg.variation_name}-{model}.md"
                     ),
                 ),
-                color=f"{92 + len(MODEL_AGENTS) * variation_idx + model_idx};1",
+                color=f"{90 + len(MODEL_AGENTS) * variation_idx + model_idx};1",
             )
+        await asyncio.sleep(5)  # TODO Oleksandr: implement LLM agent throttling instead
 
     # await ctx.await_children()  # TODO Oleksandr: support this feature
 
