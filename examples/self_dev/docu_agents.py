@@ -47,6 +47,8 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
     """
     MiniAgent that produces variants of README using different large language models.
     """
+    experiment_name = input("\nEnter experiment folder name: ")
+
     inpt = [
         SystemMessage(GLOBAL_SYSTEM_HEADER),
         FullRepoMessage(),
@@ -61,7 +63,7 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
                     inpt,
                     temperature=0,
                 ),
-                file=str(SELF_DEV_OUTPUT / f"README-{model}.md"),
+                file=str(SELF_DEV_OUTPUT / experiment_name / f"README-{model}.md"),
             ),
             color=f"{92 + idx};1",
         )
@@ -80,6 +82,6 @@ async def amain() -> None:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    # logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
+    logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
 
     asyncio.run(amain())
