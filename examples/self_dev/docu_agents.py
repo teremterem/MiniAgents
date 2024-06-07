@@ -59,7 +59,7 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
 
         # TODO Oleksandr: implement LLM agent throttling instead
         if throttle_sleep:
-            await asyncio.sleep(30)
+            await asyncio.sleep(20)
         throttle_sleep = False
 
         # start all model agents in parallel

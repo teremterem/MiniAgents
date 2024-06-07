@@ -10,14 +10,15 @@ from dotenv import load_dotenv
 from pydantic._internal._model_construction import ModelMetaclass
 
 from miniagents.ext.llm.anthropic import create_anthropic_agent
+from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.messages import Message
 
 load_dotenv()
 
 MODEL_AGENT_FACTORIES = {
-    # "gpt-4o-2024-05-13": create_openai_agent,
-    # "claude-3-opus-20240229": partial(create_anthropic_agent, max_tokens=2000),
-    "claude-3-haiku-20240307": partial(create_anthropic_agent, max_tokens=2000),
+    "gpt-4o-2024-05-13": create_openai_agent,
+    "claude-3-opus-20240229": partial(create_anthropic_agent, max_tokens=2000),
+    # "claude-3-haiku-20240307": partial(create_anthropic_agent, max_tokens=2000),
 }
 MODEL_AGENTS = {model: factory(model=model) for model, factory in MODEL_AGENT_FACTORIES.items()}
 
