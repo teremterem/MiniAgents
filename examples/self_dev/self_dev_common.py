@@ -54,32 +54,12 @@ class ModelSingletonMeta(ModelMetaclass):
         return cls._instance
 
 
-def get_repo_variation_messages(experiment_name: str) -> list["FullRepoMessage"]:
-    """
-    Produce a list of FullRepoMessage objects that represent the full content of the MiniAgents repository with
-    different variations (e.g., with or without examples or tests).
-    """
-    return [
-        FullRepoMessage(
-            experiment_name=experiment_name,
-            variation_name="complete",
-        ),
-        FullRepoMessage(
-            experiment_name=experiment_name,
-            variation_name="no-examples-no-tests",
-            skip_if_starts_with=["examples/", "tests/"],
-        ),
-        FullRepoMessage(
-            experiment_name=experiment_name,
-            variation_name="no-examples",
-            skip_if_starts_with=["examples/"],
-        ),
-        FullRepoMessage(
-            experiment_name=experiment_name,
-            variation_name="no-tests",
-            skip_if_starts_with=["tests/"],
-        ),
-    ]
+SKIPS_FOR_REPO_VARIATIONS: dict[str, list[str]] = {
+    "complete": [],
+    "no-examples-no-tests": ["examples/", "tests/"],
+    "no-examples": ["examples/"],
+    "no-tests": ["tests/"],
+}
 
 
 class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSingletonMeta` ?

@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Union
 
-from examples.self_dev.self_dev_common import MODEL_AGENTS, SELF_DEV_OUTPUT, get_repo_variation_messages
+from examples.self_dev.self_dev_common import MODEL_AGENTS, SELF_DEV_OUTPUT, SKIPS_FOR_REPO_VARIATIONS, FullRepoMessage
 from examples.self_dev.self_dev_prompts import GLOBAL_SYSTEM_HEADER, PRODUCE_README_SYSTEM_FOOTER
 from miniagents.ext.llm.llm_common import SystemMessage
 from miniagents.miniagents import miniagent, MiniAgents, InteractionContext
@@ -52,21 +52,14 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
     if not experiment_name:
         experiment_name = "DEFAULT"
 
-    repo_variations = get_repo_variation_messages(experiment_name)
-
     # try all repo variations simultaneously
-    for variation_idx, repo_variation_msg in enumerate(repo_variations):
-        inpt = [
-            SystemMessage(GLOBAL_SYSTEM_HEADER),
-            repo_variation_msg,
-            SystemMessage(PRODUCE_README_SYSTEM_FOOTER),
-        ]
+    for variation_idx, (variation_name, variation_skips) in enumerate(SKIPS_FOR_REPO_VARIATIONS.items()):
 
         sleep_after_variation = False
         # start all model agents in parallel
         for model_idx, (model, model_agent) in enumerate(MODEL_AGENTS.items()):
 
-            md_file = SELF_DEV_OUTPUT / experiment_name / f"README-{repo_variation_msg.variation_name}-{model}.md"
+            md_file = SELF_DEV_OUTPUT / experiment_name / f"README-{variation_name}-{model}.md"
 
             if md_file.exists() and md_file.stat().st_size > 0 and not md_file.read_text(encoding="utf-8").strip():
                 continue
@@ -75,7 +68,15 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
             echo_agent.inquire(
                 file_agent.inquire(
                     model_agent.inquire(
-                        inpt,
+                        [
+                            SystemMessage(GLOBAL_SYSTEM_HEADER),
+                            FullRepoMessage(
+                                experiment_name=experiment_name,
+                                variation_name=variation_name,
+                                skip_if_starts_with=variation_skips,
+                            ),
+                            SystemMessage(PRODUCE_README_SYSTEM_FOOTER),
+                        ],
                         temperature=0,
                     ),
                     file=str(md_file),
