@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 class PromisingContext:
     """
     This is the main class for managing the context of promises. It is a context manager that is used to configure
-    default settings for promises and to handle the lifecycle of promises (attach `on_promise_resolved` handlers).
-    TODO Oleksandr: explain this class in more detail
+    default settings for promises and to handle the lifecycle of promises (attach `on_promise_resolved` handlers,
+    ensure that all the async tasks finish before this context manager exits).
     """
 
     _current: ContextVar[Optional["PromisingContext"]] = ContextVar("PromisingContext._current", default=None)
@@ -87,7 +87,6 @@ class PromisingContext:
         log_level_for_errors: int = logging.DEBUG,
     ) -> Task:
         """
-        TODO Oleksandr: improve this docstring ?
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
         before finalizing the context.
@@ -157,7 +156,7 @@ class PromisingContext:
 
 class Promise(Generic[T]):
     """
-    TODO Oleksandr
+    TODO Oleksandr: docstring
     """
 
     def __init__(
@@ -197,9 +196,7 @@ class Promise(Generic[T]):
 
     async def aresolve(self) -> T:
         """
-        TODO Oleksandr: update this docstring
-        "Accumulates" all the pieces of the stream and returns the "whole" value. Will return the exact
-        same object (the exact same instance) if called multiple times on the same instance of `StreamedPromise`.
+        TODO Oleksandr: docstring
         """
         # TODO Oleksandr: put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
         #  `aresolve()` from within the `resolver` function
@@ -235,18 +232,20 @@ class Promise(Generic[T]):
 
 class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
     """
-    # TODO Oleksandr: update this docstring ?
     A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
 
-    The StreamedPromise allows for "replaying" the stream of pieces without involving the streamer
-    for the pieces that have already been produced. This means that multiple consumers can iterate
-    over the stream independently, and each consumer will receive all the pieces from the beginning,
-    even if some pieces were produced before the consumer started iterating.
+    The StreamedPromise allows for "replaying" the stream of pieces without involving the `streamer`
+    function for the pieces that have already been produced. This means that multiple consumers can
+    iterate over the stream independently, and each consumer will receive all the pieces from the
+    beginning, even if some pieces were produced before the consumer started iterating over the
+    promise.
 
     :param streamer: A callable that returns an async iterator yielding the pieces of the whole value.
     :param resolver: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
     TODO Oleksandr: explain the `start_asap` parameter
+    TODO Oleksandr: this is one of the central classes of the framework, hence the docstring should be
+     much more detailed
     """
 
     def __init__(

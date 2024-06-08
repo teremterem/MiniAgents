@@ -24,9 +24,7 @@ class PromiseResolver(Protocol[T]):
 
 class PromiseStreamer(Protocol[PIECE]):
     """
-    TODO Oleksandr: update this docstring ?
-    A protocol for piece streamers. A piece streamer is a function that takes a `StreamedPromise` instance as an
-    argument and returns an async iterator of pieces.
+    TODO Oleksandr: docstring
     """
 
     def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE]: ...
@@ -34,10 +32,9 @@ class PromiseStreamer(Protocol[PIECE]):
 
 class PromiseResolvedEventHandler(Protocol):
     """
-    TODO Oleksandr: update this docstring
-    A protocol for StreamedPromise resolution event handlers. A promise resolution event is a function that is
-    scheduled to be called after StreamedPromise.aresolve() finishes resolving the promise. "Scheduled" means
-    that the function is passed to the event loop for execution without blocking the current coroutine.
+    A protocol for Promise resolution event handlers. A promise resolution event handler is a function that is
+    scheduled to be called after Promise.aresolve() finishes resolving the promise. "Scheduled" means that the
+    function is passed to the async event loop for execution without blocking the current coroutine.
     """
 
     async def __call__(self, promise: PromiseBound, result: Any) -> None: ...

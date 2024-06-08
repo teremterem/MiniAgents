@@ -7,6 +7,8 @@ from typing import AsyncIterator, Protocol, Union, Any, Iterable, AsyncIterable
 
 from pydantic import BaseModel
 
+from miniagents.promising.promise_typing import PromiseBound
+
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
     from miniagents.messages import Message, MessagePromise
@@ -27,6 +29,14 @@ class MessageTokenStreamer(Protocol):
     """
 
     def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
+
+
+class PersistMessageEventHandler(Protocol):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    async def __call__(self, promise: PromiseBound, message: "Message") -> None: ...
 
 
 # TODO Oleksandr: add documentation somewhere that explains what MessageType and SingleMessageType represent

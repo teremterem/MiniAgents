@@ -13,7 +13,7 @@ from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 class FlatSequence(Generic[IN, OUT]):
     """
-    TODO Oleksandr: produce a docstring for this class after you use it in the MiniAgents framework
+    TODO Oleksandr: docstring
     """
 
     sequence_promise: StreamedPromise[OUT, tuple[OUT, ...]]
