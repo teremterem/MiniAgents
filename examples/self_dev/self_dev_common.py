@@ -102,7 +102,7 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSi
                 not in {
                     # skip the prompt file in order not to throw off the LLM
                     "examples/self_developer/self_dev_prompts.py",
-                    "LICENSE",  # TODO Oleksandr: include the license file back ?
+                    "LICENSE",
                     "poetry.lock",
                 }
             )

@@ -90,7 +90,6 @@ async def _async_streamer_but_not_generator(_):
 @pytest.mark.parametrize(
     "broken_streamer",
     [
-        # "not really a streamer",  # TODO Oleksandr: do we even need this particular test case ?
         lambda _: iter([]),  # non-async streamer
         _async_streamer_but_not_generator,
     ],
@@ -131,7 +130,6 @@ async def test_broken_streamer(broken_streamer, start_asap: bool) -> None:
 @pytest.mark.parametrize(
     "broken_resolver",
     [
-        # "not really a resolver",  # TODO Oleksandr: do we even need this particular test case ?
         lambda _: [],  # non-async resolver
         TypeError,
     ],

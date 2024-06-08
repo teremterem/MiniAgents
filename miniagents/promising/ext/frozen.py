@@ -148,7 +148,6 @@ class Frozen(BaseModel):
         Recursively make sure that the field value is immutable and of allowed type.
         """
         if isinstance(value, (tuple, list)):
-            # TODO Oleksandr: stop copying tuples if their content did not change ?
             return tuple(cls._validate_and_freeze_value(key, sub_value) for sub_value in value)
         if isinstance(value, dict):
             return Frozen(**value)

@@ -36,7 +36,6 @@ def message_to_llm_dict(message: Message) -> dict[str, Any]:
     """
     TODO Oleksandr: docstring
     """
-    # TODO Oleksandr: introduce a lambda function to derive roles from messages ?
     try:
         role = message.role
     except AttributeError:
