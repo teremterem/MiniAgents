@@ -186,7 +186,6 @@ class InteractionContext:
 class AgentCall:
     """
     TODO Oleksandr: docstring
-    TODO Oleksandr: turn this into a context manager ?
     """
 
     def __init__(

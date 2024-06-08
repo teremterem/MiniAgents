@@ -107,7 +107,6 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSi
                 }
             )
         ]
-        # TODO Oleksandr: put `examples` folder content at the end of the message ?
         miniagent_files.sort(key=lambda file_message: file_message.file_posix_path)
         super().__init__(repo_files=miniagent_files, variation_name=variation_name)
 
