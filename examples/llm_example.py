@@ -23,7 +23,7 @@ mini_agents = MiniAgents()
 @mini_agents.on_persist_message
 async def persist_message(_, message: Message) -> None:
     """
-    TODO Oleksandr: docstring
+    Print the message to the console.
     """
     print("HASH KEY:", message.hash_key)
     print(type(message).__name__)

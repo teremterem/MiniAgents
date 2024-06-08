@@ -6,27 +6,19 @@ import asyncio
 import copy
 import logging
 from functools import partial
-from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
+from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
 
 from pydantic import BaseModel
 
 from miniagents.messages import MessagePromise, MessageSequencePromise, Message
-from miniagents.miniagent_typing import MessageType, AgentFunction
+from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessageEventHandler
 from miniagents.promising.ext.frozen import freeze_dict_values
-from miniagents.promising.promise_typing import PromiseStreamer, PromiseBound, PromiseResolvedEventHandler
+from miniagents.promising.promise_typing import PromiseStreamer, PromiseResolvedEventHandler
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
 logger = logging.getLogger(__name__)
-
-
-class PersistMessageEventHandler(Protocol):
-    """
-    TODO Oleksandr: docstring
-    """
-
-    async def __call__(self, promise: PromiseBound, message: Message) -> None: ...
 
 
 class MiniAgents(PromisingContext):
@@ -54,22 +46,19 @@ class MiniAgents(PromisingContext):
 
     def run(self, awaitable: Awaitable[Any]) -> Any:
         """
-        TODO Oleksandr: docstring
+        Run an awaitable in the MiniAgents context. This method is blocking. It also creates a new event loop.
         """
         return asyncio.run(self.arun(awaitable))
 
     async def arun(self, awaitable: Awaitable[Any]) -> Any:
         """
-        TODO Oleksandr: docstring
+        Run an awaitable in the MiniAgents context.
         """
         async with self:
             return await awaitable
 
     @classmethod
     def get_current(cls) -> "MiniAgents":
-        """
-        TODO Oleksandr: docstring
-        """
         # noinspection PyTypeChecker
         return super().get_current()
 
@@ -82,9 +71,6 @@ class MiniAgents(PromisingContext):
 
     # noinspection PyProtectedMember
     async def _trigger_persist_message_event(self, _, obj: Any) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
         # pylint: disable=protected-access
         if not isinstance(obj, Message):
             return
@@ -162,7 +148,8 @@ class InteractionContext:
 
     def reply(self, messages: MessageType) -> None:
         """
-        TODO Oleksandr: docstring
+        Send a reply to the messages that were received by the agent. The messages can be of any allowed MessageType.
+        They will be converted to Message objects when they arrive at the agent that sent the original messages.
         """
         # TODO Oleksandr: add a warning that iterators, async iterators and generators, if passed as `messages` will
         #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
@@ -174,12 +161,11 @@ class InteractionContext:
         #  in the code below)
         self._reply_streamer.append(messages)
 
-    def finish_early(self) -> None:
+    def finish_early(self) -> None:  # TODO Oleksandr: is this a good name for this method ?
         """
         TODO Oleksandr: docstring
-        TODO Oleksandr: is this a good name for this method ?
-        TODO Oleksandr: what to do with exceptions in agent function that may happen after this method was called ?
         """
+        # TODO Oleksandr: what to do with exceptions in agent function that may happen after this method was called ?
         self._reply_streamer.close()
 
 
@@ -284,7 +270,8 @@ class MiniAgent:
         **function_kwargs,
     ) -> "AgentCall":
         """
-        TODO Oleksandr: docstring
+        Start an inquiry with the agent. The agent will be called with the provided function kwargs.
+        TODO Oleksandr: expand this docstring ?
         """
         input_sequence = MessageSequence(
             start_asap=False,
@@ -305,7 +292,7 @@ class MiniAgent:
 
 class AgentInteractionNode(Message):
     """
-    TODO Oleksandr
+    TODO Oleksandr: docstring
     """
 
     agent_alias: str
@@ -313,7 +300,7 @@ class AgentInteractionNode(Message):
 
 class AgentCallNode(AgentInteractionNode):
     """
-    TODO Oleksandr
+    TODO Oleksandr: docstring
     """
 
     messages: tuple[Message, ...]
@@ -321,7 +308,7 @@ class AgentCallNode(AgentInteractionNode):
 
 class AgentReplyNode(AgentInteractionNode):
     """
-    TODO Oleksandr
+    TODO Oleksandr: docstring
     """
 
     agent_call: AgentCallNode
@@ -330,7 +317,7 @@ class AgentReplyNode(AgentInteractionNode):
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     """
-    TODO Oleksandr: produce a docstring for this class after you actually use it in real agents
+    TODO Oleksandr: docstring
     """
 
     message_appender: Optional[StreamAppender[MessageType]]

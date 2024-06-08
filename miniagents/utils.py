@@ -18,7 +18,7 @@ async def achain_loop(
     initial_input: Optional[MessageType] = None,
 ) -> None:
     """
-    TODO Oleksandr: docstring
+    Run a loop that chains the agents together.
     """
     agents = list(agents)
     if not any(agent is AWAIT for agent in agents):
@@ -55,14 +55,13 @@ def join_messages(
     **message_metadata,
 ) -> MessagePromise:
     """
-    TODO Oleksandr: improve this docstring ?
     Join multiple messages into a single message using a delimiter.
 
-    :param messages: A list of messages to join.
+    :param messages: Messages to join.
+    :param delimiter: A string that will be inserted between messages.
     :param strip_leading_newlines: If True, leading newlines will be stripped from each message. Language models,
     when prompted in a certain way, may produce leading newlines in the response. This parameter allows you to
     remove them.
-    :param delimiter: A string that will be inserted between messages.
     :param reference_original_messages: If True, the resulting message will contain the list of original messages in
     the `original_messages` field.
     :param start_asap: If True, the resulting message will be scheduled for background resolution regardless
@@ -111,7 +110,6 @@ def split_messages(  # TODO Oleksandr: move this function into some kind of `exp
     """
     TODO Oleksandr: docstring
     """
-
     # pylint: disable=not-context-manager,too-many-statements
 
     # TODO Oleksandr: convert this function into a class ?

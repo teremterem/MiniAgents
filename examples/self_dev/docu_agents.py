@@ -52,15 +52,10 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
     if not experiment_name:
         experiment_name = "DEFAULT"
 
-    # throttle_sleep = False
-
     # try all repo variations simultaneously
     for variation_idx, (variation_name, variation_skips) in enumerate(SKIPS_FOR_REPO_VARIATIONS.items()):
 
-        # # TODO Oleksandr: implement LLM agent throttling instead
-        # if throttle_sleep:
-        #     await asyncio.sleep(20)
-        # throttle_sleep = False
+        # TODO Oleksandr: implement LLM agent throttling
 
         # start all model agents in parallel
         for model_idx, (model, model_agent) in enumerate(MODEL_AGENTS.items()):
@@ -88,7 +83,6 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
                 ),
                 color=f"{90 + len(MODEL_AGENTS) * variation_idx + model_idx};1",
             )
-            # throttle_sleep = True  # at least one model was used - let's sleep befo
 
     # TODO Oleksandr: support this feature
     # await ctx.await_children()

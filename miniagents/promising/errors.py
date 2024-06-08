@@ -11,7 +11,8 @@ class PromisingError(Exception):
 
 class FunctionNotProvidedError(PromisingError):
     """
-    TODO Oleksandr: docstring
+    Raised when a function that was supposed to be provided (most likely as a parameter to a class constructor)
+    was not provided.
     """
 
 
