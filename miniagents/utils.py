@@ -51,7 +51,7 @@ def join_messages(
     delimiter: Optional[str] = "\n\n",
     strip_leading_newlines: bool = False,
     reference_original_messages: bool = True,
-    start_asap: Union[bool, Sentinel] = DEFAULT,
+    start_asap: Union[bool, Sentinel] = DEFAULT,  # TODO Oleksandr: why not just make it False ?
     **message_metadata,
 ) -> MessagePromise:
     """
@@ -77,6 +77,7 @@ def join_messages(
 
         first_message = True
         async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
+            # TODO Oleksandr: accumulate metadata from all the messages !!!
             if delimiter and not first_message:
                 yield delimiter
 
@@ -100,7 +101,7 @@ def join_messages(
     )
 
 
-def split_messages(
+def split_messages(  # TODO Oleksandr: move this function into some kind of `experimental` module ?
     messages: MessageType,
     delimiter: str = "\n\n",
     code_block_delimiter: Optional[str] = "```",

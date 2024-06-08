@@ -130,8 +130,8 @@ class Message(Frozen):
             return self.text_template.format(**self.model_dump())
         return super()._as_string()
 
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
+    def __init__(self, text: Optional[str] = None, **metadata: Any) -> None:
+        super().__init__(text=text, **metadata)
         self._persist_message_event_triggered = False
 
 
@@ -202,3 +202,12 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromis
         # hence the need to explicitly declare the __aiter__ method here
         # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
         return super().__aiter__()
+
+    def as_single_promise(self, **kwargs) -> MessagePromise:
+        """
+        Convert this sequence promise into a single message promise that will contain all the messages from this
+        sequence (separated by double newlines by default).
+        """
+        from miniagents.utils import join_messages  # pylint: disable=import-outside-toplevel
+
+        return join_messages(self, start_asap=False, **kwargs)

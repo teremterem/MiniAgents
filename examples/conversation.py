@@ -2,24 +2,18 @@
 Code example for using LLMs.
 """
 
-import asyncio
-
 # noinspection PyUnresolvedReferences
 import readline  # pylint: disable=unused-import
 
 from dotenv import load_dotenv
 
+from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 from miniagents.promising.sentinels import AWAIT
 from miniagents.utils import achain_loop
 
 load_dotenv()
-
-# pylint: disable=wrong-import-position
-from miniagents.ext.llm.openai import create_openai_agent
-
-mini_agents = MiniAgents()
 
 CHAT_HISTORY: list[MessageType] = []
 
@@ -47,21 +41,20 @@ async def amain() -> None:
     """
     The main conversation loop.
     """
-    async with mini_agents:
-        try:
-            print()
-            await achain_loop(
-                [
-                    user_agent,
-                    AWAIT,
-                    create_openai_agent(model="gpt-4o-2024-05-13"),
-                ]
-            )
-        except KeyboardInterrupt:
-            ...
-        finally:
-            print("\033[0m\n")
+    try:
+        print()
+        await achain_loop(
+            [
+                user_agent,
+                AWAIT,
+                create_openai_agent(model="gpt-4o-2024-05-13"),
+            ]
+        )
+    except KeyboardInterrupt:
+        ...
+    finally:
+        print("\033[0m\n")
 
 
 if __name__ == "__main__":
-    asyncio.run(amain())
+    MiniAgents().run(amain())

@@ -38,7 +38,7 @@ class PromisingContext:
         self,
         start_everything_asap_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
-        longer_hash_keys: bool = False,  # TODO Oleksandr: does it belong in this class ?
+        longer_hash_keys: bool = False,
         log_level_for_errors: int = logging.ERROR,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
     ) -> None:
@@ -133,12 +133,11 @@ class PromisingContext:
         Wait for all the child tasks to finish. This is useful when you want to wait for all the child tasks to finish
         before proceeding with the rest of the code.
         """
-        # TODO Oleksandr: introduce `raise_if_errors` flag ?
         while self.child_tasks:
             await asyncio.gather(
                 *self.child_tasks,
                 return_exceptions=True,  # this prevents waiting until the first exception and then giving up
-            )  # TODO Oleksandr: log exceptions that `gather` may return ?
+            )
 
     async def afinalize(self) -> None:
         """

@@ -2,10 +2,11 @@
 "Core" classes of the MiniAgents framework.
 """
 
+import asyncio
 import copy
 import logging
 from functools import partial
-from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable
+from typing import Protocol, AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
 
 from pydantic import BaseModel
 
@@ -50,6 +51,19 @@ class MiniAgents(PromisingContext):
         self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
             [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
         )
+
+    def run(self, awaitable: Awaitable[Any]) -> Any:
+        """
+        TODO Oleksandr: docstring
+        """
+        return asyncio.run(self.arun(awaitable))
+
+    async def arun(self, awaitable: Awaitable[Any]) -> Any:
+        """
+        TODO Oleksandr: docstring
+        """
+        async with self:
+            return await awaitable
 
     @classmethod
     def get_current(cls) -> "MiniAgents":
@@ -172,7 +186,6 @@ class InteractionContext:
 class AgentCall:
     """
     TODO Oleksandr: docstring
-    TODO Oleksandr: turn this into a context manager ?
     """
 
     def __init__(
