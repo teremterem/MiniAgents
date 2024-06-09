@@ -57,9 +57,9 @@ class ModelSingletonMeta(ModelMetaclass):
 
 SKIPS_FOR_REPO_VARIATIONS: dict[str, list[str]] = {
     "complete": [],
-    "no-examples-no-tests": ["examples/", "tests/"],
-    "no-examples": ["examples/"],
-    "no-tests": ["tests/"],
+    "no_examples_no_tests": ["examples/", "tests/"],
+    "no_examples": ["examples/"],
+    "no_tests": ["tests/"],
 }
 
 
@@ -110,7 +110,7 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSi
         miniagent_files.sort(key=lambda file_message: file_message.file_posix_path)
         super().__init__(repo_files=miniagent_files, variation_name=variation_name)
 
-        full_repo_md_file = SELF_DEV_TRANSIENT / experiment_name / f"REPO-{variation_name}.md"
+        full_repo_md_file = SELF_DEV_TRANSIENT / f"REPO__{experiment_name}__{variation_name}.md"
         full_repo_md_file.parent.mkdir(parents=True, exist_ok=True)
         full_repo_md_file.write_text(str(self), encoding="utf-8")
 
