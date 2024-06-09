@@ -48,7 +48,7 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
     MiniAgent that produces variants of README using different large language models.
     """
     experiment_name = input("\nEnter experiment folder name: ")
-    experiment_name = "-".join(experiment_name.lower().split())
+    experiment_name = "_".join(experiment_name.lower().split())
     if not experiment_name:
         experiment_name = "DEFAULT"
 
@@ -60,7 +60,7 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
         # start all model agents in parallel
         for model_idx, (model, model_agent) in enumerate(MODEL_AGENTS.items()):
 
-            md_file = SELF_DEV_OUTPUT / experiment_name / f"README-{variation_name}-{model}.md"
+            md_file = SELF_DEV_OUTPUT / f"README__{experiment_name}__{variation_name}__{model}.md"
 
             if md_file.exists() and md_file.stat().st_size > 0 and md_file.read_text(encoding="utf-8").strip():
                 continue
