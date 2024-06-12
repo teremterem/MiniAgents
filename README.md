@@ -5,13 +5,15 @@ MiniAgents is a Python framework for building agent-based systems. It provides a
 ## Features
 
 - Define agents as simple Python functions decorated with `@miniagent`
-- Agents can send and receive messages asynchronously
+- Agents can interact with each other by sending and receiving messages
 - Agents can be chained together to form complex interaction flows
 - Promises and async iterators are used extensively to enable non-blocking communication
+- Seamless integration with OpenAI and Anthropic LLM APIs
 - Extensible architecture allows integration with various LLM providers (OpenAI, Anthropic, etc.)
+- Supports streaming of messages and tokens for efficient processing
 - Utilities for working with message sequences (joining, splitting, etc.)
 - Frozen data structures for immutable agent state and message metadata
-- Sentinels for special values (e.g. `NO_VALUE`, `DEFAULT`, `AWAIT`, etc.)
+- Built on top of the `Promising` library for managing asynchronous operations
 
 ## Installation
 
@@ -43,6 +45,37 @@ async with MiniAgents():
 ```
 
 For more advanced usage, check out the [examples](examples/) directory.
+
+## Usage
+
+Here's a simple example of defining agents and having them interact:
+
+```python
+from miniagents import miniagent, MiniAgents, InteractionContext
+
+@miniagent
+async def agent1(ctx: InteractionContext):
+    ctx.reply("Hello from Agent 1!")
+
+@miniagent
+async def agent2(ctx: InteractionContext):
+    message = await ctx.messages.aresolve_messages()
+    ctx.reply(f"Agent 2 received: {message[0].text}")
+
+async def main():
+    async with MiniAgents():
+        agent2_replies = agent2.inquire(agent1.inquire())
+        print(await agent2_replies.aresolve_messages())
+
+asyncio.run(main())
+```
+
+This will output:
+```
+(Message(text='Agent 2 received: Hello from Agent 1!'),)
+```
+
+For more advanced usage, including integration with LLMs, see the documentation and examples.
 
 ### Basic Example
 
