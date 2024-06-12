@@ -1,23 +1,32 @@
 # MiniAgents
 
+THIS README IS STILL WORK IN PROGRESS
+
+---
+
 MiniAgents is a Python framework for building agent-based systems. It provides a simple and intuitive way to define agents and their interactions.
 
 ## Features
 
 - Define agents as simple Python functions decorated with `@miniagent`
 - Agents can interact with each other by sending and receiving messages
+- Agents can send and receive messages asynchronously
 - Agents can be chained together to form complex interaction flows
 - Promises and async iterators are used extensively to enable non-blocking communication
-- Seamless integration with OpenAI and Anthropic LLM APIs
+- Pass messages between agents using `MessageType` objects
+- Integrate with OpenAI and Anthropic LLMs using `create_openai_agent` and `create_anthropic_agent`
 - Extensible architecture allows integration with various LLM providers (OpenAI, Anthropic, etc.)
 - Supports streaming of messages and tokens for efficient processing
 - Utilities for working with message sequences (joining, splitting, etc.)
-- Stream tokens from LLMs piece-by-piece
+- Stream tokens from LLMs piece-by-piece using `StreamedPromise`
+- Flatten nested message sequences with `MessageSequence`
 - Promises and async iterators used extensively to enable non-blocking execution
 - Immutable message passing via `Frozen` pydantic models
 - Frozen data structures for immutable agent state and message metadata
 - Built on top of the `Promising` library for managing asynchronous operations
+- Asynchronous promise-based programming model with `Promise` and `StreamedPromise`
 - Hooks to persist messages as they are sent/received
+- Typing with Pydantic for validation and serialization of messages
 
 ## Installation
 
@@ -293,6 +302,30 @@ assistant_message = AssistantMessage(text="Assistant message")
 - `Message` - Represents a message that can be sent between agents, with optional metadata
 - **MessagePromise**: A promise of a message that can be streamed token by token.
 - **MessageSequencePromise**: A promise of a sequence of messages that can be streamed message by message.
+
+### Core Classes
+
+- `MiniAgents`: The main context manager for managing agents and their interactions.
+- `MiniAgent`: A wrapper for an agent function that allows calling the agent.
+- `InteractionContext`: Provides context for an agent's interaction, including the messages and reply streamer.
+
+### Message Handling
+
+- `Message`: Represents a message that can be sent between agents.
+- `MessagePromise`: A promise of a message that can be streamed token by token.
+- `MessageSequencePromise`: A promise of a sequence of messages that can be streamed message by message.
+
+### Promising
+
+- `Promise`: Represents a promise of a value that will be resolved asynchronously.
+- `StreamedPromise`: Represents a promise of a whole value that can be streamed piece by piece.
+- `StreamAppender`: Allows appending pieces to a stream that is consumed by a `StreamedPromise`.
+
+### Utilities
+
+- `achain_loop`: Runs a loop of agents, chaining their interactions.
+- `join_messages`: Joins multiple messages into a single message using a delimiter.
+- `split_messages`: Splits messages based on a delimiter.
 
 ## Contributing
 
