@@ -287,8 +287,10 @@ assistant_message = AssistantMessage(text="Assistant message")
 
 - **MiniAgents**: The main class that manages the lifecycle of agents and their interactions.
 - **MiniAgent**: A wrapper for an agent function that allows calling the agent.
+- `MiniAgent` - A wrapper around a Python function that allows it to send and receive messages
 - **InteractionContext**: Provides context for the interaction, including the messages and the agent.
 - **Message**: Represents a message that can be sent between agents.
+- `Message` - Represents a message that can be sent between agents, with optional metadata
 - **MessagePromise**: A promise of a message that can be streamed token by token.
 - **MessageSequencePromise**: A promise of a sequence of messages that can be streamed message by message.
 
