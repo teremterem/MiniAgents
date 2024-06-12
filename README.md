@@ -124,6 +124,59 @@ anthropic_agent = create_anthropic_agent()
 mini_agents.run(anthropic_agent.inquire("Hello, Anthropic!"))
 ```
 
+### LLM Integration
+
+You can integrate with LLMs like OpenAI and Anthropic. Here's an example using OpenAI:
+
+```python
+from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.miniagents import MiniAgents
+
+llm_agent = create_openai_agent(model="gpt-4")
+
+async def amain() -> None:
+    reply_sequence = llm_agent.inquire("How are you today?", max_tokens=100)
+    async for msg_promise in reply_sequence:
+        async for token in msg_promise:
+            print(token, end="", flush=True)
+        print()
+
+if __name__ == "__main__":
+    MiniAgents().run(amain())
+```
+
+### Advanced Example
+
+For more advanced usage, you can define multiple agents and manage their interactions:
+
+```python
+from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
+from miniagents.promising.sentinels import AWAIT
+from miniagents.utils import achain_loop
+
+@miniagent
+async def user_agent(ctx: InteractionContext) -> None:
+    async for msg_promise in ctx.messages:
+        async for token in msg_promise:
+            print(token, end="", flush=True)
+        print()
+    ctx.reply(input("USER: "))
+
+@miniagent
+async def assistant_agent(ctx: InteractionContext) -> None:
+    async for msg_promise in ctx.messages:
+        async for token in msg_promise:
+            print(token, end="", flush=True)
+        print()
+    ctx.reply("Hello, how can I assist you?")
+
+async def amain() -> None:
+    await achain_loop([user_agent, AWAIT, assistant_agent])
+
+if __name__ == "__main__":
+    MiniAgents().run(amain())
+```
+
 ### Handling Messages
 
 MiniAgents provides a structured way to handle messages. You can define different types of messages such as `UserMessage`, `SystemMessage`, and `AssistantMessage`:
