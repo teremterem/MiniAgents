@@ -44,6 +44,98 @@ async with MiniAgents():
 
 For more advanced usage, check out the [examples](examples/) directory.
 
+### Define an Agent
+
+You can define an agent using the `@miniagent` decorator. An agent is essentially an asynchronous function that interacts with a context.
+
+```python
+from miniagents.miniagents import miniagent, InteractionContext
+
+@miniagent
+async def my_agent(ctx: InteractionContext) -> None:
+    ctx.reply("Hello, I am an agent!")
+```
+
+### Run an Agent
+
+To run an agent, you need to create an instance of `MiniAgents` and use the `inquire` method to send messages to the agent.
+
+```python
+from miniagents.miniagents import MiniAgents
+
+async def main():
+    async with MiniAgents():
+        replies = my_agent.inquire()
+        async for reply in replies:
+            print(await reply)
+
+import asyncio
+asyncio.run(main())
+```
+
+### Integrate with LLMs
+
+MiniAgents provides built-in support for OpenAI and Anthropic language models. You can create agents for these models using the provided functions.
+
+```python
+from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.messages import Message
+
+openai_agent = create_openai_agent(model="gpt-3.5-turbo")
+
+async def main():
+    async with MiniAgents():
+        replies = openai_agent.inquire(
+            Message(text="Hello, how are you?", role="user"),
+            system="You are a helpful assistant.",
+            max_tokens=50,
+            temperature=0.7,
+        )
+        async for reply in replies:
+            print(await reply)
+
+import asyncio
+asyncio.run(main())
+```
+
+### Integrating with OpenAI
+
+To create an agent that interacts with OpenAI, you can use the `create_openai_agent` function:
+
+```python
+from miniagents.ext.llm.openai import create_openai_agent
+
+openai_agent = create_openai_agent()
+
+# Running the OpenAI agent
+mini_agents.run(openai_agent.inquire("Hello, OpenAI!"))
+```
+
+### Integrating with Anthropic
+
+Similarly, you can create an agent that interacts with Anthropic:
+
+```python
+from miniagents.ext.llm.anthropic import create_anthropic_agent
+
+anthropic_agent = create_anthropic_agent()
+
+# Running the Anthropic agent
+mini_agents.run(anthropic_agent.inquire("Hello, Anthropic!"))
+```
+
+### Handling Messages
+
+MiniAgents provides a structured way to handle messages. You can define different types of messages such as `UserMessage`, `SystemMessage`, and `AssistantMessage`:
+
+```python
+from miniagents.ext.llm.llm_common import UserMessage, SystemMessage, AssistantMessage
+
+user_message = UserMessage(text="Hello!")
+system_message = SystemMessage(text="System message")
+assistant_message = AssistantMessage(text="Assistant message")
+```
+
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
