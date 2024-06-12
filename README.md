@@ -44,6 +44,27 @@ async with MiniAgents():
 
 For more advanced usage, check out the [examples](examples/) directory.
 
+### Basic Example
+
+Here's a basic example of how to create and run a simple agent using MiniAgents:
+
+```python
+import asyncio
+from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
+
+@miniagent
+async def simple_agent(ctx: InteractionContext) -> None:
+    print("Agent is running")
+    ctx.reply("Hello from the agent!")
+
+async def main() -> None:
+    async with MiniAgents():
+        await simple_agent.inquire()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
 ### Define an Agent
 
 You can define an agent using the `@miniagent` decorator. An agent is essentially an asynchronous function that interacts with a context.
@@ -124,25 +145,29 @@ anthropic_agent = create_anthropic_agent()
 mini_agents.run(anthropic_agent.inquire("Hello, Anthropic!"))
 ```
 
-### LLM Integration
+### Integrating with OpenAI
 
-You can integrate with LLMs like OpenAI and Anthropic. Here's an example using OpenAI:
+You can create an agent that interacts with OpenAI's GPT models:
 
 ```python
+from dotenv import load_dotenv
 from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.miniagents import MiniAgents
 
-llm_agent = create_openai_agent(model="gpt-4")
+load_dotenv()
 
-async def amain() -> None:
-    reply_sequence = llm_agent.inquire("How are you today?", max_tokens=100)
-    async for msg_promise in reply_sequence:
-        async for token in msg_promise:
-            print(token, end="", flush=True)
-        print()
+llm_agent = create_openai_agent(model="gpt-4o-2024-05-13")
+
+async def main() -> None:
+    async with MiniAgents():
+        reply_sequence = llm_agent.inquire("How are you today?", max_tokens=1000, temperature=0.0)
+        async for msg_promise in reply_sequence:
+            async for token in msg_promise:
+                print(token, end="", flush=True)
+            print()
 
 if __name__ == "__main__":
-    MiniAgents().run(amain())
+    asyncio.run(main())
 ```
 
 ### Advanced Example
@@ -177,6 +202,36 @@ if __name__ == "__main__":
     MiniAgents().run(amain())
 ```
 
+### Advanced Example with Multiple Agents
+
+You can create more complex interactions involving multiple agents:
+
+```python
+import asyncio
+from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
+
+@miniagent
+async def agent1(ctx: InteractionContext) -> None:
+    print("Agent 1 is running")
+    ctx.reply("Message from Agent 1")
+
+@miniagent
+async def agent2(ctx: InteractionContext) -> None:
+    print("Agent 2 is running")
+    ctx.reply("Message from Agent 2")
+
+@miniagent
+async def aggregator_agent(ctx: InteractionContext) -> None:
+    ctx.reply([agent1.inquire(), agent2.inquire()])
+
+async def main() -> None:
+    async with MiniAgents():
+        await aggregator_agent.inquire()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
 ### Handling Messages
 
 MiniAgents provides a structured way to handle messages. You can define different types of messages such as `UserMessage`, `SystemMessage`, and `AssistantMessage`:
@@ -206,3 +261,7 @@ MiniAgents is released under the [MIT License](LICENSE).
   interrupting those promises with KeyboardInterrupt which are extended from BaseException instead of letting
   KeyboardInterrupt to go through the queue leads to hanging of those promises (a queue is waiting for END_OF_QUEUE
   sentinel forever but the task that should send it is dead).
+
+---
+
+This README provides an overview of the MiniAgents framework, its features, installation instructions, usage examples, and information on testing and contributing. For more detailed documentation, please refer to the source code and comments within the project.
