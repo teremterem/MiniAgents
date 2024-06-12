@@ -6,8 +6,12 @@ THIS README IS STILL WORK IN PROGRESS
 
 MiniAgents is a Python framework for building agent-based systems. It provides a simple and intuitive way to define agents and their interactions.
 
+MiniAgents is a Python framework designed to facilitate the creation and management of agents that interact with language models (LLMs) and other services. It provides a structured way to define, call, and manage agents, making it easier to build complex systems that rely on asynchronous interactions and streaming data.
+
 ## Features
 
+- **Asynchronous Interaction**: Support for asynchronous interactions with agents.
+- **Streaming**: Stream data token by token or message by message.
 - Asynchronous and parallel execution of agents
 - Define agents as simple Python functions decorated with `@miniagent`
 - Agents can interact with each other by sending and receiving messages
@@ -252,6 +256,8 @@ if __name__ == "__main__":
     MiniAgents().run(amain())
 ```
 
+TODO Oleksandr: explain why AWAIT is used in the example above
+
 ### Advanced Example with Multiple Agents
 
 You can create more complex interactions involving multiple agents:
@@ -341,6 +347,26 @@ async def main():
 miniagents.run(main())
 ```
 
+## Utilities
+
+MiniAgents provides several utility functions to help with common tasks:
+
+- **join_messages**: Join multiple messages into a single message.
+- **split_messages**: Split a message into multiple messages based on a delimiter.
+
+Example of joining messages:
+
+```python
+from miniagents.utils import join_messages
+
+async def main():
+    async with MiniAgents() as context:
+        joined_message = join_messages(["Hello", "World"], delimiter=" ")
+        print(await joined_message.aresolve())
+
+MiniAgents().run(main())
+```
+
 ## Documentation
 
 ### Core Concepts
@@ -407,3 +433,7 @@ MiniAgents is released under the [MIT License](LICENSE).
 ---
 
 This README provides an overview of the MiniAgents framework, its features, installation instructions, usage examples, and information on testing and contributing. For more detailed documentation, please refer to the source code and comments within the project.
+
+---
+
+Happy coding with MiniAgents! 🚀
