@@ -2,6 +2,8 @@
 Parse a chat history in markdown format (work in progress).
 """
 
+from pprint import pprint
+
 from markdown_it import MarkdownIt
 
 
@@ -23,7 +25,7 @@ assistant
 fine
 """
     tokens = md.parse(text)
-    print(tokens)
+    pprint(tokens)
 
 
 if __name__ == "__main__":
