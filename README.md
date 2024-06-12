@@ -8,6 +8,7 @@ MiniAgents is a Python framework for building agent-based systems. It provides a
 
 ## Features
 
+- Asynchronous and parallel execution of agents
 - Define agents as simple Python functions decorated with `@miniagent`
 - Agents can interact with each other by sending and receiving messages
 - Agents can send and receive messages asynchronously
@@ -23,6 +24,7 @@ MiniAgents is a Python framework for building agent-based systems. It provides a
 - Promises and async iterators used extensively to enable non-blocking execution
 - Immutable message passing via `Frozen` pydantic models
 - Frozen data structures for immutable agent state and message metadata
+- Immutable message and agent state for reproducibility
 - Built on top of the `Promising` library for managing asynchronous operations
 - Asynchronous promise-based programming model with `Promise` and `StreamedPromise`
 - Hooks to persist messages as they are sent/received
@@ -278,6 +280,21 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+### Message Handling
+
+MiniAgents provides a structured way to handle messages using the `Message` class and its derivatives.
+
+```python
+from miniagents.messages import Message
+
+class CustomMessage(Message):
+    custom_field: str
+
+message = CustomMessage(text="Hello", custom_field="Custom Value")
+print(message.text)  # Output: Hello
+print(message.custom_field)  # Output: Custom Value
+```
+
 ### Handling Messages
 
 MiniAgents provides a structured way to handle messages. You can define different types of messages such as `UserMessage`, `SystemMessage`, and `AssistantMessage`:
@@ -288,6 +305,38 @@ from miniagents.ext.llm.llm_common import UserMessage, SystemMessage, AssistantM
 user_message = UserMessage(text="Hello!")
 system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
+```
+
+## Utility Functions
+
+### Joining Messages
+
+You can join multiple messages into a single message using the `join_messages` function:
+
+```python
+from miniagents.utils import join_messages
+
+async def main():
+    messages = ["Hello", "world"]
+    joined_message = join_messages(messages)
+    print(await joined_message.aresolve())
+
+miniagents.run(main())
+```
+
+### Splitting Messages
+
+You can split a message into multiple messages using the `split_messages` function:
+
+```python
+from miniagents.utils import split_messages
+
+async def main():
+    message = "Hello\n\nworld"
+    split_message = split_messages(message)
+    print(await split_message.aresolve_messages())
+
+miniagents.run(main())
 ```
 
 ## Documentation
