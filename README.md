@@ -315,6 +315,8 @@ system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
 ```
 
+TODO Oleksandr: mention that exceptions in agents are treated as messages ?
+
 ## Utility Functions
 
 ### Joining Messages
