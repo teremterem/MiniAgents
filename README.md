@@ -12,8 +12,12 @@ MiniAgents is a Python framework for building agent-based systems. It provides a
 - Extensible architecture allows integration with various LLM providers (OpenAI, Anthropic, etc.)
 - Supports streaming of messages and tokens for efficient processing
 - Utilities for working with message sequences (joining, splitting, etc.)
+- Stream tokens from LLMs piece-by-piece
+- Promises and async iterators used extensively to enable non-blocking execution
+- Immutable message passing via `Frozen` pydantic models
 - Frozen data structures for immutable agent state and message metadata
 - Built on top of the `Promising` library for managing asynchronous operations
+- Hooks to persist messages as they are sent/received
 
 ## Installation
 
