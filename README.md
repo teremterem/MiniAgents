@@ -277,6 +277,17 @@ system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
 ```
 
+## Documentation
+
+### Core Concepts
+
+- **MiniAgents**: The main class that manages the lifecycle of agents and their interactions.
+- **MiniAgent**: A wrapper for an agent function that allows calling the agent.
+- **InteractionContext**: Provides context for the interaction, including the messages and the agent.
+- **Message**: Represents a message that can be sent between agents.
+- **MessagePromise**: A promise of a message that can be streamed token by token.
+- **MessageSequencePromise**: A promise of a sequence of messages that can be streamed message by message.
+
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
