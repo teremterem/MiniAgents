@@ -12,6 +12,8 @@ MiniAgents is a Python framework for building agent-based systems. It provides a
 - Define agents as simple Python functions decorated with `@miniagent`
 - Agents can interact with each other by sending and receiving messages
 - Agents can send and receive messages asynchronously
+- Agents can run in parallel and communicate with each other
+- Agents can be composed to create more complex agents
 - Agents can be chained together to form complex interaction flows
 - Promises and async iterators are used extensively to enable non-blocking communication
 - Pass messages between agents using `MessageType` objects
@@ -343,7 +345,9 @@ miniagents.run(main())
 
 ### Core Concepts
 
+- `MiniAgents`: The main context manager for running agents
 - **MiniAgents**: The main class that manages the lifecycle of agents and their interactions.
+- `@miniagent`: Decorator for defining agents
 - **MiniAgent**: A wrapper for an agent function that allows calling the agent.
 - `MiniAgent` - A wrapper around a Python function that allows it to send and receive messages
 - **InteractionContext**: Provides context for the interaction, including the messages and the agent.
@@ -352,16 +356,22 @@ miniagents.run(main())
 - **MessagePromise**: A promise of a message that can be streamed token by token.
 - **MessageSequencePromise**: A promise of a sequence of messages that can be streamed message by message.
 
+- `create_openai_agent`: Creates an OpenAI language model agent
+- `create_anthropic_agent`: Creates an Anthropic language model agent
+
 ### Core Classes
 
 - `MiniAgents`: The main context manager for managing agents and their interactions.
 - `MiniAgent`: A wrapper for an agent function that allows calling the agent.
 - `InteractionContext`: Provides context for an agent's interaction, including the messages and reply streamer.
+- `InteractionContext`: Passed to agent functions, provides methods for replying and finishing early
 
 ### Message Handling
 
 - `Message`: Represents a message that can be sent between agents.
+- `Message`: Represents a message passed between agents
 - `MessagePromise`: A promise of a message that can be streamed token by token.
+- `MessagePromise`: A promise that resolves to a message
 - `MessageSequencePromise`: A promise of a sequence of messages that can be streamed message by message.
 
 ### Promising
