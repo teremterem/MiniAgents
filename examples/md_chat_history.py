@@ -1,5 +1,6 @@
 """
 Parse a chat history in markdown format (work in progress).
+TODO Oleksandr: this is a temporary example that will be deleted when the "history-in-md" utility is implemented.
 """
 
 from pprint import pprint
