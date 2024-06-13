@@ -2,6 +2,8 @@
 A simple conversation example using the MiniAgents framework.
 """
 
+import logging
+
 from dotenv import load_dotenv
 from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.document import Document
@@ -47,7 +49,7 @@ class CustomLexer(Lexer):
         return lambda i: [("class:user_utterance", document.text.split("\n")[i])]
 
 
-style = Style.from_dict({"user_utterance": "fg:ansiyellow bold"})
+style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
 
 
 @miniagent
@@ -93,4 +95,7 @@ async def amain() -> None:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARNING)
+    # logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
+
     MiniAgents().run(amain())
