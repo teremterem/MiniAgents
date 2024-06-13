@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from miniagents.messages import MessagePromise, MessageSequencePromise, Message
 from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessageEventHandler
-from miniagents.promising.ext.frozen import freeze_dict_values
+from miniagents.promising.ext.frozen import freeze_dict_values, Frozen
 from miniagents.promising.promise_typing import PromiseStreamer, PromiseResolvedEventHandler
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
@@ -229,8 +229,15 @@ class MiniAgent:
     ) -> None:
         self._func = func
         if partial_kwargs:
+            # NOTE: we cannot deep-copy the partial_kwargs here, because they may contain objects that are
+            # not serializable (for ex. AsyncAnthropic and AsyncOpenAI objects in case of anthropic and openai
+            # miniagents)
             self._func = partial(func, **partial_kwargs)
-        self.frozen_interact_metadata = freeze_dict_values(interaction_metadata or {})  # validate the metadata
+
+        # validate interaction metadata
+        # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
+        self.interaction_metadata = Frozen(**(interaction_metadata or {}))
+        self._interact_metadata_dict = dict(self.interaction_metadata.frozen_fields_and_values(exclude_class=True))
 
         self.alias = alias
         if self.alias is None:
@@ -393,7 +400,9 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
 
 
+# noinspection PyProtectedMember
 class AgentReplyMessageSequence(MessageSequence):
+    # pylint: disable=protected-access
     """
     TODO Oleksandr: docstring
     """
@@ -431,7 +440,7 @@ class AgentReplyMessageSequence(MessageSequence):
             return AgentCallNode(
                 messages=await self._input_sequence_promise.aresolve_messages(),
                 agent_alias=self._mini_agent.alias,
-                **self._mini_agent.frozen_interact_metadata,
+                **self._mini_agent._interact_metadata_dict,
                 # NOTE: the next line will override any keys from `self.interaction_metadata` if names collide
                 **self._frozen_func_kwargs,
             )
@@ -449,7 +458,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 replies=await self.sequence_promise.aresolve_messages(),
                 agent_alias=self._mini_agent.alias,
                 agent_call=await agent_call_promise,
-                **self._mini_agent.frozen_interact_metadata,
+                **self._mini_agent._interact_metadata_dict,
             )
 
         Promise[AgentReplyNode](

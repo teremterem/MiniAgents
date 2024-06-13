@@ -8,7 +8,8 @@ branch = true
 name = "miniagents"
 version = "0.0.12"
 description = """\
-TODO Oleksandr\
+An asynchronous framework for building LLM-based multi-agent systems in Python, with a focus on immutable messages \
+and token streaming.\
 """
 authors = ["Oleksandr Tereshchenko <toporok@gmail.com>"]
 homepage = "https://github.com/teremterem/MiniAgents"

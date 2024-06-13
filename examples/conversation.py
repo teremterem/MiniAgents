@@ -1,11 +1,16 @@
 """
-Code example for using LLMs.
+A simple conversation example using the MiniAgents framework.
 """
 
-# noinspection PyUnresolvedReferences
-import readline  # pylint: disable=unused-import
+import logging
 
 from dotenv import load_dotenv
+from prompt_toolkit import PromptSession, HTML
+from prompt_toolkit.document import Document
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
+from prompt_toolkit.lexers import Lexer
+from prompt_toolkit.styles import Style
 
 from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.miniagent_typing import MessageType
@@ -15,7 +20,36 @@ from miniagents.utils import achain_loop
 
 load_dotenv()
 
+session = PromptSession()
+
+bindings = KeyBindings()
+
 CHAT_HISTORY: list[MessageType] = []
+
+
+@bindings.add(Keys.Enter)
+def _(event):
+    event.current_buffer.validate_and_handle()
+
+
+@bindings.add(Keys.ControlSpace)
+def _(event):
+    event.current_buffer.insert_text("\n")
+
+
+class CustomLexer(Lexer):
+    """
+    Custom lexer that paints user utterances in yellow (and bold).
+    """
+
+    def lex_document(self, document: Document):
+        """
+        Lex the document.
+        """
+        return lambda i: [("class:user_utterance", document.text.split("\n")[i])]
+
+
+style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
 
 
 @miniagent
@@ -31,8 +65,14 @@ async def user_agent(ctx: InteractionContext) -> None:
         print("\n")
 
     CHAT_HISTORY.append(ctx.messages)
-    print("\033[93;1m", end="", flush=True)
-    CHAT_HISTORY.append(input("USER: "))
+    user_input = await session.prompt_async(
+        HTML("<user_utterance>USER: </user_utterance>"),
+        multiline=True,
+        key_bindings=bindings,
+        lexer=CustomLexer(),
+        style=style,
+    )
+    CHAT_HISTORY.append(user_input)
 
     ctx.reply(CHAT_HISTORY)
 
@@ -51,10 +91,11 @@ async def amain() -> None:
             ]
         )
     except KeyboardInterrupt:
-        ...
-    finally:
-        print("\033[0m\n")
+        print()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARNING)
+    # logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
+
     MiniAgents().run(amain())
