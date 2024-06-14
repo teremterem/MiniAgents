@@ -13,15 +13,6 @@ from pydantic import BaseModel, ConfigDict, model_validator
 FrozenType = Optional[Union[str, int, float, bool, tuple["FrozenType", ...], "Frozen"]]
 
 
-def freeze_dict_values(d: dict[str, Any]) -> dict[str, FrozenType]:
-    """
-    Freeze the values of the dictionary using the Frozen class where necessary (and also recursively validate
-    the "freezability" of those values). Useful for freezing function kwargs that are going to be supplied
-    as (extra) fields of some Frozen object (e.g. a Message) which is meant to be constructed at a later time.
-    """
-    return dict(Frozen(**d).frozen_fields_and_values(exclude_class=True))
-
-
 class Frozen(BaseModel):
     """
     A frozen pydantic model that allows arbitrary fields, has a git-style hash key that is calculated from the
@@ -93,11 +84,14 @@ class Frozen(BaseModel):
             )
         return itertools.chain(self.model_fields, self.__pydantic_extra__)
 
-    def frozen_fields_and_values(self, exclude_class: bool = False) -> Iterator[tuple[str, Any]]:
+    def frozen_fields_and_values(self, exclude_class: bool = True) -> dict[str, Any]:
         """
-        Get the list of field names and values of the object. This includes the model fields (both, explicitly set
-        and the ones with default values) and the extra fields that are not part of the model.
+        Get a dict of field names and values of this Pydantic object. This includes the model fields (both,
+        explicitly set and the ones with default values) and the extra fields that are not part of the model.
         """
+        return dict(self._frozen_fields_and_values(exclude_class=exclude_class))
+
+    def _frozen_fields_and_values(self, exclude_class: bool) -> Iterator[tuple[str, Any]]:
         if exclude_class:
             for field in self.model_fields:
                 if field != "class_":

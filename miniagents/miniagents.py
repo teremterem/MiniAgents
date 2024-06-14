@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from miniagents.messages import MessagePromise, MessageSequencePromise, Message
 from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessageEventHandler
-from miniagents.promising.ext.frozen import freeze_dict_values, Frozen
+from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseStreamer, PromiseResolvedEventHandler
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sentinels import Sentinel, DEFAULT
@@ -237,7 +237,7 @@ class MiniAgent:
         # validate interaction metadata
         # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         self.interaction_metadata = Frozen(**(interaction_metadata or {}))
-        self._interact_metadata_dict = dict(self.interaction_metadata.frozen_fields_and_values(exclude_class=True))
+        self._interact_metadata_dict = self.interaction_metadata.frozen_fields_and_values()
 
         self.alias = alias
         if self.alias is None:
@@ -414,7 +414,8 @@ class AgentReplyMessageSequence(MessageSequence):
         function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
-        self._frozen_func_kwargs = freeze_dict_values(function_kwargs)  # this validates the agent function kwargs
+        # this validates the agent function kwargs
+        self._frozen_func_kwargs = Frozen(**function_kwargs).frozen_fields_and_values()
         self._function_kwargs = copy.deepcopy(function_kwargs)
 
         self._mini_agent = mini_agent
