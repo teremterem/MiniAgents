@@ -4,7 +4,6 @@ TODO Oleksandr: this is a temporary example that will be deleted when the "histo
 """
 
 from pathlib import Path
-from pprint import pprint
 
 from markdown_it import MarkdownIt
 
@@ -20,7 +19,9 @@ def main() -> None:
     print()
     print()
     print()
-    pprint(tokens)
+    # pprint(tokens)
+    for token in tokens:
+        print(token.map, token.type, token.tag, token.level, "-----", token.content[:50], "-----")
     print()
     print()
     print()
