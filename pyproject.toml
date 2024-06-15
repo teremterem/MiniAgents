@@ -6,7 +6,7 @@ branch = true
 
 [tool.poetry]
 name = "miniagents"
-version = "0.0.13"
+version = "0.0.14"
 description = """\
 An asynchronous framework for building LLM-based multi-agent systems in Python, with a focus on immutable messages \
 and token streaming.\
