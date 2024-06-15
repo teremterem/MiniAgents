@@ -90,7 +90,8 @@ class Message(Frozen):
             node: Frozen,
             node_path: tuple[Union[str, int], ...],
         ) -> None:
-            for field, value in node.frozen_fields_and_values():
+            # pylint: disable=protected-access
+            for field, value in node._frozen_fields_and_values(exclude_class=False):
                 if isinstance(value, Message):
                     sub_messages[(*node_path, field)] = value
 
@@ -127,7 +128,8 @@ class Message(Frozen):
         if self.text is not None:
             return self.text
         if self.text_template is not None:
-            return self.text_template.format(**self.model_dump())
+            # TODO Oleksandr: exclude_class=False ?
+            return self.text_template.format(**self.frozen_fields_and_values())
         return super()._as_string()
 
     def __init__(self, text: Optional[str] = None, **metadata: Any) -> None:
@@ -162,7 +164,7 @@ class MessagePromise(StreamedPromise[str, Message]):
             )
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
-            self._metadata_so_far = dict(self.preliminary_metadata.frozen_fields_and_values(exclude_class=True))
+            self._metadata_so_far = self.preliminary_metadata.frozen_fields_and_values()
 
             self._message_token_streamer = message_token_streamer
             self._message_class = message_class

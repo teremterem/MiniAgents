@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Iterable
 
 from dotenv import load_dotenv
-from pydantic._internal._model_construction import ModelMetaclass
 
 from miniagents.ext.llm.anthropic import create_anthropic_agent
 from miniagents.ext.llm.openai import create_openai_agent
@@ -42,19 +41,6 @@ class RepoFileMessage(Message):
         return f"{self.file_posix_path}\n```{snippet_type}\n{self.text}{extra_newline}```"
 
 
-class ModelSingletonMeta(ModelMetaclass):
-    """
-    A metaclass that ensures that only one instance of a Pydantic model of a certain class is created.
-    """
-
-    _instance = None
-
-    def __call__(cls):  # , *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super().__call__()  # *args, **kwargs)
-        return cls._instance
-
-
 SKIPS_FOR_REPO_VARIATIONS: dict[str, list[str]] = {
     "complete": [],
     "no_examples_no_tests": ["examples/", "tests/"],
@@ -63,7 +49,7 @@ SKIPS_FOR_REPO_VARIATIONS: dict[str, list[str]] = {
 }
 
 
-class FullRepoMessage(Message):  # TODO Oleksandr: bring back `metaclass=ModelSingletonMeta` ?
+class FullRepoMessage(Message):  # TODO Oleksandr: bring back `ModelSingleton` ?
     """
     A message that represents the full content of the MiniAgents repository.
     """
