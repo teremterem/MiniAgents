@@ -5,6 +5,8 @@ Utility functions of the MiniAgents framework.
 import logging
 from typing import AsyncIterator, Any, Optional, Union, Iterable, Callable
 
+from pydantic._internal._model_construction import ModelMetaclass
+
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message, MiniAgent
 from miniagents.promising.promising import StreamAppender
@@ -110,6 +112,7 @@ def split_messages(  # TODO Oleksandr: move this function into some kind of `exp
     """
     TODO Oleksandr: docstring
     """
+
     # pylint: disable=not-context-manager,too-many-statements
 
     # TODO Oleksandr: convert this function into a class ?
@@ -219,3 +222,35 @@ def split_messages(  # TODO Oleksandr: move this function into some kind of `exp
         resolver=sequence_resolver,
         start_asap=True,  # allowing it to ever be False results in a deadlock
     )
+
+
+class SingletonMeta(type):
+    """
+    A metaclass that ensures that only one instance of a certain class is created.
+    NOTE: This metaclass is designed to work in asynchronous environments, hence we didn't bother making
+    it thread-safe (people typically don't mix multithreading and asynchronous paradigms together).
+    """
+
+    def __call__(cls):
+        if not hasattr(cls, "_instance"):
+            cls._instance = super().__call__()
+        return cls._instance
+
+
+class Singleton(metaclass=SingletonMeta):
+    """
+    A class that ensures that only one instance of a certain class is created.
+    """
+
+
+class ModelSingletonMeta(ModelMetaclass, SingletonMeta):
+    """
+    A metaclass that ensures that only one instance of a Pydantic model of a certain class is created.
+    TODO Oleksandr: check if this class works at all
+    """
+
+
+class ModelSingleton(metaclass=ModelSingletonMeta):
+    """
+    A class that ensures that only one instance of a Pydantic model of a certain class is created.
+    """
