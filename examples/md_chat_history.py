@@ -22,12 +22,22 @@ def main() -> None:
     print()
     print()
     # pprint(tokens)
-    for token in tokens:
+    token_iterator = iter(tokens)
+    for token in token_iterator:
         if token.type == "heading_open":
+            token_after_heading_open = next(token_iterator)  # an unorthodox trick
+            token_before_heading_close = token_after_heading_open
+
+            for token_ in token_iterator:
+                # ATTENTION! here we are iterating over the same iterator (an unorthodox trick)
+                if token_.type == "heading_close":
+                    break
+                token_before_heading_close = token_
+
             # print(token.map, token.type, token.tag, token.level, "-----", token.content[:50], "-----")
             print()
             print()
-            print("\n".join(md_lines[token.map[0] : token.map[1]]))
+            print("\n".join(md_lines[token_after_heading_open.map[0] : token_before_heading_close.map[1]]))
             print()
             print()
         # elif token.type == "heading_close":
