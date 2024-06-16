@@ -40,8 +40,6 @@ def main() -> None:
             print("\n".join(md_lines[token_after_heading_open.map[0] : token_before_heading_close.map[1]]))
             print()
             print()
-        # elif token.type == "heading_close":
-        #     print(token.map, token.type, token.tag, token.level, "-----", token.content[:50], "-----")
     print()
     print()
     print()
