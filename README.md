@@ -9,6 +9,10 @@ TODO Oleksandr: explain the motivation behind the framework
 
 ---
 
+TODO Oleksandr: generate pseudo-FAQ
+
+---
+
 MiniAgents is a Python framework for building agent-based systems. It provides a simple and intuitive way to define agents and their interactions.
 
 MiniAgents is a Python framework designed to facilitate the creation and management of agents that interact with language models (LLMs) and other services. It provides a structured way to define, call, and manage agents, making it easier to build complex systems that rely on asynchronous interactions and streaming data.
