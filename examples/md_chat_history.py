@@ -15,13 +15,23 @@ def main() -> None:
     Main function.
     """
     md = MarkdownIt()
-    tokens = md.parse(CHAT_MD_FILE.read_text(encoding="utf-8"))
+    md_content = CHAT_MD_FILE.read_text(encoding="utf-8")
+    md_lines = md_content.split("\n")
+    tokens = md.parse(md_content)
     print()
     print()
     print()
     # pprint(tokens)
     for token in tokens:
-        print(token.map, token.type, token.tag, token.level, "-----", token.content[:50], "-----")
+        if token.type == "heading_open":
+            # print(token.map, token.type, token.tag, token.level, "-----", token.content[:50], "-----")
+            print()
+            print()
+            print("\n".join(md_lines[token.map[0] : token.map[1]]))
+            print()
+            print()
+        # elif token.type == "heading_close":
+        #     print(token.map, token.type, token.tag, token.level, "-----", token.content[:50], "-----")
     print()
     print()
     print()
