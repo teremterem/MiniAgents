@@ -22,7 +22,8 @@ class Section:
     Represents a section of the markdown content.
     """
 
-    heading: str
+    role: str
+    model: Optional[str]
     content_start_line: int
     content: Optional[str] = None
 
@@ -41,22 +42,8 @@ def parse_md_dialog(md_content: str) -> list[Message]:
         if md_token.type != "heading_open" or md_token.tag != "h1" or md_token.level != 0:
             continue
 
-        if last_section:
-            last_section.content = "\n".join(md_lines[last_section.content_start_line : md_token.map[0]])
-            sections.append(last_section)
-
-        last_section = Section(
-            heading=md_tokens[idx + 1].content,  # the next token is `inline` with the heading content
-            content_start_line=md_token.map[1],
-        )
-
-    if last_section:
-        last_section.content = "\n".join(md_lines[last_section.content_start_line :])
-        sections.append(last_section)
-
-    messages = []
-    for section in sections:
-        heading_parts = section.heading.split("/", maxsplit=1)
+        heading = md_tokens[idx + 1].content  # the next token is `inline` with the heading content
+        heading_parts = heading.split("/", maxsplit=1)
         role = heading_parts[0].strip().lower()
 
         if role not in ["user", "assistant"]:
@@ -64,13 +51,30 @@ def parse_md_dialog(md_content: str) -> list[Message]:
 
         if len(heading_parts) > 1:
             model = heading_parts[1].strip()
+            if any(c.isspace() for c in model):
+                # model name should not contain whitespaces - this heading is probably not really a role heading
+                continue
         else:
             model = None
-        messages.append(Message(text=section.content, role=role, model=model))
+
+        if last_section:
+            last_section.content = "\n".join(md_lines[last_section.content_start_line : md_token.map[0]])
+            sections.append(last_section)
+
+        last_section = Section(
+            role=role,
+            model=model,
+            content_start_line=md_token.map[1],
+        )
+
+    if last_section:
+        last_section.content = "\n".join(md_lines[last_section.content_start_line :])
+        sections.append(last_section)
 
     # TODO Oleksandr: cut off leading empty lines
     # TODO Oleksandr: cut off trailing whitespaces
     # TODO Oleksanr: skip empty sections
+    messages = [Message(role=section.role, model=section.model, text=section.content) for section in sections]
     return messages
 
 
