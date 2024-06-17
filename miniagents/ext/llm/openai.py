@@ -57,6 +57,7 @@ async def _openai_func(
     ctx: InteractionContext,
     async_client: "openai_original.AsyncOpenAI",
     global_reply_metadata: Optional[dict[str, Any]],
+    model: str,
     reply_metadata: Optional[dict[str, Any]] = None,
     stream: Optional[bool] = None,
     system: Optional[str] = None,
@@ -89,9 +90,10 @@ async def _openai_func(
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
 
-        openai_response = await async_client.chat.completions.create(messages=message_dicts, stream=stream, **kwargs)
+        openai_response = await async_client.chat.completions.create(
+            messages=message_dicts, model=model, stream=stream, **kwargs
+        )
         if stream:
-            metadata_so_far["openai"] = {}
             async for chunk in openai_response:
                 if len(chunk.choices) != 1:  # TODO Oleksandr: do I really need to check it for every token ?
                     raise RuntimeError(
@@ -127,6 +129,7 @@ async def _openai_func(
             start_asap=True,  # TODO Oleksandr: should this be customizable ?
             message_token_streamer=message_token_streamer,
             # preliminary metadata:
+            model=model,
             agent_alias=ctx.this_agent.alias,
             **(global_reply_metadata or {}),
             **(reply_metadata or {}),

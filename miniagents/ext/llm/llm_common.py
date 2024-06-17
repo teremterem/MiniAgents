@@ -30,6 +30,7 @@ class AssistantMessage(Message):
 
     role: str = "assistant"
     model: Optional[str] = None
+    agent_alias: Optional[str] = None
 
 
 def message_to_llm_dict(message: Message) -> dict[str, Any]:

@@ -59,6 +59,7 @@ async def _anthropic_func(
     ctx: InteractionContext,
     async_client: "anthropic_original.AsyncAnthropic",
     global_reply_metadata: Optional[dict[str, Any]],
+    model: str,
     reply_metadata: Optional[dict[str, Any]] = None,
     stream: Optional[bool] = None,
     system: Optional[str] = None,
@@ -104,14 +105,14 @@ async def _anthropic_func(
         if stream:
             # pylint: disable=not-async-context-manager
             async with async_client.messages.stream(
-                messages=message_dicts, system=system_combined, **kwargs
+                messages=message_dicts, system=system_combined, model=model, **kwargs
             ) as response:
                 async for token in response.text_stream:
                     yield token
                 anthropic_final_message = await response.get_final_message()
         else:
             anthropic_final_message = await async_client.messages.create(
-                messages=message_dicts, stream=False, system=system_combined, **kwargs
+                messages=message_dicts, stream=False, system=system_combined, model=model, **kwargs
             )
             if len(anthropic_final_message.content) != 1:
                 raise RuntimeError(
@@ -127,6 +128,7 @@ async def _anthropic_func(
             start_asap=True,  # TODO Oleksandr: should this be customizable ?
             message_token_streamer=message_token_streamer,
             # preliminary metadata:
+            model=model,
             agent_alias=ctx.this_agent.alias,
             **(global_reply_metadata or {}),
             **(reply_metadata or {}),
