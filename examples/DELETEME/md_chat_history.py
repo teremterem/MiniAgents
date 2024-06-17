@@ -54,11 +54,23 @@ def parse_md_dialog(md_content: str) -> list[Message]:
         last_section.content = "\n".join(md_lines[last_section.content_start_line :])
         sections.append(last_section)
 
-    # TODO Oleksandr: keep only the ones that start with "user" or "assistant"
+    messages = []
+    for section in sections:
+        heading_parts = section.heading.split("/", maxsplit=1)
+        role = heading_parts[0].strip().lower()
+
+        if role not in ["user", "assistant"]:
+            continue
+
+        if len(heading_parts) > 1:
+            model = heading_parts[1].strip()
+        else:
+            model = None
+        messages.append(Message(text=section.content, role=role, model=model))
+
     # TODO Oleksandr: cut off leading empty lines
     # TODO Oleksandr: cut off trailing whitespaces
     # TODO Oleksanr: skip empty sections
-    messages = [Message(text=section.content, role=section.heading) for section in sections]
     return messages
 
 
@@ -70,7 +82,7 @@ def main() -> None:
 
     for message in parse_md_dialog(md_content):
         print(repr(message.role))
-        print(repr(message.text[:100]))
+        print(repr(message.text))
         print()
 
 
