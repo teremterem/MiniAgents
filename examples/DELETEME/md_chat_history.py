@@ -31,6 +31,7 @@ class Section:
 def parse_md_dialog(md_content: str) -> list[Message]:
     """
     Parse a markdown content as a dialog.
+    TODO Oleksandr: implement exhaustive unit tests for this function
     """
     md_lines = md_content.split("\n")
     md_tokens = md.parse(md_content)
@@ -71,11 +72,7 @@ def parse_md_dialog(md_content: str) -> list[Message]:
         last_section.content = grab_and_clean_up_lines(md_lines, last_section.content_start_line)
         sections.append(last_section)
 
-    # TODO Oleksandr: cut off leading empty lines
-    # TODO Oleksandr: cut off trailing whitespaces
-    # TODO Oleksanr: skip empty sections
-    messages = [Message(role=section.role, model=section.model, text=section.content) for section in sections]
-    return messages
+    return [Message(role=section.role, model=section.model, text=section.content) for section in sections]
 
 
 def grab_and_clean_up_lines(md_lines: list[str], start_line: int, end_line: Optional[int] = None) -> str:
