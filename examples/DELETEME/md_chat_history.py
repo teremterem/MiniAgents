@@ -58,7 +58,7 @@ def parse_md_dialog(md_content: str) -> list[Message]:
             model = None
 
         if last_section:
-            last_section.content = "\n".join(md_lines[last_section.content_start_line : md_token.map[0]])
+            last_section.content = grab_and_clean_up_lines(md_lines, last_section.content_start_line, md_token.map[0])
             sections.append(last_section)
 
         last_section = Section(
@@ -68,7 +68,7 @@ def parse_md_dialog(md_content: str) -> list[Message]:
         )
 
     if last_section:
-        last_section.content = "\n".join(md_lines[last_section.content_start_line :])
+        last_section.content = grab_and_clean_up_lines(md_lines, last_section.content_start_line)
         sections.append(last_section)
 
     # TODO Oleksandr: cut off leading empty lines
@@ -76,6 +76,29 @@ def parse_md_dialog(md_content: str) -> list[Message]:
     # TODO Oleksanr: skip empty sections
     messages = [Message(role=section.role, model=section.model, text=section.content) for section in sections]
     return messages
+
+
+def grab_and_clean_up_lines(md_lines: list[str], start_line: int, end_line: Optional[int] = None) -> str:
+    """
+    Grab a snippet of the markdown content by start and end line numbers and clean it up (remove leading and
+    trailing empty lines).
+    """
+    if end_line is None:
+        end_line = len(md_lines)
+
+    content_lines = md_lines[start_line:end_line]
+
+    # remove leading and trailing empty lines (but keep the leading and trailing whitespaces of the non-empty lines)
+    while content_lines and not content_lines[0].strip():
+        content_lines.pop(0)
+    while content_lines and not content_lines[-1].strip():
+        content_lines.pop()
+
+    if not content_lines:
+        # there is no content in this section
+        return ""
+
+    return "\n".join(content_lines)
 
 
 def main() -> None:
