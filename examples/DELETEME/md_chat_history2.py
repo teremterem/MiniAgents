@@ -37,7 +37,7 @@ def parse_md_dialog(md_content: str) -> list[Message]:
     last_section: Optional[Section] = None
     sections: list[Section] = []
 
-    for md_token in md_tokens:
+    for idx, md_token in enumerate(md_tokens):
         if md_token.type != "heading_open" or md_token.tag != "h1" or md_token.level != 0:
             continue
 
@@ -45,12 +45,19 @@ def parse_md_dialog(md_content: str) -> list[Message]:
             last_section.content = "\n".join(md_lines[last_section.content_start_line : md_token.map[0]])
             sections.append(last_section)
 
-        last_section = Section(heading=md_token.content, content_start_line=md_token.map[1])
+        last_section = Section(
+            heading=md_tokens[idx + 1].content,  # the next token is `inline` with the heading content
+            content_start_line=md_token.map[1],
+        )
 
     if last_section:
         last_section.content = "\n".join(md_lines[last_section.content_start_line :])
         sections.append(last_section)
 
+    # TODO Oleksandr: keep only the ones that start with "user" or "assistant"
+    # TODO Oleksandr: cut off leading empty lines
+    # TODO Oleksandr: cut off trailing whitespaces
+    # TODO Oleksanr: skip empty sections
     messages = [Message(text=section.content, role=section.heading) for section in sections]
     return messages
 
@@ -63,6 +70,8 @@ def main() -> None:
 
     for message in parse_md_dialog(md_content):
         print(repr(message.role))
+        print(repr(message.text[:100]))
+        print()
 
 
 if __name__ == "__main__":
