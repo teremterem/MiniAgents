@@ -8,7 +8,8 @@ from pprint import pprint
 
 from markdown_it import MarkdownIt
 
-CHAT_MD_FILE = Path(__file__).parent / "../../../talk-about-miniagents/CHAT.md"
+# CHAT_MD_FILE = Path(__file__).parent / "../../../talk-about-miniagents/CHAT.md"
+CHAT_MD_FILE = Path(__file__).parent / "sample.md"
 
 
 def main() -> None:
@@ -26,7 +27,12 @@ def main() -> None:
             print()
             print()
             print()
+        children = md_token.children
+        md_token.children = None
         pprint(md_token)
+        if md_token.type not in ("heading_open", "heading_close") and children:
+            for child in children:
+                print(" ", child)
         if md_token.type == "heading_close":
             print()
             print()
