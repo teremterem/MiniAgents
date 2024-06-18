@@ -3,6 +3,7 @@ A simple conversation example using the MiniAgents framework.
 """
 
 import logging
+from pathlib import Path
 
 from dotenv import load_dotenv
 from prompt_toolkit import PromptSession, HTML
@@ -13,7 +14,7 @@ from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
 from miniagents.ext.llm.openai import create_openai_agent
-from miniagents.miniagent_typing import MessageType
+from miniagents.ext.markdown.chat_history_md import ChatHistoryMD
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 from miniagents.promising.sentinels import AWAIT
 from miniagents.utils import achain_loop
@@ -24,7 +25,7 @@ session = PromptSession()
 
 bindings = KeyBindings()
 
-CHAT_HISTORY: list[MessageType] = []
+CHAT_MD_FILE = Path(__file__).parent / "CHAT.md"
 
 
 @bindings.add(Keys.Enter)
@@ -57,24 +58,47 @@ async def user_agent(ctx: InteractionContext) -> None:
     """
     User agent that sends a message to the assistant and keeps track of the chat history.
     """
-    print("\033[92;1m", end="", flush=True)
-    async for msg_promise in ctx.messages:
-        print(f"\n{msg_promise.preliminary_metadata.agent_alias}: ", end="", flush=True)
-        async for token in msg_promise:
-            print(token, end="", flush=True)
-        print("\n")
+    chat_history = ChatHistoryMD(CHAT_MD_FILE)
 
-    CHAT_HISTORY.append(ctx.messages)
-    user_input = await session.prompt_async(
-        HTML("<user_utterance>USER: </user_utterance>"),
-        multiline=True,
-        key_bindings=bindings,
-        lexer=CustomLexer(),
-        style=style,
-    )
-    CHAT_HISTORY.append(user_input)
+    with CHAT_MD_FILE.open("a", encoding="utf-8") as chat_md_file:
+        print("\033[92;1m", end="", flush=True)
+        async for msg_promise in ctx.messages:
+            try:
+                utterance_role = msg_promise.preliminary_metadata.role
+            except AttributeError:
+                utterance_role = "assistant"
+            try:
+                utterance_model = f" / {msg_promise.preliminary_metadata.model}"
+            except AttributeError:
+                utterance_model = ""
+            utterance_title = f"{utterance_role}{utterance_model}"
 
-    ctx.reply(CHAT_HISTORY)
+            chat_md_file.write(f"\n{utterance_title}\n========================================\n")
+            print(f"\n{msg_promise.preliminary_metadata.agent_alias}: ", end="", flush=True)
+
+            async for token in msg_promise:
+                chat_md_file.write(token)
+                print(token, end="", flush=True)
+
+            chat_md_file.write("\n")
+            print("\n")
+
+        chat_md_file.flush()
+
+        # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
+        #  (to interrupt whoever is producing it) ?
+
+        user_input = await session.prompt_async(
+            HTML("<user_utterance>USER: </user_utterance>"),
+            multiline=True,
+            key_bindings=bindings,
+            lexer=CustomLexer(),
+            style=style,
+        )
+        chat_md_file.write(f"\nuser\n========================================\n{user_input}\n")
+
+    chat_history = chat_history.load_chat_history()
+    ctx.reply(chat_history)
 
 
 async def amain() -> None:
