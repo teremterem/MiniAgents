@@ -14,7 +14,7 @@ from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
 from miniagents.ext.llm.llm_common import UserMessage
-from miniagents.ext.markdown.chat_history_md import ChatHistoryMD
+from miniagents.ext.chat_history_md import ChatHistoryMD
 from miniagents.miniagents import miniagent, InteractionContext, MiniAgent
 
 

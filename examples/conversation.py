@@ -7,7 +7,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from miniagents.ext.console.console_user_agent import create_console_user_agent
+from miniagents.ext.console_user_agent import create_console_user_agent
 from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.miniagents import MiniAgents
 from miniagents.utils import adialog_loop
