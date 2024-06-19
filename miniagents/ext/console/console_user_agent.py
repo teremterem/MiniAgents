@@ -62,7 +62,7 @@ async def _console_user_agent(ctx: InteractionContext, chat_history_md_file: Uni
     # the await below makes sure that writing to the chat history is finished before we proceed to reading it back
     await chat_history.logging_agent.inquire(UserMessage(user_input))
 
-    chat_history = chat_history.load_chat_history()
+    chat_history = await chat_history.aload_chat_history()
     ctx.reply(chat_history)
 
 
