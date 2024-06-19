@@ -39,23 +39,25 @@ async def _console_user_agent(ctx: InteractionContext, chat_history: ChatHistory
     # response)
     input_messages = chat_history.logging_agent.inquire(ctx.messages)
 
-    print("\033[92;1m", end="", flush=True)
+    assistant_style = "\033[92;1m"
+    cancel_style = "\033[0m"
+
     async for msg_promise in input_messages:
-        print(f"\n{msg_promise.preliminary_metadata.agent_alias}: ", end="", flush=True)
+        print(f"\n{assistant_style}{msg_promise.preliminary_metadata.agent_alias}: {cancel_style}", end="", flush=True)
         async for token in msg_promise:
-            print(token, end="", flush=True)
+            print(f"{assistant_style}{token}{cancel_style}", end="", flush=True)
         print("\n")
 
     # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
     #  (to interrupt whoever is producing it) ?
 
     # TODO Oleksandr: mention that ctrl+space is used to insert a newline ?
-    user_input = await _session.prompt_async(
+    user_input = await _prompt_session.prompt_async(
         HTML("<user_utterance>USER: </user_utterance>"),
         multiline=True,
-        key_bindings=_bindings,
-        lexer=_CustomLexer(),
-        style=_style,
+        key_bindings=_prompt_bindings,
+        lexer=_CustomPromptLexer(),
+        style=_user_prompt_style,
     )
     # the await below makes sure that writing to the chat history is finished before we proceed to reading it back
     await chat_history.logging_agent.inquire(UserMessage(user_input))
@@ -64,24 +66,24 @@ async def _console_user_agent(ctx: InteractionContext, chat_history: ChatHistory
     ctx.reply(chat_history)
 
 
-_style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
+_user_prompt_style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
 
-_session = PromptSession()
+_prompt_session = PromptSession()
 
-_bindings = KeyBindings()
+_prompt_bindings = KeyBindings()
 
 
-@_bindings.add(Keys.Enter)
-def _binding_enter(event):
+@_prompt_bindings.add(Keys.Enter)
+def _prompt_binding_enter(event):
     event.current_buffer.validate_and_handle()
 
 
-@_bindings.add(Keys.ControlSpace)
-def _binding_control_space(event):
+@_prompt_bindings.add(Keys.ControlSpace)
+def _prompt_binding_control_space(event):
     event.current_buffer.insert_text("\n")
 
 
-class _CustomLexer(Lexer):
+class _CustomPromptLexer(Lexer):
     """
     Custom lexer that paints user utterances in yellow (and bold).
     """
