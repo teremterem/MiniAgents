@@ -3,9 +3,6 @@ This module provides a user agent that reads user input from the console, writes
 track of the chat history using the provided ChatHistory object.
 """
 
-from pathlib import Path
-from typing import Union
-
 from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.document import Document
 from prompt_toolkit.key_binding import KeyBindings
@@ -13,27 +10,28 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
+from miniagents.chat_history import ChatHistory, InMemoryChatHistory
 from miniagents.ext.llm.llm_common import UserMessage
-from miniagents.ext.chat_history_md import ChatHistoryMD
 from miniagents.miniagents import miniagent, InteractionContext, MiniAgent
 
 
 def create_console_user_agent(
-    chat_history_md_file: Union[Path, str], alias: str = "USER_AGENT", **miniagent_kwargs
+    chat_history: ChatHistory = None, alias: str = "USER_AGENT", **miniagent_kwargs
 ) -> MiniAgent:
     """
     Create a user agent that reads user input from the console, writes back to the console and also keeps
     track of the chat history using the provided ChatHistory object.
     """
-    return miniagent(_console_user_agent, chat_history_md_file=chat_history_md_file, alias=alias, **miniagent_kwargs)
+    if chat_history is None:
+        chat_history = InMemoryChatHistory
+    return miniagent(_console_user_agent, chat_history=chat_history, alias=alias, **miniagent_kwargs)
 
 
-async def _console_user_agent(ctx: InteractionContext, chat_history_md_file: Union[Path, str]) -> None:
+async def _console_user_agent(ctx: InteractionContext, chat_history: ChatHistory) -> None:
     """
     User agent that reads user input from the console, writes back to the console and also keeps track of
     the chat history using the provided ChatHistory object.
     """
-    chat_history = ChatHistoryMD(chat_history_md_file, default_role="assistant")
     # technically `input_messages` are going to be the same as `ctx.messages`, but reading them instead of the
     # original `ctx.messages` ensures that all these messages will be logged to the chat history by the time
     # we are done iterating over `input_messages` here (because our async loop here will have to wait for the
