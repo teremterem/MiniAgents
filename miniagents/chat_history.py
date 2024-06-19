@@ -41,15 +41,14 @@ class InMemoryChatHistory(ChatHistory):
     Class for loading chat history from memory as well as writing new messages to it.
     """
 
-    def __init__(self, default_role: str = "user") -> None:
-        super().__init__(default_role=default_role)
+    def __init__(self) -> None:
         self._chat_history: list[MessageType] = []
 
     async def _logging_agent(self, ctx: InteractionContext) -> None:
         """
         The implementation of the agent that logs the chat history to memory.
         """
-        self._chat_history.extend(ctx.messages)
+        self._chat_history.append(ctx.messages)
 
     async def aload_chat_history(self) -> tuple[Message, ...]:
         """

@@ -23,7 +23,7 @@ def create_console_user_agent(
     track of the chat history using the provided ChatHistory object.
     """
     if chat_history is None:
-        chat_history = InMemoryChatHistory
+        chat_history = InMemoryChatHistory()
     return miniagent(_console_user_agent, chat_history=chat_history, alias=alias, **miniagent_kwargs)
 
 
