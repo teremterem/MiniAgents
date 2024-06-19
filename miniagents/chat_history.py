@@ -21,7 +21,7 @@ class ChatHistory(ABC):
         The agent that logs the chat history to a storage. Replies with the same messages for agent
         chaining purposes.
         """
-        return miniagent(self._logging_agent)
+        return miniagent(self._logging_agent_chained)
 
     @abstractmethod
     async def aload_chat_history(self) -> tuple[Message]:
