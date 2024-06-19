@@ -8,25 +8,51 @@ from typing import Optional, Union
 
 from markdown_it import MarkdownIt
 
+from miniagents.chat_history import ChatHistory
 from miniagents.messages import Message
+from miniagents.miniagents import InteractionContext
 
 
-class ChatHistoryMD:
+class ChatHistoryMD(ChatHistory):
     """
     Class for loading chat history from a markdown file as well as writing new messages to it.
     """
 
     _md = MarkdownIt()
 
-    def __init__(self, chat_md_file: Union[str, Path]) -> None:
-        self.chat_md_file = Path(chat_md_file)
+    def __init__(self, chat_md_file: Union[str, Path], default_role: str = "assistant") -> None:
+        self._chat_md_file = Path(chat_md_file)
+        self._default_role = default_role
 
-    def load_chat_history(self) -> list[Message]:
+    async def _logging_agent(self, ctx: InteractionContext) -> None:
+        """
+        The implementation of the agent that logs the chat history to a markdown file.
+        """
+        with self._chat_md_file.open("a", encoding="utf-8") as chat_md_file:
+            async for msg_promise in ctx.messages:
+                try:
+                    message_role = msg_promise.preliminary_metadata.role
+                except AttributeError:
+                    message_role = self._default_role
+                try:
+                    message_model = f" / {msg_promise.preliminary_metadata.model}"
+                except AttributeError:
+                    message_model = ""
+
+                chat_md_file.write(f"\n{message_role}{message_model}\n========================================\n")
+
+                async for token in msg_promise:
+                    chat_md_file.write(token)
+
+                chat_md_file.write("\n")
+                chat_md_file.flush()
+
+    async def aload_chat_history(self) -> tuple[Message, ...]:
         """
         Parse a markdown content as a dialog.
         TODO Oleksandr: implement exhaustive unit tests for this function
         """
-        md_content = self.chat_md_file.read_text(encoding="utf-8")
+        md_content = self._chat_md_file.read_text(encoding="utf-8")
 
         md_lines = md_content.split("\n")
         md_tokens = self._md.parse(md_content)
@@ -69,7 +95,7 @@ class ChatHistoryMD:
             last_section.content = self._grab_and_clean_up_lines(md_lines, last_section.content_start_line)
             sections.append(last_section)
 
-        return [Message(role=section.role, model=section.model, text=section.content) for section in sections]
+        return tuple(Message(role=section.role, model=section.model, text=section.content) for section in sections)
 
     @staticmethod
     def _grab_and_clean_up_lines(md_lines: list[str], start_line: int, end_line: Optional[int] = None) -> str:

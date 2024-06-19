@@ -15,6 +15,22 @@ from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT, CLEAR
 logger = logging.getLogger(__name__)
 
 
+async def adialog_loop(
+    user_agent: Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel],
+    assistant_agent: Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel],
+) -> None:
+    """
+    Run a loop that chains the user agent and the assistant agent in a dialog.
+    """
+    await achain_loop(
+        [
+            user_agent,
+            AWAIT,  # TODO Oleksandr: explain this with an inline comment like this one
+            assistant_agent,
+        ]
+    )
+
+
 async def achain_loop(
     agents: Iterable[Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel]],
     initial_input: Optional[MessageType] = None,
