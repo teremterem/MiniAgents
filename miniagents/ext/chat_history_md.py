@@ -28,8 +28,6 @@ class ChatHistoryMD(ChatHistory):
         """
         The implementation of the agent that logs the chat history to a markdown file.
         """
-        ctx.reply(ctx.messages)  # asynchronously reply with the same messages for agent chaining purposes
-
         with self._chat_md_file.open("a", encoding="utf-8") as chat_md_file:
             async for msg_promise in ctx.messages:
                 try:

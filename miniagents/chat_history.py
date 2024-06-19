@@ -18,7 +18,8 @@ class ChatHistory(ABC):
     @cached_property
     def logging_agent(self) -> MiniAgent:
         """
-        The agent that logs the chat history to a storage. Replies with the same messages for agent chaining purposes.
+        The agent that logs the chat history to a storage. Replies with the same messages for agent
+        chaining purposes.
         """
         return miniagent(self._logging_agent)
 
@@ -31,9 +32,18 @@ class ChatHistory(ABC):
     @abstractmethod
     async def _logging_agent(self, ctx: InteractionContext) -> None:
         """
-        The implementation of the agent that logs the chat history to a storage. Except for logging the messages,
-        it also should reply with the same messages for agent chaining purposes.
+        The implementation of the agent that logs the chat history to a storage.
         """
+
+    async def _logging_agent_chained(self, ctx: InteractionContext) -> None:
+        """
+        The implementation of the agent that logs the chat history to a storage.
+
+        ATTENTION! Apart for logging the messages, it also replies with the same messages for agent
+        chaining purposes.
+        """
+        ctx.reply(ctx.messages)  # asynchronously(!) reply with the same messages for agent chaining purposes
+        await self._logging_agent(ctx)
 
 
 class InMemoryChatHistory(ChatHistory):
