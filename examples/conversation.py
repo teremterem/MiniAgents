@@ -19,7 +19,7 @@ async def amain() -> None:
     """
     The main conversation loop.
     """
-    chat_history = ChatHistoryMD("CHAT.md", default_role="assistant")
+    chat_history = ChatHistoryMD("CHAT.md")
     try:
         print()
         await adialog_loop(

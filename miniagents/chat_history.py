@@ -15,9 +15,6 @@ class ChatHistory(ABC):
     Abstract class for loading chat history from a storage as well as writing new messages to it.
     """
 
-    def __init__(self, default_role: str) -> None:
-        self._default_role = default_role
-
     @cached_property
     def logging_agent(self) -> MiniAgent:
         """
@@ -37,12 +34,6 @@ class ChatHistory(ABC):
         The implementation of the agent that logs the chat history to a storage. Except for logging the messages,
         it also should reply with the same messages for agent chaining purposes.
         """
-
-    def _get_message_role(self, msg_promise: Message) -> str:
-        try:
-            return msg_promise.preliminary_metadata.role
-        except AttributeError:
-            return self._default_role
 
 
 class InMemoryChatHistory(ChatHistory):

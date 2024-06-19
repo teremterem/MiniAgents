@@ -20,9 +20,9 @@ class ChatHistoryMD(ChatHistory):
 
     _md = MarkdownIt()
 
-    def __init__(self, chat_md_file: Union[str, Path], default_role: str = "user") -> None:
-        super().__init__(default_role=default_role)
+    def __init__(self, chat_md_file: Union[str, Path], default_role: str = "assistant") -> None:
         self._chat_md_file = Path(chat_md_file)
+        self._default_role = default_role
 
     async def _logging_agent(self, ctx: InteractionContext) -> None:
         """
@@ -33,15 +33,15 @@ class ChatHistoryMD(ChatHistory):
         with self._chat_md_file.open("a", encoding="utf-8") as chat_md_file:
             async for msg_promise in ctx.messages:
                 try:
+                    message_role = msg_promise.preliminary_metadata.role
+                except AttributeError:
+                    message_role = self._default_role
+                try:
                     message_model = f" / {msg_promise.preliminary_metadata.model}"
                 except AttributeError:
                     message_model = ""
 
-                chat_md_file.write(
-                    f"\n"
-                    f"{self._get_message_role(msg_promise)}{message_model}\n"
-                    f"========================================\n"
-                )
+                chat_md_file.write(f"\n{message_role}{message_model}\n========================================\n")
 
                 async for token in msg_promise:
                     chat_md_file.write(token)
