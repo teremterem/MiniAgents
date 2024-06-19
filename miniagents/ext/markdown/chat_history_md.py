@@ -3,12 +3,14 @@ This module provides a class working with chat history stored in a markdown file
 """
 
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 from typing import Optional, Union
 
 from markdown_it import MarkdownIt
 
 from miniagents.messages import Message
+from miniagents.miniagents import InteractionContext, miniagent, MiniAgent
 
 
 class ChatHistoryMD:
@@ -16,17 +18,54 @@ class ChatHistoryMD:
     Class for loading chat history from a markdown file as well as writing new messages to it.
     """
 
+    logging_agent: MiniAgent
+
     _md = MarkdownIt()
 
-    def __init__(self, chat_md_file: Union[str, Path]) -> None:
-        self.chat_md_file = Path(chat_md_file)
+    def __init__(self, chat_md_file: Union[str, Path], default_role: str = "user") -> None:
+        self._chat_md_file = Path(chat_md_file)
+        self._default_role = default_role
+
+    @cached_property
+    def logging_agent(self) -> MiniAgent:
+        """
+        Agent that logs the chat history to a markdown file.
+        """
+        return miniagent(self._logging_agent)
+
+    async def _logging_agent(self, ctx: InteractionContext) -> None:
+        """
+        The implementation of the agent that logs the chat history to a markdown file.
+        """
+        ctx.reply(ctx.messages)  # pass the same messages forward
+
+        with self._chat_md_file.open("a", encoding="utf-8") as chat_md_file:
+            async for msg_promise in ctx.messages:
+                try:
+                    utterance_role = msg_promise.preliminary_metadata.role
+                except AttributeError:
+                    utterance_role = self._default_role
+                try:
+                    utterance_model = f" / {msg_promise.preliminary_metadata.model}"
+                except AttributeError:
+                    utterance_model = ""
+
+                chat_md_file.write(
+                    f"\n" f"{utterance_role}{utterance_model}\n" f"========================================\n"
+                )
+
+                async for token in msg_promise:
+                    chat_md_file.write(token)
+
+                chat_md_file.write("\n")
+                chat_md_file.flush()
 
     def load_chat_history(self) -> list[Message]:
         """
         Parse a markdown content as a dialog.
         TODO Oleksandr: implement exhaustive unit tests for this function
         """
-        md_content = self.chat_md_file.read_text(encoding="utf-8")
+        md_content = self._chat_md_file.read_text(encoding="utf-8")
 
         md_lines = md_content.split("\n")
         md_tokens = self._md.parse(md_content)

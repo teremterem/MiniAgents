@@ -13,6 +13,7 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
+from miniagents.ext.llm.llm_common import UserMessage
 from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.ext.markdown.chat_history_md import ChatHistoryMD
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
@@ -58,44 +59,34 @@ async def user_agent(ctx: InteractionContext) -> None:
     """
     User agent that sends a message to the assistant and keeps track of the chat history.
     """
-    chat_history = ChatHistoryMD(CHAT_MD_FILE)
+    chat_history = ChatHistoryMD(CHAT_MD_FILE, default_role="assistant")
+    # technically `input_messages` are going to be the same as `ctx.messages`, but reading them instead of the
+    # original `ctx.messages` ensures that all these messages will be logged to the chat history by the time
+    # we are done iterating over `input_messages` here (because our async loop here will have to wait for the
+    # `logging_agent` to finish in order to be sure that these are all the messages there are in `logging_agent`
+    # response)
+    input_messages = chat_history.logging_agent.inquire(ctx.messages)
 
-    with CHAT_MD_FILE.open("a", encoding="utf-8") as chat_md_file:
-        print("\033[92;1m", end="", flush=True)
-        async for msg_promise in ctx.messages:
-            try:
-                utterance_role = msg_promise.preliminary_metadata.role
-            except AttributeError:
-                utterance_role = "assistant"
-            try:
-                utterance_model = f" / {msg_promise.preliminary_metadata.model}"
-            except AttributeError:
-                utterance_model = ""
-            utterance_title = f"{utterance_role}{utterance_model}"
+    print("\033[92;1m", end="", flush=True)
+    async for msg_promise in input_messages:
+        print(f"\n{msg_promise.preliminary_metadata.agent_alias}: ", end="", flush=True)
+        async for token in msg_promise:
+            print(token, end="", flush=True)
+        print("\n")
 
-            chat_md_file.write(f"\n{utterance_title}\n========================================\n")
-            print(f"\n{msg_promise.preliminary_metadata.agent_alias}: ", end="", flush=True)
+    # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
+    #  (to interrupt whoever is producing it) ?
 
-            async for token in msg_promise:
-                chat_md_file.write(token)
-                print(token, end="", flush=True)
-
-            chat_md_file.write("\n")
-            print("\n")
-
-        chat_md_file.flush()
-
-        # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
-        #  (to interrupt whoever is producing it) ?
-
-        user_input = await session.prompt_async(
-            HTML("<user_utterance>USER: </user_utterance>"),
-            multiline=True,
-            key_bindings=bindings,
-            lexer=CustomLexer(),
-            style=style,
-        )
-        chat_md_file.write(f"\nuser\n========================================\n{user_input}\n")
+    # TODO Oleksandr: mention that ctrl+space is used to insert a newline ?
+    user_input = await session.prompt_async(
+        HTML("<user_utterance>USER: </user_utterance>"),
+        multiline=True,
+        key_bindings=bindings,
+        lexer=CustomLexer(),
+        style=style,
+    )
+    # the await below makes sure that writing to the chat history is finished before we proceed to reading it back
+    await chat_history.logging_agent.inquire(UserMessage(user_input))
 
     chat_history = chat_history.load_chat_history()
     ctx.reply(chat_history)
