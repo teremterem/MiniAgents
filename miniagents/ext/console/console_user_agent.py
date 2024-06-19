@@ -28,7 +28,6 @@ def create_console_user_agent(
     return miniagent(_console_user_agent, chat_history_md_file=chat_history_md_file, alias=alias, **miniagent_kwargs)
 
 
-@miniagent
 async def _console_user_agent(ctx: InteractionContext, chat_history_md_file: Union[Path, str]) -> None:
     """
     User agent that reads user input from the console, writes back to the console and also keeps track of
