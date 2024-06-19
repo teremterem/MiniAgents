@@ -50,9 +50,7 @@ class ChatHistoryMD:
                 except AttributeError:
                     utterance_model = ""
 
-                chat_md_file.write(
-                    f"\n" f"{utterance_role}{utterance_model}\n" f"========================================\n"
-                )
+                chat_md_file.write(f"\n{utterance_role}{utterance_model}\n========================================\n")
 
                 async for token in msg_promise:
                     chat_md_file.write(token)
