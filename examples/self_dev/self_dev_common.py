@@ -79,6 +79,7 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `ModelSingleton` ?
                         relative_posix_path(SELF_DEV_OUTPUT),
                         relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
+                        "pyproject.toml",  # TODO Oleksandr: should we or should we not look at pyproject.toml ?
                         "README.md",  # TODO Oleksandr: should we or should we not look at already existing README ?
                         "venv/",
                         *skip_if_starts_with,
