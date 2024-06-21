@@ -71,7 +71,3 @@ For more detailed information on using MiniAgents, please refer to the inline do
 ## Support
 
 If you encounter any issues or have questions, please file an issue on the GitHub repository.
-
----
-
-This README provides a high-level overview of the MiniAgents framework, including its key features, installation instructions, a quick start guide, and information about its main components. You may want to expand on certain sections or add more examples as the framework evolves.
