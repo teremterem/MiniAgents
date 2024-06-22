@@ -440,6 +440,31 @@ MiniAgents().run(main())
 
 ## Documentation
 
+### Modules
+
+- `miniagents`: Core classes and functions.
+- `miniagents.ext`: Extensions for integrating with external services and libraries.
+- `miniagents.promising`: Classes and functions for handling promises and asynchronous operations.
+- `miniagents.utils`: Utility functions for common tasks.
+
+The framework is organized into several modules:
+
+- `miniagents.miniagents`: Core classes for creating and managing agents
+- `miniagents.messages`: Classes for representing and handling messages
+- `miniagents.promising`: Utilities for managing asynchronous operations using promises
+- `miniagents.ext`: Extensions for integrating with external services and utilities
+  - `miniagents.ext.chat_history_md`: Chat history management using Markdown files
+  - `miniagents.ext.console_user_agent`: User agent for interacting via the console
+  - `miniagents.ext.llm`: Integration with language models
+    - `miniagents.ext.llm.openai`: OpenAI language model integration
+    - `miniagents.ext.llm.anthropic`: Anthropic language model integration
+
+For detailed documentation on each module and class, please refer to the docstrings in the source code.
+
+### Extending MiniAgents
+
+You can extend the functionality of MiniAgents by creating custom agents, message types, and chat history handlers. The framework is designed to be modular and flexible, allowing you to integrate it with various services and customize its behavior to fit your needs.
+
 ### Core Concepts
 
 - `MiniAgents`: The main context manager for running agents
