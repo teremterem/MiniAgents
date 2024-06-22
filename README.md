@@ -529,6 +529,7 @@ async def my_agent(ctx, **kwargs):
 - `MessagePromise`: A promise of a message that can be streamed token by token.
 - `MessagePromise`: A promise that resolves to a message
 - `MessageSequencePromise`: A promise of a sequence of messages that can be streamed message by message.
+- `ChatHistory`: An abstract class for managing chat history.
 
 ### Promising
 
