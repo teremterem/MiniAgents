@@ -46,6 +46,8 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 - Stream tokens from LLMs piece-by-piece using `StreamedPromise`
 - Flatten nested message sequences with `MessageSequence`
 - Promises and async iterators used extensively to enable non-blocking execution
+- **Immutable Messages**: Ensures that messages are immutable, making the system more predictable and easier to debug.
+- Immutable messages for predictable and reproducible agent behavior
 - Immutable message passing via `Frozen` pydantic models
 - Frozen data structures for immutable agent state and message metadata
 - Immutable message and agent state for reproducibility

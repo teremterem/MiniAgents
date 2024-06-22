@@ -5,7 +5,6 @@ MiniAgents is an asynchronous framework for building LLM-based multi-agent syste
 ## Features
 
 - Asynchronous architecture for efficient and scalable agent interactions
-- Immutable messages for predictable and reproducible agent behavior
 - Token streaming for real-time processing of LLM-generated responses
 - Integration with popular LLM providers like OpenAI and Anthropic
 - Flexible and extensible design for building custom agents and interactions
