@@ -9,14 +9,14 @@ from typing import Iterable
 from dotenv import load_dotenv
 
 from miniagents.ext.llm.anthropic import create_anthropic_agent
-from miniagents.ext.llm.openai import create_openai_agent
 from miniagents.messages import Message
 
 load_dotenv()
 
 MODEL_AGENT_FACTORIES = {
-    "gpt-4o-2024-05-13": create_openai_agent,
-    "claude-3-opus-20240229": partial(create_anthropic_agent, max_tokens=2000),
+    # "gpt-4o-2024-05-13": create_openai_agent,
+    "claude-3-5-sonnet-20240620": partial(create_anthropic_agent, max_tokens=2000),
+    # "claude-3-opus-20240229": partial(create_anthropic_agent, max_tokens=2000),
     # "claude-3-haiku-20240307": partial(create_anthropic_agent, max_tokens=2000),
 }
 MODEL_AGENTS = {model: factory(model=model) for model, factory in MODEL_AGENT_FACTORIES.items()}
@@ -43,9 +43,9 @@ class RepoFileMessage(Message):
 
 SKIPS_FOR_REPO_VARIATIONS: dict[str, list[str]] = {
     "complete": [],
-    "no_examples_no_tests": ["examples/", "tests/"],
     "no_examples": ["examples/"],
-    "no_tests": ["tests/"],
+    "no_examples_no_tests": ["examples/", "tests/"],
+    # "no_tests": ["tests/"],
 }
 
 
@@ -79,6 +79,8 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `ModelSingleton` ?
                         relative_posix_path(SELF_DEV_OUTPUT),
                         relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
+                        # "pyproject.toml",  # TODO Oleksandr: should we or should we not look at pyproject.toml ?
+                        "README.md",  # TODO Oleksandr: should we or should we not look at already existing README ?
                         "venv/",
                         *skip_if_starts_with,
                     ]

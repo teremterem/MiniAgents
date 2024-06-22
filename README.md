@@ -9,7 +9,7 @@ TODO Oleksandr: explain the motivation behind the framework
 
 ---
 
-TODO Oleksandr: generate pseudo-FAQ
+TODO AI: generate pseudo-FAQ
 
 ---
 
@@ -19,6 +19,11 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 
 ## Features
 
+- **Agent Management**: Define and manage agents using simple decorators.
+- **Agent Management**: Easily create, manage, and chain multiple agents.
+- Manage chat history and persist messages
+- **Chat History**: Manage chat history with support for in-memory and markdown file storage.
+- Flexible chat history management, including in-memory and Markdown-based persistence
 - **Asynchronous Interaction**: Support for asynchronous interactions with agents.
 - **Streaming**: Stream data token by token or message by message.
 - Asynchronous and parallel execution of agents
@@ -32,11 +37,17 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 - Pass messages between agents using `MessageType` objects
 - Integrate with OpenAI and Anthropic LLMs using `create_openai_agent` and `create_anthropic_agent`
 - Extensible architecture allows integration with various LLM providers (OpenAI, Anthropic, etc.)
+- **LLM Integration**: Seamlessly integrate with popular LLMs like OpenAI and Anthropic.
+- **Message Handling**: Robust message handling with support for nested messages and promises.
 - Supports streaming of messages and tokens for efficient processing
 - Utilities for working with message sequences (joining, splitting, etc.)
+- **Utilities**: A set of utility functions to facilitate common tasks like dialog loops and message joining.
+- Utilities for common interaction patterns like dialog loops and agent chaining
 - Stream tokens from LLMs piece-by-piece using `StreamedPromise`
 - Flatten nested message sequences with `MessageSequence`
 - Promises and async iterators used extensively to enable non-blocking execution
+- **Immutable Messages**: Ensures that messages are immutable, making the system more predictable and easier to debug.
+- Immutable messages for predictable and reproducible agent behavior
 - Immutable message passing via `Frozen` pydantic models
 - Frozen data structures for immutable agent state and message metadata
 - Immutable message and agent state for reproducibility
@@ -182,6 +193,64 @@ import asyncio
 asyncio.run(main())
 ```
 
+## Basic Usage
+
+Here's a simple example of using MiniAgents to create a dialog between a user and an AI assistant powered by OpenAI's GPT-3.5-turbo model:
+
+```python
+from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.ext.console_user_agent import create_console_user_agent
+from miniagents.utils import adialog_loop
+
+async def main():
+    user_agent = create_console_user_agent()
+    assistant_agent = create_openai_agent(model="gpt-3.5-turbo")
+
+    await adialog_loop(user_agent, assistant_agent)
+
+asyncio.run(main())
+```
+
+This will start an interactive dialog where the user can chat with the AI assistant in the console.
+
+In this example:
+
+1. We create a user agent using `create_console_user_agent()`, which reads user input from the console and writes back to the console.
+2. We create an assistant agent using `create_openai_agent()`, specifying the OpenAI model to use (e.g., "gpt-3.5-turbo").
+3. We start a dialog loop using `adialog_loop()`, passing the user agent and assistant agent as arguments.
+4. The dialog loop runs asynchronously within the `MiniAgents` context, allowing the agents to interact and exchange messages.
+
+### Basic Example
+
+Here's a simple example of a conversation using the MiniAgents framework:
+
+```python
+import logging
+from dotenv import load_dotenv
+from miniagents.ext.chat_history_md import ChatHistoryMD
+from miniagents.ext.console_user_agent import create_console_user_agent
+from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.miniagents import MiniAgents
+from miniagents.utils import adialog_loop
+
+load_dotenv()
+
+async def amain() -> None:
+    chat_history = ChatHistoryMD("CHAT.md")
+    try:
+        print()
+        await adialog_loop(
+            user_agent=create_console_user_agent(chat_history=chat_history),
+            assistant_agent=create_openai_agent(model="gpt-4o-2024-05-13"),
+        )
+    except KeyboardInterrupt:
+        print()
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARNING)
+    MiniAgents().run(amain())
+```
+
 ### Integrating with OpenAI
 
 To create an agent that interacts with OpenAI, you can use the `create_openai_agent` function:
@@ -301,6 +370,8 @@ if __name__ == "__main__":
 
 MiniAgents provides a structured way to handle messages using the `Message` class and its derivatives.
 
+You can create custom message types by subclassing `Message`.
+
 ```python
 from miniagents.messages import Message
 
@@ -380,7 +451,55 @@ MiniAgents().run(main())
 
 ## Documentation
 
+### Modules
+
+- `miniagents`: Core classes and functions.
+- `miniagents.ext`: Extensions for integrating with external services and libraries.
+- `miniagents.promising`: Classes and functions for handling promises and asynchronous operations.
+- `miniagents.utils`: Utility functions for common tasks.
+
+The framework is organized into several modules:
+
+- `miniagents.miniagents`: Core classes for creating and managing agents
+- `miniagents.messages`: Classes for representing and handling messages
+- `miniagents.promising`: Utilities for managing asynchronous operations using promises
+- `miniagents.ext`: Extensions for integrating with external services and utilities
+  - `miniagents.ext.chat_history_md`: Chat history management using Markdown files
+  - `miniagents.ext.console_user_agent`: User agent for interacting via the console
+  - `miniagents.ext.llm`: Integration with language models
+    - `miniagents.ext.llm.openai`: OpenAI language model integration
+    - `miniagents.ext.llm.anthropic`: Anthropic language model integration
+
+For detailed documentation on each module and class, please refer to the docstrings in the source code.
+
+### Extending MiniAgents
+
+You can extend the functionality of MiniAgents by creating custom agents, message types, and chat history handlers. The framework is designed to be modular and flexible, allowing you to integrate it with various services and customize its behavior to fit your needs.
+
 ### Core Concepts
+
+#### MiniAgents
+
+`MiniAgents` is the main context manager that handles the lifecycle of agents and promises.
+
+```python
+from miniagents import MiniAgents
+
+async with MiniAgents():
+    # Your code here
+```
+
+#### MiniAgent
+
+A `MiniAgent` is a wrapper for an agent function that allows calling the agent.
+
+```python
+from miniagents import miniagent
+
+@miniagent
+async def my_agent(ctx, **kwargs):
+    # Agent logic here
+```
 
 - `MiniAgents`: The main context manager for running agents
 - **MiniAgents**: The main class that manages the lifecycle of agents and their interactions.
@@ -410,6 +529,7 @@ MiniAgents().run(main())
 - `MessagePromise`: A promise of a message that can be streamed token by token.
 - `MessagePromise`: A promise that resolves to a message
 - `MessageSequencePromise`: A promise of a sequence of messages that can be streamed message by message.
+- `ChatHistory`: An abstract class for managing chat history.
 
 ### Promising
 
@@ -419,6 +539,8 @@ MiniAgents().run(main())
 
 ### Utilities
 
+- `adialog_loop`: Run a dialog loop between a user agent and assistant agent
+- `achain_loop`: Run a loop that chains multiple agents together
 - `achain_loop`: Runs a loop of agents, chaining their interactions.
 - `join_messages`: Joins multiple messages into a single message using a delimiter.
 - `split_messages`: Splits messages based on a delimiter.

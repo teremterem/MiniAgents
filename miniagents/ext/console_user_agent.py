@@ -46,7 +46,7 @@ async def _console_user_agent(ctx: InteractionContext, chat_history: ChatHistory
         print(f"\n{assistant_style}{msg_promise.preliminary_metadata.agent_alias}: {cancel_style}", end="", flush=True)
         async for token in msg_promise:
             print(f"{assistant_style}{token}{cancel_style}", end="", flush=True)
-        print("\n")
+        print("\n")  # this produces a double newline after a single message
 
     # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
     #  (to interrupt whoever is producing it) ?
