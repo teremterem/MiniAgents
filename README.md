@@ -9,7 +9,7 @@ TODO Oleksandr: explain the motivation behind the framework
 
 ---
 
-TODO Oleksandr: generate pseudo-FAQ
+TODO AI: generate pseudo-FAQ
 
 ---
 
