@@ -19,6 +19,7 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 
 ## Features
 
+- Manage chat history and persist messages
 - **Asynchronous Interaction**: Support for asynchronous interactions with agents.
 - **Streaming**: Stream data token by token or message by message.
 - Asynchronous and parallel execution of agents
