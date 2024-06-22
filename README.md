@@ -213,6 +213,13 @@ asyncio.run(main())
 
 This will start an interactive dialog where the user can chat with the AI assistant in the console.
 
+In this example:
+
+1. We create a user agent using `create_console_user_agent()`, which reads user input from the console and writes back to the console.
+2. We create an assistant agent using `create_openai_agent()`, specifying the OpenAI model to use (e.g., "gpt-3.5-turbo").
+3. We start a dialog loop using `adialog_loop()`, passing the user agent and assistant agent as arguments.
+4. The dialog loop runs asynchronously within the `MiniAgents` context, allowing the agents to interact and exchange messages.
+
 ### Basic Example
 
 Here's a simple example of a conversation using the MiniAgents framework:
