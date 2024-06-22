@@ -19,6 +19,7 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 
 ## Features
 
+- **Agent Management**: Define and manage agents using simple decorators.
 - **Agent Management**: Easily create, manage, and chain multiple agents.
 - Manage chat history and persist messages
 - **Chat History**: Manage chat history with support for in-memory and markdown file storage.
