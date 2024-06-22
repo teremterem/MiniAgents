@@ -19,7 +19,9 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 
 ## Features
 
+- **Agent Management**: Easily create, manage, and chain multiple agents.
 - Manage chat history and persist messages
+- **Chat History**: Manage chat history with support for in-memory and markdown file storage.
 - **Asynchronous Interaction**: Support for asynchronous interactions with agents.
 - **Streaming**: Stream data token by token or message by message.
 - Asynchronous and parallel execution of agents
@@ -33,8 +35,11 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 - Pass messages between agents using `MessageType` objects
 - Integrate with OpenAI and Anthropic LLMs using `create_openai_agent` and `create_anthropic_agent`
 - Extensible architecture allows integration with various LLM providers (OpenAI, Anthropic, etc.)
+- **LLM Integration**: Seamlessly integrate with popular LLMs like OpenAI and Anthropic.
+- **Message Handling**: Robust message handling with support for nested messages and promises.
 - Supports streaming of messages and tokens for efficient processing
 - Utilities for working with message sequences (joining, splitting, etc.)
+- **Utilities**: A set of utility functions to facilitate common tasks like dialog loops and message joining.
 - Stream tokens from LLMs piece-by-piece using `StreamedPromise`
 - Flatten nested message sequences with `MessageSequence`
 - Promises and async iterators used extensively to enable non-blocking execution
@@ -181,6 +186,37 @@ async def main():
 
 import asyncio
 asyncio.run(main())
+```
+
+### Basic Example
+
+Here's a simple example of a conversation using the MiniAgents framework:
+
+```python
+import logging
+from dotenv import load_dotenv
+from miniagents.ext.chat_history_md import ChatHistoryMD
+from miniagents.ext.console_user_agent import create_console_user_agent
+from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.miniagents import MiniAgents
+from miniagents.utils import adialog_loop
+
+load_dotenv()
+
+async def amain() -> None:
+    chat_history = ChatHistoryMD("CHAT.md")
+    try:
+        print()
+        await adialog_loop(
+            user_agent=create_console_user_agent(chat_history=chat_history),
+            assistant_agent=create_openai_agent(model="gpt-4o-2024-05-13"),
+        )
+    except KeyboardInterrupt:
+        print()
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARNING)
+    MiniAgents().run(amain())
 ```
 
 ### Integrating with OpenAI
