@@ -22,6 +22,7 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 - **Agent Management**: Easily create, manage, and chain multiple agents.
 - Manage chat history and persist messages
 - **Chat History**: Manage chat history with support for in-memory and markdown file storage.
+- Flexible chat history management, including in-memory and Markdown-based persistence
 - **Asynchronous Interaction**: Support for asynchronous interactions with agents.
 - **Streaming**: Stream data token by token or message by message.
 - Asynchronous and parallel execution of agents
@@ -40,6 +41,7 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 - Supports streaming of messages and tokens for efficient processing
 - Utilities for working with message sequences (joining, splitting, etc.)
 - **Utilities**: A set of utility functions to facilitate common tasks like dialog loops and message joining.
+- Utilities for common interaction patterns like dialog loops and agent chaining
 - Stream tokens from LLMs piece-by-piece using `StreamedPromise`
 - Flatten nested message sequences with `MessageSequence`
 - Promises and async iterators used extensively to enable non-blocking execution
@@ -187,6 +189,26 @@ async def main():
 import asyncio
 asyncio.run(main())
 ```
+
+## Basic Usage
+
+Here's a simple example of using MiniAgents to create a dialog between a user and an AI assistant powered by OpenAI's GPT-3.5-turbo model:
+
+```python
+from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.ext.console_user_agent import create_console_user_agent
+from miniagents.utils import adialog_loop
+
+async def main():
+    user_agent = create_console_user_agent()
+    assistant_agent = create_openai_agent(model="gpt-3.5-turbo")
+
+    await adialog_loop(user_agent, assistant_agent)
+
+asyncio.run(main())
+```
+
+This will start an interactive dialog where the user can chat with the AI assistant in the console.
 
 ### Basic Example
 
