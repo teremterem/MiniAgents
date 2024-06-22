@@ -370,6 +370,8 @@ if __name__ == "__main__":
 
 MiniAgents provides a structured way to handle messages using the `Message` class and its derivatives.
 
+You can create custom message types by subclassing `Message`.
+
 ```python
 from miniagents.messages import Message
 
@@ -476,6 +478,29 @@ You can extend the functionality of MiniAgents by creating custom agents, messag
 
 ### Core Concepts
 
+#### MiniAgents
+
+`MiniAgents` is the main context manager that handles the lifecycle of agents and promises.
+
+```python
+from miniagents import MiniAgents
+
+async with MiniAgents():
+    # Your code here
+```
+
+#### MiniAgent
+
+A `MiniAgent` is a wrapper for an agent function that allows calling the agent.
+
+```python
+from miniagents import miniagent
+
+@miniagent
+async def my_agent(ctx, **kwargs):
+    # Agent logic here
+```
+
 - `MiniAgents`: The main context manager for running agents
 - **MiniAgents**: The main class that manages the lifecycle of agents and their interactions.
 - `@miniagent`: Decorator for defining agents
@@ -513,6 +538,8 @@ You can extend the functionality of MiniAgents by creating custom agents, messag
 
 ### Utilities
 
+- `adialog_loop`: Run a dialog loop between a user agent and assistant agent
+- `achain_loop`: Run a loop that chains multiple agents together
 - `achain_loop`: Runs a loop of agents, chaining their interactions.
 - `join_messages`: Joins multiple messages into a single message using a delimiter.
 - `split_messages`: Splits messages based on a delimiter.
