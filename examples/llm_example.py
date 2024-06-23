@@ -7,6 +7,7 @@ from pprint import pprint
 from dotenv import load_dotenv
 
 from miniagents.ext.llm.openai import openai_agent
+from miniagents.ext.user_agents import echo_agent
 from miniagents.messages import Message
 from miniagents.miniagents import MiniAgents
 
@@ -33,21 +34,17 @@ async def persist_message(_, message: Message) -> None:
 
 async def amain() -> None:
     """
-    Send a message to Claude and print the response.
+    Send a message to an LLM agent and print the response.
     """
-    reply_sequence = llm_agent.inquire(
-        "How are you today?",
-        max_tokens=1000,
-        temperature=0.0,
-        system="Respond only in Yoda-speak.",
+    echo_agent.inquire(
+        llm_agent.inquire(
+            "How are you today?",
+            max_tokens=1000,
+            temperature=0.0,
+            system="Respond only in Yoda-speak.",
+        ),
+        mention_aliases=False,
     )
-
-    print()
-    async for msg_promise in reply_sequence:
-        async for token in msg_promise:
-            print(f"\033[92;1m{token}\033[0m", end="", flush=True)
-        print()
-        print()
 
 
 if __name__ == "__main__":

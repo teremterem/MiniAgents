@@ -47,6 +47,8 @@ async def console_user_agent(ctx: InteractionContext, chat_history: Optional[Cha
         lexer=_CustomPromptLexer(),
         style=_user_prompt_style,
     )
+    print()  # skip an extra line after the user input
+
     # the await below makes sure that writing to the chat history is finished before we proceed to reading it back
     await chat_history.logging_agent.inquire(UserMessage(user_input))
 
@@ -56,7 +58,7 @@ async def console_user_agent(ctx: InteractionContext, chat_history: Optional[Cha
 
 @miniagent
 async def echo_agent(
-    ctx: InteractionContext, assistant_style: Union[str, int] = "92;1", mention_agents: bool = True
+    ctx: InteractionContext, assistant_style: Union[str, int] = "92;1", mention_aliases: bool = True
 ) -> None:
     """
     MiniAgent that echoes messages to the console token by token.
@@ -64,9 +66,9 @@ async def echo_agent(
     ctx.reply(ctx.messages)  # pass the same messages forward
 
     async for msg_promise in ctx.messages:
-        if mention_agents:
+        if mention_aliases:
             print(
-                f"\n\033[{assistant_style}m{msg_promise.preliminary_metadata.agent_alias}: \033[0m", end="", flush=True
+                f"\033[{assistant_style}m{msg_promise.preliminary_metadata.agent_alias}: \033[0m", end="", flush=True
             )
         async for token in msg_promise:
             print(f"\033[{assistant_style}m{token}\033[0m", end="", flush=True)
