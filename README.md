@@ -199,14 +199,13 @@ Here's a simple example of using MiniAgents to create a dialog between a user an
 
 ```python
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.ext.console_user_agent import create_console_user_agent
+from miniagents.ext.console_user_agent import console_user_agent
 from miniagents.utils import adialog_loop
 
 async def main():
-    user_agent = create_console_user_agent()
     assistant_agent = openai_agent.fork(model="gpt-3.5-turbo")
 
-    await adialog_loop(user_agent, assistant_agent)
+    await adialog_loop(console_user_agent, assistant_agent)
 
 asyncio.run(main())
 ```
@@ -215,7 +214,7 @@ This will start an interactive dialog where the user can chat with the AI assist
 
 In this example:
 
-1. We create a user agent using `create_console_user_agent()`, which reads user input from the console and writes back to the console.
+1. We take `console_user_agent`, which reads user input from the console and writes back to the console.
 2. We create an assistant agent using `openai_agent.fork()`, specifying the OpenAI model to use (e.g., "gpt-3.5-turbo").
 3. We start a dialog loop using `adialog_loop()`, passing the user agent and assistant agent as arguments.
 4. The dialog loop runs asynchronously within the `MiniAgents` context, allowing the agents to interact and exchange messages.
@@ -228,7 +227,7 @@ Here's a simple example of a conversation using the MiniAgents framework:
 import logging
 from dotenv import load_dotenv
 from miniagents.ext.chat_history_md import ChatHistoryMD
-from miniagents.ext.console_user_agent import create_console_user_agent
+from miniagents.ext.console_user_agent import console_user_agent
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.miniagents import MiniAgents
 from miniagents.utils import adialog_loop
@@ -240,7 +239,7 @@ async def amain() -> None:
     try:
         print()
         await adialog_loop(
-            user_agent=create_console_user_agent(chat_history=chat_history),
+            user_agent=console_user_agent.fork(chat_history=chat_history),
             assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
         )
     except KeyboardInterrupt:
