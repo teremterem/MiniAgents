@@ -76,7 +76,7 @@ async def echo_agent(
 @miniagent
 async def file_agent(ctx: InteractionContext, file: str) -> None:
     """
-    MiniAgent that writes messages to a file.
+    MiniAgent that writes the content of `messages` to a file.
     """
     ctx.reply(ctx.messages)  # pass the same messages forward
 
