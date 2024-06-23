@@ -28,7 +28,11 @@ class ChatHistoryMD(ChatHistory):
         """
         The implementation of the agent that logs the chat history to a markdown file.
         """
-        with self._chat_md_file.open("a", encoding="utf-8") as chat_md_file:
+        with self._chat_md_file.open(
+            "a",  # append mode
+            buffering=1,  # line buffering
+            encoding="utf-8",
+        ) as chat_md_file:
             async for msg_promise in ctx.messages:
                 try:
                     message_role = msg_promise.preliminary_metadata.role
@@ -43,9 +47,7 @@ class ChatHistoryMD(ChatHistory):
 
                 async for token in msg_promise:
                     chat_md_file.write(token)
-
                 chat_md_file.write("\n")
-                chat_md_file.flush()
 
     async def aload_chat_history(self) -> tuple[Message, ...]:
         """
