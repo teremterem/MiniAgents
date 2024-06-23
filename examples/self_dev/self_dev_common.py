@@ -23,8 +23,9 @@ MODEL_AGENTS = {model: agent.fork(model=model) for model, agent in MODEL_AGENT_F
 SELF_DEV_ROOT = Path(__file__).parent
 MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent
 
-SELF_DEV_TRANSIENT = SELF_DEV_ROOT / "transient"
 SELF_DEV_OUTPUT = SELF_DEV_ROOT / "output"
+SELF_DEV_PROMPTS = SELF_DEV_ROOT / "self_dev_prompts.py"
+SELF_DEV_TRANSIENT = SELF_DEV_ROOT / "transient"
 
 
 class RepoFileMessage(Message):
@@ -42,9 +43,10 @@ class RepoFileMessage(Message):
 
 SKIPS_FOR_REPO_VARIATIONS: dict[str, list[str]] = {
     "complete": [],
-    "no_examples": ["examples/"],
-    "no_examples_no_tests": ["examples/", "tests/"],
-    # "no_tests": ["tests/"],
+    "no_pypr": ["pyproject.toml"],
+    "no_pypr_no_readme": ["pyproject.toml", "README.md"],
+    "no_pypr_no_readme_no_examples": ["pyproject.toml", "README.md", "examples/"],
+    "no_pypr_no_readme_no_examples_no_tests": ["pyproject.toml", "README.md", "examples/", "tests/"],
 }
 
 
@@ -76,22 +78,16 @@ class FullRepoMessage(Message):  # TODO Oleksandr: bring back `ModelSingleton` ?
                         ".",
                         "dist/",
                         relative_posix_path(SELF_DEV_OUTPUT),
+                        # relative_posix_path(SELF_DEV_PROMPTS),  # skip prompt file in order not to throw LLM off ?
                         relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
-                        # "pyproject.toml",  # TODO Oleksandr: should we or should we not look at pyproject.toml ?
-                        "README.md",  # TODO Oleksandr: should we or should we not look at already existing README ?
+                        "LICENSE",  # TODO Oleksandr: what if there is a `LICENSE-template` file, for ex. ?
                         "venv/",
+                        "poetry.lock",
                         *skip_if_starts_with,
                     ]
                 )
                 and not any(file_posix_path.endswith(suffix) for suffix in [".pyc"])
-                and file_posix_path
-                not in {
-                    # skip the prompt file in order not to throw off the LLM
-                    "examples/self_developer/self_dev_prompts.py",
-                    "LICENSE",
-                    "poetry.lock",
-                }
             )
         ]
         miniagent_files.sort(key=lambda file_message: file_message.file_posix_path)

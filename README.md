@@ -13,9 +13,15 @@ TODO AI: generate pseudo-FAQ
 
 ---
 
-MiniAgents is a Python framework for building agent-based systems. It provides a simple and intuitive way to define agents and their interactions.
+MiniAgents is a Python framework for building agent-based systems. It provides a simple and intuitive way to define
+agents and their interactions.
 
-MiniAgents is a Python framework designed to facilitate the creation and management of agents that interact with language models (LLMs) and other services. It provides a structured way to define, call, and manage agents, making it easier to build complex systems that rely on asynchronous interactions and streaming data.
+MiniAgents is a Python framework designed to facilitate the creation and management of agents that interact with
+language models (LLMs) and other services. It provides a structured way to define, call, and manage agents, making it
+easier to build complex systems that rely on asynchronous interactions and streaming data.
+
+An asynchronous framework for building LLM-based multi-agent systems in Python, with a focus on immutable messages and
+token streaming.
 
 ## Features
 
@@ -69,6 +75,7 @@ Here's a simple example of how to define an agent:
 ```python
 from miniagents import miniagent, InteractionContext
 
+
 @miniagent
 async def my_agent(ctx: InteractionContext):
     async for message in ctx.messages:
@@ -94,24 +101,29 @@ Here's a simple example of defining agents and having them interact:
 ```python
 from miniagents import miniagent, MiniAgents, InteractionContext
 
+
 @miniagent
 async def agent1(ctx: InteractionContext):
     ctx.reply("Hello from Agent 1!")
+
 
 @miniagent
 async def agent2(ctx: InteractionContext):
     message = await ctx.messages.aresolve_messages()
     ctx.reply(f"Agent 2 received: {message[0].text}")
 
+
 async def main():
     async with MiniAgents():
         agent2_replies = agent2.inquire(agent1.inquire())
         print(await agent2_replies.aresolve_messages())
 
+
 asyncio.run(main())
 ```
 
 This will output:
+
 ```
 (Message(text='Agent 2 received: Hello from Agent 1!'),)
 ```
@@ -126,14 +138,17 @@ Here's a basic example of how to create and run a simple agent using MiniAgents:
 import asyncio
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 
+
 @miniagent
 async def simple_agent(ctx: InteractionContext) -> None:
     print("Agent is running")
     ctx.reply("Hello from the agent!")
 
+
 async def main() -> None:
     async with MiniAgents():
         await simple_agent.inquire()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -141,10 +156,12 @@ if __name__ == "__main__":
 
 ### Define an Agent
 
-You can define an agent using the `@miniagent` decorator. An agent is essentially an asynchronous function that interacts with a context.
+You can define an agent using the `@miniagent` decorator. An agent is essentially an asynchronous function that
+interacts with a context.
 
 ```python
 from miniagents.miniagents import miniagent, InteractionContext
+
 
 @miniagent
 async def my_agent(ctx: InteractionContext) -> None:
@@ -153,10 +170,12 @@ async def my_agent(ctx: InteractionContext) -> None:
 
 ### Run an Agent
 
-To run an agent, you need to create an instance of `MiniAgents` and use the `inquire` method to send messages to the agent.
+To run an agent, you need to create an instance of `MiniAgents` and use the `inquire` method to send messages to the
+agent.
 
 ```python
 from miniagents.miniagents import MiniAgents
+
 
 async def main():
     async with MiniAgents():
@@ -164,19 +183,23 @@ async def main():
         async for reply in replies:
             print(await reply)
 
+
 import asyncio
+
 asyncio.run(main())
 ```
 
 ### Integrate with LLMs
 
-MiniAgents provides built-in support for OpenAI and Anthropic language models. You can create agents for these models using the provided functions.
+MiniAgents provides built-in support for OpenAI and Anthropic language models. You can create agents for these models
+using the provided functions.
 
 ```python
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.messages import Message
 
 openai_agent = openai_agent.fork(model="gpt-3.5-turbo")
+
 
 async def main():
     async with MiniAgents():
@@ -189,23 +212,28 @@ async def main():
         async for reply in replies:
             print(await reply)
 
+
 import asyncio
+
 asyncio.run(main())
 ```
 
 ## Basic Usage
 
-Here's a simple example of using MiniAgents to create a dialog between a user and an AI assistant powered by OpenAI's GPT-3.5-turbo model:
+Here's a simple example of using MiniAgents to create a dialog between a user and an AI assistant powered by OpenAI's
+GPT-3.5-turbo model:
 
 ```python
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.ext.console_user_agent import console_user_agent
 from miniagents.utils import adialog_loop
 
+
 async def main():
     assistant_agent = openai_agent.fork(model="gpt-3.5-turbo")
 
     await adialog_loop(console_user_agent, assistant_agent)
+
 
 asyncio.run(main())
 ```
@@ -217,7 +245,8 @@ In this example:
 1. We take `console_user_agent`, which reads user input from the console and writes back to the console.
 2. We create an assistant agent using `openai_agent.fork()`, specifying the OpenAI model to use (e.g., "gpt-3.5-turbo").
 3. We start a dialog loop using `adialog_loop()`, passing the user agent and assistant agent as arguments.
-4. The dialog loop runs asynchronously within the `MiniAgents` context, allowing the agents to interact and exchange messages.
+4. The dialog loop runs asynchronously within the `MiniAgents` context, allowing the agents to interact and exchange
+   messages.
 
 ### Basic Example
 
@@ -234,6 +263,7 @@ from miniagents.utils import adialog_loop
 
 load_dotenv()
 
+
 async def amain() -> None:
     chat_history = ChatHistoryMD("CHAT.md")
     try:
@@ -244,6 +274,7 @@ async def amain() -> None:
         )
     except KeyboardInterrupt:
         print()
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
@@ -285,6 +316,7 @@ load_dotenv()
 
 llm_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
 
+
 async def main() -> None:
     async with MiniAgents():
         reply_sequence = llm_agent.inquire("How are you today?", max_tokens=1000, temperature=0.0)
@@ -292,6 +324,7 @@ async def main() -> None:
             async for token in msg_promise:
                 print(token, end="", flush=True)
             print()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -306,6 +339,7 @@ from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 from miniagents.promising.sentinels import AWAIT
 from miniagents.utils import achain_loop
 
+
 @miniagent
 async def user_agent(ctx: InteractionContext) -> None:
     async for msg_promise in ctx.messages:
@@ -313,6 +347,7 @@ async def user_agent(ctx: InteractionContext) -> None:
             print(token, end="", flush=True)
         print()
     ctx.reply(input("USER: "))
+
 
 @miniagent
 async def assistant_agent(ctx: InteractionContext) -> None:
@@ -322,8 +357,10 @@ async def assistant_agent(ctx: InteractionContext) -> None:
         print()
     ctx.reply("Hello, how can I assist you?")
 
+
 async def amain() -> None:
     await achain_loop([user_agent, AWAIT, assistant_agent])
+
 
 if __name__ == "__main__":
     MiniAgents().run(amain())
@@ -339,23 +376,28 @@ You can create more complex interactions involving multiple agents:
 import asyncio
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 
+
 @miniagent
 async def agent1(ctx: InteractionContext) -> None:
     print("Agent 1 is running")
     ctx.reply("Message from Agent 1")
+
 
 @miniagent
 async def agent2(ctx: InteractionContext) -> None:
     print("Agent 2 is running")
     ctx.reply("Message from Agent 2")
 
+
 @miniagent
 async def aggregator_agent(ctx: InteractionContext) -> None:
     ctx.reply([agent1.inquire(), agent2.inquire()])
 
+
 async def main() -> None:
     async with MiniAgents():
         await aggregator_agent.inquire()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -370,8 +412,10 @@ You can create custom message types by subclassing `Message`.
 ```python
 from miniagents.messages import Message
 
+
 class CustomMessage(Message):
     custom_field: str
+
 
 message = CustomMessage(text="Hello", custom_field="Custom Value")
 print(message.text)  # Output: Hello
@@ -380,7 +424,8 @@ print(message.custom_field)  # Output: Custom Value
 
 ### Handling Messages
 
-MiniAgents provides a structured way to handle messages. You can define different types of messages such as `UserMessage`, `SystemMessage`, and `AssistantMessage`:
+MiniAgents provides a structured way to handle messages. You can define different types of messages such
+as `UserMessage`, `SystemMessage`, and `AssistantMessage`:
 
 ```python
 from miniagents.ext.llm.llm_common import UserMessage, SystemMessage, AssistantMessage
@@ -401,10 +446,12 @@ You can join multiple messages into a single message using the `join_messages` f
 ```python
 from miniagents.utils import join_messages
 
+
 async def main():
     messages = ["Hello", "world"]
     joined_message = join_messages(messages)
     print(await joined_message.aresolve())
+
 
 miniagents.run(main())
 ```
@@ -416,10 +463,12 @@ You can split a message into multiple messages using the `split_messages` functi
 ```python
 from miniagents.utils import split_messages
 
+
 async def main():
     message = "Hello\n\nworld"
     split_message = split_messages(message)
     print(await split_message.aresolve_messages())
+
 
 miniagents.run(main())
 ```
@@ -436,10 +485,12 @@ Example of joining messages:
 ```python
 from miniagents.utils import join_messages
 
+
 async def main():
     async with MiniAgents() as context:
         joined_message = join_messages(["Hello", "World"], delimiter=" ")
         print(await joined_message.aresolve())
+
 
 MiniAgents().run(main())
 ```
@@ -459,17 +510,19 @@ The framework is organized into several modules:
 - `miniagents.messages`: Classes for representing and handling messages
 - `miniagents.promising`: Utilities for managing asynchronous operations using promises
 - `miniagents.ext`: Extensions for integrating with external services and utilities
-  - `miniagents.ext.chat_history_md`: Chat history management using Markdown files
-  - `miniagents.ext.console_user_agent`: User agent for interacting via the console
-  - `miniagents.ext.llm`: Integration with language models
-    - `miniagents.ext.llm.openai`: OpenAI language model integration
-    - `miniagents.ext.llm.anthropic`: Anthropic language model integration
+    - `miniagents.ext.chat_history_md`: Chat history management using Markdown files
+    - `miniagents.ext.console_user_agent`: User agent for interacting via the console
+    - `miniagents.ext.llm`: Integration with language models
+        - `miniagents.ext.llm.openai`: OpenAI language model integration
+        - `miniagents.ext.llm.anthropic`: Anthropic language model integration
 
 For detailed documentation on each module and class, please refer to the docstrings in the source code.
 
 ### Extending MiniAgents
 
-You can extend the functionality of MiniAgents by creating custom agents, message types, and chat history handlers. The framework is designed to be modular and flexible, allowing you to integrate it with various services and customize its behavior to fit your needs.
+You can extend the functionality of MiniAgents by creating custom agents, message types, and chat history handlers. The
+framework is designed to be modular and flexible, allowing you to integrate it with various services and customize its
+behavior to fit your needs.
 
 ### Core Concepts
 
@@ -481,7 +534,7 @@ You can extend the functionality of MiniAgents by creating custom agents, messag
 from miniagents import MiniAgents
 
 async with MiniAgents():
-    # Your code here
+# Your code here
 ```
 
 #### MiniAgent
@@ -491,9 +544,10 @@ A `MiniAgent` is a wrapper for an agent function that allows calling the agent.
 ```python
 from miniagents import miniagent
 
+
 @miniagent
 async def my_agent(ctx, **kwargs):
-    # Agent logic here
+# Agent logic here
 ```
 
 - `MiniAgents`: The main context manager for running agents
@@ -560,7 +614,9 @@ MiniAgents is released under the [MIT License](LICENSE).
 
 ---
 
-This README provides an overview of the MiniAgents framework, its features, installation instructions, usage examples, and information on testing and contributing. For more detailed documentation, please refer to the source code and comments within the project.
+This README provides an overview of the MiniAgents framework, its features, installation instructions, usage examples,
+and information on testing and contributing. For more detailed documentation, please refer to the source code and
+comments within the project.
 
 ---
 
