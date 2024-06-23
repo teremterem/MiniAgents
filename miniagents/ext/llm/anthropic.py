@@ -29,12 +29,12 @@ class AnthropicMessage(AssistantMessage):
 @miniagent
 async def anthropic_agent(
     ctx: InteractionContext,
-    async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
-    model: Optional[str] = None,
+    model: str,
     stream: Optional[bool] = None,
     system: Optional[str] = None,
     fake_first_user_message: str = "/start",
     message_delimiter_for_same_role: str = "\n\n",
+    async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
     reply_metadata: Optional[dict[str, Any]] = None,
     **kwargs,
 ) -> None:

@@ -5,7 +5,7 @@
 import asyncio
 import copy
 import logging
-from functools import partial, wraps
+from functools import partial
 from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
 
 from pydantic import BaseModel
@@ -123,16 +123,14 @@ def miniagent(
         return _decorator
 
     # the decorator `@miniagent` was used either without arguments or as a direct function call
-    return wraps(func)(
-        MiniAgent(
-            func,
-            alias=alias,
-            description=description,
-            uppercase_func_name=uppercase_func_name,
-            normalize_spaces_in_docstring=normalize_spaces_in_docstring,
-            interaction_metadata=interaction_metadata,
-            **partial_kwargs,
-        )
+    return MiniAgent(
+        func,
+        alias=alias,
+        description=description,
+        uppercase_func_name=uppercase_func_name,
+        normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+        interaction_metadata=interaction_metadata,
+        **partial_kwargs,
     )
 
 

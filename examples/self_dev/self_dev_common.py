@@ -13,7 +13,7 @@ from miniagents.messages import Message
 load_dotenv()
 
 MODEL_AGENT_FACTORIES = {
-    # "gpt-4o-2024-05-13": create_openai_agent,
+    # "gpt-4o-2024-05-13": openai_agent,
     "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=2000),
     # "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=2000),
     # "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=2000),

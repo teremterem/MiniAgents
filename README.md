@@ -35,7 +35,7 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 - Agents can be chained together to form complex interaction flows
 - Promises and async iterators are used extensively to enable non-blocking communication
 - Pass messages between agents using `MessageType` objects
-- Integrate with OpenAI and Anthropic LLMs using `create_openai_agent` and `anthropic_agent`
+- Integrate with OpenAI and Anthropic LLMs using `openai_agent` and `anthropic_agent`
 - Extensible architecture allows integration with various LLM providers (OpenAI, Anthropic, etc.)
 - **LLM Integration**: Seamlessly integrate with popular LLMs like OpenAI and Anthropic.
 - **Message Handling**: Robust message handling with support for nested messages and promises.
@@ -173,10 +173,10 @@ asyncio.run(main())
 MiniAgents provides built-in support for OpenAI and Anthropic language models. You can create agents for these models using the provided functions.
 
 ```python
-from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.ext.llm.openai import openai_agent
 from miniagents.messages import Message
 
-openai_agent = create_openai_agent(model="gpt-3.5-turbo")
+openai_agent = openai_agent.fork(model="gpt-3.5-turbo")
 
 async def main():
     async with MiniAgents():
@@ -198,13 +198,13 @@ asyncio.run(main())
 Here's a simple example of using MiniAgents to create a dialog between a user and an AI assistant powered by OpenAI's GPT-3.5-turbo model:
 
 ```python
-from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.ext.llm.openai import openai_agent
 from miniagents.ext.console_user_agent import create_console_user_agent
 from miniagents.utils import adialog_loop
 
 async def main():
     user_agent = create_console_user_agent()
-    assistant_agent = create_openai_agent(model="gpt-3.5-turbo")
+    assistant_agent = openai_agent.fork(model="gpt-3.5-turbo")
 
     await adialog_loop(user_agent, assistant_agent)
 
@@ -216,7 +216,7 @@ This will start an interactive dialog where the user can chat with the AI assist
 In this example:
 
 1. We create a user agent using `create_console_user_agent()`, which reads user input from the console and writes back to the console.
-2. We create an assistant agent using `create_openai_agent()`, specifying the OpenAI model to use (e.g., "gpt-3.5-turbo").
+2. We create an assistant agent using `openai_agent.fork()`, specifying the OpenAI model to use (e.g., "gpt-3.5-turbo").
 3. We start a dialog loop using `adialog_loop()`, passing the user agent and assistant agent as arguments.
 4. The dialog loop runs asynchronously within the `MiniAgents` context, allowing the agents to interact and exchange messages.
 
@@ -229,7 +229,7 @@ import logging
 from dotenv import load_dotenv
 from miniagents.ext.chat_history_md import ChatHistoryMD
 from miniagents.ext.console_user_agent import create_console_user_agent
-from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.ext.llm.openai import openai_agent
 from miniagents.miniagents import MiniAgents
 from miniagents.utils import adialog_loop
 
@@ -241,7 +241,7 @@ async def amain() -> None:
         print()
         await adialog_loop(
             user_agent=create_console_user_agent(chat_history=chat_history),
-            assistant_agent=create_openai_agent(model="gpt-4o-2024-05-13"),
+            assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
         )
     except KeyboardInterrupt:
         print()
@@ -253,12 +253,10 @@ if __name__ == "__main__":
 
 ### Integrating with OpenAI
 
-To create an agent that interacts with OpenAI, you can use the `create_openai_agent` function:
+To create an agent that interacts with OpenAI, you can use the `openai_agent` function:
 
 ```python
-from miniagents.ext.llm.openai import create_openai_agent
-
-openai_agent = create_openai_agent()
+from miniagents.ext.llm.openai import openai_agent
 
 # Running the OpenAI agent
 mini_agents.run(openai_agent.inquire("Hello, OpenAI!"))
@@ -281,12 +279,12 @@ You can create an agent that interacts with OpenAI's GPT models:
 
 ```python
 from dotenv import load_dotenv
-from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.ext.llm.openai import openai_agent
 from miniagents.miniagents import MiniAgents
 
 load_dotenv()
 
-llm_agent = create_openai_agent(model="gpt-4o-2024-05-13")
+llm_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
 
 async def main() -> None:
     async with MiniAgents():
@@ -510,7 +508,7 @@ async def my_agent(ctx, **kwargs):
 - **MessagePromise**: A promise of a message that can be streamed token by token.
 - **MessageSequencePromise**: A promise of a sequence of messages that can be streamed message by message.
 
-- `create_openai_agent`: Creates an OpenAI language model agent
+- `openai_agent`: an OpenAI language model agent
 - `anthropic_agent`: an Anthropic language model agent
 
 ### Core Classes

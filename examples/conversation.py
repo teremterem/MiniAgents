@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from miniagents.ext.chat_history_md import ChatHistoryMD
 from miniagents.ext.console_user_agent import create_console_user_agent
-from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.ext.llm.openai import openai_agent
 from miniagents.miniagents import MiniAgents
 from miniagents.utils import adialog_loop
 
@@ -24,7 +24,7 @@ async def amain() -> None:
         print()
         await adialog_loop(
             user_agent=create_console_user_agent(chat_history=chat_history),
-            assistant_agent=create_openai_agent(model="gpt-4o-2024-05-13"),
+            assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
         )
     except KeyboardInterrupt:
         print()
