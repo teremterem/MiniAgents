@@ -35,7 +35,7 @@ MiniAgents is a Python framework designed to facilitate the creation and managem
 - Agents can be chained together to form complex interaction flows
 - Promises and async iterators are used extensively to enable non-blocking communication
 - Pass messages between agents using `MessageType` objects
-- Integrate with OpenAI and Anthropic LLMs using `create_openai_agent` and `create_anthropic_agent`
+- Integrate with OpenAI and Anthropic LLMs using `create_openai_agent` and `anthropic_agent`
 - Extensible architecture allows integration with various LLM providers (OpenAI, Anthropic, etc.)
 - **LLM Integration**: Seamlessly integrate with popular LLMs like OpenAI and Anthropic.
 - **Message Handling**: Robust message handling with support for nested messages and promises.
@@ -269,9 +269,7 @@ mini_agents.run(openai_agent.inquire("Hello, OpenAI!"))
 Similarly, you can create an agent that interacts with Anthropic:
 
 ```python
-from miniagents.ext.llm.anthropic import create_anthropic_agent
-
-anthropic_agent = create_anthropic_agent()
+from miniagents.ext.llm.anthropic import anthropic_agent
 
 # Running the Anthropic agent
 mini_agents.run(anthropic_agent.inquire("Hello, Anthropic!"))
@@ -513,7 +511,7 @@ async def my_agent(ctx, **kwargs):
 - **MessageSequencePromise**: A promise of a sequence of messages that can be streamed message by message.
 
 - `create_openai_agent`: Creates an OpenAI language model agent
-- `create_anthropic_agent`: Creates an Anthropic language model agent
+- `anthropic_agent`: an Anthropic language model agent
 
 ### Core Classes
 

@@ -2,24 +2,23 @@
 This module contains common code for the self-developer example.
 """
 
-from functools import partial
 from pathlib import Path
 from typing import Iterable
 
 from dotenv import load_dotenv
 
-from miniagents.ext.llm.anthropic import create_anthropic_agent
+from miniagents.ext.llm.anthropic import anthropic_agent
 from miniagents.messages import Message
 
 load_dotenv()
 
 MODEL_AGENT_FACTORIES = {
     # "gpt-4o-2024-05-13": create_openai_agent,
-    "claude-3-5-sonnet-20240620": partial(create_anthropic_agent, max_tokens=2000),
-    # "claude-3-opus-20240229": partial(create_anthropic_agent, max_tokens=2000),
-    # "claude-3-haiku-20240307": partial(create_anthropic_agent, max_tokens=2000),
+    "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=2000),
+    # "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=2000),
+    # "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=2000),
 }
-MODEL_AGENTS = {model: factory(model=model) for model, factory in MODEL_AGENT_FACTORIES.items()}
+MODEL_AGENTS = {model: agent.fork(model=model) for model, agent in MODEL_AGENT_FACTORIES.items()}
 
 SELF_DEV_ROOT = Path(__file__).parent
 MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent

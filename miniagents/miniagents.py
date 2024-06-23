@@ -5,7 +5,7 @@
 import asyncio
 import copy
 import logging
-from functools import partial
+from functools import partial, wraps
 from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
 
 from pydantic import BaseModel
@@ -123,92 +123,17 @@ def miniagent(
         return _decorator
 
     # the decorator `@miniagent` was used either without arguments or as a direct function call
-    return MiniAgent(
-        func,
-        alias=alias,
-        description=description,
-        uppercase_func_name=uppercase_func_name,
-        normalize_spaces_in_docstring=normalize_spaces_in_docstring,
-        interaction_metadata=interaction_metadata,
-        **partial_kwargs,
+    return wraps(func)(
+        MiniAgent(
+            func,
+            alias=alias,
+            description=description,
+            uppercase_func_name=uppercase_func_name,
+            normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+            interaction_metadata=interaction_metadata,
+            **partial_kwargs,
+        )
     )
-
-
-class InteractionContext:
-    """
-    TODO Oleksandr: docstring
-    """
-
-    def __init__(
-        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_streamer: StreamAppender[MessageType]
-    ) -> None:
-        self.this_agent = this_agent
-        self.messages = messages
-        self._reply_streamer = reply_streamer
-
-    def reply(self, messages: MessageType) -> None:
-        """
-        Send a reply to the messages that were received by the agent. The messages can be of any allowed MessageType.
-        They will be converted to Message objects when they arrive at the agent that sent the original messages.
-        """
-        # TODO Oleksandr: add a warning that iterators, async iterators and generators, if passed as `messages` will
-        #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
-        #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
-        #  guarantee that it will be iterated over immediately)
-        # TODO Oleksandr: implement a utility in MiniAgents that deep-copies/freezes mutable data containers
-        #  while keeping objects of other types intact and use it in StreamAppender to freeze the state of those
-        #  objects upon their submission (this way the user will not have to worry about things like `history[:]`
-        #  in the code below)
-        self._reply_streamer.append(messages)
-
-    def finish_early(self) -> None:  # TODO Oleksandr: is this a good name for this method ?
-        """
-        TODO Oleksandr: docstring
-        """
-        # TODO Oleksandr: what to do with exceptions in agent function that may happen after this method was called ?
-        self._reply_streamer.close()
-
-
-class AgentCall:
-    """
-    TODO Oleksandr: docstring
-    """
-
-    def __init__(
-        self,
-        message_streamer: StreamAppender[MessageType],
-        reply_sequence_promise: MessageSequencePromise,
-    ) -> None:
-        self._message_streamer = message_streamer
-        self._reply_sequence_promise = reply_sequence_promise
-
-        self._message_streamer.open()
-
-    def send_message(self, message: MessageType) -> "AgentCall":
-        """
-        Send an input message to the agent.
-        """
-        self._message_streamer.append(message)
-        return self
-
-    def reply_sequence(self) -> MessageSequencePromise:
-        """
-        Finish the agent call and return the agent's response(s).
-
-        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
-        """
-        self.finish()
-        return self._reply_sequence_promise
-
-    def finish(self) -> "AgentCall":
-        """
-        Finish the agent call.
-
-        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
-        """
-        # TODO Oleksandr: also make sure to close the streamer when the parent agent call is finished
-        self._message_streamer.close()
-        return self
 
 
 class MiniAgent:
@@ -295,6 +220,103 @@ class MiniAgent:
             reply_sequence_promise=reply_sequence.sequence_promise,
         )
         return agent_call
+
+    def fork(
+        self,
+        alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce some "fork identifier" ?
+        description: Optional[str] = None,
+        interaction_metadata: Optional[dict[str, Any]] = None,
+        **partial_kwargs,
+    ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
+        """
+        TODO Oleksandr: docstring
+        """
+        return MiniAgent(
+            self._func,
+            alias=alias or self.alias,
+            description=description or self.description,
+            uppercase_func_name=False,
+            normalize_spaces_in_docstring=False,
+            interaction_metadata={**self._interact_metadata_dict, **(interaction_metadata or {})},
+            **partial_kwargs,
+        )
+
+
+class InteractionContext:
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_streamer: StreamAppender[MessageType]
+    ) -> None:
+        self.this_agent = this_agent
+        self.messages = messages
+        self._reply_streamer = reply_streamer
+
+    def reply(self, messages: MessageType) -> None:
+        """
+        Send a reply to the messages that were received by the agent. The messages can be of any allowed MessageType.
+        They will be converted to Message objects when they arrive at the agent that sent the original messages.
+        """
+        # TODO Oleksandr: add a warning that iterators, async iterators and generators, if passed as `messages` will
+        #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
+        #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
+        #  guarantee that it will be iterated over immediately)
+        # TODO Oleksandr: implement a utility in MiniAgents that deep-copies/freezes mutable data containers
+        #  while keeping objects of other types intact and use it in StreamAppender to freeze the state of those
+        #  objects upon their submission (this way the user will not have to worry about things like `history[:]`
+        #  in the code below)
+        self._reply_streamer.append(messages)
+
+    def finish_early(self) -> None:  # TODO Oleksandr: is this a good name for this method ?
+        """
+        TODO Oleksandr: docstring
+        """
+        # TODO Oleksandr: what to do with exceptions in agent function that may happen after this method was called ?
+        self._reply_streamer.close()
+
+
+class AgentCall:
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __init__(
+        self,
+        message_streamer: StreamAppender[MessageType],
+        reply_sequence_promise: MessageSequencePromise,
+    ) -> None:
+        self._message_streamer = message_streamer
+        self._reply_sequence_promise = reply_sequence_promise
+
+        self._message_streamer.open()
+
+    def send_message(self, message: MessageType) -> "AgentCall":
+        """
+        Send an input message to the agent.
+        """
+        self._message_streamer.append(message)
+        return self
+
+    def reply_sequence(self) -> MessageSequencePromise:
+        """
+        Finish the agent call and return the agent's response(s).
+
+        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
+        """
+        self.finish()
+        return self._reply_sequence_promise
+
+    def finish(self) -> "AgentCall":
+        """
+        Finish the agent call.
+
+        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
+        """
+        # TODO Oleksandr: also make sure to close the streamer when the parent agent call is finished
+        self._message_streamer.close()
+        return self
 
 
 class AgentInteractionNode(Message):
