@@ -11,6 +11,9 @@ TODO Oleksandr: explain the motivation behind the framework
 3. **Immutable Messages**: Ensuring that messages passed between agents are immutable, making the system more predictable and easier to debug.
 2. **Streaming Support**: Allows for efficient processing of data streams, both token-by-token and message-by-message.
 3. **Immutability**: Ensures predictable and reproducible agent behavior through immutable messages.
+1. **Asynchronous Communication**: Enables non-blocking interactions between agents and LLMs.
+2. **Immutability**: Ensures predictable and reproducible agent behavior through immutable messages.
+3. **Streaming**: Supports efficient processing of large language model outputs via token streaming.
 
 ---
 
@@ -373,6 +376,8 @@ if __name__ == "__main__":
 
 TODO Oleksandr: explain why AWAIT is used in the example above
 
+The `AWAIT` sentinel is used to ensure that the previous agent's response is fully processed before the next agent starts.
+
 ### Advanced Example with Multiple Agents
 
 You can create more complex interactions involving multiple agents:
@@ -623,6 +628,18 @@ MiniAgents is released under the [MIT License](LICENSE).
 
 5. **Q: How can I persist agent interactions?**
    A: MiniAgents provides built-in support for chat history management, including in-memory and Markdown-based persistence options.
+
+Q: How does MiniAgents handle errors in agents?
+A: Exceptions in agents are treated as messages and can be caught and handled by other agents in the chain.
+
+Q: Can I use MiniAgents with other LLM providers?
+A: Yes, the framework is designed to be extensible. You can create custom agents for other LLM providers by following the patterns used for OpenAI and Anthropic integrations.
+
+Q: How does token streaming work in MiniAgents?
+A: Token streaming is implemented using the `StreamedPromise` class, which allows for piece-by-piece consumption of LLM outputs.
+
+Q: Is MiniAgents suitable for production use?
+A: While MiniAgents is actively developed and used in various projects, it's always recommended to thoroughly test and evaluate the framework for your specific use case before deploying to production.
 
 ## Things to remember (for the developers of this framework)
 
