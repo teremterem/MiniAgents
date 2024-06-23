@@ -76,6 +76,11 @@ async def readme_agent(_) -> None:  # TODO Oleksandr: make it possible not to sp
                                 skip_if_starts_with=variation_skips,
                             ),
                             SystemMessage(PRODUCE_README_SYSTEM_FOOTER),
+                            # AssistantMessage(
+                            #     "Here is an improved version of the README.md file for the MiniAgents framework."
+                            #     "\n"
+                            #     "# MiniAgents"
+                            # ),
                         ],
                         temperature=0,
                     ),

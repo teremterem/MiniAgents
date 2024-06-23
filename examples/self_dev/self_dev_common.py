@@ -8,15 +8,16 @@ from typing import Iterable
 from dotenv import load_dotenv
 
 from miniagents.ext.llm.anthropic import anthropic_agent
+from miniagents.ext.llm.openai import openai_agent
 from miniagents.messages import Message
 
 load_dotenv()
 
 MODEL_AGENT_FACTORIES = {
-    # "gpt-4o-2024-05-13": openai_agent,
+    "gpt-4o-2024-05-13": openai_agent,
     "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=2000),
-    # "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=2000),
-    # "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=2000),
+    "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=2000),
+    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=2000),
 }
 MODEL_AGENTS = {model: agent.fork(model=model) for model, agent in MODEL_AGENT_FACTORIES.items()}
 
@@ -43,10 +44,10 @@ class RepoFileMessage(Message):
 
 SKIPS_FOR_REPO_VARIATIONS: dict[str, list[str]] = {
     "complete": [],
-    "no_pypr": ["pyproject.toml"],
-    "no_pypr_no_readme": ["pyproject.toml", "README.md"],
-    "no_pypr_no_readme_no_examples": ["pyproject.toml", "README.md", "examples/"],
-    "no_pypr_no_readme_no_examples_no_tests": ["pyproject.toml", "README.md", "examples/", "tests/"],
+    # "no_pypr": ["pyproject.toml"],
+    # "no_pypr_no_readme": ["pyproject.toml", "README.md"],
+    # "no_pypr_no_readme_no_examples": ["pyproject.toml", "README.md", "examples/"],
+    # "no_pypr_no_readme_no_examples_no_tests": ["pyproject.toml", "README.md", "examples/", "tests/"],
 }
 
 
