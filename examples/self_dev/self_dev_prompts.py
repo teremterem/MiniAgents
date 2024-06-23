@@ -7,5 +7,6 @@ GLOBAL_SYSTEM_HEADER = (
 )
 PRODUCE_README_SYSTEM_FOOTER = (
     "Please improve the README.md in this framework (take care of TODOs, improve the explanations, get rid of "
-    "repetitions, fix code examples, because some of them are broken)."
+    "repetitions, fix code examples; pay attention to the source code files of the framework itself when you do "
+    "all that)."
 )
