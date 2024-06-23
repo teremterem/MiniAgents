@@ -7,6 +7,11 @@
 Why does this framework exist at all? What is the problem it solves? What is the motivation behind it?
 TODO Oleksandr: explain the motivation behind the framework
 
+2. **Streaming**: Allowing agents to process data in a streaming fashion, consuming tokens or messages as they become available, rather than waiting for the entire response.
+3. **Immutable Messages**: Ensuring that messages passed between agents are immutable, making the system more predictable and easier to debug.
+2. **Streaming Support**: Allows for efficient processing of data streams, both token-by-token and message-by-message.
+3. **Immutability**: Ensures predictable and reproducible agent behavior through immutable messages.
+
 ---
 
 TODO AI: generate pseudo-FAQ
@@ -601,6 +606,23 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 ## License
 
 MiniAgents is released under the [MIT License](LICENSE).
+
+## FAQ
+
+1. **Q: How does MiniAgents differ from other agent frameworks?**
+   A: MiniAgents focuses on asynchronous execution, immutable message passing, and easy integration with LLMs. It's designed for building complex, streaming-capable multi-agent systems.
+
+2. **Q: Can I use MiniAgents with LLM providers other than OpenAI and Anthropic?**
+   A: Yes, the framework is extensible. You can create custom agents for other LLM providers by following the patterns in the existing implementations.
+
+3. **Q: How does MiniAgents handle errors in agents?**
+   A: Exceptions in agents are treated as messages, allowing for graceful error handling and recovery in multi-agent systems.
+
+4. **Q: Is MiniAgents suitable for production use?**
+   A: While MiniAgents is being actively developed, it's designed with production use cases in mind. However, always thoroughly test and evaluate it for your specific needs.
+
+5. **Q: How can I persist agent interactions?**
+   A: MiniAgents provides built-in support for chat history management, including in-memory and Markdown-based persistence options.
 
 ## Things to remember (for the developers of this framework)
 
