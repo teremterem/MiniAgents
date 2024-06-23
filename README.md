@@ -14,6 +14,7 @@ TODO Oleksandr: explain the motivation behind the framework
 1. **Asynchronous Communication**: Enables non-blocking interactions between agents and LLMs.
 2. **Immutability**: Ensures predictable and reproducible agent behavior through immutable messages.
 3. **Streaming**: Supports efficient processing of large language model outputs via token streaming.
+3. **Streaming**: Enable streaming of data, both messages and tokens, to optimize the use of language models and other services.
 
 ---
 
@@ -641,6 +642,21 @@ A: Token streaming is implemented using the `StreamedPromise` class, which allow
 Q: Is MiniAgents suitable for production use?
 A: While MiniAgents is actively developed and used in various projects, it's always recommended to thoroughly test and evaluate the framework for your specific use case before deploying to production.
 
+1. **Q: How does MiniAgents differ from other agent frameworks?**
+   A: MiniAgents focuses on asynchronous communication, immutable messages, and seamless integration with LLMs. It provides a simple API for defining agents as Python functions while handling complex interactions behind the scenes.
+
+2. **Q: Can I use MiniAgents with LLMs other than OpenAI and Anthropic?**
+   A: Yes, the framework is designed to be extensible. You can create custom integrations for other LLM providers by following the patterns in the existing integrations.
+
+3. **Q: How does token streaming work in MiniAgents?**
+   A: MiniAgents uses `StreamedPromise` objects to handle token streaming. This allows for efficient processing of LLM responses as they are generated, rather than waiting for the entire response.
+
+4. **Q: What are the benefits of using immutable messages?**
+   A: Immutable messages ensure that the state of conversations remains consistent and predictable. This helps prevent bugs related to unexpected state changes and makes it easier to reason about the flow of information between agents.
+
+5. **Q: How can I persist chat history in MiniAgents?**
+   A: MiniAgents provides built-in support for in-memory chat history and Markdown-based persistence. You can also create custom chat history handlers by extending the `ChatHistory` class.
+
 ## Things to remember (for the developers of this framework)
 
 - **Different Promise and StreamedPromise resolvers, piece streamers, appenders and what not should always catch
@@ -650,6 +666,9 @@ A: While MiniAgents is actively developed and used in various projects, it's alw
   interrupting those promises with KeyboardInterrupt which are extended from BaseException instead of letting
   KeyboardInterrupt to go through the queue leads to hanging of those promises (a queue is waiting for END_OF_QUEUE
   sentinel forever but the task that should send it is dead).
+
+- **Different Promise and StreamedPromise resolvers, piece streamers, appenders, and other components should always catch BaseExceptions and not just Exceptions**. This is because many of these components involve communications between async tasks via asyncio.Queue objects. Interrupting those promises with KeyboardInterrupt (which extends from BaseException) instead of letting it go through the queue can lead to hanging promises.
+
 
 ---
 
