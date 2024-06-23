@@ -5,18 +5,14 @@ This module integrates Anthropic language models with MiniAgents.
 
 import logging
 import typing
+from functools import cache
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
 from anthropic import NOT_GIVEN
 
 from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
-from miniagents.miniagents import (
-    miniagent,
-    MiniAgent,
-    MiniAgents,
-    InteractionContext,
-)
+from miniagents.miniagents import miniagent, MiniAgents, InteractionContext
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
@@ -30,46 +26,24 @@ class AnthropicMessage(AssistantMessage):
     """
 
 
-def create_anthropic_agent(
-    async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
-    reply_metadata: Optional[dict[str, Any]] = None,
-    alias: str = "ANTHROPIC_AGENT",
-    **mini_agent_kwargs,
-) -> MiniAgent:
-    """
-    Create an MiniAgent for Anthropic models (see MiniAgent class definition and docstring for usage details).
-    """
-    if not async_client:
-        # pylint: disable=import-outside-toplevel
-        # noinspection PyShadowingNames
-        import anthropic as anthropic_original
-
-        async_client = anthropic_original.AsyncAnthropic()
-
-    return miniagent(
-        _anthropic_func,
-        async_client=async_client,
-        global_reply_metadata=reply_metadata,
-        alias=alias,
-        **mini_agent_kwargs,
-    )
-
-
-async def _anthropic_func(
+@miniagent
+async def anthropic_agent(
     ctx: InteractionContext,
-    async_client: "anthropic_original.AsyncAnthropic",
-    global_reply_metadata: Optional[dict[str, Any]],
     model: str,
-    reply_metadata: Optional[dict[str, Any]] = None,
     stream: Optional[bool] = None,
     system: Optional[str] = None,
     fake_first_user_message: str = "/start",
     message_delimiter_for_same_role: str = "\n\n",
+    async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
+    reply_metadata: Optional[dict[str, Any]] = None,
     **kwargs,
 ) -> None:
     """
-    Run text generation with Anthropic.
+    An agent that represents Large Language Models by Anthropic.
     """
+    if not async_client:
+        async_client = _default_anthropic_client()
+
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
@@ -130,10 +104,18 @@ async def _anthropic_func(
             # preliminary metadata:
             model=model,
             agent_alias=ctx.this_agent.alias,
-            **(global_reply_metadata or {}),
             **(reply_metadata or {}),
         )
     )
+
+
+@cache
+def _default_anthropic_client() -> "anthropic_original.AsyncAnthropic":
+    # pylint: disable=import-outside-toplevel
+    # noinspection PyShadowingNames
+    import anthropic as anthropic_original
+
+    return anthropic_original.AsyncAnthropic()
 
 
 def _fix_message_dicts(

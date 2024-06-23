@@ -14,8 +14,8 @@ from miniagents.miniagents import MiniAgents, MiniAgent
 load_dotenv()
 
 # pylint: disable=wrong-import-position
-from miniagents.ext.llm.anthropic import create_anthropic_agent
-from miniagents.ext.llm.openai import create_openai_agent
+from miniagents.ext.llm.anthropic import anthropic_agent
+from miniagents.ext.llm.openai import openai_agent
 
 
 def _check_openai_response(message: Message) -> None:
@@ -31,8 +31,8 @@ def _check_anthropic_response(message: Message) -> None:
 @pytest.mark.parametrize(
     "llm_agent, check_response_func",
     [
-        (create_openai_agent(model="gpt-3.5-turbo-0125"), _check_openai_response),
-        (create_anthropic_agent(model="claude-3-haiku-20240307"), _check_anthropic_response),
+        (openai_agent.fork(model="gpt-3.5-turbo-0125"), _check_openai_response),
+        (anthropic_agent.fork(model="claude-3-haiku-20240307"), _check_anthropic_response),
     ],
 )
 @pytest.mark.asyncio

@@ -3,6 +3,8 @@ This module provides a user agent that reads user input from the console, writes
 track of the chat history using the provided ChatHistory object.
 """
 
+from typing import Optional
+
 from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.document import Document
 from prompt_toolkit.key_binding import KeyBindings
@@ -12,26 +14,20 @@ from prompt_toolkit.styles import Style
 
 from miniagents.chat_history import ChatHistory, InMemoryChatHistory
 from miniagents.ext.llm.llm_common import UserMessage
-from miniagents.miniagents import miniagent, InteractionContext, MiniAgent
+from miniagents.miniagents import miniagent, InteractionContext
+
+GLOBAL_CHAT_HISTORY = InMemoryChatHistory()
 
 
-def create_console_user_agent(
-    chat_history: ChatHistory = None, alias: str = "USER_AGENT", **miniagent_kwargs
-) -> MiniAgent:
-    """
-    Create a user agent that reads user input from the console, writes back to the console and also keeps
-    track of the chat history using the provided ChatHistory object.
-    """
-    if chat_history is None:
-        chat_history = InMemoryChatHistory()
-    return miniagent(_console_user_agent, chat_history=chat_history, alias=alias, **miniagent_kwargs)
-
-
-async def _console_user_agent(ctx: InteractionContext, chat_history: ChatHistory) -> None:
+@miniagent
+async def console_user_agent(ctx: InteractionContext, chat_history: Optional[ChatHistory] = None) -> None:
     """
     User agent that reads user input from the console, writes back to the console and also keeps track of
     the chat history using the provided ChatHistory object.
     """
+    if chat_history is None:
+        chat_history = GLOBAL_CHAT_HISTORY
+
     # technically `input_messages` are going to be the same as `ctx.messages`, but reading them instead of the
     # original `ctx.messages` ensures that all these messages will be logged to the chat history by the time
     # we are done iterating over `input_messages` here (because our async loop here will have to wait for the

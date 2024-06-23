@@ -5,13 +5,13 @@ This module integrates OpenAI language models with MiniAgents.
 
 import logging
 import typing
+from functools import cache
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
 
 from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
 from miniagents.miniagents import (
     miniagent,
-    MiniAgent,
     MiniAgents,
     InteractionContext,
 )
@@ -28,45 +28,23 @@ class OpenAIMessage(AssistantMessage):
     """
 
 
-def create_openai_agent(
-    async_client: Optional["openai_original.AsyncOpenAI"] = None,
-    reply_metadata: Optional[dict[str, Any]] = None,
-    alias: str = "OPENAI_AGENT",
-    **mini_agent_kwargs,
-) -> MiniAgent:
-    """
-    Create an MiniAgent for OpenAI models (see MiniAgent class definition and docstring for usage details).
-    """
-    if not async_client:
-        # pylint: disable=import-outside-toplevel
-        # noinspection PyShadowingNames
-        import openai as openai_original
-
-        async_client = openai_original.AsyncOpenAI()
-
-    return miniagent(
-        _openai_func,
-        async_client=async_client,
-        global_reply_metadata=reply_metadata,
-        alias=alias,
-        **mini_agent_kwargs,
-    )
-
-
-async def _openai_func(
+@miniagent
+async def openai_agent(
     ctx: InteractionContext,
-    async_client: "openai_original.AsyncOpenAI",
-    global_reply_metadata: Optional[dict[str, Any]],
     model: str,
-    reply_metadata: Optional[dict[str, Any]] = None,
     stream: Optional[bool] = None,
     system: Optional[str] = None,
     n: int = 1,
+    async_client: Optional["openai_original.AsyncOpenAI"] = None,
+    reply_metadata: Optional[dict[str, Any]] = None,
     **kwargs,
 ) -> None:
     """
-    Run text generation with OpenAI.
+    An agent that represents Large Language Models by OpenAI.
     """
+    if not async_client:
+        async_client = _default_openai_client()
+
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
@@ -131,10 +109,18 @@ async def _openai_func(
             # preliminary metadata:
             model=model,
             agent_alias=ctx.this_agent.alias,
-            **(global_reply_metadata or {}),
             **(reply_metadata or {}),
         )
     )
+
+
+@cache
+def _default_openai_client() -> "openai_original.AsyncOpenAI":
+    # pylint: disable=import-outside-toplevel
+    # noinspection PyShadowingNames
+    import openai as openai_original
+
+    return openai_original.AsyncOpenAI()
 
 
 def _merge_openai_dicts(destination_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
