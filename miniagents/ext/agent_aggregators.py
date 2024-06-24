@@ -5,7 +5,7 @@ This module contains agents that are used to aggregate other agents into chains,
 
 from typing import Union, Iterable, Optional
 
-from miniagents.ext.user_agents import echo_agent, prompt_agent
+from miniagents.ext.misc_agents import echo_agent, prompt_agent
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR

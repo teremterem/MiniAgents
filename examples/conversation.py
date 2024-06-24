@@ -7,7 +7,7 @@ import logging
 from dotenv import load_dotenv
 
 from miniagents.ext.agent_aggregators import dialog_loop
-from miniagents.ext.chat_history_md import chat_history_md_agent
+from miniagents.ext.history_agents import chat_history_md_agent
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.miniagents import MiniAgents
 

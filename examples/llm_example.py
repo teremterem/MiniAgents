@@ -7,7 +7,7 @@ from pprint import pprint
 from dotenv import load_dotenv
 
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.ext.user_agents import echo_agent
+from miniagents.ext.misc_agents import echo_agent
 from miniagents.messages import Message
 from miniagents.miniagents import MiniAgents
 

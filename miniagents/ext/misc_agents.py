@@ -3,8 +3,6 @@ This module provides a user agent that reads user input from the console, writes
 track of the chat history using the provided ChatHistory object.
 """
 
-# TODO Oleksandr: rename to misc_agents.py ?
-
 from pathlib import Path
 from typing import Union
 
