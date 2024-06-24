@@ -234,7 +234,7 @@ GPT-3.5-turbo model:
 
 ```python
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.ext.console_user_agent import console_user_agent
+from miniagents.ext.user_agents import console_user_agent
 from miniagents.utils import adialog_loop
 
 
@@ -265,7 +265,7 @@ Here's a simple example of a conversation using the MiniAgents framework:
 import logging
 from dotenv import load_dotenv
 from miniagents.ext.chat_history_md import ChatHistoryMD
-from miniagents.ext.console_user_agent import console_user_agent
+from miniagents.ext.user_agents import console_user_agent
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.miniagents import MiniAgents
 from miniagents.utils import adialog_loop

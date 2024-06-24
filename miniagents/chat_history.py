@@ -15,6 +15,8 @@ class ChatHistory(ABC):
     Abstract class for loading chat history from a storage as well as writing new messages to it.
     """
 
+    # TODO Oleksandr: get rid of this abstraction and just turn these ChatHistory classes into MiniAgents ?
+
     @cached_property
     def logging_agent(self) -> MiniAgent:
         """

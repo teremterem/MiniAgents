@@ -3,7 +3,8 @@ This module provides a user agent that reads user input from the console, writes
 track of the chat history using the provided ChatHistory object.
 """
 
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.document import Document
@@ -28,21 +29,12 @@ async def console_user_agent(ctx: InteractionContext, chat_history: Optional[Cha
     if chat_history is None:
         chat_history = GLOBAL_CHAT_HISTORY
 
-    # technically `input_messages` are going to be the same as `ctx.messages`, but reading them instead of the
-    # original `ctx.messages` ensures that all these messages will be logged to the chat history by the time
-    # we are done iterating over `input_messages` here (because our async loop here will have to wait for the
-    # `logging_agent` to finish in order to be sure that these are all the messages there are in `logging_agent`
-    # response)
-    input_messages = chat_history.logging_agent.inquire(ctx.messages)
-
-    assistant_style = "\033[92;1m"
-    cancel_style = "\033[0m"
-
-    async for msg_promise in input_messages:
-        print(f"\n{assistant_style}{msg_promise.preliminary_metadata.agent_alias}: {cancel_style}", end="", flush=True)
-        async for token in msg_promise:
-            print(f"{assistant_style}{token}{cancel_style}", end="", flush=True)
-        print("\n")  # this produces a double newline after a single message
+    # Let's wait for the `logging_agent` and `echo_agent` to finish before we proceed to the user input
+    # TODO Oleksandr: should it be enough to just do `await msg_sequence_promise` instead of
+    #  `await msg_sequence_promise.aresolve_messages()` to be sure that not only all message promises are "given"
+    #  but all the messages are resolved ?
+    # TODO Oleksandr: receive `echo_agent` as a parameter ?
+    await echo_agent.inquire(chat_history.logging_agent.inquire(ctx.messages)).aresolve_messages()
 
     # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
     #  (to interrupt whoever is producing it) ?
@@ -55,11 +47,47 @@ async def console_user_agent(ctx: InteractionContext, chat_history: Optional[Cha
         lexer=_CustomPromptLexer(),
         style=_user_prompt_style,
     )
+    print()  # skip an extra line after the user input
+
     # the await below makes sure that writing to the chat history is finished before we proceed to reading it back
     await chat_history.logging_agent.inquire(UserMessage(user_input))
 
     chat_history = await chat_history.aload_chat_history()
     ctx.reply(chat_history)
+
+
+@miniagent
+async def echo_agent(
+    ctx: InteractionContext, assistant_style: Union[str, int] = "92;1", mention_aliases: bool = True
+) -> None:
+    """
+    MiniAgent that echoes messages to the console token by token.
+    """
+    ctx.reply(ctx.messages)  # pass the same messages forward
+
+    async for msg_promise in ctx.messages:
+        if mention_aliases:
+            print(
+                f"\033[{assistant_style}m{msg_promise.preliminary_metadata.agent_alias}: \033[0m", end="", flush=True
+            )
+        async for token in msg_promise:
+            print(f"\033[{assistant_style}m{token}\033[0m", end="", flush=True)
+        print("\n")  # this produces a double newline after a single message
+
+
+@miniagent
+async def file_agent(ctx: InteractionContext, file: str) -> None:
+    """
+    MiniAgent that writes the content of `messages` to a file.
+    """
+    ctx.reply(ctx.messages)  # pass the same messages forward
+
+    file = Path(file)
+    file.parent.mkdir(parents=True, exist_ok=True)
+
+    with file.open("w", encoding="utf-8") as file_stream:
+        async for token in ctx.messages.as_single_promise():
+            file_stream.write(token)
 
 
 _user_prompt_style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
