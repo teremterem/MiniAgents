@@ -3,65 +3,17 @@ Utility functions of the MiniAgents framework.
 """
 
 import logging
-from typing import AsyncIterator, Any, Optional, Union, Iterable, Callable
+from typing import AsyncIterator, Any, Optional, Union
 
+# noinspection PyProtectedMember
 from pydantic._internal._model_construction import ModelMetaclass
 
 from miniagents.messages import MessageSequencePromise
-from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message, MiniAgent
+from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message
 from miniagents.promising.promising import StreamAppender
-from miniagents.promising.sentinels import Sentinel, DEFAULT, AWAIT, CLEAR
+from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 logger = logging.getLogger(__name__)
-
-
-async def adialog_loop(
-    user_agent: Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel],
-    assistant_agent: Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel],
-) -> None:
-    """
-    Run a loop that chains the user agent and the assistant agent in a dialog.
-    """
-    await achain_loop(
-        [
-            user_agent,
-            AWAIT,  # TODO Oleksandr: explain this with an inline comment like this one
-            assistant_agent,
-        ]
-    )
-
-
-async def achain_loop(
-    agents: Iterable[Union[MiniAgent, Callable[[MessageType, ...], MessageSequencePromise], Sentinel]],
-    initial_input: Optional[MessageType] = None,
-) -> None:
-    """
-    Run a loop that chains the agents together.
-    """
-    agents = list(agents)
-    if not any(agent is AWAIT for agent in agents):
-        raise ValueError(
-            "There should be at least one AWAIT sentinel in the list of agents in order for the loop not to "
-            "schedule the turns infinitely without actually running them."
-        )
-
-    messages = initial_input
-    while True:
-        for agent in agents:
-            if agent is AWAIT:
-                if isinstance(messages, MessageSequencePromise):
-                    # all the interactions happen here (here all the scheduled promises are awaited for)
-                    messages = await messages.aresolve_messages()
-            elif agent is CLEAR:
-                messages = None
-            elif callable(agent):
-                messages = agent(messages)
-            elif isinstance(agent, MiniAgent):
-                messages = agent.inquire(messages)
-            else:
-                raise ValueError(f"Invalid agent: {agent}")
-    # TODO Oleksandr: How should agents end the loop ? What message sequence should this utility return when the
-    #  loop is over ?
 
 
 def join_messages(

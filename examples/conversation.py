@@ -6,11 +6,11 @@ import logging
 
 from dotenv import load_dotenv
 
+from miniagents.ext.agent_aggregators import dialog_loop_agent
 from miniagents.ext.chat_history_md import ChatHistoryMD
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.ext.user_agents import console_user_agent
 from miniagents.miniagents import MiniAgents
-from miniagents.utils import adialog_loop
 
 load_dotenv()
 
@@ -22,10 +22,10 @@ async def amain() -> None:
     chat_history = ChatHistoryMD("CHAT.md")
     try:
         print()
-        await adialog_loop(
+        await dialog_loop_agent.fork(
             user_agent=console_user_agent.fork(chat_history=chat_history),
             assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
-        )
+        ).inquire()
     except KeyboardInterrupt:
         print()
 
