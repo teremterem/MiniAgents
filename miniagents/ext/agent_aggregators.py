@@ -21,7 +21,7 @@ async def user_agent(
     """
     A user agent that echoes `messages` from the agent that called it, reads the user input and then returns full
     chat history as a reply (so it can be further submitted to an LLM agent, for example).
-    TODO Olekandr: add more details
+    TODO Oleksandr: add more details
     """
     ctx.reply(agent_chain.fork(agents=[echo_agent, prompt_agent]).inquire(ctx.messages))
 
@@ -36,7 +36,7 @@ async def dialog_loop(
 ) -> None:
     """
     Run a loop that chains the user agent and the assistant agent in a dialog.
-    TODO Olekandr: add more details
+    TODO Oleksandr: add more details
     """
     ctx.reply(
         agent_loop.fork(
