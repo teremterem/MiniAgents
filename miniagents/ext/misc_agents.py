@@ -18,7 +18,7 @@ from miniagents.miniagents import miniagent, InteractionContext
 
 
 @miniagent
-async def prompt_agent(ctx: InteractionContext) -> None:
+async def console_prompt_agent(ctx: InteractionContext) -> None:
     """
     TODO Oleksandr: docstring
     """
@@ -42,7 +42,7 @@ async def prompt_agent(ctx: InteractionContext) -> None:
 
 
 @miniagent
-async def echo_agent(
+async def console_echo_agent(
     ctx: InteractionContext, assistant_style: Union[str, int] = "92;1", mention_aliases: bool = True
 ) -> None:
     """

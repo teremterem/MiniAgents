@@ -6,7 +6,7 @@ This module contains agents that are used to aggregate other agents into chains,
 from typing import Union, Iterable, Optional
 
 from miniagents.ext.history_agents import in_memory_history_agent
-from miniagents.ext.misc_agents import echo_agent, prompt_agent
+from miniagents.ext.misc_agents import console_echo_agent, console_prompt_agent
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
@@ -16,8 +16,8 @@ from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
 @miniagent
 async def user_agent(
     ctx: InteractionContext,
-    echo_agent: Optional[MiniAgent] = echo_agent,
-    prompt_agent: Optional[MiniAgent] = prompt_agent,
+    echo_agent: Optional[MiniAgent] = console_echo_agent,
+    prompt_agent: Optional[MiniAgent] = console_prompt_agent,
 ) -> None:
     """
     A user agent that echoes `messages` from the agent that called it, reads the user input and then returns full
