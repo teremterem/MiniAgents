@@ -48,9 +48,7 @@ async def anthropic_agent(
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        resolved_messages = await ctx.messages.aresolve_messages()
-
-        message_dicts = [message_to_llm_dict(msg) for msg in resolved_messages]
+        message_dicts = [message_to_llm_dict(msg) for msg in await ctx.message_promises]
         message_dicts = _fix_message_dicts(
             message_dicts,
             fake_first_user_message=fake_first_user_message,

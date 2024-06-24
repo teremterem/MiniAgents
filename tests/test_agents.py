@@ -37,8 +37,8 @@ async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None
         if start_asap is False:
             # when agents are not scheduled to start ASAP, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
-            await replies1.aresolve_messages()
-            await replies2.aresolve_messages()
+            await replies1
+            await replies2
 
     if start_asap is DEFAULT or start_asap is True:
         # for MiniAgents() True is the DEFAULT
@@ -89,7 +89,7 @@ async def test_sub_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> 
         if start_asap is False:
             # when agents are not scheduled to start ASAP, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
-            await replies.aresolve_messages()
+            await replies
 
     if start_asap is DEFAULT or start_asap is True:
         # for MiniAgents() True is the DEFAULT

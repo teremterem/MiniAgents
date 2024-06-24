@@ -87,7 +87,7 @@ from miniagents import miniagent, InteractionContext
 
 @miniagent
 async def my_agent(ctx: InteractionContext):
-    async for message in ctx.messages:
+    async for message in ctx.message_promises:
         ctx.reply(f"You said: {message}")
 ```
 
@@ -118,14 +118,14 @@ async def agent1(ctx: InteractionContext):
 
 @miniagent
 async def agent2(ctx: InteractionContext):
-    message = await ctx.messages.aresolve_messages()
+    message = await ctx.message_promises
     ctx.reply(f"Agent 2 received: {message[0].text}")
 
 
 async def main():
     async with MiniAgents():
         agent2_replies = agent2.inquire(agent1.inquire())
-        print(await agent2_replies.aresolve_messages())
+        print(await agent2_replies)
 
 
 asyncio.run(main())
@@ -234,7 +234,7 @@ GPT-3.5-turbo model:
 
 ```python
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.ext.user_agents import console_user_agent
+from miniagents.ext.misc_agents import console_user_agent
 from miniagents.utils import adialog_loop
 
 
@@ -264,8 +264,8 @@ Here's a simple example of a conversation using the MiniAgents framework:
 ```python
 import logging
 from dotenv import load_dotenv
-from miniagents.ext.chat_history_md import ChatHistoryMD
-from miniagents.ext.user_agents import console_user_agent
+from miniagents.ext.history_agents import ChatHistoryMD
+from miniagents.ext.misc_agents import console_user_agent
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.miniagents import MiniAgents
 from miniagents.utils import adialog_loop
@@ -351,7 +351,7 @@ from miniagents.utils import achain_loop
 
 @miniagent
 async def user_agent(ctx: InteractionContext) -> None:
-    async for msg_promise in ctx.messages:
+    async for msg_promise in ctx.message_promises:
         async for token in msg_promise:
             print(token, end="", flush=True)
         print()
@@ -360,7 +360,7 @@ async def user_agent(ctx: InteractionContext) -> None:
 
 @miniagent
 async def assistant_agent(ctx: InteractionContext) -> None:
-    async for msg_promise in ctx.messages:
+    async for msg_promise in ctx.message_promises:
         async for token in msg_promise:
             print(token, end="", flush=True)
         print()
@@ -478,7 +478,7 @@ from miniagents.utils import split_messages
 async def main():
     message = "Hello\n\nworld"
     split_message = split_messages(message)
-    print(await split_message.aresolve_messages())
+    print(await split_message)
 
 
 miniagents.run(main())

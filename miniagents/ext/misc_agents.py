@@ -4,7 +4,7 @@ track of the chat history using the provided ChatHistory object.
 """
 
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.document import Document
@@ -13,33 +13,21 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
-from miniagents.chat_history import ChatHistory, InMemoryChatHistory
 from miniagents.ext.llm.llm_common import UserMessage
 from miniagents.miniagents import miniagent, InteractionContext
 
-GLOBAL_CHAT_HISTORY = InMemoryChatHistory()
-
 
 @miniagent
-async def console_user_agent(ctx: InteractionContext, chat_history: Optional[ChatHistory] = None) -> None:
+async def console_prompt_agent(ctx: InteractionContext) -> None:
     """
-    User agent that reads user input from the console, writes back to the console and also keeps track of
-    the chat history using the provided ChatHistory object.
+    TODO Oleksandr: docstring
     """
-    if chat_history is None:
-        chat_history = GLOBAL_CHAT_HISTORY
+    # this is a "transparent" agent - pass the same messages forward (if any)
+    ctx.reply(ctx.message_promises)
+    # let's wait for all the previous messages to be resolved before we show the user prompt
+    await ctx.message_promises
 
-    # Let's wait for the `logging_agent` and `echo_agent` to finish before we proceed to the user input
-    # TODO Oleksandr: should it be enough to just do `await msg_sequence_promise` instead of
-    #  `await msg_sequence_promise.aresolve_messages()` to be sure that not only all message promises are "given"
-    #  but all the messages are resolved ?
-    # TODO Oleksandr: receive `echo_agent` as a parameter ?
-    await echo_agent.inquire(chat_history.logging_agent.inquire(ctx.messages)).aresolve_messages()
-
-    # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
-    #  (to interrupt whoever is producing it) ?
-
-    # TODO Oleksandr: mention that ctrl+space is used to insert a newline ?
+    # TODO Oleksandr: find a way to mention that ctrl+space is used to insert a newline ?
     user_input = await _prompt_session.prompt_async(
         HTML("<user_utterance>USER: </user_utterance>"),
         multiline=True,
@@ -49,23 +37,22 @@ async def console_user_agent(ctx: InteractionContext, chat_history: Optional[Cha
     )
     print()  # skip an extra line after the user input
 
-    # the await below makes sure that writing to the chat history is finished before we proceed to reading it back
-    await chat_history.logging_agent.inquire(UserMessage(user_input))
-
-    chat_history = await chat_history.aload_chat_history()
-    ctx.reply(chat_history)
+    ctx.reply(UserMessage(user_input))
 
 
 @miniagent
-async def echo_agent(
+async def console_echo_agent(
     ctx: InteractionContext, assistant_style: Union[str, int] = "92;1", mention_aliases: bool = True
 ) -> None:
     """
     MiniAgent that echoes messages to the console token by token.
     """
-    ctx.reply(ctx.messages)  # pass the same messages forward
+    ctx.reply(ctx.message_promises)  # this is a "transparent" agent - pass the same messages forward
 
-    async for msg_promise in ctx.messages:
+    # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
+    #  (to interrupt whoever is producing it) ?
+
+    async for msg_promise in ctx.message_promises:
         if mention_aliases:
             print(
                 f"\033[{assistant_style}m{msg_promise.preliminary_metadata.agent_alias}: \033[0m", end="", flush=True
@@ -76,17 +63,17 @@ async def echo_agent(
 
 
 @miniagent
-async def file_agent(ctx: InteractionContext, file: str) -> None:
+async def file_agent(ctx: InteractionContext, file: Union[str, Path]) -> None:
     """
     MiniAgent that writes the content of `messages` to a file.
     """
-    ctx.reply(ctx.messages)  # pass the same messages forward
+    ctx.reply(ctx.message_promises)  # this is a "transparent" agent - pass the same messages forward
 
     file = Path(file)
     file.parent.mkdir(parents=True, exist_ok=True)
 
     with file.open("w", encoding="utf-8") as file_stream:
-        async for token in ctx.messages.as_single_promise():
+        async for token in ctx.message_promises.as_single_promise():
             file_stream.write(token)
 
 

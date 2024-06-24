@@ -186,18 +186,10 @@ class MessagePromise(StreamedPromise[str, Message]):
         return super().__aiter__()
 
 
-class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[MessagePromise, ...]]):
+class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
     """
     A promise of a sequence of messages that can be streamed message by message.
     """
-
-    async def aresolve_messages(self) -> tuple[Message, ...]:
-        """
-        Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
-        and return them as a tuple of Message objects.
-        """
-        # pylint: disable=consider-using-generator
-        return tuple([await message_promise async for message_promise in self])
 
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
         # PyCharm fails to see that MessageSequencePromise inherits AsyncIterable protocol from StreamedPromise,

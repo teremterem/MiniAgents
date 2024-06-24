@@ -7,7 +7,7 @@ from pprint import pprint
 from dotenv import load_dotenv
 
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.ext.user_agents import echo_agent
+from miniagents.ext.misc_agents import console_echo_agent
 from miniagents.messages import Message
 from miniagents.miniagents import MiniAgents
 
@@ -36,7 +36,7 @@ async def amain() -> None:
     """
     Send a message to an LLM agent and print the response.
     """
-    echo_agent.inquire(
+    console_echo_agent.inquire(
         llm_agent.inquire(
             "How are you today?",
             max_tokens=1000,
