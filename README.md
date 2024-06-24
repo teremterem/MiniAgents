@@ -87,7 +87,7 @@ from miniagents import miniagent, InteractionContext
 
 @miniagent
 async def my_agent(ctx: InteractionContext):
-    async for message in ctx.messages:
+    async for message in ctx.message_promises:
         ctx.reply(f"You said: {message}")
 ```
 
@@ -118,7 +118,7 @@ async def agent1(ctx: InteractionContext):
 
 @miniagent
 async def agent2(ctx: InteractionContext):
-    message = await ctx.messages
+    message = await ctx.message_promises
     ctx.reply(f"Agent 2 received: {message[0].text}")
 
 
@@ -351,7 +351,7 @@ from miniagents.utils import achain_loop
 
 @miniagent
 async def user_agent(ctx: InteractionContext) -> None:
-    async for msg_promise in ctx.messages:
+    async for msg_promise in ctx.message_promises:
         async for token in msg_promise:
             print(token, end="", flush=True)
         print()
@@ -360,7 +360,7 @@ async def user_agent(ctx: InteractionContext) -> None:
 
 @miniagent
 async def assistant_agent(ctx: InteractionContext) -> None:
-    async for msg_promise in ctx.messages:
+    async for msg_promise in ctx.message_promises:
         async for token in msg_promise:
             print(token, end="", flush=True)
         print()

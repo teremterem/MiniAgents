@@ -246,10 +246,13 @@ class InteractionContext:
     """
 
     def __init__(
-        self, this_agent: "MiniAgent", messages: MessageSequencePromise, reply_streamer: StreamAppender[MessageType]
+        self,
+        this_agent: "MiniAgent",
+        message_promises: MessageSequencePromise,
+        reply_streamer: StreamAppender[MessageType],
     ) -> None:
         self.this_agent = this_agent
-        self.messages = messages
+        self.message_promises = message_promises
         self._reply_streamer = reply_streamer
 
     def reply(self, messages: MessageType) -> None:
@@ -448,7 +451,7 @@ class AgentReplyMessageSequence(MessageSequence):
         async def run_the_agent(_) -> AgentCallNode:
             ctx = InteractionContext(
                 this_agent=self._mini_agent,
-                messages=self._input_sequence_promise,
+                message_promises=self._input_sequence_promise,
                 reply_streamer=self.message_appender,
             )
             with self.message_appender:

@@ -61,7 +61,7 @@ async def openai_agent(
                     "content": system,
                 },
             ]
-        message_dicts.extend(message_to_llm_dict(msg) for msg in await ctx.messages)
+        message_dicts.extend(message_to_llm_dict(msg) for msg in await ctx.message_promises)
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))

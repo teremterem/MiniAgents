@@ -23,9 +23,9 @@ async def console_prompt_agent(ctx: InteractionContext) -> None:
     TODO Oleksandr: docstring
     """
     # this is a "transparent" agent - pass the same messages forward (if any)
-    ctx.reply(ctx.messages)
+    ctx.reply(ctx.message_promises)
     # let's wait for all the previous messages to be resolved before we show the user prompt
-    await ctx.messages
+    await ctx.message_promises
 
     # TODO Oleksandr: find a way to mention that ctrl+space is used to insert a newline ?
     user_input = await _prompt_session.prompt_async(
@@ -47,12 +47,12 @@ async def console_echo_agent(
     """
     MiniAgent that echoes messages to the console token by token.
     """
-    ctx.reply(ctx.messages)  # this is a "transparent" agent - pass the same messages forward
+    ctx.reply(ctx.message_promises)  # this is a "transparent" agent - pass the same messages forward
 
     # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
     #  (to interrupt whoever is producing it) ?
 
-    async for msg_promise in ctx.messages:
+    async for msg_promise in ctx.message_promises:
         if mention_aliases:
             print(
                 f"\033[{assistant_style}m{msg_promise.preliminary_metadata.agent_alias}: \033[0m", end="", flush=True
@@ -67,13 +67,13 @@ async def file_agent(ctx: InteractionContext, file: Union[str, Path]) -> None:
     """
     MiniAgent that writes the content of `messages` to a file.
     """
-    ctx.reply(ctx.messages)  # this is a "transparent" agent - pass the same messages forward
+    ctx.reply(ctx.message_promises)  # this is a "transparent" agent - pass the same messages forward
 
     file = Path(file)
     file.parent.mkdir(parents=True, exist_ok=True)
 
     with file.open("w", encoding="utf-8") as file_stream:
-        async for token in ctx.messages.as_single_promise():
+        async for token in ctx.message_promises.as_single_promise():
             file_stream.write(token)
 
 

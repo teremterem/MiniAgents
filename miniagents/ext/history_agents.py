@@ -17,7 +17,7 @@ async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Me
     """
     TODO Oleksandr: docstring
     """
-    message_list.extend(await ctx.messages)
+    message_list.extend(await ctx.message_promises)
     ctx.reply(message_list)
 
 
@@ -37,7 +37,7 @@ async def markdown_history_agent(
         buffering=1,  # line buffering
         encoding="utf-8",
     ) as chat_md_file:
-        async for msg_promise in ctx.messages:
+        async for msg_promise in ctx.message_promises:
             try:
                 message_role = msg_promise.preliminary_metadata.role
             except AttributeError:

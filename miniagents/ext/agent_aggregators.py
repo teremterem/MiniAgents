@@ -22,7 +22,7 @@ async def user_agent(
     chat history as a reply (so it can be further submitted to an LLM agent, for example).
     TODO Oleksandr: add more details
     """
-    ctx.reply(agent_chain.fork(agents=[echo_agent, prompt_agent]).inquire(ctx.messages))
+    ctx.reply(agent_chain.fork(agents=[echo_agent, prompt_agent]).inquire(ctx.message_promises))
 
 
 # noinspection PyShadowingNames
@@ -48,7 +48,7 @@ async def dialog_loop(
                 AWAIT,  # TODO Oleksandr: explain this with an inline comment like this one
                 assistant_agent,
             ],
-        ).inquire(ctx.messages)
+        ).inquire(ctx.message_promises)
     )
 
 
@@ -64,9 +64,9 @@ async def agent_loop(ctx: InteractionContext, agents: Iterable[Union[MiniAgent, 
             "in order for the loop not to schedule the turns infinitely without actually running them."
         )
 
-    messages = ctx.messages
+    message_promises = ctx.message_promises
     while True:
-        messages = await _achain_agents(agents, messages)
+        message_promises = await _achain_agents(agents, message_promises)
         # TODO Oleksandr: How should the agents end the loop ? What message sequence should be returned
         #  when the loop is over ?
 
@@ -76,7 +76,7 @@ async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[MiniAgent,
     """
     TODO Oleksandr: docstring
     """
-    ctx.reply(await _achain_agents(list(agents), ctx.messages))
+    ctx.reply(await _achain_agents(list(agents), ctx.message_promises))
 
 
 async def _achain_agents(
