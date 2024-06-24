@@ -1,4 +1,3 @@
-# pylint: disable=redefined-outer-name
 """
 This module contains agents that are used to aggregate other agents into chains, loops, dialogs and whatnot.
 """
@@ -12,7 +11,6 @@ from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
 
 
-# noinspection PyShadowingNames
 @miniagent
 async def user_agent(
     ctx: InteractionContext,
@@ -32,7 +30,7 @@ async def user_agent(
 async def dialog_loop(
     ctx: InteractionContext,
     assistant_agent: MiniAgent,
-    user_agent: MiniAgent = user_agent,
+    user_agent: MiniAgent = user_agent,  # pylint: disable=redefined-outer-name
     history_agent: Optional[MiniAgent] = None,
 ) -> None:
     """
