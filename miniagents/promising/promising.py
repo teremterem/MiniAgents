@@ -32,6 +32,14 @@ class PromisingContext:
     ensure that all the async tasks finish before this context manager exits).
     """
 
+    start_everything_asap_by_default: bool
+    appenders_capture_errors_by_default: bool
+    longer_hash_keys: bool
+    log_level_for_errors: int
+    on_promise_resolved_handlers: list[PromiseResolvedEventHandler]
+    parent: Optional["PromisingContext"]
+    child_tasks: set[Task]
+
     _current: ContextVar[Optional["PromisingContext"]] = ContextVar("PromisingContext._current", default=None)
 
     def __init__(

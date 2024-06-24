@@ -26,6 +26,9 @@ class MiniAgents(PromisingContext):
     TODO Oleksandr: docstring
     """
 
+    stream_llm_tokens_by_default: bool
+    on_persist_message_handlers: list[PersistMessageEventHandler]
+
     def __init__(
         self,
         stream_llm_tokens_by_default: bool = True,
@@ -139,6 +142,10 @@ class MiniAgent:
     A wrapper for an agent function that allows calling the agent.
     """
 
+    alias: str
+    description: Optional[str]
+    interaction_metadata: Frozen
+
     def __init__(
         self,
         func: AgentFunction,
@@ -244,6 +251,9 @@ class InteractionContext:
     """
     TODO Oleksandr: docstring
     """
+
+    this_agent: MiniAgent
+    message_promises: MessageSequencePromise
 
     def __init__(
         self,
