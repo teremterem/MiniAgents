@@ -1,28 +1,49 @@
+# pylint: disable=redefined-outer-name
 """
 This module contains agents that are used to aggregate other agents into chains, loops, dialogs and whatnot.
 """
 
-from typing import Union, Iterable
+from typing import Union, Iterable, Optional
 
+from miniagents.ext.user_agents import echo_agent, prompt_agent
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
 
 
+# noinspection PyShadowingNames
+@miniagent
+async def user_agent(
+    ctx: InteractionContext,
+    echo_agent: Optional[MiniAgent] = echo_agent,
+    prompt_agent: Optional[MiniAgent] = prompt_agent,
+) -> None:
+    """
+    A user agent that echoes `messages` from the agent that called it, reads the user input and then returns full
+    chat history as a reply (so it can be further submitted to an LLM agent, for example).
+    TODO Olekandr: add more details
+    """
+    ctx.reply(agent_chain.fork(agents=[echo_agent, prompt_agent]).inquire(ctx.messages))
+
+
+# noinspection PyShadowingNames
 @miniagent
 async def dialog_loop(
     ctx: InteractionContext,
-    user_agent: Union[MiniAgent, Sentinel],
-    assistant_agent: Union[MiniAgent, Sentinel],
+    assistant_agent: MiniAgent,
+    user_agent: MiniAgent = user_agent,
+    history_agent: Optional[MiniAgent] = None,
 ) -> None:
     """
     Run a loop that chains the user agent and the assistant agent in a dialog.
+    TODO Olekandr: add more details
     """
     ctx.reply(
         agent_loop.fork(
             agents=[
                 user_agent,
                 AWAIT,  # TODO Oleksandr: explain this with an inline comment like this one
+                history_agent,
                 assistant_agent,
             ],
         ).inquire(ctx.messages)
@@ -62,7 +83,9 @@ async def _achain_agents(
     messages = initial_messages
     for agent in agents:
         if agent is None:
-            # TODO Oleksandr: explain
+            # it is convenient to accept None as a "no-op" agent - makes it easier to build on top of this
+            # function (when some agents are optional in your custom chain or loop function, you can just
+            # leave them as None)
             continue
 
         if agent is AWAIT:

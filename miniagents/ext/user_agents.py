@@ -3,8 +3,10 @@ This module provides a user agent that reads user input from the console, writes
 track of the chat history using the provided ChatHistory object.
 """
 
+# TODO Oleksandr: rename to misc_agents.py ?
+
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.document import Document
@@ -13,7 +15,7 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
-from miniagents.chat_history import ChatHistory, InMemoryChatHistory
+from miniagents.chat_history import InMemoryChatHistory
 from miniagents.ext.llm.llm_common import UserMessage
 from miniagents.miniagents import miniagent, InteractionContext
 
@@ -21,25 +23,16 @@ GLOBAL_CHAT_HISTORY = InMemoryChatHistory()
 
 
 @miniagent
-async def console_user_agent(ctx: InteractionContext, chat_history: Optional[ChatHistory] = None) -> None:
+async def prompt_agent(ctx: InteractionContext) -> None:
     """
-    User agent that reads user input from the console, writes back to the console and also keeps track of
-    the chat history using the provided ChatHistory object.
+    TODO Oleksandr: docstring
     """
-    if chat_history is None:
-        chat_history = GLOBAL_CHAT_HISTORY
+    # this is a "transparent" agent - pass the same messages forward (if any)
+    ctx.reply(ctx.messages)
+    # let's wait for all the previous messages to be resolved before we show the user prompt
+    await ctx.messages.aresolve_messages()
 
-    # Let's wait for the `logging_agent` and `echo_agent` to finish before we proceed to the user input
-    # TODO Oleksandr: should it be enough to just do `await msg_sequence_promise` instead of
-    #  `await msg_sequence_promise.aresolve_messages()` to be sure that not only all message promises are "given"
-    #  but all the messages are resolved ?
-    # TODO Oleksandr: receive `echo_agent` as a parameter ?
-    await echo_agent.inquire(chat_history.logging_agent.inquire(ctx.messages)).aresolve_messages()
-
-    # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
-    #  (to interrupt whoever is producing it) ?
-
-    # TODO Oleksandr: mention that ctrl+space is used to insert a newline ?
+    # TODO Oleksandr: find a way to mention that ctrl+space is used to insert a newline ?
     user_input = await _prompt_session.prompt_async(
         HTML("<user_utterance>USER: </user_utterance>"),
         multiline=True,
@@ -49,11 +42,7 @@ async def console_user_agent(ctx: InteractionContext, chat_history: Optional[Cha
     )
     print()  # skip an extra line after the user input
 
-    # the await below makes sure that writing to the chat history is finished before we proceed to reading it back
-    await chat_history.logging_agent.inquire(UserMessage(user_input))
-
-    chat_history = await chat_history.aload_chat_history()
-    ctx.reply(chat_history)
+    ctx.reply(UserMessage(user_input))
 
 
 @miniagent
@@ -63,7 +52,10 @@ async def echo_agent(
     """
     MiniAgent that echoes messages to the console token by token.
     """
-    ctx.reply(ctx.messages)  # pass the same messages forward
+    ctx.reply(ctx.messages)  # this is a "transparent" agent - pass the same messages forward
+
+    # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
+    #  (to interrupt whoever is producing it) ?
 
     async for msg_promise in ctx.messages:
         if mention_aliases:
@@ -76,11 +68,11 @@ async def echo_agent(
 
 
 @miniagent
-async def file_agent(ctx: InteractionContext, file: str) -> None:
+async def file_agent(ctx: InteractionContext, file: Union[str, Path]) -> None:
     """
     MiniAgent that writes the content of `messages` to a file.
     """
-    ctx.reply(ctx.messages)  # pass the same messages forward
+    ctx.reply(ctx.messages)  # this is a "transparent" agent - pass the same messages forward
 
     file = Path(file)
     file.parent.mkdir(parents=True, exist_ok=True)
