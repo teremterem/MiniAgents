@@ -13,11 +13,8 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
-from miniagents.chat_history import InMemoryChatHistory
 from miniagents.ext.llm.llm_common import UserMessage
 from miniagents.miniagents import miniagent, InteractionContext
-
-GLOBAL_CHAT_HISTORY = InMemoryChatHistory()
 
 
 @miniagent

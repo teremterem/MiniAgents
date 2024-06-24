@@ -46,8 +46,8 @@ async def dialog_loop(
         agent_loop.fork(
             agents=[
                 user_agent,
-                AWAIT,  # TODO Oleksandr: explain this with an inline comment like this one
                 history_agent,
+                AWAIT,  # TODO Oleksandr: explain this with an inline comment like this one
                 assistant_agent,
             ],
         ).inquire(ctx.messages)
