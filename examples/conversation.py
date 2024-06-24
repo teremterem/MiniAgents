@@ -22,7 +22,7 @@ async def amain() -> None:
         print()
         await dialog_loop.fork(
             assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
-            history_agent=markdown_history_agent.fork(history_md_file="CHAT.md"),
+            history_agent=markdown_history_agent,
         ).inquire()
     except KeyboardInterrupt:
         print()

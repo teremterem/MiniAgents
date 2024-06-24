@@ -13,8 +13,17 @@ from miniagents.miniagents import InteractionContext, miniagent
 
 
 @miniagent
+async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Message]) -> None:
+    """
+    TODO Oleksandr: docstring
+    """
+    message_list.extend(await ctx.messages.aresolve_messages())
+    ctx.reply(message_list)
+
+
+@miniagent
 async def markdown_history_agent(
-    ctx: InteractionContext, history_md_file: Union[str, Path], default_role: str = "assistant"
+    ctx: InteractionContext, history_md_file: Union[str, Path] = "CHAT.md", default_role: str = "assistant"
 ) -> None:
     """
     An agent that logs the `messages` to a markdown file and then returns all the messages in the chat history

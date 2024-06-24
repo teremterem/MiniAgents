@@ -5,6 +5,7 @@ This module contains agents that are used to aggregate other agents into chains,
 
 from typing import Union, Iterable, Optional
 
+from miniagents.ext.history_agents import in_memory_history_agent
 from miniagents.ext.misc_agents import echo_agent, prompt_agent
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
@@ -38,6 +39,9 @@ async def dialog_loop(
     Run a loop that chains the user agent and the assistant agent in a dialog.
     TODO Oleksandr: add more details
     """
+    if not history_agent:
+        history_agent = in_memory_history_agent.fork(message_list=[])
+
     ctx.reply(
         agent_loop.fork(
             agents=[
