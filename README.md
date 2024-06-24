@@ -118,14 +118,14 @@ async def agent1(ctx: InteractionContext):
 
 @miniagent
 async def agent2(ctx: InteractionContext):
-    message = await ctx.messages.aresolve_messages()
+    message = await ctx.messages
     ctx.reply(f"Agent 2 received: {message[0].text}")
 
 
 async def main():
     async with MiniAgents():
         agent2_replies = agent2.inquire(agent1.inquire())
-        print(await agent2_replies.aresolve_messages())
+        print(await agent2_replies)
 
 
 asyncio.run(main())
@@ -478,7 +478,7 @@ from miniagents.utils import split_messages
 async def main():
     message = "Hello\n\nworld"
     split_message = split_messages(message)
-    print(await split_message.aresolve_messages())
+    print(await split_message)
 
 
 miniagents.run(main())

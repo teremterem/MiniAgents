@@ -54,5 +54,6 @@ class FlatSequence(Generic[IN, OUT]):
             async for item in self._flattener(zero_or_more_items):
                 yield item
 
-    async def _resolver(self, _) -> tuple[OUT, ...]:
-        return tuple([item async for item in self.sequence_promise])  # pylint: disable=consider-using-generator
+    async def _resolver(self, seq_promise: StreamedPromise[OUT, tuple[OUT, ...]]) -> tuple[OUT, ...]:
+        # pylint: disable=consider-using-generator
+        return tuple([item async for item in seq_promise])

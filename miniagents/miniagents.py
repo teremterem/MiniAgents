@@ -384,15 +384,6 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             message_sequence.message_appender.append(messages)
         return message_sequence.sequence_promise
 
-    @classmethod
-    async def aresolve_messages(cls, messages: MessageType) -> tuple[Message, ...]:
-        """
-        Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
-        MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform tuple of
-        Message objects.
-        """
-        return await cls.turn_into_sequence_promise(messages).aresolve_messages()
-
     async def _flattener(  # pylint: disable=invalid-overridden-method
         self, zero_or_more_items: MessageType
     ) -> AsyncIterator[MessagePromise]:
@@ -418,6 +409,14 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
                     yield message_promise
         else:
             raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
+
+    async def _resolver(self, seq_promise: MessageSequencePromise) -> tuple[Message, ...]:
+        """
+        Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
+        and return them as a tuple of Message objects.
+        """
+        # pylint: disable=consider-using-generator
+        return tuple([await msg_promise async for msg_promise in seq_promise])
 
 
 # noinspection PyProtectedMember
@@ -459,7 +458,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 await self._mini_agent._func(ctx, **self._function_kwargs)
 
             return AgentCallNode(
-                messages=await self._input_sequence_promise.aresolve_messages(),
+                messages=await self._input_sequence_promise,
                 agent_alias=self._mini_agent.alias,
                 **self._mini_agent._interact_metadata_dict,
                 # NOTE: the next line will override any keys from `self.interaction_metadata` if names collide
@@ -476,7 +475,7 @@ class AgentReplyMessageSequence(MessageSequence):
 
         async def create_agent_reply_node(_) -> AgentReplyNode:
             return AgentReplyNode(
-                replies=await self.sequence_promise.aresolve_messages(),
+                replies=await self.sequence_promise,
                 agent_alias=self._mini_agent.alias,
                 agent_call=await agent_call_promise,
                 **self._mini_agent._interact_metadata_dict,

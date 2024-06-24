@@ -93,7 +93,7 @@ async def _achain_agents(
         if agent is AWAIT:
             if isinstance(messages, MessageSequencePromise):
                 # all the interactions happen here (here all the scheduled promises are awaited for)
-                messages = await messages.aresolve_messages()
+                messages = await messages
         elif agent is CLEAR:
             messages = None
         elif isinstance(agent, MiniAgent):

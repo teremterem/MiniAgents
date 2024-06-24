@@ -17,7 +17,7 @@ async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Me
     """
     TODO Oleksandr: docstring
     """
-    message_list.extend(await ctx.messages.aresolve_messages())
+    message_list.extend(await ctx.messages)
     ctx.reply(message_list)
 
 

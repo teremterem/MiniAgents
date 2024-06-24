@@ -52,8 +52,6 @@ async def openai_agent(
         raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
     async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        resolved_messages = await ctx.messages.aresolve_messages()
-
         if system is None:
             message_dicts = []
         else:
@@ -63,7 +61,7 @@ async def openai_agent(
                     "content": system,
                 },
             ]
-        message_dicts.extend(message_to_llm_dict(msg) for msg in resolved_messages)
+        message_dicts.extend(message_to_llm_dict(msg) for msg in await ctx.messages)
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
