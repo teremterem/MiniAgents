@@ -7,7 +7,7 @@ import logging
 from dotenv import load_dotenv
 
 from miniagents.ext.agent_aggregators import dialog_loop
-from miniagents.ext.history_agents import chat_history_md_agent
+from miniagents.ext.history_agents import markdown_history_agent
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.miniagents import MiniAgents
 
@@ -22,7 +22,7 @@ async def amain() -> None:
         print()
         await dialog_loop.fork(
             assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
-            history_agent=chat_history_md_agent.fork(history_md_file="CHAT.md"),
+            history_agent=markdown_history_agent.fork(history_md_file="CHAT.md"),
         ).inquire()
     except KeyboardInterrupt:
         print()

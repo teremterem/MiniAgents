@@ -28,6 +28,7 @@ async def prompt_agent(ctx: InteractionContext) -> None:
     # this is a "transparent" agent - pass the same messages forward (if any)
     ctx.reply(ctx.messages)
     # let's wait for all the previous messages to be resolved before we show the user prompt
+    # TODO Oleksandr: just use `await ctx.messages` here (fix MessageSequencePromise to work this way)
     await ctx.messages.aresolve_messages()
 
     # TODO Oleksandr: find a way to mention that ctrl+space is used to insert a newline ?

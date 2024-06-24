@@ -13,7 +13,7 @@ from miniagents.miniagents import InteractionContext, miniagent
 
 
 @miniagent
-async def chat_history_md_agent(
+async def markdown_history_agent(
     ctx: InteractionContext, history_md_file: Union[str, Path], default_role: str = "assistant"
 ) -> None:
     """
