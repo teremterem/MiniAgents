@@ -57,7 +57,10 @@ async def console_prompt_agent(
 
 @miniagent
 async def console_echo_agent(
-    ctx: InteractionContext, assistant_style: Union[str, int] = "92;1", mention_aliases: bool = True
+    ctx: InteractionContext,
+    assistant_style: Union[str, int] = "92;1",
+    mention_aliases: bool = True,
+    default_role: str = "assistant",
 ) -> None:
     """
     MiniAgent that echoes messages to the console token by token.
@@ -69,9 +72,14 @@ async def console_echo_agent(
 
     async for msg_promise in ctx.message_promises:
         if mention_aliases:
-            print(
-                f"\033[{assistant_style}m{msg_promise.preliminary_metadata.agent_alias}: \033[0m", end="", flush=True
-            )
+            try:
+                agent_alias = msg_promise.preliminary_metadata.agent_alias
+            except AttributeError:
+                try:
+                    agent_alias = msg_promise.preliminary_metadata.role
+                except AttributeError:
+                    agent_alias = default_role
+            print(f"\033[{assistant_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
         async for token in msg_promise:
             print(f"\033[{assistant_style}m{token}\033[0m", end="", flush=True)
         print("\n")  # this produces a double newline after a single message
