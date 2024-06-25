@@ -40,7 +40,11 @@ async def readme_agent(ctx: InteractionContext) -> None:
         ctx.message_promises,
     ]
     markdown_history_agent.inquire(
-        prompt, history_md_file=str(SELF_DEV_TRANSIENT / "FULL_PROMPT.md"), only_write=True, append=False
+        prompt,
+        history_md_file=str(SELF_DEV_TRANSIENT / "FULL_PROMPT.md"),
+        default_role="user",
+        only_write=True,
+        append=False,
     )
 
     token_appender = StreamAppender[str]()
