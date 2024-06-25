@@ -19,7 +19,9 @@ from miniagents.miniagents import miniagent, InteractionContext
 
 @miniagent
 async def console_prompt_agent(
-    ctx: InteractionContext, greeting: str = "You are in a chat with AI Assistant.", hide_system_messages: bool = True
+    ctx: InteractionContext,
+    greeting: str = "YOU ARE NOW IN A CHAT WITH AN AI ASSISTANT",
+    hide_system_messages: bool = True,
 ) -> None:
     """
     TODO Oleksandr: docstring
