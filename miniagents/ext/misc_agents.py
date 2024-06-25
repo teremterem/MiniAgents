@@ -94,7 +94,11 @@ async def file_agent(ctx: InteractionContext, file: Union[str, Path]) -> None:
     file = Path(file)
     file.parent.mkdir(parents=True, exist_ok=True)
 
-    with file.open("w", encoding="utf-8") as file_stream:
+    with file.open(
+        mode="w",
+        buffering=1,  # line buffering
+        encoding="utf-8",
+    ) as file_stream:
         async for token in ctx.message_promises.as_single_promise():
             file_stream.write(token)
 
