@@ -41,9 +41,8 @@ class RepoFileMessage(Message):
     file_posix_path: str
 
     def _as_string(self) -> str:
-        snippet_type = "python" if self.file_posix_path.endswith(".py") else ""
         extra_newline = "" if self.text.endswith("\n") else "\n"
-        return f"{self.file_posix_path}\n```{snippet_type}\n{self.text}{extra_newline}```"
+        return f'<source_file path="{self.file_posix_path}">\n{self.text}{extra_newline}</source_file>'
 
 
 class FullRepoMessage(Message):
@@ -88,14 +87,9 @@ class FullRepoMessage(Message):
         super().__init__(repo_files=miniagent_files)
 
     def _as_string(self) -> str:
-        miniagent_files_str = "\n".join([file_message.file_posix_path for file_message in self.repo_files])
-
-        return "\n\n\n\n".join(
-            [
-                f"File list:\n```\n{miniagent_files_str}\n```",
-                *[str(file_message) for file_message in self.repo_files],
-            ]
-        )
+        file_list_str = "\n".join([file_message.file_posix_path for file_message in self.repo_files])
+        source_files_str = "\n\n\n\n".join([str(file_message) for file_message in self.repo_files])
+        return f"<file_list>\n{file_list_str}\n</file_list>\n\n\n\n<files>\n{source_files_str}\n</files>"
 
 
 def relative_posix_path(file: Path) -> str:
