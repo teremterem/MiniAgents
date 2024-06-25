@@ -33,7 +33,7 @@ async def console_prompt_agent(
             "\033[92;1m\n"
             f"{greeting}\n"
             "\n"
-            "Press Enter to send a message.\n"
+            "Press Enter to send your message.\n"
             "Press Ctrl+Space to insert a newline.\n"
             'Press Ctrl+C (or type "exit") to quit the conversation.\n'
             "\033[0m"
