@@ -56,7 +56,6 @@ async def readme_agent(ctx: InteractionContext) -> None:
             model_agent.inquire(prompt, temperature=0),
             file=str(MINIAGENTS_ROOT / md_file_name),
         )
-
         report_tasks.append(mini_agents.start_asap(_report_file_written(md_file_name, model_response)))
 
     # TODO Oleksandr: instead of having to "gather" these tasks, make sure all spawned tasks are awaited before the
