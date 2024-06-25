@@ -15,11 +15,13 @@ load_dotenv()
 
 mini_agents = MiniAgents()
 
+MAX_OUTPUT_TOKENS = 4000
+
 MODEL_AGENT_FACTORIES = {
     "gpt-4o-2024-05-13": openai_agent,
-    "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=2000),
-    "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=2000),
-    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=2000),
+    "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
+    "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
+    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
 }
 MODEL_AGENTS = {model: agent.fork(model=model) for model, agent in MODEL_AGENT_FACTORIES.items()}
 

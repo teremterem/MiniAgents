@@ -20,7 +20,7 @@ from miniagents.ext.agent_aggregators import dialog_loop
 from miniagents.ext.history_agents import markdown_history_agent
 from miniagents.ext.llm.llm_common import SystemMessage
 from miniagents.ext.misc_agents import file_agent
-from miniagents.messages import Message
+from miniagents.messages import Message, MessageSequencePromise
 from miniagents.miniagents import miniagent, InteractionContext
 
 load_dotenv()
@@ -41,25 +41,23 @@ async def readme_agent(ctx: InteractionContext) -> None:
         prompt, history_md_file=str(SELF_DEV_TRANSIENT / "FULL_PROMPT.md"), only_write=True, append=False
     )
 
-    async def _report_file_written(_md_file_name: str) -> None:
-        await file_agent_response
-        # TODO Oleksandr: should `agent_alias` be populated automatically ?
-        ctx.reply(Message(f"`{_md_file_name}` generated.", agent_alias=ctx.this_agent.alias))
+    async def _report_file_written(_md_file_name: str, _model_response: MessageSequencePromise) -> None:
+        await _model_response
+        ctx.reply(Message(f"`{_md_file_name}` generated.", no_history=True))
 
     report_tasks = []
     # start all model agents in parallel
     for model, model_agent in MODEL_AGENTS.items():
         md_file_name = f"README__{model}.md"
 
-        # TODO Oleksandr: should `agent_alias` be populated automatically ?
-        ctx.reply(Message(f"Generating `{md_file_name}`...", agent_alias=ctx.this_agent.alias))
+        ctx.reply(Message(f"Generating `{md_file_name}`...", no_history=True))
 
-        file_agent_response = file_agent.inquire(
+        model_response = file_agent.inquire(
             model_agent.inquire(prompt, temperature=0),
             file=str(MINIAGENTS_ROOT / md_file_name),
         )
 
-        report_tasks.append(mini_agents.start_asap(_report_file_written(md_file_name)))
+        report_tasks.append(mini_agents.start_asap(_report_file_written(md_file_name, model_response)))
 
     # TODO Oleksandr: instead of having to "gather" these tasks, make sure all spawned tasks are awaited before the
     #  agent exits ?

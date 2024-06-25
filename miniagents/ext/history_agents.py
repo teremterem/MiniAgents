@@ -43,6 +43,10 @@ async def markdown_history_agent(
         encoding="utf-8",
     ) as chat_md_file:
         async for msg_promise in ctx.message_promises:
+            if getattr(msg_promise.preliminary_metadata, "no_history", False):
+                # do not log this message to the chat history
+                continue
+
             try:
                 message_role = msg_promise.preliminary_metadata.role
             except AttributeError:

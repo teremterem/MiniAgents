@@ -39,7 +39,6 @@ async def console_prompt_agent(
             "\033[0m"
         )
 
-    # TODO Oleksandr: find a way to mention that ctrl+space is used to insert a newline ?
     user_input = await _prompt_session.prompt_async(
         HTML("<user_utterance>USER: </user_utterance>"),
         multiline=True,
@@ -75,11 +74,10 @@ async def console_echo_agent(
             try:
                 agent_alias = msg_promise.preliminary_metadata.agent_alias
             except AttributeError:
-                try:
-                    agent_alias = msg_promise.preliminary_metadata.role
-                except AttributeError:
-                    agent_alias = default_role
+                agent_alias = getattr(msg_promise.preliminary_metadata, "role", default_role)
+
             print(f"\033[{assistant_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
+
         async for token in msg_promise:
             print(f"\033[{assistant_style}m{token}\033[0m", end="", flush=True)
         print("\n")  # this produces a double newline after a single message
