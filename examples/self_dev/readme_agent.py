@@ -15,7 +15,7 @@ from examples.self_dev.self_dev_common import (
     SELF_DEV_TRANSIENT,
     SELF_DEV_OUTPUT,
 )
-from examples.self_dev.self_dev_prompts import GLOBAL_SYSTEM_HEADER
+from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
 from miniagents.ext.agent_aggregators import dialog_loop
 from miniagents.ext.history_agents import markdown_history_agent
 from miniagents.ext.llm.llm_common import SystemMessage
@@ -34,8 +34,9 @@ async def readme_agent(ctx: InteractionContext) -> None:
     with the user.
     """
     prompt = [
-        SystemMessage(GLOBAL_SYSTEM_HEADER),
+        SystemMessage(SYSTEM_HERE_ARE_REPO_FILES),
         FullRepoMessage(),
+        SystemMessage(SYSTEM_IMPROVE_README),
         ctx.message_promises,
     ]
     markdown_history_agent.inquire(
@@ -64,7 +65,7 @@ async def readme_agent(ctx: InteractionContext) -> None:
             report_tasks.append(mini_agents.start_asap(_report_file_written(md_file_name, model_response)))
 
         # TODO Oleksandr: instead of having to "gather" these tasks, make sure all spawned tasks are awaited before the
-        #  agent exits ?
+        #  agent exits ? no, that would be a disaster, you need something else
         await asyncio.gather(*report_tasks, return_exceptions=True)
 
         token_appender.append("\nALL DONE")
