@@ -23,29 +23,41 @@ async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Me
 
 @miniagent
 async def markdown_history_agent(
-    ctx: InteractionContext, history_md_file: Union[str, Path] = "CHAT.md", default_role: str = "assistant"
+    ctx: InteractionContext,
+    history_md_file: Union[str, Path] = "CHAT.md",
+    default_role: str = "assistant",
+    only_write: bool = False,
+    append: bool = True,
 ) -> None:
     """
     An agent that logs the `messages` to a markdown file and then returns all the messages in the chat history
     file as a reply (including the ones that existed in the file before the current interaction).
     """
     history_md_file = Path(history_md_file)
+    history_md_file.parent.mkdir(parents=True, exist_ok=True)
 
     # log the current messages to the chat history file
     with history_md_file.open(
-        mode="a",  # append mode
+        mode="a" if append else "w",
         buffering=1,  # line buffering
         encoding="utf-8",
     ) as chat_md_file:
         async for msg_promise in ctx.message_promises:
+            if getattr(msg_promise.preliminary_metadata, "no_history", False):
+                # do not log this message to the chat history
+                continue
+
             try:
                 message_role = msg_promise.preliminary_metadata.role
             except AttributeError:
                 message_role = default_role
             try:
-                message_model = f" / {msg_promise.preliminary_metadata.model}"
+                message_model = msg_promise.preliminary_metadata.model or ""
             except AttributeError:
                 message_model = ""
+
+            if message_model:
+                message_model = f" / {message_model}"
 
             chat_md_file.write(f"\n{message_role}{message_model}\n========================================\n")
 
@@ -53,8 +65,9 @@ async def markdown_history_agent(
                 chat_md_file.write(token)
             chat_md_file.write("\n")
 
-    # return the full chat history (including the messages that were already in the file before) as a reply
-    ctx.reply(_load_chat_history_md(history_md_file))
+    if not only_write:
+        # return the full chat history (including the messages that were already in the file before) as a reply
+        ctx.reply(_load_chat_history_md(history_md_file))
 
 
 _md = MarkdownIt()

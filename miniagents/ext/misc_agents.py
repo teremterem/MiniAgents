@@ -39,7 +39,6 @@ async def console_prompt_agent(
             "\033[0m"
         )
 
-    # TODO Oleksandr: find a way to mention that ctrl+space is used to insert a newline ?
     user_input = await _prompt_session.prompt_async(
         HTML("<user_utterance>USER: </user_utterance>"),
         multiline=True,
@@ -52,12 +51,16 @@ async def console_prompt_agent(
     if user_input.strip() == "exit":
         raise KeyboardInterrupt
 
-    ctx.reply(UserMessage(user_input))
+    if user_input.strip():
+        ctx.reply(UserMessage(user_input))
 
 
 @miniagent
 async def console_echo_agent(
-    ctx: InteractionContext, assistant_style: Union[str, int] = "92;1", mention_aliases: bool = True
+    ctx: InteractionContext,
+    assistant_style: Union[str, int] = "92;1",
+    mention_aliases: bool = True,
+    default_role: str = "assistant",
 ) -> None:
     """
     MiniAgent that echoes messages to the console token by token.
@@ -69,9 +72,13 @@ async def console_echo_agent(
 
     async for msg_promise in ctx.message_promises:
         if mention_aliases:
-            print(
-                f"\033[{assistant_style}m{msg_promise.preliminary_metadata.agent_alias}: \033[0m", end="", flush=True
-            )
+            try:
+                agent_alias = msg_promise.preliminary_metadata.agent_alias
+            except AttributeError:
+                agent_alias = getattr(msg_promise.preliminary_metadata, "role", default_role)
+
+            print(f"\033[{assistant_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
+
         async for token in msg_promise:
             print(f"\033[{assistant_style}m{token}\033[0m", end="", flush=True)
         print("\n")  # this produces a double newline after a single message
@@ -87,7 +94,11 @@ async def file_agent(ctx: InteractionContext, file: Union[str, Path]) -> None:
     file = Path(file)
     file.parent.mkdir(parents=True, exist_ok=True)
 
-    with file.open("w", encoding="utf-8") as file_stream:
+    with file.open(
+        mode="w",
+        buffering=1,  # line buffering
+        encoding="utf-8",
+    ) as file_stream:
         async for token in ctx.message_promises.as_single_promise():
             file_stream.write(token)
 

@@ -1,23 +1,27 @@
 """
-This module contains common code for the self-developer example.
+This module contains common `self_def` code.
 """
 
 from pathlib import Path
-from typing import Iterable
 
 from dotenv import load_dotenv
 
 from miniagents.ext.llm.anthropic import anthropic_agent
 from miniagents.ext.llm.openai import openai_agent
 from miniagents.messages import Message
+from miniagents.miniagents import MiniAgents
 
 load_dotenv()
 
+mini_agents = MiniAgents()
+
+MAX_OUTPUT_TOKENS = 4000
+
 MODEL_AGENT_FACTORIES = {
     "gpt-4o-2024-05-13": openai_agent,
-    "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=2000),
-    "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=2000),
-    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=2000),
+    "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
+    "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
+    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
 }
 MODEL_AGENTS = {model: agent.fork(model=model) for model, agent in MODEL_AGENT_FACTORIES.items()}
 
@@ -37,9 +41,8 @@ class RepoFileMessage(Message):
     file_posix_path: str
 
     def _as_string(self) -> str:
-        snippet_type = "python" if self.file_posix_path.endswith(".py") else ""
         extra_newline = "" if self.text.endswith("\n") else "\n"
-        return f"{self.file_posix_path}\n```{snippet_type}\n{self.text}{extra_newline}```"
+        return f'<source_file path="{self.file_posix_path}">\n{self.text}{extra_newline}</source_file>'
 
 
 class FullRepoMessage(Message):
@@ -47,10 +50,9 @@ class FullRepoMessage(Message):
     A message that represents the full content of the MiniAgents repository.
     """
 
-    variation_name: str
     repo_files: tuple[RepoFileMessage, ...]
 
-    def __init__(self, experiment_name: str, variation_name: str, skip_if_starts_with: Iterable[str] = ()) -> None:
+    def __init__(self) -> None:
         """
         Create a FullRepoMessage object that contains the full content of the MiniAgents repository. (Take a snapshot
         of the files as they currently are, in other words.)
@@ -76,28 +78,18 @@ class FullRepoMessage(Message):
                         "LICENSE",  # TODO Oleksandr: what if there is a `LICENSE-template` file, for ex. ?
                         "venv/",
                         "poetry.lock",
-                        *skip_if_starts_with,
                     ]
                 )
                 and not any(file_posix_path.endswith(suffix) for suffix in [".pyc"])
             )
         ]
         miniagent_files.sort(key=lambda file_message: file_message.file_posix_path)
-        super().__init__(repo_files=miniagent_files, variation_name=variation_name)
-
-        full_repo_md_file = SELF_DEV_TRANSIENT / f"REPO__{experiment_name}__{variation_name}.md"
-        full_repo_md_file.parent.mkdir(parents=True, exist_ok=True)
-        full_repo_md_file.write_text(str(self), encoding="utf-8")
+        super().__init__(repo_files=miniagent_files)
 
     def _as_string(self) -> str:
-        miniagent_files_str = "\n".join([file_message.file_posix_path for file_message in self.repo_files])
-
-        return "\n\n\n\n".join(
-            [
-                f"File list:\n```\n{miniagent_files_str}\n```",
-                *[str(file_message) for file_message in self.repo_files],
-            ]
-        )
+        file_list_str = "\n".join([file_message.file_posix_path for file_message in self.repo_files])
+        source_files_str = "\n\n\n\n".join([str(file_message) for file_message in self.repo_files])
+        return f"<file_list>\n{file_list_str}\n</file_list>\n\n\n\n<files>\n{source_files_str}\n</files>"
 
 
 def relative_posix_path(file: Path) -> str:
@@ -105,8 +97,3 @@ def relative_posix_path(file: Path) -> str:
     Get the path of a file as a POSIX path relative to the MiniAgents repository root.
     """
     return file.relative_to(MINIAGENTS_ROOT).as_posix()
-
-
-if __name__ == "__main__":
-    FullRepoMessage(experiment_name="test", variation_name="complete")
-    print("FullRepoMessage created and saved")

@@ -48,12 +48,15 @@ async def dialog_loop(
                 AWAIT,  # TODO Oleksandr: explain this with an inline comment like this one
                 assistant_agent,
             ],
+            raise_keyboard_interrupt=False,
         ).inquire(ctx.message_promises)
     )
 
 
 @miniagent
-async def agent_loop(ctx: InteractionContext, agents: Iterable[Union[MiniAgent, Sentinel]]) -> None:
+async def agent_loop(
+    ctx: InteractionContext, agents: Iterable[Union[MiniAgent, Sentinel]], raise_keyboard_interrupt: bool = True
+) -> None:
     """
     An agent that represents a loop that chains the given agents together in the order they are provided.
     """
@@ -65,8 +68,12 @@ async def agent_loop(ctx: InteractionContext, agents: Iterable[Union[MiniAgent, 
         )
 
     message_promises = ctx.message_promises
-    while True:
-        message_promises = await _achain_agents(agents, message_promises)
+    try:
+        while True:
+            message_promises = await _achain_agents(agents, message_promises)
+    except KeyboardInterrupt:
+        if raise_keyboard_interrupt:
+            raise
 
 
 @miniagent

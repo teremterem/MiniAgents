@@ -18,7 +18,7 @@ async def amain() -> None:
     """
     The main conversation loop.
     """
-    dialog_loop.fork(
+    await dialog_loop.fork(
         assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
         history_agent=markdown_history_agent,
     ).inquire()
