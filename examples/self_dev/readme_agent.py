@@ -3,7 +3,6 @@ This agent is a part of the self-development process. It is designed to improve 
 """
 
 import asyncio
-import logging
 
 from dotenv import load_dotenv
 
@@ -12,8 +11,9 @@ from examples.self_dev.self_dev_common import (
     MODEL_AGENTS,
     FullRepoMessage,
     mini_agents,
-    SELF_DEV_TRANSIENT,
     SELF_DEV_OUTPUT,
+    prompt_logger_agent,
+    PROMPT_LOG_PATH_PREFIX,
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
 from miniagents.ext.agent_aggregators import dialog_loop
@@ -39,13 +39,7 @@ async def readme_agent(ctx: InteractionContext) -> None:
         SystemMessage(SYSTEM_IMPROVE_README),
         ctx.message_promises,
     ]
-    markdown_history_agent.inquire(
-        prompt,
-        history_md_file=str(SELF_DEV_TRANSIENT / "FULL_PROMPT.md"),
-        default_role="user",
-        only_write=True,
-        append=False,
-    )
+    await prompt_logger_agent.inquire(prompt, history_md_file=f"{PROMPT_LOG_PATH_PREFIX}{ctx.this_agent.alias}.md")
 
     token_appender = StreamAppender[str]()
     ctx.reply(Message.promise(message_token_streamer=token_appender))
@@ -63,7 +57,7 @@ async def readme_agent(ctx: InteractionContext) -> None:
             md_file_name = f"README__{model}.md"
 
             model_response = file_agent.inquire(
-                model_agent.inquire(prompt, temperature=0),
+                model_agent.inquire(prompt),
                 file=str(MINIAGENTS_ROOT / md_file_name),
             )
             report_tasks.append(mini_agents.start_asap(_report_file_written(md_file_name, model_response)))
@@ -81,12 +75,9 @@ async def amain() -> None:
     """
     await dialog_loop.fork(
         assistant_agent=readme_agent,
-        history_agent=markdown_history_agent.fork(history_md_file=SELF_DEV_OUTPUT / "CHAT_HISTORY.md"),
+        history_agent=markdown_history_agent.fork(history_md_file=SELF_DEV_OUTPUT / f"CHAT__{readme_agent.alias}.md"),
     ).inquire()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
-    # logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
-
     mini_agents.run(amain())
