@@ -51,7 +51,8 @@ async def console_prompt_agent(
     if user_input.strip() == "exit":
         raise KeyboardInterrupt
 
-    ctx.reply(UserMessage(user_input))
+    if user_input.strip():
+        ctx.reply(UserMessage(user_input))
 
 
 @miniagent

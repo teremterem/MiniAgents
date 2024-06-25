@@ -52,9 +52,12 @@ async def markdown_history_agent(
             except AttributeError:
                 message_role = default_role
             try:
-                message_model = f" / {msg_promise.preliminary_metadata.model}"
+                message_model = msg_promise.preliminary_metadata.model or ""
             except AttributeError:
                 message_model = ""
+
+            if message_model:
+                message_model = f" / {message_model}"
 
             chat_md_file.write(f"\n{message_role}{message_model}\n========================================\n")
 

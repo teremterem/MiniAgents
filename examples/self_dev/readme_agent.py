@@ -22,6 +22,7 @@ from miniagents.ext.llm.llm_common import SystemMessage
 from miniagents.ext.misc_agents import file_agent
 from miniagents.messages import Message, MessageSequencePromise
 from miniagents.miniagents import miniagent, InteractionContext
+from miniagents.promising.promising import StreamAppender
 
 load_dotenv()
 
@@ -41,26 +42,32 @@ async def readme_agent(ctx: InteractionContext) -> None:
         prompt, history_md_file=str(SELF_DEV_TRANSIENT / "FULL_PROMPT.md"), only_write=True, append=False
     )
 
+    token_appender = StreamAppender[str]()
+    ctx.reply(Message.promise(message_token_streamer=token_appender))
+
     async def _report_file_written(_md_file_name: str, _model_response: MessageSequencePromise) -> None:
         await _model_response
-        ctx.reply(Message(f"`{_md_file_name}` generated.", no_history=True))
+        token_appender.append(f"{_md_file_name}\n")
 
-    report_tasks = []
-    # start all model agents in parallel
-    for model, model_agent in MODEL_AGENTS.items():
-        md_file_name = f"README__{model}.md"
+    with token_appender:
+        token_appender.append(f"Generating {len(MODEL_AGENTS)} variants of README.md\n\n")
 
-        ctx.reply(Message(f"Generating `{md_file_name}`...", no_history=True))
+        report_tasks = []
+        # start all model agents in parallel
+        for model, model_agent in MODEL_AGENTS.items():
+            md_file_name = f"README__{model}.md"
 
-        model_response = file_agent.inquire(
-            model_agent.inquire(prompt, temperature=0),
-            file=str(MINIAGENTS_ROOT / md_file_name),
-        )
-        report_tasks.append(mini_agents.start_asap(_report_file_written(md_file_name, model_response)))
+            model_response = file_agent.inquire(
+                model_agent.inquire(prompt, temperature=0),
+                file=str(MINIAGENTS_ROOT / md_file_name),
+            )
+            report_tasks.append(mini_agents.start_asap(_report_file_written(md_file_name, model_response)))
 
-    # TODO Oleksandr: instead of having to "gather" these tasks, make sure all spawned tasks are awaited before the
-    #  agent exits ?
-    await asyncio.gather(*report_tasks, return_exceptions=True)
+        # TODO Oleksandr: instead of having to "gather" these tasks, make sure all spawned tasks are awaited before the
+        #  agent exits ?
+        await asyncio.gather(*report_tasks, return_exceptions=True)
+
+        token_appender.append("\nALL DONE")
 
 
 async def amain() -> None:
