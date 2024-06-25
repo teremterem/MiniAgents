@@ -34,6 +34,7 @@ async def markdown_history_agent(
     file as a reply (including the ones that existed in the file before the current interaction).
     """
     history_md_file = Path(history_md_file)
+    history_md_file.parent.mkdir(parents=True, exist_ok=True)
 
     # log the current messages to the chat history file
     with history_md_file.open(
