@@ -18,14 +18,26 @@ from miniagents.miniagents import miniagent, InteractionContext
 
 
 @miniagent
-async def console_prompt_agent(ctx: InteractionContext) -> None:
+async def console_prompt_agent(
+    ctx: InteractionContext, greeting: str = "You are in a chat with AI Assistant."
+) -> None:
     """
     TODO Oleksandr: docstring
     """
     # this is a "transparent" agent - pass the same messages forward (if any)
     ctx.reply(ctx.message_promises)
     # let's wait for all the previous messages to be resolved before we show the user prompt
-    await ctx.message_promises
+    if not await ctx.message_promises:
+        # if there were no previous messages, we can assume it is the start of a dialog - let's print instructions
+        print(
+            "\033[92;1m\n"
+            f"{greeting}\n"
+            "\n"
+            "Press Enter to send the message.\n"
+            "Press Ctrl+Space to insert a newline.\n"
+            'Press Ctrl+C (or "exit") to quit the conversation.\n'
+            "\033[0m"
+        )
 
     # TODO Oleksandr: find a way to mention that ctrl+space is used to insert a newline ?
     user_input = await _prompt_session.prompt_async(
@@ -36,6 +48,9 @@ async def console_prompt_agent(ctx: InteractionContext) -> None:
         style=_user_prompt_style,
     )
     print()  # skip an extra line after the user input
+
+    if user_input.strip() == "exit":
+        raise KeyboardInterrupt
 
     ctx.reply(UserMessage(user_input))
 
