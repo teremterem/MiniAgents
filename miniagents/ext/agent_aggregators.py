@@ -67,8 +67,6 @@ async def agent_loop(ctx: InteractionContext, agents: Iterable[Union[MiniAgent, 
     message_promises = ctx.message_promises
     while True:
         message_promises = await _achain_agents(agents, message_promises)
-        # TODO Oleksandr: How should the agents end the loop ? What message sequence should be returned
-        #  when the loop is over ?
 
 
 @miniagent
