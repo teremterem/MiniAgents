@@ -18,7 +18,9 @@ async def amain() -> None:
     """
     The main conversation loop.
     """
-    await dialog_loop.fork(assistant_agent=anthropic_agent.fork(model="claude-3-5-sonnet-20240620")).inquire(
+    await dialog_loop.fork(
+        assistant_agent=anthropic_agent.fork(model="claude-3-5-sonnet-20240620", max_tokens=1000)
+    ).inquire(
         SystemMessage("Your job is to improve the styling and grammar of the sentences that the user throws at you.")
     )
 
