@@ -19,7 +19,7 @@ MODEL_AGENT_FACTORIES = {
     "gpt-4o-2024-05-13": openai_agent.fork(temperature=0),
     "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
-    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    # "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
 }
 MODEL_AGENTS = {model: agent.fork(model=model) for model, agent in MODEL_AGENT_FACTORIES.items()}
 
