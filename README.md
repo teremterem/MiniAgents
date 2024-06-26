@@ -553,7 +553,7 @@ Here are some of the core concepts in the MiniAgents framework:
 - **Frozen**: An immutable Pydantic model with a git-style hash key calculated
   from its JSON representation.
 
-## License
+## 📜 License
 
 MiniAgents is released under the [MIT License](LICENSE).
 
@@ -570,4 +570,4 @@ MiniAgents is released under the [MIT License](LICENSE).
 
 ---
 
-Happy coding with MiniAgents! 🚀
+Happy coding with MiniAgents! 🚀 If you have any questions or need assistance, feel free to open an issue on our GitHub repository.
