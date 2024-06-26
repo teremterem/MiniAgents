@@ -6,11 +6,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from miniagents.ext.history_agents import markdown_history_agent
+from miniagents import MiniAgents, Message
+from miniagents.ext import markdown_history_agent
 from miniagents.ext.llm.anthropic import anthropic_agent
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.messages import Message
-from miniagents.miniagents import MiniAgents
 
 load_dotenv()
 

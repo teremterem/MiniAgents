@@ -15,11 +15,9 @@ from examples.self_dev.self_dev_common import (
     PROMPT_LOG_PATH_PREFIX,
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES
-from miniagents.ext.agent_aggregators import dialog_loop
-from miniagents.ext.history_agents import markdown_history_agent
-from miniagents.ext.llm.llm_common import SystemMessage
-from miniagents.ext.misc_agents import file_agent
-from miniagents.miniagents import miniagent, InteractionContext
+from miniagents import miniagent, InteractionContext
+from miniagents.ext import file_agent, dialog_loop, markdown_history_agent
+from miniagents.ext.llm import SystemMessage
 
 load_dotenv()
 

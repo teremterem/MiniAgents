@@ -6,10 +6,10 @@ import logging
 
 from dotenv import load_dotenv
 
-from miniagents.ext.agent_aggregators import dialog_loop
-from miniagents.ext.llm.llm_common import SystemMessage
+from miniagents import MiniAgents
+from miniagents.ext import dialog_loop
+from miniagents.ext.llm import SystemMessage
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.miniagents import MiniAgents
 
 load_dotenv()
 

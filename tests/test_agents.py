@@ -7,7 +7,7 @@ from typing import Union
 
 import pytest
 
-from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
+from miniagents import MiniAgents, miniagent, InteractionContext
 from miniagents.promising.sentinels import DEFAULT, Sentinel
 
 

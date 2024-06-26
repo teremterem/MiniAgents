@@ -49,7 +49,8 @@ from miniagents import miniagent, InteractionContext
 
 @miniagent
 async def my_agent(ctx: InteractionContext):
-    async for message in ctx.message_promises:
+    async for msg_promise in ctx.message_promises:
+        message = await msg_promise
         ctx.reply(f"You said: {message}")
 ```
 
