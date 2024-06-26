@@ -77,7 +77,7 @@ class FullRepoMessage(Message):
                         ".",
                         "dist/",
                         relative_posix_path(SELF_DEV_OUTPUT),
-                        # relative_posix_path(SELF_DEV_PROMPTS),  # skip prompt file in order not to throw LLM off ?
+                        # relative_posix_path(SELF_DEV_PROMPTS),  # TODO Oleksandr: skip the prompts file ?
                         relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
                         "LICENSE",  # TODO Oleksandr: what if there is a `LICENSE-template` file, for ex. ?
