@@ -23,13 +23,13 @@ async def my_agent(ctx: InteractionContext):
         ctx.reply(f"You said: {await msg_promise}")
 
 
-async def amain() -> None:
+async def main() -> None:
     async for msg_promise in my_agent.inquire(["Hello", "World"]):
         print(await msg_promise)
 
 
 if __name__ == "__main__":
-    MiniAgents().run(amain())
+    MiniAgents().run(main())
 ```
 
 This script will print the following lines to the console:
@@ -66,7 +66,7 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     print("Aggregator agent finished")
 
 
-async def amain() -> None:
+async def main() -> None:
     print("Main function started")
     async for msg_promise in aggregator_agent.inquire():
         print(await msg_promise)
@@ -74,7 +74,7 @@ async def amain() -> None:
 
 
 if __name__ == "__main__":
-    MiniAgents().run(amain())
+    MiniAgents().run(main())
 ```
 
 This script will print the following lines to the console:
@@ -122,7 +122,7 @@ from miniagents.ext.llm.openai import openai_agent
 gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
 
 
-async def amain():
+async def main():
     reply_sequence = gpt_4o_agent.inquire(
         "Hello, how are you?",
         system="You are a helpful assistant.",
@@ -138,7 +138,7 @@ async def amain():
 
 
 if __name__ == "__main__":
-    MiniAgents().run(amain())
+    MiniAgents().run(main())
 ```
 
 **TODO** explain that even though OpenAI models return a single assistant response, the `openai_agent.inquire()` method
@@ -161,7 +161,7 @@ from miniagents.ext.llm import SystemMessage
 from miniagents.ext.llm.anthropic import anthropic_agent
 
 
-async def amain() -> None:
+async def main() -> None:
     await dialog_loop.fork(
         assistant_agent=anthropic_agent.fork(model="claude-3-5-sonnet-20240620", max_tokens=1000),
         # write chat history to a markdown file (by default - `CHAT.md` in the current working directory,
@@ -176,7 +176,7 @@ async def amain() -> None:
 
 
 if __name__ == "__main__":
-    MiniAgents().run(amain())
+    MiniAgents().run(main())
 ```
 
 Here is what the interaction might look like if you run this script:
@@ -239,12 +239,12 @@ async def assistant_agent(ctx: InteractionContext) -> None:
     ctx.reply(f'You said "{aggregated_message}"')
 
 
-async def amain() -> None:
+async def main() -> None:
     await agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).inquire()
 
 
 if __name__ == "__main__":
-    MiniAgents().run(amain())
+    MiniAgents().run(main())
 ```
 
 Output:

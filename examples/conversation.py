@@ -13,7 +13,7 @@ from miniagents.ext.llm.openai import openai_agent
 load_dotenv()
 
 
-async def amain() -> None:
+async def main() -> None:
     """
     The main conversation loop.
     """
@@ -28,4 +28,4 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
     # logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
 
-    MiniAgents().run(amain())
+    MiniAgents().run(main())

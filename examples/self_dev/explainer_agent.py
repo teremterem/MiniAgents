@@ -53,7 +53,7 @@ async def explainer_agent(ctx: InteractionContext) -> None:
     await asyncio.gather(*other_tasks, return_exceptions=True)
 
 
-async def amain() -> None:
+async def main() -> None:
     """
     The main conversation loop.
     """
@@ -66,4 +66,4 @@ async def amain() -> None:
 
 
 if __name__ == "__main__":
-    mini_agents.run(amain())
+    mini_agents.run(main())

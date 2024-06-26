@@ -273,7 +273,7 @@ from miniagents.utils import adialog_loop
 load_dotenv()
 
 
-async def amain() -> None:
+async def main() -> None:
     chat_history = ChatHistoryMD("CHAT.md")
     try:
         print()
@@ -287,7 +287,7 @@ async def amain() -> None:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
-    MiniAgents().run(amain())
+    MiniAgents().run(main())
 ```
 
 ### Integrating with OpenAI
@@ -367,12 +367,12 @@ async def assistant_agent(ctx: InteractionContext) -> None:
     ctx.reply("Hello, how can I assist you?")
 
 
-async def amain() -> None:
+async def main() -> None:
     await achain_loop([user_agent, AWAIT, assistant_agent])
 
 
 if __name__ == "__main__":
-    MiniAgents().run(amain())
+    MiniAgents().run(main())
 ```
 
 TODO Oleksandr: explain why AWAIT is used in the example above

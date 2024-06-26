@@ -65,7 +65,7 @@ async def readme_agent(ctx: InteractionContext) -> None:
         token_appender.append("\nALL DONE")
 
 
-async def amain() -> None:
+async def main() -> None:
     """
     The main conversation loop.
     """
@@ -76,4 +76,4 @@ async def amain() -> None:
 
 
 if __name__ == "__main__":
-    mini_agents.run(amain())
+    mini_agents.run(main())

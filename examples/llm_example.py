@@ -31,7 +31,7 @@ async def persist_message(_, message: Message) -> None:
     print()
 
 
-async def amain() -> None:
+async def main() -> None:
     """
     Send a message to an LLM agent and print the response.
     """
@@ -47,4 +47,4 @@ async def amain() -> None:
 
 
 if __name__ == "__main__":
-    mini_agents.run(amain())
+    mini_agents.run(main())
