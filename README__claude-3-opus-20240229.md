@@ -422,4 +422,72 @@ The MiniAgents framework is organized into the following main modules:
 
 ### 🧠 Core Concepts
 
-- **Agent**: A
+- **Agent**: A function decorated with `@miniagent` that defines the behavior of an agent in the system.
+- **Message**: An immutable data object representing a message passed between agents. Messages can contain text, metadata, and references to other messages.
+- **Promise**: An asynchronous programming construct representing a value that may not be available yet. Promises allow agents to work with values that are not immediately available without blocking execution.
+- **StreamedPromise**: A special type of promise that represents a value that can be streamed piece by piece. This is useful for streaming responses from LLMs token by token.
+- **MessageSequence**: A flattened sequence of messages that can contain nested sequences, promises, and other message types. MessageSequences are automatically resolved into a flat sequence of message promises.
+- **InteractionContext**: An object passed to an agent function that provides access to the incoming messages and allows the agent to send replies.
+- **MiniAgents**: The main context manager class that manages the lifecycle of agents and provides configuration options for the framework.
+
+## 📜 License
+
+MiniAgents is released under the [MIT License](LICENSE).
+
+## 🙋 FAQ
+
+**Q: How do I install MiniAgents?**
+
+A: You can install MiniAgents using pip:
+
+```bash
+pip install miniagents
+```
+
+**Q: How do I define a custom agent?**
+
+A: To define a custom agent, create a function and decorate it with `@miniagent`. The function should take an `InteractionContext` object as its parameter. For example:
+
+```python
+from miniagents import miniagent, InteractionContext
+
+@miniagent
+async def my_custom_agent(ctx: InteractionContext):
+    async for msg_promise in ctx.message_promises:
+        # Process the incoming message
+        response = f"You said: {await msg_promise}"
+        ctx.reply(response)
+```
+
+**Q: How do I run the MiniAgents framework?**
+
+A: To run the MiniAgents framework, create an instance of the `MiniAgents` class and use it as a context manager. Then, call the `inquire()` method on your agent to start the interaction. For example:
+
+```python
+from miniagents import MiniAgents
+
+async def main():
+    async for msg_promise in my_custom_agent.inquire("Hello!"):
+        print(await msg_promise)
+
+if __name__ == "__main__":
+    MiniAgents().run(main())
+```
+
+**Q: Can I use MiniAgents with other asynchronous libraries?**
+
+A: Yes, MiniAgents is built on top of the standard `asyncio` library and should be compatible with other asynchronous libraries that work with `asyncio`.
+
+## 🤝 Some note(s) for contributors
+
+- **Different Promise and StreamedPromise resolvers, piece streamers, appenders and what not should always catch
+  BaseExceptions and not just Exceptions** when they capture errors to pass those errors as "pieces" in order for
+  those errors to be raised at the "consumer side". This is because many of the aforementioned Promising "primitives"
+  are often part of mechanisms that involve communications between async tasks via asyncio.Queue objects and just
+  interrupting those promises with KeyboardInterrupt which are extended from BaseException instead of letting
+  KeyboardInterrupt to go through the queue leads to hanging of those promises (a queue is waiting for END_OF_QUEUE
+  sentinel forever but the task that should send it is dead).
+
+---
+
+Happy coding with MiniAgents! 🚀
