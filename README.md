@@ -338,16 +338,75 @@ individual agent calls if for some reason you need to:
 setting it to `False` for the whole system globally is not recommended because
 it can lead to deadlocks. ⚠️
 
----
+### 🔀 Alternative Inquiry Methods
 
-**TODO** show a very simple example where you do `miniagent.start_inquiry()` and
-then do `.send_message()` two times and then call `.reply_sequence()` (instead
-of all-in-one `miniagents.inquire()`)
+Here's a simple example demonstrating how to use `miniagent.start_inquiry()` and
+then do `.send_message()` two times before calling `.reply_sequence()` (instead
+of all-in-one `miniagents.inquire()`):
 
-**TODO** mention three ways MiniAgents() context can be used: calling its
-`run()` method with your main function as a parameter, using it as an async
-context manager or directly calling its `activate()` (and, potentially,
-`afinalize()` at the end) methods
+```python
+from miniagents import miniagent, InteractionContext, MiniAgents
+
+
+@miniagent
+async def echo_agent(ctx: InteractionContext):
+    async for msg_promise in ctx.message_promises:
+        ctx.reply(f"Echo: {await msg_promise}")
+
+
+async def main():
+    agent_call = echo_agent.initiate_inquiry()
+    agent_call.send_message("Hello")
+    agent_call.send_message("World")
+    reply_sequence = agent_call.reply_sequence()
+
+    async for msg_promise in reply_sequence:
+        print(await msg_promise)
+
+
+if __name__ == "__main__":
+    MiniAgents().run(main())
+```
+
+This will output:
+
+```
+Echo: Hello
+Echo: World
+```
+
+### 🔧 Using MiniAgents Context
+
+There are three ways to use the `MiniAgents()` context:
+
+1. Calling its `run()` method with your main function as a parameter (your
+   function should be defined as `async`):
+   ```python
+   MiniAgents().run(main())
+   ```
+
+2. Using it as an async context manager:
+   ```python
+   async with MiniAgents():
+       ...  # your async code that works with agents goes here
+   ```
+
+3. Directly calling its `activate()` (and, potentially, `afinalize()` at the
+   end) methods:
+   ```python
+   mini_agents = MiniAgents()
+   mini_agents.activate()
+   try:
+       ...  # your async code that works with agents goes here
+   finally:
+       await mini_agents.afinalize()
+   ```
+
+The third way might be ideal for web applications and other cases when there is
+no single function that you can encapsulate with the `MiniAgents()` context
+manager (or it is unclear what such function would be). You just do
+`mini_agents.activate()` somewhere upon the init of the server and forget
+about it.
 
 ### Existing Message models
 
@@ -359,8 +418,10 @@ system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
 ```
 
-**TODO** explain that the difference is in the default values of the `role`
-field of the message
+The difference between these message types is in the default values of the `role` field of the message:
+- `UserMessage` has `role="user"` by default
+- `SystemMessage` has `role="system"` by default
+- `AssistantMessage` has `role="assistant"` by default
 
 ### Custom Message models
 
