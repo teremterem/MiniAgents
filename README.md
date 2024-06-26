@@ -308,13 +308,7 @@ USER:
 
 ###### TODO TODO TODO TODO TODO ######
 
-### Advanced Example with Multiple Agents
-
-You can create more complex interactions involving multiple agents:
-
-### Message Handling
-
-MiniAgents provides a structured way to handle messages using the `Message` class and its derivatives.
+### Custom Message models
 
 You can create custom message types by subclassing `Message`.
 
@@ -331,183 +325,29 @@ print(message.text)  # Output: Hello
 print(message.custom_field)  # Output: Custom Value
 ```
 
-### Handling Messages
-
-MiniAgents provides a structured way to handle messages. You can define different types of messages such
-as `UserMessage`, `SystemMessage`, and `AssistantMessage`:
+### Existing Message models
 
 ```python
-from miniagents.ext.llm.llm_common import UserMessage, SystemMessage, AssistantMessage
+from miniagents.ext.llm import UserMessage, SystemMessage, AssistantMessage
 
 user_message = UserMessage(text="Hello!")
 system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
 ```
 
-**TODO** mention that exceptions in agents are treated as messages ?
+---
 
 For more advanced usage, check out the [examples](examples/) directory.
-
-## Utility Functions
-
-### Joining Messages
-
-You can join multiple messages into a single message using the `join_messages` function:
-
-```python
-from miniagents.utils import join_messages
-
-
-async def main():
-    messages = ["Hello", "world"]
-    joined_message = join_messages(messages)
-    print(await joined_message.aresolve())
-
-
-miniagents.run(main())
-```
-
-### Splitting Messages
-
-You can split a message into multiple messages using the `split_messages` function:
-
-```python
-from miniagents.utils import split_messages
-
-
-async def main():
-    message = "Hello\n\nworld"
-    split_message = split_messages(message)
-    print(await split_message)
-
-
-miniagents.run(main())
-```
-
-## Utilities
-
-MiniAgents provides several utility functions to help with common tasks:
-
-- **join_messages**: Join multiple messages into a single message.
-- **split_messages**: Split a message into multiple messages based on a delimiter.
-
-Example of joining messages:
-
-```python
-from miniagents.utils import join_messages
-
-
-async def main():
-    async with MiniAgents() as context:
-        joined_message = join_messages(["Hello", "World"], delimiter=" ")
-        print(await joined_message.aresolve())
-
-
-MiniAgents().run(main())
-```
 
 ## Documentation
 
 ### Modules
 
-- `miniagents`: Core classes and functions.
-- `miniagents.ext`: Extensions for integrating with external services and libraries.
-- `miniagents.promising`: Classes and functions for handling promises and asynchronous operations.
-- `miniagents.utils`: Utility functions for common tasks.
-
-The framework is organized into several modules:
-
-- `miniagents.miniagents`: Core classes for creating and managing agents
-- `miniagents.messages`: Classes for representing and handling messages
-- `miniagents.promising`: Utilities for managing asynchronous operations using promises
-- `miniagents.ext`: Extensions for integrating with external services and utilities
-    - `miniagents.ext.chat_history_md`: Chat history management using Markdown files
-    - `miniagents.ext.console_user_agent`: User agent for interacting via the console
-    - `miniagents.ext.llm`: Integration with language models
-        - `miniagents.ext.llm.openai`: OpenAI language model integration
-        - `miniagents.ext.llm.anthropic`: Anthropic language model integration
-
-For detailed documentation on each module and class, please refer to the docstrings in the source code.
-
-### Extending MiniAgents
-
-You can extend the functionality of MiniAgents by creating custom agents, message types, and chat history handlers. The
-framework is designed to be modular and flexible, allowing you to integrate it with various services and customize its
-behavior to fit your needs.
+**TODO** describe the overall structure/hierarchy of the framework modules
 
 ### Core Concepts
 
-#### MiniAgents
-
-`MiniAgents` is the main context manager that handles the lifecycle of agents and promises.
-
-```python
-from miniagents import MiniAgents
-
-async with MiniAgents():
-# Your code here
-```
-
-#### MiniAgent
-
-A `MiniAgent` is a wrapper for an agent function that allows calling the agent.
-
-```python
-from miniagents import miniagent
-
-
-@miniagent
-async def my_agent(ctx, **kwargs):
-# Agent logic here
-```
-
-- `MiniAgents`: The main context manager for running agents
-- **MiniAgents**: The main class that manages the lifecycle of agents and their interactions.
-- `@miniagent`: Decorator for defining agents
-- **MiniAgent**: A wrapper for an agent function that allows calling the agent.
-- `MiniAgent` - A wrapper around a Python function that allows it to send and receive messages
-- **InteractionContext**: Provides context for the interaction, including the messages and the agent.
-- **Message**: Represents a message that can be sent between agents.
-- `Message` - Represents a message that can be sent between agents, with optional metadata
-- **MessagePromise**: A promise of a message that can be streamed token by token.
-- **MessageSequencePromise**: A promise of a sequence of messages that can be streamed message by message.
-
-- `openai_agent`: an OpenAI language model agent
-- `anthropic_agent`: an Anthropic language model agent
-
-### Core Classes
-
-- `MiniAgents`: The main context manager for managing agents and their interactions.
-- `MiniAgent`: A wrapper for an agent function that allows calling the agent.
-- `InteractionContext`: Provides context for an agent's interaction, including the messages and reply streamer.
-- `InteractionContext`: Passed to agent functions, provides methods for replying and finishing early
-
-### Message Handling
-
-- `Message`: Represents a message that can be sent between agents.
-- `Message`: Represents a message passed between agents
-- `MessagePromise`: A promise of a message that can be streamed token by token.
-- `MessagePromise`: A promise that resolves to a message
-- `MessageSequencePromise`: A promise of a sequence of messages that can be streamed message by message.
-- `ChatHistory`: An abstract class for managing chat history.
-
-### Promising
-
-- `Promise`: Represents a promise of a value that will be resolved asynchronously.
-- `StreamedPromise`: Represents a promise of a whole value that can be streamed piece by piece.
-- `StreamAppender`: Allows appending pieces to a stream that is consumed by a `StreamedPromise`.
-
-### Utilities
-
-- `adialog_loop`: Run a dialog loop between a user agent and assistant agent
-- `achain_loop`: Run a loop that chains multiple agents together
-- `achain_loop`: Runs a loop of agents, chaining their interactions.
-- `join_messages`: Joins multiple messages into a single message using a delimiter.
-- `split_messages`: Splits messages based on a delimiter.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+**TODO** explain core concepts
 
 ## License
 
@@ -515,62 +355,9 @@ MiniAgents is released under the [MIT License](LICENSE).
 
 ## FAQ
 
-1. **Q: How does MiniAgents differ from other agent frameworks?**
-   A: MiniAgents focuses on asynchronous execution, immutable message passing, and easy integration with LLMs. It's
-   designed for building complex, streaming-capable multi-agent systems.
+**TODO** generate FAQ section (pull the questions out of your ass)
 
-2. **Q: Can I use MiniAgents with LLM providers other than OpenAI and Anthropic?**
-   A: Yes, the framework is extensible. You can create custom agents for other LLM providers by following the patterns
-   in the existing implementations.
-
-3. **Q: How does MiniAgents handle errors in agents?**
-   A: Exceptions in agents are treated as messages, allowing for graceful error handling and recovery in multi-agent
-   systems.
-
-4. **Q: Is MiniAgents suitable for production use?**
-   A: While MiniAgents is being actively developed, it's designed with production use cases in mind. However, always
-   thoroughly test and evaluate it for your specific needs.
-
-5. **Q: How can I persist agent interactions?**
-   A: MiniAgents provides built-in support for chat history management, including in-memory and Markdown-based
-   persistence options.
-
-Q: How does MiniAgents handle errors in agents?
-A: Exceptions in agents are treated as messages and can be caught and handled by other agents in the chain.
-
-Q: Can I use MiniAgents with other LLM providers?
-A: Yes, the framework is designed to be extensible. You can create custom agents for other LLM providers by following
-the patterns used for OpenAI and Anthropic integrations.
-
-Q: How does token streaming work in MiniAgents?
-A: Token streaming is implemented using the `StreamedPromise` class, which allows for piece-by-piece consumption of LLM
-outputs.
-
-Q: Is MiniAgents suitable for production use?
-A: While MiniAgents is actively developed and used in various projects, it's always recommended to thoroughly test and
-evaluate the framework for your specific use case before deploying to production.
-
-1. **Q: How does MiniAgents differ from other agent frameworks?**
-   A: MiniAgents focuses on asynchronous communication, immutable messages, and seamless integration with LLMs. It
-   provides a simple API for defining agents as Python functions while handling complex interactions behind the scenes.
-
-2. **Q: Can I use MiniAgents with LLMs other than OpenAI and Anthropic?**
-   A: Yes, the framework is designed to be extensible. You can create custom integrations for other LLM providers by
-   following the patterns in the existing integrations.
-
-3. **Q: How does token streaming work in MiniAgents?**
-   A: MiniAgents uses `StreamedPromise` objects to handle token streaming. This allows for efficient processing of LLM
-   responses as they are generated, rather than waiting for the entire response.
-
-4. **Q: What are the benefits of using immutable messages?**
-   A: Immutable messages ensure that the state of conversations remains consistent and predictable. This helps prevent
-   bugs related to unexpected state changes and makes it easier to reason about the flow of information between agents.
-
-5. **Q: How can I persist chat history in MiniAgents?**
-   A: MiniAgents provides built-in support for in-memory chat history and Markdown-based persistence. You can also
-   create custom chat history handlers by extending the `ChatHistory` class.
-
-## Things to remember (for the developers of this framework)
+## Some note(s) for contributors
 
 - **Different Promise and StreamedPromise resolvers, piece streamers, appenders and what not should always catch
   BaseExceptions and not just Exceptions** when they capture errors to pass those errors as "pieces" in order for
@@ -590,12 +377,6 @@ evaluate the framework for your specific use case before deploying to production
   between async tasks via asyncio.Queue objects. Interrupting these promises with KeyboardInterrupt (which extends from
   BaseException) instead of letting it go through the queue can lead to hanging promises (a queue waiting for
   END_OF_QUEUE sentinel forever while the task that should send it is dead).
-
----
-
-This README provides an overview of the MiniAgents framework, its features, installation instructions, usage examples,
-and information on testing and contributing. For more detailed documentation, please refer to the source code and
-comments within the project.
 
 ---
 
