@@ -1,16 +1,16 @@
-# MiniAgents
+# 🤖 MiniAgents
 
 A framework on top of asyncio for building LLM-based multi-agent systems in
 Python, with immutable, Pydantic-based messages and a focus on asynchronous
 token and message streaming between agents.
 
-## Installation
+## 💾 Installation
 
 ```bash
 pip install miniagents
 ```
 
-## Usage
+## 🚀 Usage
 
 Here's a simple example of how to define an agent:
 
@@ -40,7 +40,7 @@ You said: Hello
 You said: World
 ```
 
-### Work with LLMs
+### 🧠 Work with LLMs
 
 MiniAgents provides built-in support for OpenAI and Anthropic language models
 with possibility to add other integrations.
@@ -89,7 +89,7 @@ You can read agent responses token-by-token as shown above regardless of whether
 the agent is streaming token by token or returning full messages. The complete
 message text will just be returned as a single "token" in the latter case.
 
-## A dialog loop between a user and an AI assistant
+## 🔄 A dialog loop between a user and an AI assistant
 
 The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop
 between a user agent and an assistant agent. Here is how you can use it to set
@@ -158,7 +158,7 @@ could say:
 USER:
 ```
 
-### A "toy" implementation of a dialog loop
+### 🧸 A "toy" implementation of a dialog loop
 
 Here is how you can implement a dialog loop between an agent and a user from
 ground up yourself (for simplicity there is no history agent in this example -
@@ -214,7 +214,7 @@ USER:
 **TODO** explain why the presence of `AWAIT` sentinel is important in the
 example above
 
-### Some other pre-packaged agents (`miniagents.ext`)
+### 📦 Some other pre-packaged agents (`miniagents.ext`)
 
 - `console_echo_agent`: Echoes messages to the console token by token.
 - `console_prompt_agent`: Prompts the user for input via the console.
@@ -227,7 +227,7 @@ example above
 Feel free to explore the source code in the `miniagents.ext` package to see how
 various agents are implemented and get inspiration for building your own agents!
 
-### Agent parallelism explained
+### 🔀 Agent parallelism explained
 
 ```python
 from miniagents.miniagents import (
@@ -338,7 +338,7 @@ individual agent calls if for some reason you need to:
 setting it to `False` for the whole system globally is not recommended because
 it can lead to deadlocks. ⚠️
 
-### 🔀 Alternative Inquiry Methods
+### 📨 An alternative inquiry method
 
 Here's a simple example demonstrating how to use `miniagent.start_inquiry()` and
 then do `.send_message()` two times before calling `.reply_sequence()` (instead
@@ -375,7 +375,7 @@ Echo: Hello
 Echo: World
 ```
 
-### 🔧 Using MiniAgents Context
+### 🛠️ Using MiniAgents() context
 
 There are three ways to use the `MiniAgents()` context:
 
@@ -408,7 +408,7 @@ manager (or it is unclear what such function would be). You just do
 `mini_agents.activate()` somewhere upon the init of the server and forget
 about it.
 
-### Existing Message models
+### 💬 Existing Message models
 
 ```python
 from miniagents.ext.llm import UserMessage, SystemMessage, AssistantMessage
@@ -425,7 +425,7 @@ the `role` field of the message:
 - `SystemMessage` has `role="system"` by default
 - `AssistantMessage` has `role="assistant"` by default
 
-### Custom Message models
+### 💭 Custom Message models
 
 You can create custom message types by subclassing `Message`.
 
@@ -446,7 +446,7 @@ print(message.custom_field)  # Output: Custom Value
 
 For more advanced usage, check out the [examples](examples) directory.
 
-## Motivation behind this project?
+## 💡 Motivation behind this project
 
 There are three main features of MiniAgents the idea of which motivated the
 creation of this framework:
@@ -475,7 +475,7 @@ and `Frozen` classes) in order to make all of the above possible (because this
 way there are no concerns about the state of the message being changed in the
 background).
 
-## 🔒 Message Persistence and Identification
+## 🔒 Message persistence and identification
 
 MiniAgents provides a way to persist messages as they are resolved from promises
 using the `@MiniAgents().on_persist_message` decorator. This allows you to
@@ -533,7 +533,7 @@ framework:
         - `openai.py`: OpenAI LLM agent
         - `anthropic.py`: Anthropic LLM agent
 
-## 🧠 Core Concepts
+## 📚 Core concepts
 
 Here are some of the core concepts in the MiniAgents framework:
 
