@@ -340,7 +340,7 @@ model) much like there are commit hashes in git.
 
 ## 📄 License
 
-MiniAgents is released under the [MIT License](LICENSE).
+MiniAgents is released under the [MIT License](../../../LICENSE).
 
 ## 🙋‍♂️ FAQ
 

@@ -395,7 +395,7 @@ The MiniAgents framework is organized into several modules:
 
 ## 📄 License
 
-MiniAgents is released under the [MIT License](LICENSE).
+MiniAgents is released under the [MIT License](../../../LICENSE).
 
 ## ❓ FAQ
 
