@@ -1,5 +1,3 @@
-Certainly! I'll improve the README.md file based on your requirements, add appropriate emojis to headers, and make sure it's up-to-date with the current state of the framework. Here's the updated README.md:
-
 # 🚀 MiniAgents
 
 A framework on top of asyncio for building LLM-based multi-agent systems in Python, with immutable, Pydantic-based messages and a focus on asynchronous token and message streaming between agents.
@@ -392,4 +390,80 @@ There are three main features of MiniAgents that motivated the creation of this 
 2. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`). This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence of message promises (it will be automatically "flattened" in the background).
 3. By default, agents work in so called `start_asap` mode, which is different from the usual way coroutines work where you need to actively await on them and/or iterate over them (in case of asynchronous generators). In `start_asap` mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background when async tasks switch.
 
-The third feature combines this `start_asap` approach with regular async/await
+The third feature combines this `start_asap` approach with regular async/await and async generators by using so called streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable" by nature.
+
+It was chosen for messages to be immutable once they are created (see `Message` and `Frozen` classes) in order to make all of the above possible (because this way there are no concerns about the state of the message being changed in the background).
+
+## 🔒 Message Persistence and Identification
+
+MiniAgents provides a way to persist messages as they are sent/received using the `@MiniAgents().on_persist_message` decorator. This allows you to implement custom logic for storing or logging messages.
+
+Additionally, messages (as well as any other Pydantic models derived from `Frozen`) have a `hash_key` property. This property calculates the sha256 hash of the content of the message and is used as the id of the `Messages` (or any other `Frozen` model), much like there are commit hashes in git.
+
+Here's a simple example of how to use the `on_persist_message` decorator:
+
+```python
+from miniagents import MiniAgents, Message
+
+mini_agents = MiniAgents()
+
+@mini_agents.on_persist_message
+async def persist_message(_, message: Message) -> None:
+    print(f"Persisting message with hash key: {message.hash_key}")
+    # Here you could implement logic to save the message to a database, for example
+```
+
+## 🎛️ Other Features
+
+- **Hooks to persist messages**: As demonstrated above, you can use hooks to persist messages as they are sent/received.
+- **Typing with Pydantic**: The framework uses Pydantic for validation and serialization of messages, providing strong typing and data validation.
+
+## 📚 Documentation
+
+### 📁 Modules
+
+The MiniAgents framework is organized into several modules:
+
+- `miniagents`: The core module containing the main `MiniAgents` class and decorators.
+- `miniagents.ext`: Contains extensions and pre-packaged agents.
+- `miniagents.ext.llm`: Provides integrations with language models (OpenAI, Anthropic).
+- `miniagents.promising`: Contains the core classes for promises and streamed promises.
+
+### 🧠 Core Concepts
+
+- **Agents**: Functions decorated with `@miniagent` that process messages and generate responses.
+- **Promises**: Representations of future values, allowing for asynchronous processing.
+- **Messages**: Immutable objects representing communication between agents.
+- **Contexts**: Environments in which agents operate, managing their lifecycle and communication.
+
+## 📄 License
+
+MiniAgents is released under the [MIT License](LICENSE).
+
+## ❓ FAQ
+
+Q: Can I use MiniAgents with other LLM providers?
+A: Yes, you can create custom integrations for other LLM providers by following the patterns in the existing OpenAI and Anthropic integrations.
+
+Q: How does MiniAgents handle errors in agents?
+A: MiniAgents provides error handling mechanisms through its promise system. Errors are captured and can be handled gracefully without breaking the entire agent chain.
+
+Q: Can I use MiniAgents in a synchronous environment?
+A: While MiniAgents is designed for asynchronous use, you can run it in a synchronous environment by using `asyncio.run()` or similar methods to run the async code.
+
+Q: How do I debug MiniAgents applications?
+A: You can use standard Python debugging tools. Additionally, you can add logging statements in your agents and use the `on_persist_message` hook to log all messages for debugging purposes.
+
+## 🤝 Contributing
+
+Contributions to MiniAgents are welcome! Here are some notes for contributors:
+
+- **Error Handling**: Different Promise and StreamedPromise resolvers, piece streamers, appenders, and other components should always catch BaseExceptions and not just Exceptions. This is because many of these components involve communications between async tasks via asyncio.Queue objects. Interrupting these promises with KeyboardInterrupt (which extends from BaseException) instead of letting it go through the queue can lead to hanging promises (a queue waiting for END_OF_QUEUE sentinel forever while the task that should send it is dead).
+
+- **Testing**: Make sure to add appropriate tests for any new features or bug fixes.
+
+- **Documentation**: Keep the documentation up-to-date with any changes you make.
+
+- **Code Style**: Follow the existing code style and use tools like black and pylint to format and lint your code.
+
+Happy coding with MiniAgents! 🚀
