@@ -7,8 +7,7 @@ import json
 
 import pytest
 
-from miniagents.messages import Message
-from miniagents.miniagents import MiniAgents
+from miniagents import Message, MiniAgents
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import PromisingContext, Promise
 from miniagents.promising.sentinels import DEFAULT

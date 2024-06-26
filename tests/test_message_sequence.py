@@ -4,8 +4,7 @@ Tests for the `MessageSequence` class.
 
 import pytest
 
-from miniagents.messages import Message
-from miniagents.miniagents import MessageSequence
+from miniagents import Message, MessageSequence
 from miniagents.promising.promising import PromisingContext
 from miniagents.promising.sentinels import DEFAULT
 

@@ -6,10 +6,9 @@ from pprint import pprint
 
 from dotenv import load_dotenv
 
+from miniagents import MiniAgents, Message
+from miniagents.ext import console_echo_agent
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.ext.misc_agents import console_echo_agent
-from miniagents.messages import Message
-from miniagents.miniagents import MiniAgents
 
 load_dotenv()
 
@@ -32,7 +31,7 @@ async def persist_message(_, message: Message) -> None:
     print()
 
 
-async def amain() -> None:
+async def main() -> None:
     """
     Send a message to an LLM agent and print the response.
     """
@@ -48,4 +47,4 @@ async def amain() -> None:
 
 
 if __name__ == "__main__":
-    mini_agents.run(amain())
+    mini_agents.run(main())

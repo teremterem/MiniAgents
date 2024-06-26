@@ -19,15 +19,22 @@ from miniagents.miniagents import miniagent, InteractionContext
 
 @miniagent
 async def console_prompt_agent(
-    ctx: InteractionContext, greeting: str = "You are in a chat with AI Assistant."
+    ctx: InteractionContext,
+    greeting: str = "YOU ARE NOW IN A CHAT WITH AN AI ASSISTANT",
+    hide_system_messages: bool = True,
 ) -> None:
     """
     TODO Oleksandr: docstring
     """
     # this is a "transparent" agent - pass the same messages forward (if any)
     ctx.reply(ctx.message_promises)
+
     # let's wait for all the previous messages to be resolved before we show the user prompt
-    if not await ctx.message_promises:
+    messages = await ctx.message_promises
+    if hide_system_messages:
+        messages = [msg for msg in messages if getattr(msg, "role", None) != "system"]
+
+    if not messages:
         # if there were no previous messages, we can assume it is the start of a dialog - let's print instructions
         print(
             "\033[92;1m\n"
@@ -46,7 +53,8 @@ async def console_prompt_agent(
         lexer=_CustomPromptLexer(),
         style=_user_prompt_style,
     )
-    print()  # skip an extra line after the user input
+    # skip an extra line after the user input
+    print()
 
     if user_input.strip() == "exit":
         raise KeyboardInterrupt
@@ -61,6 +69,7 @@ async def console_echo_agent(
     assistant_style: Union[str, int] = "92;1",
     mention_aliases: bool = True,
     default_role: str = "assistant",
+    hide_system_messages: bool = True,
 ) -> None:
     """
     MiniAgent that echoes messages to the console token by token.
@@ -71,6 +80,9 @@ async def console_echo_agent(
     #  (to interrupt whoever is producing it) ?
 
     async for msg_promise in ctx.message_promises:
+        if hide_system_messages and getattr(msg_promise.preliminary_metadata, "role", None) == "system":
+            continue
+
         if mention_aliases:
             try:
                 agent_alias = msg_promise.preliminary_metadata.agent_alias

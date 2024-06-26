@@ -6,22 +6,20 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from miniagents import MiniAgents, Message
+from miniagents.ext import markdown_history_agent
 from miniagents.ext.llm.anthropic import anthropic_agent
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.messages import Message
-from miniagents.miniagents import MiniAgents
 
 load_dotenv()
 
-mini_agents = MiniAgents()
-
-MAX_OUTPUT_TOKENS = 4000
+MAX_OUTPUT_TOKENS = 4096
 
 MODEL_AGENT_FACTORIES = {
-    "gpt-4o-2024-05-13": openai_agent,
-    "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
-    "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
-    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS),
+    "gpt-4o-2024-05-13": openai_agent.fork(temperature=0),
+    "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    # "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
 }
 MODEL_AGENTS = {model: agent.fork(model=model) for model, agent in MODEL_AGENT_FACTORIES.items()}
 
@@ -31,6 +29,12 @@ MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent
 SELF_DEV_OUTPUT = SELF_DEV_ROOT / "output"
 SELF_DEV_PROMPTS = SELF_DEV_ROOT / "self_dev_prompts.py"
 SELF_DEV_TRANSIENT = SELF_DEV_ROOT / "transient"
+
+PROMPT_LOG_PATH_PREFIX = str(SELF_DEV_TRANSIENT / "PROMPT__")
+
+mini_agents = MiniAgents()
+
+prompt_logger_agent = markdown_history_agent.fork(default_role="user", only_write=True, append=False)
 
 
 class RepoFileMessage(Message):
@@ -72,7 +76,7 @@ class FullRepoMessage(Message):
                         ".",
                         "dist/",
                         relative_posix_path(SELF_DEV_OUTPUT),
-                        # relative_posix_path(SELF_DEV_PROMPTS),  # skip prompt file in order not to throw LLM off ?
+                        # relative_posix_path(SELF_DEV_PROMPTS),  # TODO Oleksandr: skip the prompts file ?
                         relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
                         "LICENSE",  # TODO Oleksandr: what if there is a `LICENSE-template` file, for ex. ?

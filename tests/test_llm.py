@@ -8,8 +8,7 @@ from typing import Callable
 import pytest
 from dotenv import load_dotenv
 
-from miniagents.messages import Message
-from miniagents.miniagents import MiniAgents, MiniAgent
+from miniagents import Message, MiniAgents, MiniAgent
 
 load_dotenv()
 
