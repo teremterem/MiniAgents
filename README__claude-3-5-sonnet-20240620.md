@@ -405,4 +405,39 @@ A: Yes, you can create custom integrations for other LLM providers by following 
 Q: How does MiniAgents handle error propagation in asynchronous operations?
 A: MiniAgents uses a sophisticated error handling mechanism that captures errors in promises and allows them to be propagated or handled gracefully, depending on your configuration.
 
-Q:
+Q: How does MiniAgents handle concurrency and parallelism?
+A: MiniAgents leverages Python's asyncio to handle concurrency. Agents can run concurrently, allowing for efficient parallel processing of tasks.
+
+Q: Can I integrate MiniAgents with existing Python web frameworks?
+A: Yes, MiniAgents can be integrated with asynchronous web frameworks like FastAPI or Sanic. You'll need to ensure that the MiniAgents context is properly managed within your web application's lifecycle.
+
+Q: How does the `start_asap` mode differ from regular coroutines?
+A: In `start_asap` mode, agents are automatically scheduled to run in the background as soon as they're invoked, without needing explicit awaiting. This allows for more dynamic and responsive agent interactions.
+
+Q: Is it possible to debug MiniAgents applications?
+A: Yes, you can use standard Python debugging tools. Additionally, MiniAgents provides logging capabilities that can be enabled for more detailed insights into agent interactions and promise resolutions.
+
+Q: How does MiniAgents ensure message immutability?
+A: Messages in MiniAgents are based on Pydantic models with a custom `Frozen` base class, which prevents modifications after creation. This immutability is crucial for maintaining consistency in asynchronous operations.
+
+## 🤝 Contributing
+
+Contributions to MiniAgents are welcome! Here are some ways you can contribute:
+
+1. Report bugs or suggest features by opening issues.
+2. Improve documentation.
+3. Submit pull requests with bug fixes or new features.
+
+Please read our [Contributing Guidelines](CONTRIBUTING.md) for more details.
+
+## 📚 Documentation
+
+For more detailed documentation, including API references and advanced usage examples, please visit our [Documentation Site](https://miniagents.readthedocs.io).
+
+## 🙏 Acknowledgements
+
+MiniAgents was inspired by various projects in the AI and asynchronous programming communities. We'd like to thank all the open-source contributors whose work has made this project possible.
+
+---
+
+Happy coding with MiniAgents! 🚀 If you have any questions or need assistance, feel free to open an issue on our GitHub repository.
