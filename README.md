@@ -187,141 +187,81 @@ framework support sending and receiving zero or more messages)
 streaming token by token or returning full messages (the complete message text will just be returned as a single "token"
 in the latter case)
 
-## Other pre-packaged agents (`miniagents.ext`)
+## Some other pre-packaged agents (`miniagents.ext`)
 
-###### TODO TODO TODO TODO TODO ######
-
-###### TODO TODO TODO TODO TODO ######
-
-###### TODO TODO TODO TODO TODO ######
-
-###### TODO TODO TODO TODO TODO ######
-
-###### TODO TODO TODO TODO TODO ######
-
-Here's a simple example of using MiniAgents to create a dialog between a user and an AI assistant powered by OpenAI's
-GPT-3.5-turbo model:
+**TODO** add a note about not forgetting to set the Anthropic API key
 
 ```python
-from miniagents.ext.llm.openai import openai_agent
-from miniagents.ext.misc_agents import console_user_agent
-from miniagents.utils import adialog_loop
-
-
-async def main():
-    assistant_agent = openai_agent.fork(model="gpt-3.5-turbo")
-
-    await adialog_loop(console_user_agent, assistant_agent)
-
-
-asyncio.run(main())
-```
-
-This will start an interactive dialog where the user can chat with the AI assistant in the console.
-
-In this example:
-
-1. We take `console_user_agent`, which reads user input from the console and writes back to the console.
-2. We create an assistant agent using `openai_agent.fork()`, specifying the OpenAI model to use (e.g., "gpt-3.5-turbo").
-3. We start a dialog loop using `adialog_loop()`, passing the user agent and assistant agent as arguments.
-4. The dialog loop runs asynchronously within the `MiniAgents` context, allowing the agents to interact and exchange
-   messages.
-
-### Basic Example
-
-Here's a simple example of a conversation using the MiniAgents framework:
-
-```python
-import logging
-from dotenv import load_dotenv
-from miniagents.ext.history_agents import ChatHistoryMD
-from miniagents.ext.misc_agents import console_user_agent
-from miniagents.ext.llm.openai import openai_agent
-from miniagents.miniagents import MiniAgents
-from miniagents.utils import adialog_loop
-
-load_dotenv()
+from miniagents import MiniAgents
+from miniagents.ext import dialog_loop, markdown_history_agent
+from miniagents.ext.llm import SystemMessage
+from miniagents.ext.llm.anthropic import anthropic_agent
 
 
 async def amain() -> None:
-    chat_history = ChatHistoryMD("CHAT.md")
-    try:
-        print()
-        await adialog_loop(
-            user_agent=console_user_agent.fork(chat_history=chat_history),
-            assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
+    await dialog_loop.fork(
+        assistant_agent=anthropic_agent.fork(model="claude-3-5-sonnet-20240620", max_tokens=1000),
+        # write chat history to a markdown file (by default - `CHAT.md` in the current working directory,
+        # "fork" this agent to customize)
+        history_agent=markdown_history_agent,
+    ).inquire(
+        SystemMessage(
+            "Your job is to improve the styling and grammar of the sentences that the user throws at you. "
+            "Leave the sentences unchanged if they seem fine."
         )
-    except KeyboardInterrupt:
-        print()
+    )
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
     MiniAgents().run(amain())
 ```
 
-### Integrating with OpenAI
+Here is what the interaction might look like if you run this script:
 
-To create an agent that interacts with OpenAI, you can use the `openai_agent` function:
+```
+YOU ARE NOW IN A CHAT WITH AN AI ASSISTANT
 
-```python
-from miniagents.ext.llm.openai import openai_agent
+Press Enter to send your message.
+Press Ctrl+Space to insert a newline.
+Press Ctrl+C (or type "exit") to quit the conversation.
 
-# Running the OpenAI agent
-mini_agents.run(openai_agent.inquire("Hello, OpenAI!"))
+USER: hi
+
+ANTHROPIC_AGENT: Hello! The greeting "hi" is a casual and commonly used informal salutation. It's grammatically correct
+and doesn't require any changes. If you'd like to provide a more formal or elaborate greeting, you could consider
+alternatives such as "Hello," "Good morning/afternoon/evening," or "Greetings."
+
+USER: got it, thanks!
+
+ANTHROPIC_AGENT: You're welcome! The phrase "Got it, thanks!" is a concise and informal way to express understanding and
+appreciation. It's perfectly fine as is for casual communication. If you wanted a slightly more formal version, you
+could say:
+
+"I understand. Thank you!"
+
+USER:
 ```
 
-### Integrating with Anthropic
+**TODO** explain the `dialog_loop` agent and the `markdown_history_agent` agents, also mention other agents
+like `console_echo_agent`, `console_prompt_agent`, `user_agent` and `in_memory_history_agent`
+**TODO** encourage the reader to explore the source code in `miniagents.ext` package on their own to see how various
+agents are implemented
 
-Similarly, you can create an agent that interacts with Anthropic:
+### Here is how you can implement a dialog loop yourself from ground up
 
-```python
-from miniagents.ext.llm.anthropic import anthropic_agent
-
-# Running the Anthropic agent
-mini_agents.run(anthropic_agent.inquire("Hello, Anthropic!"))
-```
-
-### Integrating with OpenAI
-
-You can create an agent that interacts with OpenAI's GPT models:
+For more advanced usage, you can define multiple agents and manage their interactions (for simplicity, there is no
+history agent in this particular example, checkout `in_memory_history_agent` and how it is used if you're interested):
 
 ```python
-from dotenv import load_dotenv
-from miniagents.ext.llm.openai import openai_agent
-from miniagents.miniagents import MiniAgents
-
-load_dotenv()
-
-llm_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
-
-
-async def main() -> None:
-    async with MiniAgents():
-        reply_sequence = llm_agent.inquire("How are you today?", max_tokens=1000, temperature=0.0)
-        async for msg_promise in reply_sequence:
-            async for token in msg_promise:
-                print(token, end="", flush=True)
-            print()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### Advanced Example
-
-For more advanced usage, you can define multiple agents and manage their interactions:
-
-```python
-from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
+from miniagents import miniagent, InteractionContext, MiniAgents
+from miniagents.ext import agent_loop
 from miniagents.promising.sentinels import AWAIT
-from miniagents.utils import achain_loop
 
 
 @miniagent
 async def user_agent(ctx: InteractionContext) -> None:
     async for msg_promise in ctx.message_promises:
+        print("ASSISTANT: ", end="", flush=True)
         async for token in msg_promise:
             print(token, end="", flush=True)
         print()
@@ -330,25 +270,43 @@ async def user_agent(ctx: InteractionContext) -> None:
 
 @miniagent
 async def assistant_agent(ctx: InteractionContext) -> None:
-    async for msg_promise in ctx.message_promises:
-        async for token in msg_promise:
-            print(token, end="", flush=True)
-        print()
-    ctx.reply("Hello, how can I assist you?")
+    # turn a sequence of message promises into a single message promise (if there had been multiple messages in the
+    # sequence they would have had been separated by double newlines - this is how `as_single_promise()` by default)
+    aggregated_message = await ctx.message_promises.as_single_promise()
+    ctx.reply(f'You said "{aggregated_message}"')
 
 
 async def amain() -> None:
-    await achain_loop([user_agent, AWAIT, assistant_agent])
+    await agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).inquire()
 
 
 if __name__ == "__main__":
     MiniAgents().run(amain())
 ```
 
+Output:
+
+```
+USER: hi
+ASSISTANT: You said "hi"
+USER: nice!
+ASSISTANT: You said "nice!"
+USER: bye
+ASSISTANT: You said "bye"
+USER:
+```
+
 **TODO** explain why AWAIT is used in the example above
 
-The `AWAIT` sentinel is used to ensure that the previous agent's response is fully processed before the next agent
-starts.
+###### TODO TODO TODO TODO TODO ######
+
+###### TODO TODO TODO TODO TODO ######
+
+###### TODO TODO TODO TODO TODO ######
+
+###### TODO TODO TODO TODO TODO ######
+
+###### TODO TODO TODO TODO TODO ######
 
 ### Advanced Example with Multiple Agents
 
