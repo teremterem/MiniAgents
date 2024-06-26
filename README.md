@@ -79,17 +79,15 @@ if __name__ == "__main__":
     MiniAgents().run(main())
 ```
 
-**TODO** explain that even though OpenAI models return a single assistant
-response, the `openai_agent.inquire()` method is designed to return a sequence
-of messages (which is a sequence of message promises) that can be streamed token
-by token to generalize to arbitrary agents making agents in the MiniAgents
-framework easily interchangeable (agents in this framework support sending and
-receiving zero or more messages)
+Even though OpenAI models return a single assistant response, the
+`openai_agent.inquire()` method is still designed to return a sequence of
+multiple message promises. This generalizes to arbitrary agents, making agents
+in the MiniAgents framework easily interchangeable (agents in this framework
+support sending and receiving zero or more messages).
 
-**TODO** mention that you can read agent responses token-by-token as shown above
-regardless of whether the agent is streaming token by token or returning full
-messages (the complete message text will just be returned as a single "token" in
-the latter case)
+You can read agent responses token-by-token as shown above regardless of whether
+the agent is streaming token by token or returning full messages. The complete
+message text will just be returned as a single "token" in the latter case.
 
 ## Pre-packaged agents (`miniagents.ext`)
 
