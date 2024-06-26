@@ -141,10 +141,11 @@ could say:
 USER:
 ```
 
-### Here is how you can implement a dialog loop yourself from ground up
+### Implementing a custom dialog loop
 
-For more advanced usage, you can define multiple agents and manage their interactions (for simplicity, there is no
-history agent in this particular example, checkout `in_memory_history_agent` and how it is used if you're interested):
+Here is how you can implement a dialog loop between an agent and a user from ground up yourself (for simplicity there is
+no history agent in this example - checkout `in_memory_history_agent` and how it is used if you want to know how to
+implement your own history agent too):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
