@@ -39,7 +39,53 @@ You said: Hello
 You said: World
 ```
 
-### Slightly more advanced example
+### Work with LLMs
+
+MiniAgents provides built-in support for OpenAI and Anthropic language models with possibility to add other
+integrations.
+
+⚠️ **ATTENTION!** Make sure to set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the
+example below. ⚠️
+
+```python
+from miniagents import MiniAgents
+from miniagents.ext.llm.openai import openai_agent
+
+# NOTE: "Forking" an agent is a convenient way of creating a new agent instance with the specified configuration.
+# Alternatively, you could pass the `model` parameter to `openai_agent.inquire()` directly everytime you talk to
+# the agent.
+gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
+
+
+async def main():
+    reply_sequence = gpt_4o_agent.inquire(
+        "Hello, how are you?",
+        system="You are a helpful assistant.",
+        max_tokens=50,
+        temperature=0.7,
+    )
+    async for msg_promise in reply_sequence:
+        async for token in msg_promise:
+            print(token, end="", flush=True)
+        # MINOR: Let's separate messages with a double newline (even though in this particular case we are actually
+        # going to receive only one message).
+        print("\n")
+
+
+if __name__ == "__main__":
+    MiniAgents().run(main())
+```
+
+**TODO** explain that even though OpenAI models return a single assistant response, the `openai_agent.inquire()` method
+is designed to return a sequence of messages (which is a sequence of message promises) that can be streamed token by
+token to generalize to arbitrary agents making agents in the MiniAgents framework easily interchangeable (agents in this
+framework support sending and receiving zero or more messages)
+
+**TODO** mention that you can read agent responses token-by-token as shown above regardless of whether the agent is
+streaming token by token or returning full messages (the complete message text will just be returned as a single "token"
+in the latter case)
+
+### More advanced example
 
 ```python
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext, Message
@@ -131,9 +177,9 @@ should come from those agents. If there was some other, unrelated task switch be
 responses (let's say `await asyncio.sleep(1)` some time before the loop), the processing of the agent functions would
 still have started, but now upon this other, unrelated task switch.
 
-⚠️ **NOTE:** You can play around with setting `start_asap` to `False` for individual agent calls if for some reason you
-need to: `some_agent.inquire(request_messages_if_any, start_asap=False)`. However, setting it to `False` for the whole
-system globally is not recommended because it can lead to deadlocks. ⚠️
+⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for individual agent calls if for some reason
+you need to: `some_agent.inquire(request_messages_if_any, start_asap=False)`. However, setting it to `False` for the
+whole system globally is not recommended because it can lead to deadlocks. ⚠️
 
 ---
 
@@ -143,52 +189,6 @@ and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
 **TODO** mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a
 parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at
 the end) methods
-
-### Work with LLMs
-
-MiniAgents provides built-in support for OpenAI and Anthropic language models (with possibility to add other
-integrations).
-
-**NOTE:** Make sure to set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the example
-below.
-
-```python
-from miniagents import MiniAgents
-from miniagents.ext.llm.openai import openai_agent
-
-# NOTE: "Forking" an agent is a convenient way of creating a new agent instance with the specified configuration.
-# Alternatively, you could pass the `model` parameter to `openai_agent.inquire()` directly everytime you talk to
-# the agent.
-gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
-
-
-async def main():
-    reply_sequence = gpt_4o_agent.inquire(
-        "Hello, how are you?",
-        system="You are a helpful assistant.",
-        max_tokens=50,
-        temperature=0.7,
-    )
-    async for msg_promise in reply_sequence:
-        async for token in msg_promise:
-            print(token, end="", flush=True)
-        # MINOR: Let's separate messages with a double newline (even though in this particular case we are actually
-        # going to receive only one message).
-        print("\n")
-
-
-if __name__ == "__main__":
-    MiniAgents().run(main())
-```
-
-**TODO** explain that even though OpenAI models return a single assistant response, the `openai_agent.inquire()` method
-is designed to return a sequence of messages (which is a sequence of message promises) that can be streamed token by
-token to generalize to arbitrary agents making agents in the MiniAgents framework easily interchangeable (agents in this
-framework support sending and receiving zero or more messages)
-
-**TODO** mention that you can read agent responses token-by-token as shown above regardless of whether the agent is
-streaming token by token or returning full messages (the complete message text will just be returned as a single "token"
-in the latter case)
 
 ## Some other pre-packaged agents (`miniagents.ext`)
 
