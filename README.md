@@ -30,11 +30,12 @@ the fact that messages (as well as any other Pydantic models derived from `Froze
 calculates the sha256 of the content of the message and is used as the id of the `Messages` (or any other `Frozen`
 model) much like there are commit hashes in git.
 
-## Features
+## Some other features
 
 - Define agents as simple Python functions decorated with `@miniagent`
 - Integrate with OpenAI and Anthropic LLMs using `openai_agent` and `anthropic_agent`
-- Built on top of the `Promising` library (a library inside of a library) for managing asynchronous operations
+- Built on top of the `Promising` library (which is a library built directly inside this library 🙂) for managing
+  asynchronous operations
 - Asynchronous promise-based programming model with `Promise` and `StreamedPromise`
 - Hooks to persist messages as they are sent/received
 - Typing with Pydantic for validation and serialization of messages
@@ -74,6 +75,8 @@ async def amain() -> None:
 if __name__ == "__main__":
     MiniAgents().run(amain())  # prints "You said: Hello!"
 ```
+
+TODO mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at the end) methods
 
 ## Usage
 
