@@ -3,43 +3,6 @@
 A framework on top of asyncio for building LLM-based multi-agent systems in Python, with immutable, Pydantic-based
 messages and a focus on asynchronous token and message streaming between agents.
 
-## What was the motivation behind this project?
-
-There are three main features of MiniAgents the idea of which motivated the creation of this framework:
-
-1. It is built around supporting asynchronous token streaming across chains of interconnected agents, making this the
-   core feature of the framework.
-2. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message
-   promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`).
-   This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence
-   of message promises (it will be automatically "flattened" in the background).
-3. By default, agents work in so called `start_asap` mode, which is different from the usual way coroutines work where
-   you need to actively await on them and/or iterate over them (in case of asynchronous generators). In `start_asap`
-   mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background
-   when async tasks switch.
-
-The third feature combines this `start_asap` approach with regular async/await and async generators by using so called
-streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable" by nature.
-
-It was chosen for messages to be immutable once they are created (see `Message` and `Frozen` classes) in order to make
-all of the above possible (because this way there are no concerns about the state of the message being changed in the
-background).
-
-**TODO** mention `@MiniAgents().on_persist_message` decorator that allows to persist messages as they are sent/received
-and the fact that messages (as well as any other Pydantic models derived from `Frozen`) have `hash_key` property that
-calculates the sha256 of the content of the message and is used as the id of the `Messages` (or any other `Frozen`
-model) much like there are commit hashes in git.
-
-## Some other features
-
-- Define agents as simple Python functions decorated with `@miniagent`
-- Integrate with OpenAI and Anthropic LLMs using `openai_agent` and `anthropic_agent`
-- Built on top of the `Promising` library (which is a library built directly inside this library 🙂) for managing
-  asynchronous operations
-- Asynchronous promise-based programming model with `Promise` and `StreamedPromise`
-- Hooks to persist messages as they are sent/received
-- Typing with Pydantic for validation and serialization of messages
-
 ## Installation
 
 ```bash
@@ -298,16 +261,6 @@ USER:
 
 **TODO** explain why AWAIT is used in the example above
 
-###### TODO TODO TODO TODO TODO ######
-
-###### TODO TODO TODO TODO TODO ######
-
-###### TODO TODO TODO TODO TODO ######
-
-###### TODO TODO TODO TODO TODO ######
-
-###### TODO TODO TODO TODO TODO ######
-
 ### Custom Message models
 
 You can create custom message types by subclassing `Message`.
@@ -339,7 +292,44 @@ assistant_message = AssistantMessage(text="Assistant message")
 
 For more advanced usage, check out the [examples](examples/) directory.
 
-## Documentation
+## What was the motivation behind this project?
+
+There are three main features of MiniAgents the idea of which motivated the creation of this framework:
+
+1. It is built around supporting asynchronous token streaming across chains of interconnected agents, making this the
+   core feature of the framework.
+2. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message
+   promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`).
+   This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence
+   of message promises (it will be automatically "flattened" in the background).
+3. By default, agents work in so called `start_asap` mode, which is different from the usual way coroutines work where
+   you need to actively await on them and/or iterate over them (in case of asynchronous generators). In `start_asap`
+   mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background
+   when async tasks switch.
+
+The third feature combines this `start_asap` approach with regular async/await and async generators by using so called
+streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable" by nature.
+
+It was chosen for messages to be immutable once they are created (see `Message` and `Frozen` classes) in order to make
+all of the above possible (because this way there are no concerns about the state of the message being changed in the
+background).
+
+**TODO** mention `@MiniAgents().on_persist_message` decorator that allows to persist messages as they are sent/received
+and the fact that messages (as well as any other Pydantic models derived from `Frozen`) have `hash_key` property that
+calculates the sha256 of the content of the message and is used as the id of the `Messages` (or any other `Frozen`
+model) much like there are commit hashes in git.
+
+## Some other features
+
+- Define agents as simple Python functions decorated with `@miniagent`
+- Integrate with OpenAI and Anthropic LLMs using `openai_agent` and `anthropic_agent`
+- Built on top of the `Promising` library (which is a library built directly inside this library 🙂) for managing
+  asynchronous operations
+- Asynchronous promise-based programming model with `Promise` and `StreamedPromise`
+- Hooks to persist messages as they are sent/received
+- Typing with Pydantic for validation and serialization of messages
+
+## Documentation (TODO is this a good name for this section?)
 
 ### Modules
 
