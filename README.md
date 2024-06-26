@@ -5,7 +5,7 @@ messages and a focus on asynchronous token and message streaming between agents.
 
 ## What was the motivation behind this project?
 
-There are three main features of MiniAgents that motivated the creation of this framework:
+There are three main features of MiniAgents the idea of which motivated the creation of this framework:
 
 1. It is built around supporting asynchronous token streaming across chains of interconnected agents, making this the
    core feature of the framework.
@@ -19,10 +19,16 @@ There are three main features of MiniAgents that motivated the creation of this 
    when async tasks switch.
 
 The third feature combines this `start_asap` approach with regular async/await and async generators by using so called
-streamed promises which were designed to be "replayable" by nature.
+streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable" by nature.
 
 It was chosen for messages to be immutable once they are created (see `Message` and `Frozen` classes) in order to make
-all of the above possible (there are no concerns about the state of the message being changed in the background).
+all of the above possible (because this way there are no concerns about the state of the message being changed in the
+background).
+
+TODO mention `@MiniAgents().on_persist_message` decorator that allows to persist messages as they are sent/received and
+the fact that messages (as well as any other Pydantic models derived from `Frozen`) have `hash_key` property that
+calculates the sha256 of the content of the message and is used as the id of the `Messages` (or any other `Frozen`
+model) much like there are commit hashes in git.
 
 ## Features
 
@@ -46,6 +52,7 @@ Here's a simple example of how to define an agent:
 ```python
 from miniagents import miniagent, InteractionContext
 
+
 @miniagent
 async def my_agent(ctx: InteractionContext):
     async for msg_promise in ctx.message_promises:
@@ -57,10 +64,12 @@ And here's how to initiate an interaction with the agent:
 ```python
 from miniagents import MiniAgents
 
+
 async def amain() -> None:
     replies = await my_agent.inquire("Hello!")
     for message in replies:
         print(message)
+
 
 if __name__ == "__main__":
     MiniAgents().run(amain())  # prints "You said: Hello!"
