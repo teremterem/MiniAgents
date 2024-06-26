@@ -48,30 +48,39 @@ from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
 @miniagent
 async def agent1(ctx: InteractionContext) -> None:
     print("Agent 1 started")
-    ctx.reply("Message from Agent 1")
+    ctx.reply("*** MESSAGE from Agent 1 ***")
     print("Agent 1 finished")
 
 
 @miniagent
 async def agent2(ctx: InteractionContext) -> None:
     print("Agent 2 started")
-    ctx.reply("Message from Agent 2")
+    ctx.reply("*** MESSAGE from Agent 2 ***")
     print("Agent 2 finished")
 
 
 @miniagent
 async def aggregator_agent(ctx: InteractionContext) -> None:
-    print("Aggregator agent started")
-    ctx.reply([agent1.inquire(), agent2.inquire()])  # caveat: don't use generators here (TODO explain why)
-    print("Aggregator agent finished")
+    print("Aggregator started")
+    ctx.reply(
+        [
+            agent1.inquire(),
+            agent2.inquire(),
+            "*** MESSAGE #1 from Aggregator ***",
+        ]
+    )
+    print("Aggregator still working")
+    ctx.reply("*** MESSAGE #2 from Aggregator ***")
+    print("Aggregator finished")
 
 
 async def main() -> None:
-    print("Main function started")
-    async for msg_promise in aggregator_agent.inquire():
+    msg_promises = aggregator_agent.inquire()
+    print("PREPARING TO DELIVER MESSAGES FROM AGGREGATOR")
+    async for msg_promise in msg_promises:
         print(await msg_promise)
-    print("Main function finished")
-
+    # you can safely `await` again - all promises are "replayable"
+    print("TOTAL NUMBER OF MESSAGES FROM AGGREGATOR:", len(await msg_promises))
 
 if __name__ == "__main__":
     MiniAgents().run(main())
@@ -80,20 +89,35 @@ if __name__ == "__main__":
 This script will print the following lines to the console:
 
 ```
-Main function started
-Aggregator agent started
-Aggregator agent finished
+PREPARING TO DELIVER MESSAGES FROM AGENTS
+Aggregator started
+Aggregator still working
+Aggregator finished
 Agent 1 started
 Agent 1 finished
 Agent 2 started
 Agent 2 finished
-Message from Agent 1
-Message from Agent 2
-Main function finished
+*** MESSAGE from Agent 1 ***
+*** MESSAGE from Agent 2 ***
+*** MESSAGE #1 from Aggregator ***
+*** MESSAGE #2 from Aggregator ***
+TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 4
 ```
 
-**TODO** explain in detail the reason behind this specific order in which print statements printed their outputs in the
-example above
+The specific order of print statements is due to the asynchronous nature of the agents. The `aggregator_agent` starts
+and finishes quickly because it doesn't actually call `agent1` and `agent2` - as you can see, there is no `await`
+inside `aggregator_agent`. Instead, it immediately replies with **promises** to call those agents and return their
+responses.
+
+As long as the global `start_asap` setting is set to `True` (which is the default - see the source code of `Promising`,
+the parent class of `MiniAgents` context manager for details), the actual processing of the calls to those two agents
+will start at the earliest task switch. In this example it is going to be the at the beginning of the first iteration
+of the `async for` loop inside the `main` function.
+
+Mind you, this is not specifically because the aforementioned loop is trying to consume the responses that should come
+from those agents. If there was some other, unrelated task switch before any attempt to consume the responses (let's say
+`await asyncio.sleep(1)`), the processing of the calls to those agents would have started upon this other, unrelated
+task switch.
 
 **TODO** show an very simple example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times
 and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
