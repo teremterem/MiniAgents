@@ -1,5 +1,3 @@
-Here is the improved README.md for the MiniAgents framework:
-
 # 🤖 MiniAgents
 
 An asynchronous framework for building LLM-based multi-agent systems in Python, with immutable messages, Pydantic-based models, and a focus on token and message streaming between agents.
@@ -385,4 +383,104 @@ The third feature combines this `start_asap` approach with regular async/await a
 
 It was chosen for messages to be immutable once they are created (see `Message` and `Frozen` classes) in order to make all of the above possible (because this way there are no concerns about the state of the message being changed in the background).
 
-The `@MiniAgents().on_persist_message` decorator allows you to persist messages as they are sent/received. Messages (as well as any other Pydantic models derived from `Frozen`) have a `hash_key` property that calculates the sha256 hash of
+The `@MiniAgents().on_persist_message` decorator allows you to persist messages as they are sent/received. Messages (as well as any other Pydantic models derived from `Frozen`) have a `hash_key` property that calculates the sha256 hash of the content of the message and is used as the id of the `Messages` (or any other `Frozen` model) much like there are commit hashes in git.
+
+## 🌟 Some other features
+
+- Hooks to persist messages as they are sent/received
+- Typing with Pydantic for validation and serialization of messages
+
+## 📂 Modules
+
+Here's an overview of the module structure and hierarchy in the MiniAgents framework:
+
+- `miniagents`: The core package containing the main classes and functions
+  - `miniagents.py`: Defines the `MiniAgents` context manager, `MiniAgent` class, and `miniagent` decorator
+  - `messages.py`: Defines the `Message` class and related message types
+  - `miniagent_typing.py`: Defines type aliases and protocols used in the framework
+  - `utils.py`: Utility functions used throughout the framework
+  - `promising`: Subpackage for the "promising" functionality (promises, streaming, etc.)
+    - `promising.py`: Defines the `Promise` and `StreamedPromise` classes
+    - `promise_typing.py`: Defines type aliases and protocols for promises
+    - `sequence.py`: Defines the `FlatSequence` class for flattening sequences
+    - `sentinels.py`: Defines sentinel objects used in the framework
+    - `errors.py`: Defines custom exception classes
+    - `ext`: Subpackage for extensions to the promising functionality
+      - `frozen.py`: Defines the `Frozen` class for immutable Pydantic models
+- `miniagents.ext`: Subpackage for pre-packaged agents and extensions
+  - `agent_aggregators.py`: Agents for aggregating other agents (chains, loops, etc.)
+  - `history_agents.py`: Agents for managing conversation history
+  - `misc_agents.py`: Miscellaneous utility agents
+  - `llm`: Subpackage for LLM integrations
+    - `llm_common.py`: Common classes and functions for LLM agents
+    - `openai.py`: OpenAI LLM agent integration
+    - `anthropic.py`: Anthropic LLM agent integration
+
+## 🧠 Core Concepts
+
+Here are some of the core concepts in the MiniAgents framework:
+
+- **MiniAgent**: A wrapper around an async function that defines an agent's behavior. Created using the `@miniagent` decorator.
+- **InteractionContext**: Passed to each agent function, provides access to incoming messages and allows sending replies.
+- **Message**: Represents a message exchanged between agents. Can contain text, metadata, and nested messages. Immutable once created.
+- **MessagePromise**: A promise of a message that can be streamed token by token.
+- **MessageSequencePromise**: A promise of a sequence of messages that can be streamed message by message.
+- **Promise**: Represents a value that may not be available yet, but will be resolved in the future.
+- **StreamedPromise**: A promise that can be resolved piece by piece, allowing for streaming.
+- **Frozen**: An immutable Pydantic model with a git-style hash key calculated from its JSON representation.
+
+## 📜 License
+
+MiniAgents is released under the [MIT License](LICENSE).
+
+## ❓ FAQ
+
+**Q: How do I install MiniAgents?**
+
+A: You can install MiniAgents using pip:
+```bash
+pip install miniagents
+```
+
+**Q: What are the main features of MiniAgents?**
+
+A: The main features of MiniAgents are:
+1. Asynchronous token streaming across chains of interconnected agents
+2. Ability to easily combine various types of messages and promises in agent replies
+3. `start_asap` mode for agents to actively seek opportunities to process in the background
+
+**Q: How do I define a custom agent?**
+
+A: You can define a custom agent by creating an async function and decorating it with `@miniagent`. The function should accept an `InteractionContext` parameter. For example:
+
+```python
+from miniagents import miniagent, InteractionContext
+
+@miniagent
+async def my_agent(ctx: InteractionContext):
+    async for msg_promise in ctx.message_promises:
+        ctx.reply(f"You said: {await msg_promise}")
+```
+
+**Q: How do I use LLMs with MiniAgents?**
+
+A: MiniAgents provides built-in support for OpenAI and Anthropic LLMs. You can use the `openai_agent` and `anthropic_agent` respectively. Make sure to set your API keys in the environment variables `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`. For example:
+
+```python
+from miniagents.ext.llm.openai import openai_agent
+
+gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
+
+reply_sequence = gpt_4o_agent.inquire(
+    "How are you today?",
+    max_tokens=1000,
+    temperature=0.0,
+    system="Respond only in Yoda-speak.",
+)
+```
+
+## 📝 Some note(s) for contributors
+
+- **Different Promise and StreamedPromise resolvers, piece streamers, appenders, and other components should always catch BaseExceptions and not just Exceptions**. This is because many of these components involve communications between async tasks via asyncio.Queue objects. Interrupting these promises with KeyboardInterrupt (which extends from BaseException) instead of letting it go through the queue can lead to hanging promises (a queue waiting for END_OF_QUEUE sentinel forever while the task that should send it is dead).
+
+Happy coding with MiniAgents! 🚀
