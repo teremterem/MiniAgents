@@ -88,32 +88,46 @@ the end) methods
 
 ### Integrate with LLMs
 
-MiniAgents provides built-in support for OpenAI and Anthropic language models. You can create agents for these models
+MiniAgents provides built-in support for OpenAI and Anthropic language models (with possibility to add other
+integrations). You can create agents for these models
 using the provided functions.
 
 ```python
+from miniagents import MiniAgents
 from miniagents.ext.llm.openai import openai_agent
-from miniagents.messages import Message
 
-openai_agent = openai_agent.fork(model="gpt-3.5-turbo")
-
-
-async def main():
-    async with MiniAgents():
-        replies = openai_agent.inquire(
-            Message(text="Hello, how are you?", role="user"),
-            system="You are a helpful assistant.",
-            max_tokens=50,
-            temperature=0.7,
-        )
-        async for reply in replies:
-            print(await reply)
+# NOTE: "Forking" an agent is a convenience method that creates a new agent instance with the specified configuration.
+# Alternatively, you could just call `openai_agent.inquire()` directly and pass the model parameter every time.
+gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
 
 
-import asyncio
+async def amain():
+    reply_sequence = gpt_4o_agent.inquire(
+        "Hello, how are you?",
+        system="You are a helpful assistant.",
+        max_tokens=50,
+        temperature=0.7,
+    )
+    async for msg_promise in reply_sequence:
+        async for token in msg_promise:
+            print(token, end="", flush=True)
+        # MINOR: Let's separate messages with a double newline (even though in this particular case we are actually
+        # going to receive only one message).
+        print("\n")
 
-asyncio.run(main())
+
+if __name__ == "__main__":
+    MiniAgents().run(amain())
 ```
+
+TODO explain that even though OpenAI models return a single assistant response, the `openai_agent.inquire()` method is
+designed to return a sequence of messages (which is a sequence of message promises) that can be streamed token by token
+to generalize to arbitrary agents making agents in the MiniAgents framework easily interchangeable (agents in this
+framework support sending and receiving zero or more messages)
+
+TODO mention that you can read agent responses token-by-token as shown above regardless of whether the agent is
+streaming token by token or returning full messages (the complete message text will just be returned as a single "token"
+in the latter case)
 
 ## Basic Usage
 
