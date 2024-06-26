@@ -418,7 +418,9 @@ system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
 ```
 
-The difference between these message types is in the default values of the `role` field of the message:
+The difference between these message types is in the default values of
+the `role` field of the message:
+
 - `UserMessage` has `role="user"` by default
 - `SystemMessage` has `role="system"` by default
 - `AssistantMessage` has `role="assistant"` by default
@@ -473,65 +475,98 @@ and `Frozen` classes) in order to make all of the above possible (because this
 way there are no concerns about the state of the message being changed in the
 background).
 
-**TODO** mention `@MiniAgents().on_persist_message` decorator that allows to
-persist messages as they are sent/received and the fact that messages (as well
-as any other Pydantic models derived from `Frozen`) have `hash_key` property
-that calculates the sha256 of the content of the message and is used as the id
-of the `Messages` (or any other `Frozen` model) much like there are commit
-hashes in git.
+## 🔒 Message Persistence and Identification
 
-## Some other features
+MiniAgents provides a way to persist messages as they are resolved from promises
+using the `@MiniAgents().on_persist_message` decorator. This allows you to
+implement custom logic for storing or logging messages.
 
-**TODO** elaborate on the following:
+Additionally, messages (as well as any other Pydantic models derived from
+`Frozen`) have a `hash_key` property. This property calculates the sha256 hash
+of the content of the message and is used as the id of the `Messages` (or any
+other `Frozen` model), much like there are commit hashes in git.
 
-- Hooks to persist messages as they are sent/received
-- Typing with Pydantic for validation and serialization of messages
+Here's a simple example of how to use the `on_persist_message` decorator:
 
-## Documentation (TODO is this a good name for this section?)
+```python
+from miniagents import MiniAgents, Message
 
-### Modules
+mini_agents = MiniAgents()
 
-**TODO** describe the overall structure/hierarchy of the framework modules
 
-### Core Concepts
+@mini_agents.on_persist_message
+async def persist_message(_, message: Message) -> None:
+    print(f"Persisting message with hash key: {message.hash_key}")
+    # Here you could implement logic to save the message to a database, for example
+```
 
-**TODO** explain core concepts
+## 📂 Modules
+
+Here's an overview of the module structure and hierarchy in the MiniAgents
+framework:
+
+- `miniagents`: The core package containing the main classes and functions
+    - `miniagents.py`: Defines the `MiniAgents` context manager, `MiniAgent`
+      class, and `miniagent` decorator
+    - `messages.py`: Defines the `Message` class and related message types
+    - `miniagent_typing.py`: Defines type aliases and protocols used in the
+      framework
+    - `utils.py`: Utility functions used throughout the framework
+    - `promising`: Subpackage for the "promising" functionality (promises,
+      streaming, etc.)
+        - `promising.py`: Defines the `Promise` and `StreamedPromise` classes
+        - `promise_typing.py`: Defines type aliases and protocols for promises
+        - `sequence.py`: Defines the `FlatSequence` class for flattening
+          sequences
+        - `sentinels.py`: Defines sentinel objects used in the framework
+        - `errors.py`: Defines custom exception classes
+        - `ext`: Subpackage for extensions to the promising functionality
+            - `frozen.py`: Defines the `Frozen` class for immutable Pydantic
+              models
+- `miniagents.ext`: Subpackage for pre-packaged agents and extensions
+    - `agent_aggregators.py`: Agents for aggregating other agents (chains,
+      loops, etc.)
+    - `history_agents.py`: Agents for managing conversation history
+    - `misc_agents.py`: Miscellaneous utility agents
+    - `llm`: Subpackage for LLM integrations
+        - `llm_common.py`: Common classes and functions for LLM agents
+        - `openai.py`: OpenAI LLM agent
+        - `anthropic.py`: Anthropic LLM agent
+
+## 🧠 Core Concepts
+
+Here are some of the core concepts in the MiniAgents framework:
+
+- **MiniAgent**: A wrapper around an async function that defines an agent's
+  behavior. Created using the `@miniagent` decorator.
+- **InteractionContext**: Passed to each agent function, provides access to
+  incoming messages and allows sending replies.
+- **Message**: Represents a message exchanged between agents. Can contain text,
+  metadata, and nested messages. Immutable once created.
+- **MessagePromise**: A promise of a message that can be streamed token by
+  token.
+- **MessageSequencePromise**: A promise of a sequence of message promises.
+- **Promise**: Represents a value that may not be available yet, but will be
+  resolved in the future.
+- **StreamedPromise**: A promise that can be resolved piece by piece, allowing
+  for streaming.
+- **Frozen**: An immutable Pydantic model with a git-style hash key calculated
+  from its JSON representation.
 
 ## License
 
 MiniAgents is released under the [MIT License](LICENSE).
 
-## FAQ
+## 📝 Some notes for contributors
 
-**TODO** generate FAQ section
-
-## Some note(s) for contributors
-
-- **Different Promise and StreamedPromise resolvers, piece streamers, appenders
-  and what not should always catch BaseExceptions and not just Exceptions** when
-  they capture errors to pass those errors as "pieces" in order for those errors
-  to be raised at the "consumer side". This is because many of the
-  aforementioned Promising "primitives" are often part of mechanisms that
-  involve communications between async tasks via asyncio.Queue objects and just
-  interrupting those promises with KeyboardInterrupt which are extended from
-  BaseException instead of letting KeyboardInterrupt to go through the queue
-  leads to hanging of those promises (a queue is waiting for END_OF_QUEUE
-  sentinel forever but the task that should send it is dead).
-
-- **Different Promise and StreamedPromise resolvers, piece streamers, appenders,
-  and other components should always catch BaseExceptions and not just
-  Exceptions**. This is because many of these components involve communications
-  between async tasks via asyncio.Queue objects. Interrupting those promises
-  with KeyboardInterrupt (which extends from BaseException) instead of letting
-  it go through the queue can lead to hanging promises.
-
-- **Different Promise and StreamedPromise resolvers, piece streamers, appenders,
-  and other components should always catch BaseExceptions and not just
-  Exceptions**. This is because many of these components involve communications
-  between async tasks via asyncio.Queue objects. Interrupting these promises
-  with KeyboardInterrupt (which extends from BaseException) instead of letting
-  it go through the queue can lead to hanging promises (a queue waiting for
-  END_OF_QUEUE sentinel forever while the task that should send it is dead).
+- **Different Promise and StreamedPromise resolvers, piece-by-piece streamers,
+  appenders, and other Promising components should always catch BaseExceptions
+  and not just Exceptions**. This is because many of these components involve
+  communications between async tasks via `asyncio.Queue` objects. Interrupting
+  these promises with `KeyboardInterrupt` (which extends from `BaseException`)
+  instead of letting it go through the queue can lead to hanging promises (a
+  queue waiting for `END_OF_QUEUE` sentinel forever while the task that should
+  send it is dead).
 
 ---
 
