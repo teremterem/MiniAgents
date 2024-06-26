@@ -76,24 +76,79 @@ You said: Hello
 You said: World
 ```
 
-**TODO** also show an example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times and then
-call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
+### Slightly more advanced example
 
-**TODO** show that you can also create a chain of `amain -> my_other_agent -> my_agent` (`my_other_agent` just being a
-"transparent" agent that passes messages through without any processing)
+```python
+from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
+
+
+@miniagent
+async def agent1(ctx: InteractionContext) -> None:
+    print("Agent 1 started")
+    ctx.reply("Message from Agent 1")
+    print("Agent 1 finished")
+
+
+@miniagent
+async def agent2(ctx: InteractionContext) -> None:
+    print("Agent 2 started")
+    ctx.reply("Message from Agent 2")
+    print("Agent 2 finished")
+
+
+@miniagent
+async def aggregator_agent(ctx: InteractionContext) -> None:
+    print("Aggregator agent started")
+    ctx.reply([agent1.inquire(), agent2.inquire()])  # caveat: don't use generators here (TODO explain why)
+    print("Aggregator agent finished")
+
+
+async def amain() -> None:
+    print("Main function started")
+    async for msg_promise in aggregator_agent.inquire():
+        print(await msg_promise)
+    print("Main function finished")
+
+
+if __name__ == "__main__":
+    MiniAgents().run(amain())
+```
+
+This script will print the following lines to the console:
+
+```
+Main function started
+Aggregator agent started
+Aggregator agent finished
+Agent 1 started
+Agent 1 finished
+Agent 2 started
+Agent 2 finished
+Message from Agent 1
+Message from Agent 2
+Main function finished
+```
+
+**TODO** explain in detail the reason behind this specific order in which print statements printed their outputs in the
+example above
+
+**TODO** show an very simple example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times
+and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
 
 **TODO** mention that you can `await` the whole `MessageSequencePromise`, resolving it into a tuple of `Message` objects
-this way (give an example)
+this way (give a very simple example)
 
 **TODO** mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a
 parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at
 the end) methods
 
-### Integrate with LLMs
+### Work with LLMs
 
 MiniAgents provides built-in support for OpenAI and Anthropic language models (with possibility to add other
-integrations). You can create agents for these models
-using the provided functions.
+integrations).
+
+**NOTE:** Make sure to set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the example
+below.
 
 ```python
 from miniagents import MiniAgents
@@ -133,6 +188,16 @@ streaming token by token or returning full messages (the complete message text w
 in the latter case)
 
 ## Other pre-packaged agents (`miniagents.ext`)
+
+###### TODO TODO TODO TODO TODO ######
+
+###### TODO TODO TODO TODO TODO ######
+
+###### TODO TODO TODO TODO TODO ######
+
+###### TODO TODO TODO TODO TODO ######
+
+###### TODO TODO TODO TODO TODO ######
 
 Here's a simple example of using MiniAgents to create a dialog between a user and an AI assistant powered by OpenAI's
 GPT-3.5-turbo model:
@@ -288,37 +353,6 @@ starts.
 ### Advanced Example with Multiple Agents
 
 You can create more complex interactions involving multiple agents:
-
-```python
-import asyncio
-from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
-
-
-@miniagent
-async def agent1(ctx: InteractionContext) -> None:
-    print("Agent 1 is running")
-    ctx.reply("Message from Agent 1")
-
-
-@miniagent
-async def agent2(ctx: InteractionContext) -> None:
-    print("Agent 2 is running")
-    ctx.reply("Message from Agent 2")
-
-
-@miniagent
-async def aggregator_agent(ctx: InteractionContext) -> None:
-    ctx.reply([agent1.inquire(), agent2.inquire()])
-
-
-async def main() -> None:
-    async with MiniAgents():
-        await aggregator_agent.inquire()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
 
 ### Message Handling
 
