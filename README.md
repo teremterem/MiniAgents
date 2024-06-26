@@ -85,7 +85,121 @@ framework support sending and receiving zero or more messages)
 streaming token by token or returning full messages (the complete message text will just be returned as a single "token"
 in the latter case)
 
-### More advanced example
+## Pre-packaged agents (`miniagents.ext`)
+
+⚠️ **ATTENTION!** Make sure to set your Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
+the example below. ⚠️
+
+```python
+from miniagents import MiniAgents
+from miniagents.ext import dialog_loop, markdown_history_agent
+from miniagents.ext.llm import SystemMessage
+from miniagents.ext.llm.anthropic import anthropic_agent
+
+
+async def main() -> None:
+    await dialog_loop.fork(
+        assistant_agent=anthropic_agent.fork(model="claude-3-5-sonnet-20240620", max_tokens=1000),
+        # Write chat history to a markdown file (by default, `CHAT.md` in the current working directory -
+        # "fork" markdown_history_agent to customize).
+        history_agent=markdown_history_agent,
+    ).inquire(
+        SystemMessage(
+            "Your job is to improve the styling and grammar of the sentences that the user throws at you. "
+            "Leave the sentences unchanged if they seem fine."
+        )
+    )
+
+
+if __name__ == "__main__":
+    MiniAgents().run(main())
+```
+
+Here is what the interaction might look like if you run this script:
+
+```
+YOU ARE NOW IN A CHAT WITH AN AI ASSISTANT
+
+Press Enter to send your message.
+Press Ctrl+Space to insert a newline.
+Press Ctrl+C (or type "exit") to quit the conversation.
+
+USER: hi
+
+ANTHROPIC_AGENT: Hello! The greeting "hi" is a casual and commonly used informal salutation. It's grammatically correct
+and doesn't require any changes. If you'd like to provide a more formal or elaborate greeting, you could consider
+alternatives such as "Hello," "Good morning/afternoon/evening," or "Greetings."
+
+USER: got it, thanks!
+
+ANTHROPIC_AGENT: You're welcome! The phrase "Got it, thanks!" is a concise and informal way to express understanding and
+appreciation. It's perfectly fine as is for casual communication. If you wanted a slightly more formal version, you
+could say:
+
+"I understand. Thank you!"
+
+USER:
+```
+
+### Here is how you can implement a dialog loop yourself from ground up
+
+For more advanced usage, you can define multiple agents and manage their interactions (for simplicity, there is no
+history agent in this particular example, checkout `in_memory_history_agent` and how it is used if you're interested):
+
+```python
+from miniagents import miniagent, InteractionContext, MiniAgents
+from miniagents.ext import agent_loop
+from miniagents.promising.sentinels import AWAIT
+
+
+@miniagent
+async def user_agent(ctx: InteractionContext) -> None:
+    async for msg_promise in ctx.message_promises:
+        print("ASSISTANT: ", end="", flush=True)
+        async for token in msg_promise:
+            print(token, end="", flush=True)
+        print()
+    ctx.reply(input("USER: "))
+
+
+@miniagent
+async def assistant_agent(ctx: InteractionContext) -> None:
+    # turn a sequence of message promises into a single message promise (if there had been multiple messages in the
+    # sequence they would have had been separated by double newlines - this is how `as_single_promise()` by default)
+    aggregated_message = await ctx.message_promises.as_single_promise()
+    ctx.reply(f'You said "{aggregated_message}"')
+
+
+async def main() -> None:
+    await agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).inquire()
+
+
+if __name__ == "__main__":
+    MiniAgents().run(main())
+```
+
+Output:
+
+```
+USER: hi
+ASSISTANT: You said "hi"
+USER: nice!
+ASSISTANT: You said "nice!"
+USER: bye
+ASSISTANT: You said "bye"
+USER:
+```
+
+**TODO** explain why AWAIT is used in the example above
+
+---
+
+**TODO** explain the `dialog_loop` agent and the `markdown_history_agent` agents, also mention other agents
+like `console_echo_agent`, `console_prompt_agent`, `user_agent` and `in_memory_history_agent`
+**TODO** encourage the reader to explore the source code in `miniagents.ext` package on their own to see how various
+agents are implemented
+
+### Agent parallelism explained
 
 ```python
 from miniagents.miniagents import MiniAgents, miniagent, InteractionContext, Message
@@ -190,116 +304,17 @@ and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
 parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at
 the end) methods
 
-## Some other pre-packaged agents (`miniagents.ext`)
-
-**TODO** add a note about not forgetting to set the Anthropic API key
+### Existing Message models
 
 ```python
-from miniagents import MiniAgents
-from miniagents.ext import dialog_loop, markdown_history_agent
-from miniagents.ext.llm import SystemMessage
-from miniagents.ext.llm.anthropic import anthropic_agent
+from miniagents.ext.llm import UserMessage, SystemMessage, AssistantMessage
 
-
-async def main() -> None:
-    await dialog_loop.fork(
-        assistant_agent=anthropic_agent.fork(model="claude-3-5-sonnet-20240620", max_tokens=1000),
-        # Write chat history to a markdown file (by default, `CHAT.md` in the current working directory -
-        # "fork" markdown_history_agent to customize).
-        history_agent=markdown_history_agent,
-    ).inquire(
-        SystemMessage(
-            "Your job is to improve the styling and grammar of the sentences that the user throws at you. "
-            "Leave the sentences unchanged if they seem fine."
-        )
-    )
-
-
-if __name__ == "__main__":
-    MiniAgents().run(main())
+user_message = UserMessage(text="Hello!")
+system_message = SystemMessage(text="System message")
+assistant_message = AssistantMessage(text="Assistant message")
 ```
 
-Here is what the interaction might look like if you run this script:
-
-```
-YOU ARE NOW IN A CHAT WITH AN AI ASSISTANT
-
-Press Enter to send your message.
-Press Ctrl+Space to insert a newline.
-Press Ctrl+C (or type "exit") to quit the conversation.
-
-USER: hi
-
-ANTHROPIC_AGENT: Hello! The greeting "hi" is a casual and commonly used informal salutation. It's grammatically correct
-and doesn't require any changes. If you'd like to provide a more formal or elaborate greeting, you could consider
-alternatives such as "Hello," "Good morning/afternoon/evening," or "Greetings."
-
-USER: got it, thanks!
-
-ANTHROPIC_AGENT: You're welcome! The phrase "Got it, thanks!" is a concise and informal way to express understanding and
-appreciation. It's perfectly fine as is for casual communication. If you wanted a slightly more formal version, you
-could say:
-
-"I understand. Thank you!"
-
-USER:
-```
-
-**TODO** explain the `dialog_loop` agent and the `markdown_history_agent` agents, also mention other agents
-like `console_echo_agent`, `console_prompt_agent`, `user_agent` and `in_memory_history_agent`
-**TODO** encourage the reader to explore the source code in `miniagents.ext` package on their own to see how various
-agents are implemented
-
-### Here is how you can implement a dialog loop yourself from ground up
-
-For more advanced usage, you can define multiple agents and manage their interactions (for simplicity, there is no
-history agent in this particular example, checkout `in_memory_history_agent` and how it is used if you're interested):
-
-```python
-from miniagents import miniagent, InteractionContext, MiniAgents
-from miniagents.ext import agent_loop
-from miniagents.promising.sentinels import AWAIT
-
-
-@miniagent
-async def user_agent(ctx: InteractionContext) -> None:
-    async for msg_promise in ctx.message_promises:
-        print("ASSISTANT: ", end="", flush=True)
-        async for token in msg_promise:
-            print(token, end="", flush=True)
-        print()
-    ctx.reply(input("USER: "))
-
-
-@miniagent
-async def assistant_agent(ctx: InteractionContext) -> None:
-    # turn a sequence of message promises into a single message promise (if there had been multiple messages in the
-    # sequence they would have had been separated by double newlines - this is how `as_single_promise()` by default)
-    aggregated_message = await ctx.message_promises.as_single_promise()
-    ctx.reply(f'You said "{aggregated_message}"')
-
-
-async def main() -> None:
-    await agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).inquire()
-
-
-if __name__ == "__main__":
-    MiniAgents().run(main())
-```
-
-Output:
-
-```
-USER: hi
-ASSISTANT: You said "hi"
-USER: nice!
-ASSISTANT: You said "nice!"
-USER: bye
-ASSISTANT: You said "bye"
-USER:
-```
-
-**TODO** explain why AWAIT is used in the example above
+**TODO** explain that the difference is in the default values of the `role` field of the message
 
 ### Custom Message models
 
@@ -318,21 +333,11 @@ print(message.text)  # Output: Hello
 print(message.custom_field)  # Output: Custom Value
 ```
 
-### Existing Message models
-
-```python
-from miniagents.ext.llm import UserMessage, SystemMessage, AssistantMessage
-
-user_message = UserMessage(text="Hello!")
-system_message = SystemMessage(text="System message")
-assistant_message = AssistantMessage(text="Assistant message")
-```
-
 ---
 
 For more advanced usage, check out the [examples](examples/) directory.
 
-## What was the motivation behind this project?
+## Motivation behind this project?
 
 There are three main features of MiniAgents the idea of which motivated the creation of this framework:
 
@@ -385,7 +390,7 @@ MiniAgents is released under the [MIT License](LICENSE).
 
 ## FAQ
 
-**TODO** generate FAQ section (pull the questions out of your ass)
+**TODO** generate FAQ section
 
 ## Some note(s) for contributors
 
