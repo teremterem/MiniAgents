@@ -1,5 +1,5 @@
 """
-A simple conversation example using the MiniAgents framework.
+A simple conversation example between the user and an LLM agent using the MiniAgents framework.
 """
 
 import logging
@@ -19,6 +19,7 @@ async def amain() -> None:
     """
     await dialog_loop.fork(
         assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
+        # write chat history to a markdown file
         history_agent=markdown_history_agent,
     ).inquire()
 

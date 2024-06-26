@@ -25,8 +25,8 @@ It was chosen for messages to be immutable once they are created (see `Message` 
 all of the above possible (because this way there are no concerns about the state of the message being changed in the
 background).
 
-TODO mention `@MiniAgents().on_persist_message` decorator that allows to persist messages as they are sent/received and
-the fact that messages (as well as any other Pydantic models derived from `Frozen`) have `hash_key` property that
+**TODO** mention `@MiniAgents().on_persist_message` decorator that allows to persist messages as they are sent/received
+and the fact that messages (as well as any other Pydantic models derived from `Frozen`) have `hash_key` property that
 calculates the sha256 of the content of the message and is used as the id of the `Messages` (or any other `Frozen`
 model) much like there are commit hashes in git.
 
@@ -76,13 +76,16 @@ You said: Hello
 You said: World
 ```
 
-TODO show that you can also create a chain of `amain -> my_other_agent -> my_agent` (`my_other_agent` just being a "
-transparent" agent that passes messages through without any processing)
+**TODO** also show an example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times and then
+call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
 
-TODO mention that you can `await` the whole `MessageSequencePromise`, resolving it into a tuple of `Message` objects
+**TODO** show that you can also create a chain of `amain -> my_other_agent -> my_agent` (`my_other_agent` just being a
+"transparent" agent that passes messages through without any processing)
+
+**TODO** mention that you can `await` the whole `MessageSequencePromise`, resolving it into a tuple of `Message` objects
 this way (give an example)
 
-TODO mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a
+**TODO** mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a
 parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at
 the end) methods
 
@@ -120,16 +123,16 @@ if __name__ == "__main__":
     MiniAgents().run(amain())
 ```
 
-TODO explain that even though OpenAI models return a single assistant response, the `openai_agent.inquire()` method is
-designed to return a sequence of messages (which is a sequence of message promises) that can be streamed token by token
-to generalize to arbitrary agents making agents in the MiniAgents framework easily interchangeable (agents in this
+**TODO** explain that even though OpenAI models return a single assistant response, the `openai_agent.inquire()` method
+is designed to return a sequence of messages (which is a sequence of message promises) that can be streamed token by
+token to generalize to arbitrary agents making agents in the MiniAgents framework easily interchangeable (agents in this
 framework support sending and receiving zero or more messages)
 
-TODO mention that you can read agent responses token-by-token as shown above regardless of whether the agent is
+**TODO** mention that you can read agent responses token-by-token as shown above regardless of whether the agent is
 streaming token by token or returning full messages (the complete message text will just be returned as a single "token"
 in the latter case)
 
-## Basic Usage
+## Other pre-packaged agents (`miniagents.ext`)
 
 Here's a simple example of using MiniAgents to create a dialog between a user and an AI assistant powered by OpenAI's
 GPT-3.5-turbo model:
@@ -277,7 +280,7 @@ if __name__ == "__main__":
     MiniAgents().run(amain())
 ```
 
-TODO explain why AWAIT is used in the example above
+**TODO** explain why AWAIT is used in the example above
 
 The `AWAIT` sentinel is used to ensure that the previous agent's response is fully processed before the next agent
 starts.
@@ -349,7 +352,7 @@ system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
 ```
 
-TODO mention that exceptions in agents are treated as messages ?
+**TODO** mention that exceptions in agents are treated as messages ?
 
 For more advanced usage, check out the [examples](examples/) directory.
 
