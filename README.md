@@ -46,12 +46,10 @@ Here's a simple example of how to define an agent:
 ```python
 from miniagents import miniagent, InteractionContext
 
-
 @miniagent
 async def my_agent(ctx: InteractionContext):
     async for msg_promise in ctx.message_promises:
-        message = await msg_promise
-        ctx.reply(f"You said: {message}")
+        ctx.reply(f"You said: {await msg_promise}")
 ```
 
 And here's how to initiate an interaction with the agent:
@@ -59,16 +57,18 @@ And here's how to initiate an interaction with the agent:
 ```python
 from miniagents import MiniAgents
 
-async with MiniAgents():
-    reply = await my_agent.inquire("Hello!")
-    print(reply)  # prints "You said: Hello!"
-```
+async def amain() -> None:
+    replies = await my_agent.inquire("Hello!")
+    for message in replies:
+        print(message)
 
-For more advanced usage, check out the [examples](examples/) directory.
+if __name__ == "__main__":
+    MiniAgents().run(amain())  # prints "You said: Hello!"
+```
 
 ## Usage
 
-Here's a simple example of defining agents and having them interact:
+Here's an example of defining agents and having them interact:
 
 ```python
 from miniagents import miniagent, MiniAgents, InteractionContext
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     MiniAgents().run(amain())
 ```
 
-TODO Oleksandr: explain why AWAIT is used in the example above
+TODO explain why AWAIT is used in the example above
 
 The `AWAIT` sentinel is used to ensure that the previous agent's response is fully processed before the next agent
 starts.
@@ -410,7 +410,9 @@ system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
 ```
 
-TODO Oleksandr: mention that exceptions in agents are treated as messages ?
+TODO mention that exceptions in agents are treated as messages ?
+
+For more advanced usage, check out the [examples](examples/) directory.
 
 ## Utility Functions
 
