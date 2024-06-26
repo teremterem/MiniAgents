@@ -2,7 +2,7 @@
 
 A framework on top of asyncio for building LLM-based multi-agent systems in
 Python, with immutable, Pydantic-based messages and a focus on asynchronous
-token and message streaming between agents.
+token and message streaming between the agents.
 
 ## 💾 Installation
 
