@@ -79,7 +79,8 @@ async def main() -> None:
     print("PREPARING TO DELIVER MESSAGES FROM AGGREGATOR")
     async for msg_promise in msg_promises:
         print(await msg_promise)
-    # you can safely `await` again - all promises are "replayable"
+    # You can safely `await` again. Concrete messages (and tokens, if there was token streaming) are cached
+    # inside the promises. Message sequences (as well as token sequences) are "replayable".
     print("TOTAL NUMBER OF MESSAGES FROM AGGREGATOR:", len(await msg_promises))
 
 if __name__ == "__main__":
@@ -118,6 +119,9 @@ Mind you, this is not specifically because the aforementioned loop is trying to 
 from those agents. If there was some other, unrelated task switch before any attempt to consume the responses (let's say
 `await asyncio.sleep(1)`), the processing of the calls to those agents would have started upon this other, unrelated
 task switch.
+
+**NOTE:** You can play around with setting `start_asap` to `False` for individual agent calls, but setting it to
+`False` globally for the whole system is not recommended because it can lead to deadlocks.
 
 **TODO** show an very simple example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times
 and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
@@ -188,8 +192,8 @@ from miniagents.ext.llm.anthropic import anthropic_agent
 async def main() -> None:
     await dialog_loop.fork(
         assistant_agent=anthropic_agent.fork(model="claude-3-5-sonnet-20240620", max_tokens=1000),
-        # write chat history to a markdown file (by default - `CHAT.md` in the current working directory,
-        # "fork" this agent to customize)
+        # Write chat history to a markdown file (by default, `CHAT.md` in the current working directory -
+        # "fork" markdown_history_agent to customize).
         history_agent=markdown_history_agent,
     ).inquire(
         SystemMessage(
