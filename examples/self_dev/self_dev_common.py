@@ -13,7 +13,7 @@ from miniagents.ext.llm.openai import openai_agent
 
 load_dotenv()
 
-MAX_OUTPUT_TOKENS = 4000
+MAX_OUTPUT_TOKENS = 20000
 
 MODEL_AGENT_FACTORIES = {
     "gpt-4o-2024-05-13": openai_agent.fork(temperature=0),
