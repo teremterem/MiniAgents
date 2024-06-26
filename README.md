@@ -51,127 +51,40 @@ pip install miniagents
 Here's a simple example of how to define an agent:
 
 ```python
-from miniagents import miniagent, InteractionContext
+from miniagents import miniagent, InteractionContext, MiniAgents
 
 
 @miniagent
 async def my_agent(ctx: InteractionContext):
     async for msg_promise in ctx.message_promises:
         ctx.reply(f"You said: {await msg_promise}")
-```
-
-And here's how to initiate an interaction with the agent:
-
-```python
-from miniagents import MiniAgents
 
 
 async def amain() -> None:
-    replies = await my_agent.inquire("Hello!")
-    for message in replies:
-        print(message)
+    async for msg_promise in my_agent.inquire(["Hello", "World"]):
+        print(await msg_promise)
 
 
 if __name__ == "__main__":
-    MiniAgents().run(amain())  # prints "You said: Hello!"
+    MiniAgents().run(amain())
 ```
 
-TODO mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at the end) methods
-
-## Usage
-
-Here's an example of defining agents and having them interact:
-
-```python
-from miniagents import miniagent, MiniAgents, InteractionContext
-
-
-@miniagent
-async def agent1(ctx: InteractionContext):
-    ctx.reply("Hello from Agent 1!")
-
-
-@miniagent
-async def agent2(ctx: InteractionContext):
-    message = await ctx.message_promises
-    ctx.reply(f"Agent 2 received: {message[0].text}")
-
-
-async def main():
-    async with MiniAgents():
-        agent2_replies = agent2.inquire(agent1.inquire())
-        print(await agent2_replies)
-
-
-asyncio.run(main())
-```
-
-This will output:
+This script will print the following lines to the console:
 
 ```
-(Message(text='Agent 2 received: Hello from Agent 1!'),)
+You said: Hello
+You said: World
 ```
 
-For more advanced usage, including integration with LLMs, see the documentation and examples.
+TODO show that you can also create a chain of `amain -> my_other_agent -> my_agent` (`my_other_agent` just being a "
+transparent" agent that passes messages through without any processing)
 
-### Basic Example
+TODO mention that you can `await` the whole `MessageSequencePromise`, resolving it into a tuple of `Message` objects
+this way (give an example)
 
-Here's a basic example of how to create and run a simple agent using MiniAgents:
-
-```python
-import asyncio
-from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
-
-
-@miniagent
-async def simple_agent(ctx: InteractionContext) -> None:
-    print("Agent is running")
-    ctx.reply("Hello from the agent!")
-
-
-async def main() -> None:
-    async with MiniAgents():
-        await simple_agent.inquire()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### Define an Agent
-
-You can define an agent using the `@miniagent` decorator. An agent is essentially an asynchronous function that
-interacts with a context.
-
-```python
-from miniagents.miniagents import miniagent, InteractionContext
-
-
-@miniagent
-async def my_agent(ctx: InteractionContext) -> None:
-    ctx.reply("Hello, I am an agent!")
-```
-
-### Run an Agent
-
-To run an agent, you need to create an instance of `MiniAgents` and use the `inquire` method to send messages to the
-agent.
-
-```python
-from miniagents.miniagents import MiniAgents
-
-
-async def main():
-    async with MiniAgents():
-        replies = my_agent.inquire()
-        async for reply in replies:
-            print(await reply)
-
-
-import asyncio
-
-asyncio.run(main())
-```
+TODO mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a
+parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at
+the end) methods
 
 ### Integrate with LLMs
 
