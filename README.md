@@ -89,7 +89,13 @@ You can read agent responses token-by-token as shown above regardless of whether
 the agent is streaming token by token or returning full messages. The complete
 message text will just be returned as a single "token" in the latter case.
 
-## Pre-packaged agents (`miniagents.ext`)
+## A dialog loop between a user and an AI assistant
+
+The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop
+between a user agent and an assistant agent. Here is how you can use it to set
+up an interaction between a user and your agent (can be bare LLM agent, like
+`openai_agent` or `anthropic_agent`, can also be a custom agent that you define
+yourself):
 
 ⚠️ **ATTENTION!** Make sure to set your Anthropic API key in the
 `ANTHROPIC_API_KEY` environment variable before running the example below. ⚠️
@@ -152,7 +158,7 @@ could say:
 USER:
 ```
 
-### Implementing a custom dialog loop
+### A "toy" implementation of a dialog loop
 
 Here is how you can implement a dialog loop between an agent and a user from
 ground up yourself (for simplicity there is no history agent in this example -
@@ -205,15 +211,21 @@ ASSISTANT: You said "bye"
 USER:
 ```
 
-**TODO** explain why AWAIT is used in the example above
+**TODO** explain why the presence of `AWAIT` sentinel is important in the
+example above
 
----
+### Some other pre-packaged agents (`miniagents.ext`)
 
-**TODO** explain the `dialog_loop` agent and the `markdown_history_agent`
-agents, also mention other agents like `console_echo_agent`,
-`console_prompt_agent`, `user_agent` and `in_memory_history_agent`
-**TODO** encourage the reader to explore the source code in `miniagents.ext`
-package on their own to see how various agents are implemented
+- `console_echo_agent`: Echoes messages to the console token by token.
+- `console_prompt_agent`: Prompts the user for input via the console.
+- `user_agent`: A user agent that echoes messages from the agent that called it,
+  then reads the user input and returns the user input as its response. This
+  agent is an aggregation of the previous two.
+- `agent_loop`: **TODO** explain
+- `agent_chain`: **TODO** explain
+
+Feel free to explore the source code in the `miniagents.ext` package to see how
+various agents are implemented and get inspiration for building your own agents!
 
 ### Agent parallelism explained
 
