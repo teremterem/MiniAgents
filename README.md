@@ -135,11 +135,10 @@ still have started, but now upon this other, unrelated task switch.
 need to: `some_agent.inquire(request_messages_if_any, start_asap=False)`. However, setting it to `False` for the whole
 system globally is not recommended because it can lead to deadlocks. ⚠️
 
-**TODO** show an very simple example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times
-and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
+---
 
-**TODO** mention that you can `await` the whole `MessageSequencePromise`, resolving it into a tuple of `Message` objects
-this way (give a very simple example)
+**TODO** show a very simple example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times
+and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
 
 **TODO** mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a
 parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at
