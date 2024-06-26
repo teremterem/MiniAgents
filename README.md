@@ -1,7 +1,8 @@
 # MiniAgents
 
-A framework on top of asyncio for building LLM-based multi-agent systems in Python, with immutable, Pydantic-based
-messages and a focus on asynchronous token and message streaming between agents.
+A framework on top of asyncio for building LLM-based multi-agent systems in
+Python, with immutable, Pydantic-based messages and a focus on asynchronous
+token and message streaming between agents.
 
 ## Installation
 
@@ -41,19 +42,20 @@ You said: World
 
 ### Work with LLMs
 
-MiniAgents provides built-in support for OpenAI and Anthropic language models with possibility to add other
-integrations.
+MiniAgents provides built-in support for OpenAI and Anthropic language models
+with possibility to add other integrations.
 
-⚠️ **ATTENTION!** Make sure to set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the
-example below. ⚠️
+⚠️ **ATTENTION!** Make sure to set your OpenAI API key in the `OPENAI_API_KEY`
+environment variable before running the example below. ⚠️
 
 ```python
 from miniagents import MiniAgents
 from miniagents.ext.llm.openai import openai_agent
 
-# NOTE: "Forking" an agent is a convenient way of creating a new agent instance with the specified configuration.
-# Alternatively, you could pass the `model` parameter to `openai_agent.inquire()` directly everytime you talk to
-# the agent.
+# NOTE: "Forking" an agent is a convenient way of creating a new agent instance
+# with the specified configuration. Alternatively, you could pass the `model`
+# parameter to `openai_agent.inquire()` directly everytime you talk to the
+# agent.
 gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
 
 
@@ -67,8 +69,9 @@ async def main():
     async for msg_promise in reply_sequence:
         async for token in msg_promise:
             print(token, end="", flush=True)
-        # MINOR: Let's separate messages with a double newline (even though in this particular case we are actually
-        # going to receive only one message).
+        # MINOR: Let's separate messages with a double newline (even though in
+        # this particular case we are actually going to receive only one
+        # message).
         print("\n")
 
 
@@ -76,19 +79,22 @@ if __name__ == "__main__":
     MiniAgents().run(main())
 ```
 
-**TODO** explain that even though OpenAI models return a single assistant response, the `openai_agent.inquire()` method
-is designed to return a sequence of messages (which is a sequence of message promises) that can be streamed token by
-token to generalize to arbitrary agents making agents in the MiniAgents framework easily interchangeable (agents in this
-framework support sending and receiving zero or more messages)
+**TODO** explain that even though OpenAI models return a single assistant
+response, the `openai_agent.inquire()` method is designed to return a sequence
+of messages (which is a sequence of message promises) that can be streamed token
+by token to generalize to arbitrary agents making agents in the MiniAgents
+framework easily interchangeable (agents in this framework support sending and
+receiving zero or more messages)
 
-**TODO** mention that you can read agent responses token-by-token as shown above regardless of whether the agent is
-streaming token by token or returning full messages (the complete message text will just be returned as a single "token"
-in the latter case)
+**TODO** mention that you can read agent responses token-by-token as shown above
+regardless of whether the agent is streaming token by token or returning full
+messages (the complete message text will just be returned as a single "token" in
+the latter case)
 
 ## Pre-packaged agents (`miniagents.ext`)
 
-⚠️ **ATTENTION!** Make sure to set your Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
-the example below. ⚠️
+⚠️ **ATTENTION!** Make sure to set your Anthropic API key in the
+`ANTHROPIC_API_KEY` environment variable before running the example below. ⚠️
 
 ```python
 from miniagents import MiniAgents
@@ -99,14 +105,19 @@ from miniagents.ext.llm.anthropic import anthropic_agent
 
 async def main() -> None:
     await dialog_loop.fork(
-        assistant_agent=anthropic_agent.fork(model="claude-3-5-sonnet-20240620", max_tokens=1000),
-        # Write chat history to a markdown file (by default it is `CHAT.md` in the current working directory -
-        # "fork" markdown_history_agent to customize).
+        assistant_agent=anthropic_agent.fork(
+            model="claude-3-5-sonnet-20240620",
+            max_tokens=1000,
+        ),
+        # Write chat history to a markdown file (by default it is `CHAT.md` in
+        # the current working directory - "fork" markdown_history_agent to
+        # customize).
         history_agent=markdown_history_agent,
     ).inquire(
         SystemMessage(
-            "Your job is to improve the styling and grammar of the sentences that the user throws at you. "
-            "Leave the sentences unchanged if they seem fine."
+            "Your job is to improve the styling and grammar of the sentences "
+            "that the user throws at you. Leave the sentences unchanged if "
+            "they seem fine."
         )
     )
 
@@ -126,14 +137,16 @@ Press Ctrl+C (or type "exit") to quit the conversation.
 
 USER: hi
 
-ANTHROPIC_AGENT: Hello! The greeting "hi" is a casual and commonly used informal salutation. It's grammatically correct
-and doesn't require any changes. If you'd like to provide a more formal or elaborate greeting, you could consider
+ANTHROPIC_AGENT: Hello! The greeting "hi" is a casual and commonly used informal
+salutation. It's grammatically correct and doesn't require any changes. If you'd
+like to provide a more formal or elaborate greeting, you could consider
 alternatives such as "Hello," "Good morning/afternoon/evening," or "Greetings."
 
 USER: got it, thanks!
 
-ANTHROPIC_AGENT: You're welcome! The phrase "Got it, thanks!" is a concise and informal way to express understanding and
-appreciation. It's perfectly fine as is for casual communication. If you wanted a slightly more formal version, you
+ANTHROPIC_AGENT: You're welcome! The phrase "Got it, thanks!" is a concise and
+informal way to express understanding and appreciation. It's perfectly fine as
+is for casual communication. If you wanted a slightly more formal version, you
 could say:
 
 "I understand. Thank you!"
@@ -143,8 +156,9 @@ USER:
 
 ### Implementing a custom dialog loop
 
-Here is how you can implement a dialog loop between an agent and a user from ground up yourself (for simplicity there is
-no history agent in this example - checkout `in_memory_history_agent` and how it is used if you want to know how to
+Here is how you can implement a dialog loop between an agent and a user from
+ground up yourself (for simplicity there is no history agent in this example -
+checkout `in_memory_history_agent` and how it is used if you want to know how to
 implement your own history agent too):
 
 ```python
@@ -165,8 +179,10 @@ async def user_agent(ctx: InteractionContext) -> None:
 
 @miniagent
 async def assistant_agent(ctx: InteractionContext) -> None:
-    # turn a sequence of message promises into a single message promise (if there had been multiple messages in the
-    # sequence they would have had been separated by double newlines - this is how `as_single_promise()` by default)
+    # Turn a sequence of message promises into a single message promise (if
+    # there had been multiple messages in the sequence they would have had
+    # been separated by double newlines - this is how `as_single_promise()`
+    # by default).
     aggregated_message = await ctx.message_promises.as_single_promise()
     ctx.reply(f'You said "{aggregated_message}"')
 
@@ -195,15 +211,21 @@ USER:
 
 ---
 
-**TODO** explain the `dialog_loop` agent and the `markdown_history_agent` agents, also mention other agents
-like `console_echo_agent`, `console_prompt_agent`, `user_agent` and `in_memory_history_agent`
-**TODO** encourage the reader to explore the source code in `miniagents.ext` package on their own to see how various
-agents are implemented
+**TODO** explain the `dialog_loop` agent and the `markdown_history_agent`
+agents, also mention other agents like `console_echo_agent`,
+`console_prompt_agent`, `user_agent` and `in_memory_history_agent`
+**TODO** encourage the reader to explore the source code in `miniagents.ext`
+package on their own to see how various agents are implemented
 
 ### Agent parallelism explained
 
 ```python
-from miniagents.miniagents import MiniAgents, miniagent, InteractionContext, Message
+from miniagents.miniagents import (
+    MiniAgents,
+    miniagent,
+    InteractionContext,
+    Message,
+)
 
 
 @miniagent
@@ -241,12 +263,13 @@ async def main() -> None:
     print("PREPARING TO DELIVER MESSAGES FROM AGGREGATOR")
 
     async for msg_promise in msg_promises:
-        # MessagePromises always resolve into Message objects (or subclasses), even if the agent was replying
-        # with bare strings
+        # MessagePromises always resolve into Message objects (or subclasses),
+        # even if the agent was replying with bare strings
         message: Message = await msg_promise
         print(message)
-    # You can safely `await` again. Concrete messages (and tokens, if there was token streaming) are cached
-    # inside the promises. Message sequences (as well as token sequences) are "replayable".
+    # You can safely `await` again. Concrete messages (and tokens, if there was
+    # token streaming) are cached inside the promises. Message sequences (as
+    # well as token sequences) are "replayable".
     print("TOTAL NUMBER OF MESSAGES FROM AGGREGATOR:", len(await msg_promises))
 
 
@@ -272,38 +295,49 @@ Agent 2 finished
 TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 4
 ```
 
-This specific order of print statements is due to the way asynchronous agents are designed in this framework. Notice,
-that you don't see any `await` or `yield` statements in any of the agent functions above. Agent functions are defined
-as `async`, so you could have `await` statements inside of them for various reasons if you needed to. The agents from
-the example above just don't need that.
+This specific order of print statements is due to the way asynchronous agents
+are designed in this framework. Notice, that you don't see any `await` or
+`yield` statements in any of the agent functions above. Agent functions are
+defined as `async`, so you could have `await` statements inside of them for
+various reasons if you needed to. The agents from the example above just don't
+need that.
 
-None of the agent functions start executing upon any of the calls to the `inquire()` method. Instead, in all cases
-the `inquire()` method immediately returns with **promises** to "talk to the agents" (**promises** of sequences of
-**promises** of response messages, to be super precise - see `MessageSequencePromise` and `MessagePromise` classes for
-details).
+None of the agent functions start executing upon any of the calls to the
+`inquire()` method. Instead, in all cases the `inquire()` method immediately
+returns with **promises** to "talk to the agents" (**promises** of sequences of
+**promises** of response messages, to be super precise -
+see `MessageSequencePromise` and `MessagePromise` classes for details).
 
-As long as the global `start_asap` setting is set to `True` (which is the default - see the source code of `Promising`,
-the parent class of `MiniAgents` context manager for details), the actual agent functions will start processing at the
-earliest task switch (the behaviour of `asyncio.create_task()`, which is used under the hood). In this example it is
-going to be the at the beginning of the first iteration of the `async for` loop inside the `main` function.
+As long as the global `start_asap` setting is set to `True` (which is the
+default - see the source code of `Promising`, the parent class of `MiniAgents`
+context manager for details), the actual agent functions will start processing
+at the earliest task switch (the behaviour of `asyncio.create_task()`, which is
+used under the hood). In this example it is going to be the at the beginning of
+the first iteration of the `async for` loop inside the `main` function.
 
-Keep in mind that this is not specifically because the aforementioned loop is trying to consume the responses that
-should come from those agents. If there was some other, unrelated task switch before any attempt to consume the
-responses (let's say `await asyncio.sleep(1)` some time before the loop), the processing of the agent functions would
-still have started, but now upon this other, unrelated task switch.
+Keep in mind that this is not specifically because the aforementioned loop is
+trying to consume the responses that should come from those agents. If there was
+some other, unrelated task switch before any attempt to consume the responses
+(let's say `await asyncio.sleep(1)` some time before the loop), the processing
+of the agent functions would still have started, but now upon this other,
+unrelated task switch.
 
-⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for individual agent calls if for some reason
-you need to: `some_agent.inquire(request_messages_if_any, start_asap=False)`. However, setting it to `False` for the
-whole system globally is not recommended because it can lead to deadlocks. ⚠️
+⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for
+individual agent calls if for some reason you need to:
+`some_agent.inquire(request_messages_if_any, start_asap=False)`. However,
+setting it to `False` for the whole system globally is not recommended because
+it can lead to deadlocks. ⚠️
 
 ---
 
-**TODO** show a very simple example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times
-and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
+**TODO** show a very simple example where you do `miniagent.start_inquiry()` and
+then do `.send_message()` two times and then call `.reply_sequence()` (instead
+of all-in-one `miniagents.inquire()`)
 
-**TODO** mention three ways MiniAgents() context can be used: calling its `run()` method with your main function as a
-parameter, using it as an async context manager or directly calling its `activate()` (and, potentially, `afinalize()` at
-the end) methods
+**TODO** mention three ways MiniAgents() context can be used: calling its
+`run()` method with your main function as a parameter, using it as an async
+context manager or directly calling its `activate()` (and, potentially,
+`afinalize()` at the end) methods
 
 ### Existing Message models
 
@@ -315,7 +349,8 @@ system_message = SystemMessage(text="System message")
 assistant_message = AssistantMessage(text="Assistant message")
 ```
 
-**TODO** explain that the difference is in the default values of the `role` field of the message
+**TODO** explain that the difference is in the default values of the `role`
+field of the message
 
 ### Custom Message models
 
@@ -336,42 +371,48 @@ print(message.custom_field)  # Output: Custom Value
 
 ---
 
-For more advanced usage, check out the [examples](examples/) directory.
+For more advanced usage, check out the [examples](examples) directory.
 
 ## Motivation behind this project?
 
-There are three main features of MiniAgents the idea of which motivated the creation of this framework:
+There are three main features of MiniAgents the idea of which motivated the
+creation of this framework:
 
-1. It is built around supporting asynchronous token streaming across chains of interconnected agents, making this the
-   core feature of the framework.
-2. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message
-   promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`).
-   This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence
-   of message promises (it will be automatically "flattened" in the background).
-3. By default, agents work in so called `start_asap` mode, which is different from the usual way coroutines work where
-   you need to actively await on them and/or iterate over them (in case of asynchronous generators). In `start_asap`
-   mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background
-   when async tasks switch.
+1. It is built around supporting asynchronous token streaming across chains of
+   interconnected agents, making this the core feature of the framework.
+2. It is very easy to throw bare strings, messages, message promises,
+   collections, and sequences of messages and message promises (as well as the
+   promises of the sequences themselves) all together into an agent reply (see
+   `MessageType`). This entire hierarchical structure will be asynchronously
+   resolved in the background into a flat and uniform sequence of message
+   promises (it will be automatically "flattened" in the background).
+3. By default, agents work in so called `start_asap` mode, which is different
+   from the usual way coroutines work where you need to actively await on them
+   and/or iterate over them (in case of asynchronous generators). In
+   `start_asap` mode, every agent, after it was invoked, actively seeks every
+   opportunity to proceed its processing in the background when async tasks
+   switch.
 
-The third feature combines this `start_asap` approach with regular async/await and async generators by using so called
-streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable" by nature.
+The third feature combines this `start_asap` approach with regular async/await
+and async generators by using so called streamed promises (see `StreamedPromise`
+and `Promise` classes) which were designed to be "replayable" by nature.
 
-It was chosen for messages to be immutable once they are created (see `Message` and `Frozen` classes) in order to make
-all of the above possible (because this way there are no concerns about the state of the message being changed in the
+It was chosen for messages to be immutable once they are created (see `Message`
+and `Frozen` classes) in order to make all of the above possible (because this
+way there are no concerns about the state of the message being changed in the
 background).
 
-**TODO** mention `@MiniAgents().on_persist_message` decorator that allows to persist messages as they are sent/received
-and the fact that messages (as well as any other Pydantic models derived from `Frozen`) have `hash_key` property that
-calculates the sha256 of the content of the message and is used as the id of the `Messages` (or any other `Frozen`
-model) much like there are commit hashes in git.
+**TODO** mention `@MiniAgents().on_persist_message` decorator that allows to
+persist messages as they are sent/received and the fact that messages (as well
+as any other Pydantic models derived from `Frozen`) have `hash_key` property
+that calculates the sha256 of the content of the message and is used as the id
+of the `Messages` (or any other `Frozen` model) much like there are commit
+hashes in git.
 
 ## Some other features
 
-- Define agents as simple Python functions decorated with `@miniagent`
-- Integrate with OpenAI and Anthropic LLMs using `openai_agent` and `anthropic_agent`
-- Built on top of the `Promising` library (which is a library built directly inside this library 🙂) for managing
-  asynchronous operations
-- Asynchronous promise-based programming model with `Promise` and `StreamedPromise`
+**TODO** elaborate on the following:
+
 - Hooks to persist messages as they are sent/received
 - Typing with Pydantic for validation and serialization of messages
 
@@ -395,23 +436,30 @@ MiniAgents is released under the [MIT License](LICENSE).
 
 ## Some note(s) for contributors
 
-- **Different Promise and StreamedPromise resolvers, piece streamers, appenders and what not should always catch
-  BaseExceptions and not just Exceptions** when they capture errors to pass those errors as "pieces" in order for
-  those errors to be raised at the "consumer side". This is because many of the aforementioned Promising "primitives"
-  are often part of mechanisms that involve communications between async tasks via asyncio.Queue objects and just
-  interrupting those promises with KeyboardInterrupt which are extended from BaseException instead of letting
-  KeyboardInterrupt to go through the queue leads to hanging of those promises (a queue is waiting for END_OF_QUEUE
+- **Different Promise and StreamedPromise resolvers, piece streamers, appenders
+  and what not should always catch BaseExceptions and not just Exceptions** when
+  they capture errors to pass those errors as "pieces" in order for those errors
+  to be raised at the "consumer side". This is because many of the
+  aforementioned Promising "primitives" are often part of mechanisms that
+  involve communications between async tasks via asyncio.Queue objects and just
+  interrupting those promises with KeyboardInterrupt which are extended from
+  BaseException instead of letting KeyboardInterrupt to go through the queue
+  leads to hanging of those promises (a queue is waiting for END_OF_QUEUE
   sentinel forever but the task that should send it is dead).
 
-- **Different Promise and StreamedPromise resolvers, piece streamers, appenders, and other components should always
-  catch BaseExceptions and not just Exceptions**. This is because many of these components involve communications
-  between async tasks via asyncio.Queue objects. Interrupting those promises with KeyboardInterrupt (which extends from
-  BaseException) instead of letting it go through the queue can lead to hanging promises.
+- **Different Promise and StreamedPromise resolvers, piece streamers, appenders,
+  and other components should always catch BaseExceptions and not just
+  Exceptions**. This is because many of these components involve communications
+  between async tasks via asyncio.Queue objects. Interrupting those promises
+  with KeyboardInterrupt (which extends from BaseException) instead of letting
+  it go through the queue can lead to hanging promises.
 
-- **Different Promise and StreamedPromise resolvers, piece streamers, appenders, and other components should always
-  catch BaseExceptions and not just Exceptions**. This is because many of these components involve communications
-  between async tasks via asyncio.Queue objects. Interrupting these promises with KeyboardInterrupt (which extends from
-  BaseException) instead of letting it go through the queue can lead to hanging promises (a queue waiting for
+- **Different Promise and StreamedPromise resolvers, piece streamers, appenders,
+  and other components should always catch BaseExceptions and not just
+  Exceptions**. This is because many of these components involve communications
+  between async tasks via asyncio.Queue objects. Interrupting these promises
+  with KeyboardInterrupt (which extends from BaseException) instead of letting
+  it go through the queue can lead to hanging promises (a queue waiting for
   END_OF_QUEUE sentinel forever while the task that should send it is dead).
 
 ---
