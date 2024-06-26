@@ -42,7 +42,7 @@ You said: World
 ### Slightly more advanced example
 
 ```python
-from miniagents.miniagents import MiniAgents, miniagent, InteractionContext
+from miniagents.miniagents import MiniAgents, miniagent, InteractionContext, Message
 
 
 @miniagent
@@ -76,12 +76,18 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
 
 async def main() -> None:
     msg_promises = aggregator_agent.inquire()
+
     print("PREPARING TO DELIVER MESSAGES FROM AGGREGATOR")
+
     async for msg_promise in msg_promises:
-        print(await msg_promise)
+        # MessagePromises always resolve into Message objects (or subclasses), even if the agent was replying
+        # with bare strings
+        message: Message = await msg_promise
+        print(message)
     # You can safely `await` again. Concrete messages (and tokens, if there was token streaming) are cached
     # inside the promises. Message sequences (as well as token sequences) are "replayable".
     print("TOTAL NUMBER OF MESSAGES FROM AGGREGATOR:", len(await msg_promises))
+
 
 if __name__ == "__main__":
     MiniAgents().run(main())
@@ -90,7 +96,7 @@ if __name__ == "__main__":
 This script will print the following lines to the console:
 
 ```
-PREPARING TO DELIVER MESSAGES FROM AGENTS
+PREPARING TO DELIVER MESSAGES FROM AGGREGATOR
 Aggregator started
 Aggregator still working
 Aggregator finished
@@ -105,23 +111,29 @@ Agent 2 finished
 TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 4
 ```
 
-The specific order of print statements is due to the asynchronous nature of the agents. The `aggregator_agent` starts
-and finishes quickly because it doesn't actually call `agent1` and `agent2` - as you can see, there is no `await`
-inside `aggregator_agent`. Instead, it immediately replies with **promises** to call those agents and return their
-responses.
+This specific order of print statements is due to the way asynchronous agents are designed in this framework. Notice,
+that you don't see any `await` or `yield` statements in any of the agent functions above. Agent functions are defined
+as `async`, so you could have `await` statements inside of them for various reasons if you needed to. The agents from
+the example above just don't need that.
+
+None of the agent functions start executing upon any of the calls to the `inquire()` method. Instead, in all cases
+the `inquire()` method immediately returns with **promises** to "talk to the agents" (**promises** of sequences of
+**promises** of response messages, to be super precise - see `MessageSequencePromise` and `MessagePromise` classes for
+details).
 
 As long as the global `start_asap` setting is set to `True` (which is the default - see the source code of `Promising`,
-the parent class of `MiniAgents` context manager for details), the actual processing of the calls to those two agents
-will start at the earliest task switch. In this example it is going to be the at the beginning of the first iteration
-of the `async for` loop inside the `main` function.
+the parent class of `MiniAgents` context manager for details), the actual agent functions will start processing at the
+earliest task switch (the behaviour of `asyncio.create_task()`, which is used under the hood). In this example it is
+going to be the at the beginning of the first iteration of the `async for` loop inside the `main` function.
 
-Mind you, this is not specifically because the aforementioned loop is trying to consume the responses that should come
-from those agents. If there was some other, unrelated task switch before any attempt to consume the responses (let's say
-`await asyncio.sleep(1)`), the processing of the calls to those agents would have started upon this other, unrelated
-task switch.
+Keep in mind that this is not specifically because the aforementioned loop is trying to consume the responses that
+should come from those agents. If there was some other, unrelated task switch before any attempt to consume the
+responses (let's say `await asyncio.sleep(1)` some time before the loop), the processing of the agent functions would
+still have started, but now upon this other, unrelated task switch.
 
-**NOTE:** You can play around with setting `start_asap` to `False` for individual agent calls, but setting it to
-`False` globally for the whole system is not recommended because it can lead to deadlocks.
+⚠️ **NOTE:** You can play around with setting `start_asap` to `False` for individual agent calls if for some reason you
+need to: `some_agent.inquire(request_messages_if_any, start_asap=False)`. However, setting it to `False` for the whole
+system globally is not recommended because it can lead to deadlocks. ⚠️
 
 **TODO** show an very simple example where you do `miniagent.start_inquiry()` and then do `.send_message()` two times
 and then call `.reply_sequence()` (instead of all-in-one `miniagents.inquire()`)
@@ -145,8 +157,9 @@ below.
 from miniagents import MiniAgents
 from miniagents.ext.llm.openai import openai_agent
 
-# NOTE: "Forking" an agent is a convenience method that creates a new agent instance with the specified configuration.
-# Alternatively, you could just call `openai_agent.inquire()` directly and pass the model parameter every time.
+# NOTE: "Forking" an agent is a convenient way of creating a new agent instance with the specified configuration.
+# Alternatively, you could pass the `model` parameter to `openai_agent.inquire()` directly everytime you talk to
+# the agent.
 gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
 
 
