@@ -158,8 +158,6 @@ is for casual communication. If you wanted a slightly more formal version, you
 could say:
 
 "I understand. Thank you!"
-
-USER:
 ```
 
 ### 🧸 A "toy" implementation of a dialog loop
@@ -212,7 +210,6 @@ USER: nice!
 ASSISTANT: You said "nice!"
 USER: bye
 ASSISTANT: You said "bye"
-USER:
 ```
 
 **TODO** explain why the presence of `AWAIT` sentinel is important in the
