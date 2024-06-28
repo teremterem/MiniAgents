@@ -25,7 +25,8 @@
 </p>
 
 <p align="center">
-<img src="./images/miniagents-5-by-4-fixed.png">
+    <img alt="MiniAgents on the Moon"
+        src="./images/miniagents-5-by-4-fixed.png">
 </p>
 
 A framework on top of asyncio for building LLM-based multi-agent systems in
