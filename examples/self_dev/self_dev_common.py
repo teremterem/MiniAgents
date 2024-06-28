@@ -79,7 +79,8 @@ class FullRepoMessage(Message):
                         # relative_posix_path(SELF_DEV_PROMPTS),  # TODO Oleksandr: skip the prompts file ?
                         relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
-                        "LICENSE",  # TODO Oleksandr: what if there is a `LICENSE-template` file, for ex. ?
+                        "images/",
+                        # "LICENSE",
                         "venv/",
                         "poetry.lock",
                     ]

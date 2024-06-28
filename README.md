@@ -1,7 +1,32 @@
 <h1 align="center">🛰 MiniAgents 🌘</h1>
 
 <p align="center">
-<img src="./images/miniagents-5-by-4-fixed.png">
+    <a href="./LICENSE">
+        <img alt="License: MIT"
+            src="https://img.shields.io/badge/License-MIT-purple">
+    </a>
+    <a href="https://www.python.org/downloads/">
+        <img alt="Python: 3.9+"
+            src="https://img.shields.io/badge/python-3.9+-blue">
+    </a>
+    <a href="https://pypi.org/project/miniagents/">
+        <img alt="PyPI: Latest"
+            src="https://img.shields.io/pypi/v/miniagents?color=mediumseagreen">
+    </a>
+    <a href="https://github.com/pylint-dev/pylint">
+        <img alt="Linting: Pylint"
+            src="https://img.shields.io/badge/linting-pylint-olive">
+    </a>
+    <a href="https://github.com/psf/black">
+        <img alt="Code Style: Black"
+            src="https://img.shields.io/badge/code%20style-black-lightgray">
+    </a>
+    <!-- TODO: CREATE DISCORD CHAT -->
+</p>
+
+<p align="center">
+    <img alt="MiniAgents on the Moon"
+        src="./images/miniagents-5-by-4-fixed.png">
 </p>
 
 A framework on top of asyncio for building LLM-based multi-agent systems in
@@ -106,21 +131,27 @@ yourself):
 
 ```python
 from miniagents import MiniAgents
-from miniagents.ext import dialog_loop, markdown_history_agent
+from miniagents.ext import (
+    dialog_loop,
+    console_user_agent,
+    markdown_history_agent,
+)
 from miniagents.ext.llm import SystemMessage
 from miniagents.ext.llm.anthropic import anthropic_agent
 
 
 async def main() -> None:
     await dialog_loop.fork(
+        user_agent=console_user_agent.fork(
+            # Write chat history to a markdown file (`CHAT.md` in the current
+            # working directory by default, fork `markdown_history_agent` if
+            # you want to customize).
+            history_agent=markdown_history_agent
+        ),
         assistant_agent=anthropic_agent.fork(
             model="claude-3-5-sonnet-20240620",
             max_tokens=1000,
         ),
-        # Write chat history to a markdown file (by default it is `CHAT.md` in
-        # the current working directory - "fork" markdown_history_agent to
-        # customize).
-        history_agent=markdown_history_agent,
     ).inquire(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences "
@@ -158,8 +189,6 @@ is for casual communication. If you wanted a slightly more formal version, you
 could say:
 
 "I understand. Thank you!"
-
-USER:
 ```
 
 ### 🧸 A "toy" implementation of a dialog loop
@@ -212,7 +241,6 @@ USER: nice!
 ASSISTANT: You said "nice!"
 USER: bye
 ASSISTANT: You said "bye"
-USER:
 ```
 
 **TODO** explain why the presence of `AWAIT` sentinel is important in the
@@ -347,10 +375,10 @@ inside the `main()` function, but if this `sleep()` wasn't there, it would have
 happened upon the first iteration of the `async for` loop which is the next
 place where a task switch happens.
 
-**💪 EXERCISE FOR THE READER:** Add another `await asyncio.sleep(1)` right
-before `print("Aggregator finished")` in the `aggregator_agent` function and
-then try to predict how the output will change. After that, run the modified
-script and check if your prediction was correct.
+**💪 EXERCISE FOR READER:** Add another `await asyncio.sleep(1)` right before
+`print("Aggregator finished")` in the `aggregator_agent` function and then try
+to predict how the output will change. After that, run the modified script and
+check if your prediction was correct.
 
 ⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for
 individual agent calls if for some reason you need to:
