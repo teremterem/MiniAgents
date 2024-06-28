@@ -40,7 +40,7 @@ async def dialog_loop(
 ) -> None:
     """
     Run a loop that chains the user agent and the assistant agent in a dialog.
-    TODO Oleksandr: add more details ?
+    TODO Oleksandr: add more details
     """
     ctx.reply(
         agent_loop.fork(
