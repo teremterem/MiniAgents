@@ -1,7 +1,7 @@
 <h1 align="center">🛰 MiniAgents 🌘</h1>
 
 <p align="center">
-<img src="./images/miniagents-5-by-4.png">
+<img src="./images/miniagents-5-by-4-fixed.png">
 </p>
 
 A framework on top of asyncio for building LLM-based multi-agent systems in
