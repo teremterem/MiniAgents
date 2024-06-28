@@ -284,8 +284,8 @@ async def main() -> None:
     print("INQUIRING DONE\n")
 
     print("SLEEPING FOR ONE SECOND")
-    # this is when the agents will actually start processing (in fact, any
-    # other kind of task switch would have had the same effect)
+    # This is when the agents will actually start processing (in fact, any
+    # other kind of task switch would have had the same effect).
     await asyncio.sleep(1)
     print("SLEEPING DONE\n")
 
@@ -332,32 +332,25 @@ PREPARING TO GET MESSAGES FROM AGGREGATOR
 TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 5
 ```
 
-This specific order of print statements is due to the way asynchronous agents
-are designed in this framework. Notice, that you don't see any `await` or
-`yield` statements in any of the agent functions above. Agent functions are
-defined as `async`, so you could have `await` statements inside of them for
-various reasons if you needed to. The agents from the example above just don't
-need that.
-
 None of the agent functions start executing upon any of the calls to the
 `inquire()` method. Instead, in all cases the `inquire()` method immediately
-returns with **promises** to "talk to the agents" (**promises** of sequences of
-**promises** of response messages, to be super precise -
-see `MessageSequencePromise` and `MessagePromise` classes for details).
+returns with **promises** to "talk to the agent(s)" (**promises** of sequences
+of **promises** of response messages, to be super precise - see
+`MessageSequencePromise` and `MessagePromise` classes for details).
 
 As long as the global `start_asap` setting is set to `True` (which is the
 default - see the source code of `Promising`, the parent class of `MiniAgents`
 context manager for details), the actual agent functions will start processing
 at the earliest task switch (the behaviour of `asyncio.create_task()`, which is
-used under the hood). In this example it is going to be at the beginning of the
-first iteration of the `async for` loop inside the `main` function.
+used under the hood). In this example it is going to be `await asyncio.sleep(1)`
+inside the `main()` function, but if this `sleep()` wasn't there, it would have
+happened upon the first iteration of the `async for` loop which is the next
+place where a task switch happens.
 
-Keep in mind that this is not specifically because the aforementioned loop is
-trying to consume the responses that should come from those agents. If there was
-some other, unrelated task switch before any attempt to consume the responses
-(let's say `await asyncio.sleep(1)` some time before the loop), the processing
-of the agent functions would still have started, but now upon this other,
-unrelated task switch.
+**💪 EXERCISE FOR THE READER:** Add another `await asyncio.sleep(1)` right
+before `print("Aggregator finished")` in the `aggregator_agent` function and
+then try to predict how the output will change. After that, run the modified
+script and check if your prediction was correct.
 
 ⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for
 individual agent calls if for some reason you need to:
