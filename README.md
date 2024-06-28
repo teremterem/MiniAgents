@@ -1,7 +1,7 @@
 <h1 align="center">🛰 MiniAgents 🌘</h1>
 
 <p align="center">
-    <a href="./LICENSE">
+    <a href="https://github.com/teremterem/MiniAgents/blob/main/LICENSE">
         <img alt="License: MIT"
             src="https://img.shields.io/badge/License-MIT-purple">
     </a>
@@ -19,14 +19,14 @@
     </a>
     <a href="https://github.com/psf/black">
         <img alt="Code Style: Black"
-            src="https://img.shields.io/badge/code%20style-black-lightgray">
+            src="https://img.shields.io/badge/code%20style-black-black">
     </a>
     <!-- TODO: CREATE DISCORD CHAT -->
 </p>
 
 <p align="center">
     <img alt="MiniAgents on the Moon"
-        src="./images/miniagents-5-by-4-fixed.png">
+        src="https://github.com/teremterem/MiniAgents/raw/main/images/miniagents-5-by-4-fixed.png">
 </p>
 
 A framework on top of asyncio for building LLM-based multi-agent systems in
