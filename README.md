@@ -131,21 +131,27 @@ yourself):
 
 ```python
 from miniagents import MiniAgents
-from miniagents.ext import dialog_loop, markdown_history_agent
+from miniagents.ext import (
+    dialog_loop,
+    console_user_agent,
+    markdown_history_agent,
+)
 from miniagents.ext.llm import SystemMessage
 from miniagents.ext.llm.anthropic import anthropic_agent
 
 
 async def main() -> None:
     await dialog_loop.fork(
+        user_agent=console_user_agent.fork(
+            # Write chat history to a markdown file (`CHAT.md` in the current
+            # working directory by default, fork `markdown_history_agent` if
+            # you want to customize).
+            history_agent=markdown_history_agent
+        ),
         assistant_agent=anthropic_agent.fork(
             model="claude-3-5-sonnet-20240620",
             max_tokens=1000,
         ),
-        # Write chat history to a markdown file (by default it is `CHAT.md` in
-        # the current working directory - "fork" markdown_history_agent to
-        # customize).
-        history_agent=markdown_history_agent,
     ).inquire(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences "

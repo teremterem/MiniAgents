@@ -17,7 +17,7 @@ from examples.self_dev.self_dev_common import (
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
 from miniagents import miniagent, InteractionContext, StreamAppender, Message, MessageSequencePromise
-from miniagents.ext import file_agent, dialog_loop, markdown_history_agent
+from miniagents.ext import file_agent, dialog_loop, markdown_history_agent, console_user_agent
 from miniagents.ext.llm import SystemMessage
 
 load_dotenv()
@@ -70,8 +70,12 @@ async def main() -> None:
     The main conversation loop.
     """
     await dialog_loop.fork(
+        user_agent=console_user_agent.fork(
+            history_agent=markdown_history_agent.fork(
+                history_md_file=SELF_DEV_OUTPUT / f"CHAT__{readme_agent.alias}.md"
+            )
+        ),
         assistant_agent=readme_agent,
-        history_agent=markdown_history_agent.fork(history_md_file=SELF_DEV_OUTPUT / f"CHAT__{readme_agent.alias}.md"),
     ).inquire()
 
 

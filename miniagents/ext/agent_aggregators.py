@@ -10,42 +10,43 @@ from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
 
+DEFAULT_IN_MEMORY_HISTORY_AGENT = in_memory_history_agent.fork(message_list=[])
+
 
 @miniagent
 async def user_agent(
     ctx: InteractionContext,
-    echo_agent: Optional[MiniAgent] = console_echo_agent,
-    prompt_agent: Optional[MiniAgent] = console_prompt_agent,
+    echo_agent: Optional[MiniAgent],
+    prompt_agent: Optional[MiniAgent],
+    history_agent: Optional[MiniAgent] = DEFAULT_IN_MEMORY_HISTORY_AGENT,
 ) -> None:
     """
     A user agent that echoes `messages` from the agent that called it, reads the user input and then returns full
     chat history as a reply (so it can be further submitted to an LLM agent, for example).
     TODO Oleksandr: add more details
     """
-    ctx.reply(agent_chain.fork(agents=[echo_agent, prompt_agent]).inquire(ctx.message_promises))
+    ctx.reply(agent_chain.fork(agents=[echo_agent, prompt_agent, history_agent]).inquire(ctx.message_promises))
+
+
+console_user_agent = user_agent.fork(echo_agent=console_echo_agent, prompt_agent=console_prompt_agent)
 
 
 # noinspection PyShadowingNames
 @miniagent
 async def dialog_loop(
     ctx: InteractionContext,
-    assistant_agent: MiniAgent,
-    user_agent: MiniAgent = user_agent,  # pylint: disable=redefined-outer-name
-    history_agent: Optional[MiniAgent] = None,
+    user_agent: Optional[MiniAgent],  # pylint: disable=redefined-outer-name
+    assistant_agent: Optional[MiniAgent],
 ) -> None:
     """
     Run a loop that chains the user agent and the assistant agent in a dialog.
-    TODO Oleksandr: add more details
+    TODO Oleksandr: add more details ?
     """
-    if not history_agent:
-        history_agent = in_memory_history_agent.fork(message_list=[])
-
     ctx.reply(
         agent_loop.fork(
             agents=[
                 user_agent,
-                history_agent,
-                AWAIT,  # TODO Oleksandr: explain this with an inline comment like this one
+                AWAIT,  # TODO Oleksandr: explain this with an inline comment
                 assistant_agent,
             ],
             raise_keyboard_interrupt=False,
@@ -55,7 +56,9 @@ async def dialog_loop(
 
 @miniagent
 async def agent_loop(
-    ctx: InteractionContext, agents: Iterable[Union[MiniAgent, Sentinel]], raise_keyboard_interrupt: bool = True
+    ctx: InteractionContext,
+    agents: Iterable[Union[Optional[MiniAgent], Sentinel]],
+    raise_keyboard_interrupt: bool = True,
 ) -> None:
     """
     An agent that represents a loop that chains the given agents together in the order they are provided.
@@ -77,7 +80,7 @@ async def agent_loop(
 
 
 @miniagent
-async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[MiniAgent, Sentinel]]) -> None:
+async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[Optional[MiniAgent], Sentinel]]) -> None:
     """
     TODO Oleksandr: docstring
     """
@@ -85,7 +88,7 @@ async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[MiniAgent,
 
 
 async def _achain_agents(
-    agents: Iterable[Union[MiniAgent, Sentinel]], initial_messages: MessageSequencePromise
+    agents: Iterable[Union[Optional[MiniAgent], Sentinel]], initial_messages: MessageSequencePromise
 ) -> MessageSequencePromise:
     messages = initial_messages
     for agent in agents:
