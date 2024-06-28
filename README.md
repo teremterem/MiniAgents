@@ -11,15 +11,15 @@
     </a>
     <a href="https://github.com/pylint-dev/pylint">
         <img alt="PyPI: Latest"
-            src="https://img.shields.io/pypi/v/miniagents?color=slateblue">
+            src="https://img.shields.io/pypi/v/miniagents?color=mediumseagreen">
     </a>
     <a href="https://github.com/pylint-dev/pylint">
         <img alt="Linting: Pylint"
-            src="https://img.shields.io/badge/code%20analysis-pylint-mediumseagreen">
+            src="https://img.shields.io/badge/linting-pylint-olive">
     </a>
     <a href="https://github.com/psf/black">
         <img alt="Code Style: Black"
-            src="https://img.shields.io/badge/code%20style-black-lightgrey">
+            src="https://img.shields.io/badge/code%20style-black-white">
     </a>
     <!-- TODO: CREATE DISCORD CHAT -->
 </p>
