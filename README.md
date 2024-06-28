@@ -3,20 +3,25 @@
 <p align="center">
     <a href="./LICENSE">
         <img alt="License: MIT"
-            src="https://img.shields.io/badge/License-MIT-purple.svg">
+            src="https://img.shields.io/badge/License-MIT-purple">
     </a>
-    <a href="https://www.python.org/downloads/release/python-3919/">
+    <a href="https://www.python.org/downloads/">
         <img alt="Python: 3.9+"
-            src="https://img.shields.io/badge/python-3.9+-blue.svg">
+            src="https://img.shields.io/badge/python-3.9+-blue">
     </a>
-    <a href="https://pylint.pycqa.org/">
-        <img alt="Code Analysis: Pylint"
-            src="https://img.shields.io/badge/code%20analysis-pylint-olive">
+    <a href="https://github.com/pylint-dev/pylint">
+        <img alt="PyPI: Latest"
+            src="https://img.shields.io/pypi/v/miniagents?color=slateblue">
     </a>
-    <a href="https://black.readthedocs.io/en/stable/">
+    <a href="https://github.com/pylint-dev/pylint">
+        <img alt="Linting: Pylint"
+            src="https://img.shields.io/badge/code%20analysis-pylint-mediumseagreen">
+    </a>
+    <a href="https://github.com/psf/black">
         <img alt="Code Style: Black"
             src="https://img.shields.io/badge/code%20style-black-lightgrey">
     </a>
+    <!-- TODO: CREATE DISCORD CHAT -->
 </p>
 
 <p align="center">
