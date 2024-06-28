@@ -15,7 +15,7 @@
     </a>
     <a href="https://black.readthedocs.io/en/stable/">
         <img alt="Code Style: Black"
-            src="https://img.shields.io/badge/code%20style-black-black">
+            src="https://img.shields.io/badge/code%20style-black-darkgray">
     </a>
 </p>
 
