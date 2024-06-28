@@ -1,4 +1,8 @@
-# 🤖 MiniAgents
+<h1 align="center">🛰 MiniAgents 🌘</h1>
+
+<p align="center">
+<img src="./images/miniagents-5-by-4-fixed.png">
+</p>
 
 A framework on top of asyncio for building LLM-based multi-agent systems in
 Python, with immutable, Pydantic-based messages and a focus on asynchronous
@@ -7,7 +11,7 @@ token and message streaming between the agents.
 ## 💾 Installation
 
 ```bash
-pip install miniagents
+pip install -U miniagents
 ```
 
 ## 🚀 Usage
@@ -186,7 +190,7 @@ async def assistant_agent(ctx: InteractionContext) -> None:
     # Turn a sequence of message promises into a single message promise (if
     # there had been multiple messages in the sequence they would have had
     # been separated by double newlines - this is how `as_single_promise()`
-    # by default).
+    # works by default).
     aggregated_message = await ctx.message_promises.as_single_promise()
     ctx.reply(f'You said "{aggregated_message}"')
 
@@ -229,7 +233,12 @@ various agents are implemented and get inspiration for building your own agents!
 
 ### 🔀 Agent parallelism explained
 
+Let's consider an example that consists of two dummy agents and an aggregator
+agent that aggregates the responses from the two dummy agents (and also adds
+some messages of its own):
+
 ```python
+import asyncio
 from miniagents.miniagents import (
     MiniAgents,
     miniagent,
@@ -241,7 +250,9 @@ from miniagents.miniagents import (
 @miniagent
 async def agent1(ctx: InteractionContext) -> None:
     print("Agent 1 started")
-    ctx.reply("*** MESSAGE from Agent 1 ***")
+    ctx.reply("*** MESSAGE #1 from Agent 1 ***")
+    print("Agent 1 still working")
+    ctx.reply("*** MESSAGE #2 from Agent 1 ***")
     print("Agent 1 finished")
 
 
@@ -257,26 +268,34 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     print("Aggregator started")
     ctx.reply(
         [
+            "*** AGGREGATOR MESSAGE #1 ***",
             agent1.inquire(),
             agent2.inquire(),
-            "*** MESSAGE #1 from Aggregator ***",
         ]
     )
     print("Aggregator still working")
-    ctx.reply("*** MESSAGE #2 from Aggregator ***")
+    ctx.reply("*** AGGREGATOR MESSAGE #2 ***")
     print("Aggregator finished")
 
 
 async def main() -> None:
+    print("INQUIRING ON AGGREGATOR")
     msg_promises = aggregator_agent.inquire()
+    print("INQUIRING DONE\n")
 
-    print("PREPARING TO DELIVER MESSAGES FROM AGGREGATOR")
+    print("SLEEPING FOR ONE SECOND")
+    # This is when the agents will actually start processing (in fact, any
+    # other kind of task switch would have had the same effect).
+    await asyncio.sleep(1)
+    print("SLEEPING DONE\n")
 
+    print("PREPARING TO GET MESSAGES FROM AGGREGATOR")
     async for msg_promise in msg_promises:
         # MessagePromises always resolve into Message objects (or subclasses),
         # even if the agent was replying with bare strings
         message: Message = await msg_promise
         print(message)
+
     # You can safely `await` again. Concrete messages (and tokens, if there was
     # token streaming) are cached inside the promises. Message sequences (as
     # well as token sequences) are "replayable".
@@ -290,47 +309,48 @@ if __name__ == "__main__":
 This script will print the following lines to the console:
 
 ```
-PREPARING TO DELIVER MESSAGES FROM AGGREGATOR
+INQUIRING ON AGGREGATOR
+INQUIRING DONE
+
+SLEEPING FOR ONE SECOND
 Aggregator started
 Aggregator still working
 Aggregator finished
 Agent 1 started
+Agent 1 still working
 Agent 1 finished
 Agent 2 started
 Agent 2 finished
-*** MESSAGE from Agent 1 ***
-*** MESSAGE from Agent 2 ***
-*** MESSAGE #1 from Aggregator ***
-*** MESSAGE #2 from Aggregator ***
-TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 4
-```
+SLEEPING DONE
 
-This specific order of print statements is due to the way asynchronous agents
-are designed in this framework. Notice, that you don't see any `await` or
-`yield` statements in any of the agent functions above. Agent functions are
-defined as `async`, so you could have `await` statements inside of them for
-various reasons if you needed to. The agents from the example above just don't
-need that.
+PREPARING TO GET MESSAGES FROM AGGREGATOR
+*** AGGREGATOR MESSAGE #1 ***
+*** MESSAGE #1 from Agent 1 ***
+*** MESSAGE #2 from Agent 1 ***
+*** MESSAGE from Agent 2 ***
+*** AGGREGATOR MESSAGE #2 ***
+TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 5
+```
 
 None of the agent functions start executing upon any of the calls to the
 `inquire()` method. Instead, in all cases the `inquire()` method immediately
-returns with **promises** to "talk to the agents" (**promises** of sequences of
-**promises** of response messages, to be super precise -
-see `MessageSequencePromise` and `MessagePromise` classes for details).
+returns with **promises** to "talk to the agent(s)" (**promises** of sequences
+of **promises** of response messages, to be super precise - see
+`MessageSequencePromise` and `MessagePromise` classes for details).
 
 As long as the global `start_asap` setting is set to `True` (which is the
 default - see the source code of `Promising`, the parent class of `MiniAgents`
 context manager for details), the actual agent functions will start processing
 at the earliest task switch (the behaviour of `asyncio.create_task()`, which is
-used under the hood). In this example it is going to be the at the beginning of
-the first iteration of the `async for` loop inside the `main` function.
+used under the hood). In this example it is going to be `await asyncio.sleep(1)`
+inside the `main()` function, but if this `sleep()` wasn't there, it would have
+happened upon the first iteration of the `async for` loop which is the next
+place where a task switch happens.
 
-Keep in mind that this is not specifically because the aforementioned loop is
-trying to consume the responses that should come from those agents. If there was
-some other, unrelated task switch before any attempt to consume the responses
-(let's say `await asyncio.sleep(1)` some time before the loop), the processing
-of the agent functions would still have started, but now upon this other,
-unrelated task switch.
+**💪 EXERCISE FOR THE READER:** Add another `await asyncio.sleep(1)` right
+before `print("Aggregator finished")` in the `aggregator_agent` function and
+then try to predict how the output will change. After that, run the modified
+script and check if your prediction was correct.
 
 ⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for
 individual agent calls if for some reason you need to:
@@ -340,9 +360,10 @@ it can lead to deadlocks. ⚠️
 
 ### 📨 An alternative inquiry method
 
-Here's a simple example demonstrating how to use `miniagent.start_inquiry()` and
-then do `.send_message()` two times before calling `.reply_sequence()` (instead
-of all-in-one `miniagents.inquire()`):
+Here's a simple example demonstrating how to use
+`agent_call = some_agent.initiate_inquiry()` and then do
+`agent_call.send_message()` two times before calling
+`agent_call.reply_sequence()` (instead of all-in-one `some_agent.inquire()`):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
@@ -379,8 +400,8 @@ Echo: World
 
 There are three ways to use the `MiniAgents()` context:
 
-1. Calling its `run()` method with your main function as a parameter (your
-   function should be defined as `async`):
+1. Calling its `run()` method with your main function as a parameter (the
+   `main()` function in this example should be defined as `async`):
    ```python
    MiniAgents().run(main())
    ```
@@ -570,4 +591,4 @@ MiniAgents is released under the [MIT License](LICENSE).
 
 ---
 
-Happy coding with MiniAgents! 🚀 If you have any questions or need assistance, feel free to open an issue on our GitHub repository.
+Happy coding with MiniAgents! 🚀
