@@ -10,6 +10,8 @@ Python, with immutable, Pydantic-based messages and a focus on asynchronous
 token and message streaming between the agents.
 </p>
 
+---
+
 ## 💾 Installation
 
 ```bash
