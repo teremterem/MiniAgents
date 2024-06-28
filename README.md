@@ -9,7 +9,7 @@
         <img alt="Python: 3.9+"
             src="https://img.shields.io/badge/python-3.9+-blue">
     </a>
-    <a href="https://github.com/pylint-dev/pylint">
+    <a href="https://pypi.org/project/miniagents/">
         <img alt="PyPI: Latest"
             src="https://img.shields.io/pypi/v/miniagents?color=mediumseagreen">
     </a>
@@ -19,7 +19,7 @@
     </a>
     <a href="https://github.com/psf/black">
         <img alt="Code Style: Black"
-            src="https://img.shields.io/badge/code%20style-black-white">
+            src="https://img.shields.io/badge/code%20style-black-lightgray">
     </a>
     <!-- TODO: CREATE DISCORD CHAT -->
 </p>
