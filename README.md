@@ -1,6 +1,25 @@
 <h1 align="center">🛰 MiniAgents 🌘</h1>
 
 <p align="center">
+    <a href="./LICENSE">
+        <img alt="License: MIT"
+            src="https://img.shields.io/badge/License-MIT-purple.svg">
+    </a>
+    <a href="https://www.python.org/downloads/release/python-3919/">
+        <img alt="Python: 3.9+"
+            src="https://img.shields.io/badge/python-3.9+-blue.svg">
+    </a>
+    <a href="https://pylint.pycqa.org/">
+        <img alt="Code Analysis: Pylint"
+            src="https://img.shields.io/badge/code%20analysis-pylint-olive">
+    </a>
+    <a href="https://black.readthedocs.io/en/stable/">
+        <img alt="Code Style: Black"
+            src="https://img.shields.io/badge/code%20style-black-black">
+    </a>
+</p>
+
+<p align="center">
 <img src="./images/miniagents-5-by-4-fixed.png">
 </p>
 
