@@ -7,7 +7,7 @@ token and message streaming between the agents.
 ## 💾 Installation
 
 ```bash
-pip install miniagents
+pip install -U miniagents
 ```
 
 ## 🚀 Usage
@@ -186,7 +186,7 @@ async def assistant_agent(ctx: InteractionContext) -> None:
     # Turn a sequence of message promises into a single message promise (if
     # there had been multiple messages in the sequence they would have had
     # been separated by double newlines - this is how `as_single_promise()`
-    # by default).
+    # works by default).
     aggregated_message = await ctx.message_promises.as_single_promise()
     ctx.reply(f'You said "{aggregated_message}"')
 
@@ -322,8 +322,8 @@ As long as the global `start_asap` setting is set to `True` (which is the
 default - see the source code of `Promising`, the parent class of `MiniAgents`
 context manager for details), the actual agent functions will start processing
 at the earliest task switch (the behaviour of `asyncio.create_task()`, which is
-used under the hood). In this example it is going to be the at the beginning of
-the first iteration of the `async for` loop inside the `main` function.
+used under the hood). In this example it is going to be at the beginning of the
+first iteration of the `async for` loop inside the `main` function.
 
 Keep in mind that this is not specifically because the aforementioned loop is
 trying to consume the responses that should come from those agents. If there was
@@ -340,9 +340,10 @@ it can lead to deadlocks. ⚠️
 
 ### 📨 An alternative inquiry method
 
-Here's a simple example demonstrating how to use `miniagent.start_inquiry()` and
-then do `.send_message()` two times before calling `.reply_sequence()` (instead
-of all-in-one `miniagents.inquire()`):
+Here's a simple example demonstrating how to use
+`agent_call = some_agent.initiate_inquiry()` and then do
+`agent_call.send_message()` two times before calling
+`agent_call.reply_sequence()` (instead of all-in-one `some_agent.inquire()`):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
@@ -379,8 +380,8 @@ Echo: World
 
 There are three ways to use the `MiniAgents()` context:
 
-1. Calling its `run()` method with your main function as a parameter (your
-   function should be defined as `async`):
+1. Calling its `run()` method with your main function as a parameter (the
+   `main()` function in this example should be defined as `async`):
    ```python
    MiniAgents().run(main())
    ```
@@ -570,4 +571,4 @@ MiniAgents is released under the [MIT License](LICENSE).
 
 ---
 
-Happy coding with MiniAgents! 🚀 If you have any questions or need assistance, feel free to open an issue on our GitHub repository.
+Happy coding with MiniAgents! 🚀
