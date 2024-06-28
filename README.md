@@ -233,7 +233,12 @@ various agents are implemented and get inspiration for building your own agents!
 
 ### 🔀 Agent parallelism explained
 
+Let's consider an example that consists of two dummy agents and an aggregator
+agent that aggregates the responses from the two dummy agents (and also adds
+some messages of its own):
+
 ```python
+import asyncio
 from miniagents.miniagents import (
     MiniAgents,
     miniagent,
@@ -245,7 +250,9 @@ from miniagents.miniagents import (
 @miniagent
 async def agent1(ctx: InteractionContext) -> None:
     print("Agent 1 started")
-    ctx.reply("*** MESSAGE from Agent 1 ***")
+    ctx.reply("*** MESSAGE #1 from Agent 1 ***")
+    print("Agent 1 still working")
+    ctx.reply("*** MESSAGE #2 from Agent 1 ***")
     print("Agent 1 finished")
 
 
@@ -261,26 +268,34 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     print("Aggregator started")
     ctx.reply(
         [
+            "*** AGGREGATOR MESSAGE #1 ***",
             agent1.inquire(),
             agent2.inquire(),
-            "*** MESSAGE #1 from Aggregator ***",
         ]
     )
     print("Aggregator still working")
-    ctx.reply("*** MESSAGE #2 from Aggregator ***")
+    ctx.reply("*** AGGREGATOR MESSAGE #2 ***")
     print("Aggregator finished")
 
 
 async def main() -> None:
+    print("INQUIRING ON AGGREGATOR")
     msg_promises = aggregator_agent.inquire()
+    print("INQUIRING DONE\n")
 
-    print("PREPARING TO DELIVER MESSAGES FROM AGGREGATOR")
+    print("SLEEPING FOR ONE SECOND")
+    # this is when the agents will actually start processing (in fact, any
+    # other kind of task switch would have had the same effect)
+    await asyncio.sleep(1)
+    print("SLEEPING DONE\n")
 
+    print("PREPARING TO GET MESSAGES FROM AGGREGATOR")
     async for msg_promise in msg_promises:
         # MessagePromises always resolve into Message objects (or subclasses),
         # even if the agent was replying with bare strings
         message: Message = await msg_promise
         print(message)
+
     # You can safely `await` again. Concrete messages (and tokens, if there was
     # token streaming) are cached inside the promises. Message sequences (as
     # well as token sequences) are "replayable".
@@ -294,19 +309,27 @@ if __name__ == "__main__":
 This script will print the following lines to the console:
 
 ```
-PREPARING TO DELIVER MESSAGES FROM AGGREGATOR
+INQUIRING ON AGGREGATOR
+INQUIRING DONE
+
+SLEEPING FOR ONE SECOND
 Aggregator started
 Aggregator still working
 Aggregator finished
 Agent 1 started
+Agent 1 still working
 Agent 1 finished
 Agent 2 started
 Agent 2 finished
-*** MESSAGE from Agent 1 ***
+SLEEPING DONE
+
+PREPARING TO GET MESSAGES FROM AGGREGATOR
+*** AGGREGATOR MESSAGE #1 ***
+*** MESSAGE #1 from Agent 1 ***
+*** MESSAGE #2 from Agent 1 ***
 *** MESSAGE from Agent 2 ***
-*** MESSAGE #1 from Aggregator ***
-*** MESSAGE #2 from Aggregator ***
-TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 4
+*** AGGREGATOR MESSAGE #2 ***
+TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 5
 ```
 
 This specific order of print statements is due to the way asynchronous agents
