@@ -4,9 +4,11 @@
 <img src="./images/miniagents-5-by-4.png" width="512">
 </p>
 
+<p align="center">
 A framework on top of asyncio for building LLM-based multi-agent systems in
 Python, with immutable, Pydantic-based messages and a focus on asynchronous
 token and message streaming between the agents.
+</p>
 
 ## 💾 Installation
 
