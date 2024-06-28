@@ -347,10 +347,10 @@ inside the `main()` function, but if this `sleep()` wasn't there, it would have
 happened upon the first iteration of the `async for` loop which is the next
 place where a task switch happens.
 
-**💪 EXERCISE FOR THE READER:** Add another `await asyncio.sleep(1)` right
-before `print("Aggregator finished")` in the `aggregator_agent` function and
-then try to predict how the output will change. After that, run the modified
-script and check if your prediction was correct.
+**💪 EXERCISE FOR READER:** Add another `await asyncio.sleep(1)` right before
+`print("Aggregator finished")` in the `aggregator_agent` function and then try
+to predict how the output will change. After that, run the modified script and
+check if your prediction was correct.
 
 ⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for
 individual agent calls if for some reason you need to:
