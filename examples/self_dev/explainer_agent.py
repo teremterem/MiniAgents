@@ -16,7 +16,7 @@ from examples.self_dev.self_dev_common import (
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES
 from miniagents import miniagent, InteractionContext
-from miniagents.ext import file_agent, dialog_loop, markdown_history_agent, console_user_agent
+from miniagents.ext import dialog_loop, markdown_history_agent, console_user_agent
 from miniagents.ext.llm import SystemMessage
 
 load_dotenv()
@@ -42,9 +42,10 @@ async def explainer_agent(ctx: InteractionContext) -> None:
             ctx.reply(model_agent.inquire(prompt))
         else:
             other_tasks.append(
-                file_agent.inquire(
+                markdown_history_agent.inquire(
                     model_agent.inquire(prompt),
                     file=str(SELF_DEV_OUTPUT / f"ALT_RESP__{model}.md"),
+                    only_write=True,
                 )
             )
 
