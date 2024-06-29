@@ -38,7 +38,7 @@ async def explainer_agent(ctx: InteractionContext) -> None:
         if model == favourite_model:
             ctx.reply(model_agent.inquire(prompt))
         else:
-            ctx.wait_for(  # let's not "close" the current agent's reply sequence until the agent below finishes too
+            ctx.wait_for(  # let's not "close" the agent's reply sequence until the [sub]agent below finishes too
                 markdown_history_agent.inquire(
                     model_agent.inquire(prompt),
                     history_md_file=str(SELF_DEV_OUTPUT / f"ALT__{ctx.this_agent.alias}__{model}.md"),
