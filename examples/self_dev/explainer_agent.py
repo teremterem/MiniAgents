@@ -44,7 +44,7 @@ async def explainer_agent(ctx: InteractionContext) -> None:
             other_tasks.append(
                 markdown_history_agent.inquire(
                     model_agent.inquire(prompt),
-                    file=str(SELF_DEV_OUTPUT / f"ALT__{ctx.this_agent.alias}__{model}.md"),
+                    history_md_file=str(SELF_DEV_OUTPUT / f"ALT__{ctx.this_agent.alias}__{model}.md"),
                     only_write=True,
                 )
             )
