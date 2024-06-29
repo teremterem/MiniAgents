@@ -424,7 +424,7 @@ Echo: Hello
 Echo: World
 ```
 
-### 🛠️ Using MiniAgents() context
+### 🛠️ Using `MiniAgents()` context
 
 There are three ways to use the `MiniAgents()` context:
 
@@ -457,7 +457,7 @@ manager (or it is unclear what such function would be). You just do
 `mini_agents.activate()` somewhere upon the init of the server and forget
 about it.
 
-### 💬 Existing Message models
+### 💬 Existing `Message` models
 
 ```python
 from miniagents.ext.llm import UserMessage, SystemMessage, AssistantMessage
@@ -474,7 +474,7 @@ the `role` field of the message:
 - `SystemMessage` has `role="system"` by default
 - `AssistantMessage` has `role="assistant"` by default
 
-### 💭 Custom Message models
+### 💭 Custom `Message` models
 
 You can create custom message types by subclassing `Message`.
 
@@ -606,7 +606,7 @@ Here are some of the core concepts in the MiniAgents framework:
 
 MiniAgents is released under the [MIT License](LICENSE).
 
-## 📝 Some notes for contributors
+## 📝 Note to contributors
 
 - **Different Promise and StreamedPromise resolvers, piece-by-piece streamers,
   appenders, and other Promising components should always catch BaseExceptions

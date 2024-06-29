@@ -2,8 +2,6 @@
 This agent is a part of the self-development process. It is designed to explain the MiniAgents framework to the user.
 """
 
-import asyncio
-
 from dotenv import load_dotenv
 
 from examples.self_dev.self_dev_common import (
@@ -36,22 +34,17 @@ async def explainer_agent(ctx: InteractionContext) -> None:
 
     favourite_model = "claude-3-5-sonnet-20240620"
 
-    other_tasks = []
     for model, model_agent in MODEL_AGENTS.items():
         if model == favourite_model:
             ctx.reply(model_agent.inquire(prompt))
         else:
-            other_tasks.append(
+            ctx.wait_for(  # let's not "close" the current agent's reply sequence until the agent below finishes too
                 markdown_history_agent.inquire(
                     model_agent.inquire(prompt),
                     history_md_file=str(SELF_DEV_OUTPUT / f"ALT__{ctx.this_agent.alias}__{model}.md"),
                     only_write=True,
                 )
             )
-
-    # TODO Oleksandr: instead of having to "gather" these tasks, make sure all spawned tasks are awaited before the
-    #  agent exits ? no, that would be a disaster, you need something else
-    await asyncio.gather(*other_tasks, return_exceptions=True)
 
 
 async def main() -> None:

@@ -179,23 +179,11 @@ class MessagePromise(StreamedPromise[str, Message]):
             **self._metadata_so_far,
         )
 
-    def __aiter__(self) -> AsyncIterator[str]:
-        # PyCharm fails to see that MessagePromise inherits AsyncIterable protocol from StreamedPromise,
-        # hence the need to explicitly declare the __aiter__ method here
-        # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
-        return super().__aiter__()
-
 
 class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
     """
     A promise of a sequence of messages that can be streamed message by message.
     """
-
-    def __aiter__(self) -> AsyncIterator[MessagePromise]:
-        # PyCharm fails to see that MessageSequencePromise inherits AsyncIterable protocol from StreamedPromise,
-        # hence the need to explicitly declare the __aiter__ method here
-        # TODO Oleksandr: is there any other way to make PyCharm see that this class inherits AsyncIterable ?
-        return super().__aiter__()
 
     def as_single_promise(self, **kwargs) -> MessagePromise:
         """
