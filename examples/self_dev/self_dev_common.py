@@ -17,11 +17,20 @@ MAX_OUTPUT_TOKENS = 4096
 
 MODEL_AGENT_FACTORIES = {
     "gpt-4o-2024-05-13": openai_agent.fork(temperature=0),
+    "gpt-4-turbo-2024-04-09": openai_agent.fork(temperature=0),
+    "gpt-3.5-turbo-0125": openai_agent.fork(temperature=0),
     "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
-    # "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
 }
-MODEL_AGENTS = {model: agent.fork(model=model) for model, agent in MODEL_AGENT_FACTORIES.items()}
+MODEL_AGENTS = {
+    model: MODEL_AGENT_FACTORIES[model].fork(model=model)
+    for model in [
+        # let's use only two best models in our self_dev agents
+        "gpt-4o-2024-05-13",
+        "claude-3-5-sonnet-20240620",
+    ]
+}
 
 SELF_DEV_ROOT = Path(__file__).parent
 MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent

@@ -114,9 +114,15 @@ async def openai_agent(
 
 @cache
 def _default_openai_client() -> "openai_original.AsyncOpenAI":
-    # pylint: disable=import-outside-toplevel
-    # noinspection PyShadowingNames
-    import openai as openai_original
+    try:
+        # pylint: disable=import-outside-toplevel
+        # noinspection PyShadowingNames
+        import openai as openai_original
+    except ModuleNotFoundError as exc:
+        raise ImportError(
+            "The 'openai' package is required for the 'openai' extension of MiniAgents. "
+            "Please install it via 'pip install -U openai'."
+        ) from exc
 
     return openai_original.AsyncOpenAI()
 

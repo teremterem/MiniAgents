@@ -264,6 +264,7 @@ class InteractionContext:
         self.this_agent = this_agent
         self.message_promises = message_promises
         self._reply_streamer = reply_streamer
+        self._tasks_to_wait_for: list[Awaitable[Any]] = []
 
     def reply(self, messages: MessageType) -> None:
         """
@@ -280,11 +281,17 @@ class InteractionContext:
         #  in the code below)
         self._reply_streamer.append(messages)
 
-    def finish_early(self) -> None:  # TODO Oleksandr: is this a good name for this method ?
+    def wait_for(self, awaitable: Awaitable[Any]) -> None:
+        """
+        Wait for the completion of the provided awaitable before exiting the agent (before "closing" the agent's
+        reply sequence).
+        """
+        self._tasks_to_wait_for.append(awaitable)
+
+    def finish_early(self) -> None:
         """
         TODO Oleksandr: docstring
         """
-        # TODO Oleksandr: what to do with exceptions in agent function that may happen after this method was called ?
         self._reply_streamer.close()
 
 
@@ -466,9 +473,10 @@ class AgentReplyMessageSequence(MessageSequence):
             )
             with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
-                # pylint: disable=protected-access
-                # noinspection PyProtectedMember
-                await self._mini_agent._func(ctx, **self._function_kwargs)
+                try:
+                    await self._mini_agent._func(ctx, **self._function_kwargs)
+                finally:
+                    await asyncio.gather(*ctx._tasks_to_wait_for, return_exceptions=True)
 
             return AgentCallNode(
                 messages=await self._input_sequence_promise,

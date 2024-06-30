@@ -3,9 +3,7 @@ Make all the functions and classes in agent_aggregators, history_agents, and mis
 available at the package level.
 """
 
-from miniagents.ext import agent_aggregators
-from miniagents.ext import history_agents
-from miniagents.ext import misc_agents
+from miniagents.ext import agent_aggregators, history_agents, misc_agents
 from miniagents.ext.agent_aggregators import *
 from miniagents.ext.history_agents import *
 from miniagents.ext.misc_agents import *

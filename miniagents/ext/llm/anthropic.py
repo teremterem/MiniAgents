@@ -109,9 +109,15 @@ async def anthropic_agent(
 
 @cache
 def _default_anthropic_client() -> "anthropic_original.AsyncAnthropic":
-    # pylint: disable=import-outside-toplevel
-    # noinspection PyShadowingNames
-    import anthropic as anthropic_original
+    try:
+        # pylint: disable=import-outside-toplevel
+        # noinspection PyShadowingNames
+        import anthropic as anthropic_original
+    except ModuleNotFoundError as exc:
+        raise ImportError(
+            "The 'anthropic' package is required for the 'anthropic' extension of MiniAgents. "
+            "Please install it via 'pip install -U anthropic'."
+        ) from exc
 
     return anthropic_original.AsyncAnthropic()
 

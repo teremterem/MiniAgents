@@ -238,7 +238,7 @@ class Promise(Generic[T]):
             promising_context = promising_context.parent
 
 
-class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
+class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
     """
     A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
 
@@ -409,7 +409,7 @@ class StreamedPromise(Generic[PIECE, WHOLE], Promise[WHOLE]):
             return piece
 
 
-class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
+class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
     """
     This is a special kind of `streamer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
@@ -437,16 +437,24 @@ class StreamAppender(Generic[PIECE], AsyncIterator[PIECE]):
         traceback: Optional[TracebackType],
     ) -> bool:
         is_append_closed_error = isinstance(exc_value, AppenderClosedError)
-        error_should_not_propagate = self._capture_errors and not is_append_closed_error
+        error_should_be_squashed = self._capture_errors and not is_append_closed_error
 
-        if exc_value and error_should_not_propagate:
-            logger.debug("An error occurred while appending pieces to a StreamAppender", exc_info=exc_value)
-            self.append(exc_value)
+        if exc_value and error_should_be_squashed:
+            if self._append_closed:
+                logger.log(
+                    PromisingContext.get_current().log_level_for_errors,
+                    "A STREAM APPENDER WAS NOT ABLE TO CAPTURE THE FOLLOWING ERROR "
+                    "BECAUSE APPEND WAS ALREADY CLOSED:",
+                    exc_info=True,
+                )
+            else:
+                logger.debug("An error occurred while appending pieces to a StreamAppender", exc_info=exc_value)
+                self.append(exc_value)
         self.close()
 
         # if `capture_errors` is True, then we also return True, so that the exception is not propagated outside
         # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
-        return error_should_not_propagate
+        return error_should_be_squashed
 
     def append(self, piece: PIECE) -> "StreamAppender":
         """
