@@ -17,7 +17,7 @@ DEFAULT_IN_MEMORY_HISTORY_AGENT = in_memory_history_agent.fork(message_list=[])
 async def user_agent(
     ctx: InteractionContext,
     echo_agent: Optional[MiniAgent],
-    prompt_agent: Optional[MiniAgent],
+    prompt_agent: Optional[MiniAgent],  # TODO Oleksandr: rename prompt_agent to input_agent ?
     history_agent: Optional[MiniAgent] = DEFAULT_IN_MEMORY_HISTORY_AGENT,
 ) -> None:
     """
@@ -50,7 +50,10 @@ async def dialog_loop(
                 assistant_agent,
             ],
             raise_keyboard_interrupt=False,
-        ).inquire(ctx.message_promises)
+        ).inquire(
+            # TODO Oleksandr: "starting" messages should be treated as a prompt and should not go to the chat history
+            ctx.message_promises
+        )
     )
 
 
