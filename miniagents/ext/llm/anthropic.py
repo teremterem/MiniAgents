@@ -1,4 +1,4 @@
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,import-outside-toplevel
 """
 This module integrates Anthropic language models with MiniAgents.
 """
@@ -8,8 +8,6 @@ import typing
 from functools import cache
 from pprint import pformat
 from typing import AsyncIterator, Any, Optional
-
-from anthropic import NOT_GIVEN
 
 from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
 from miniagents.miniagents import miniagent, MiniAgents, InteractionContext
@@ -67,7 +65,10 @@ async def anthropic_agent(
             system_combined = system
 
         if system_combined is None:
-            system_combined = NOT_GIVEN
+            # noinspection PyShadowingNames
+            import anthropic as anthropic_original
+
+            system_combined = anthropic_original.NOT_GIVEN
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(
@@ -110,7 +111,6 @@ async def anthropic_agent(
 @cache
 def _default_anthropic_client() -> "anthropic_original.AsyncAnthropic":
     try:
-        # pylint: disable=import-outside-toplevel
         # noinspection PyShadowingNames
         import anthropic as anthropic_original
     except ModuleNotFoundError as exc:
