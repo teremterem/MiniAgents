@@ -94,7 +94,7 @@ def _load_chat_history_md(history_md_file: Path) -> tuple[Message, ...]:
         heading_parts = heading.split("/", maxsplit=1)
         role = heading_parts[0].strip().lower()
 
-        if role not in ["user", "assistant"]:
+        if role not in ["system", "user", "assistant"]:
             continue
 
         if len(heading_parts) > 1:
