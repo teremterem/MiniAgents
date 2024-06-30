@@ -74,12 +74,13 @@ You said: World
 MiniAgents provides built-in support for OpenAI and Anthropic language models
 with possibility to add other integrations.
 
-⚠️ **ATTENTION!** Make sure to set your OpenAI API key in the `OPENAI_API_KEY`
-environment variable before running the example below. ⚠️
+⚠️ **ATTENTION!** Make sure to run `pip install -U openai` and set your OpenAI
+API key in the `OPENAI_API_KEY` environment variable before running the example
+below. ⚠️
 
 ```python
 from miniagents import MiniAgents
-from miniagents.ext.llm.openai import openai_agent
+from miniagents.ext.llm import openai_agent
 
 # NOTE: "Forking" an agent is a convenient way of creating a new agent instance
 # with the specified configuration. Alternatively, you could pass the `model`
@@ -126,8 +127,11 @@ up an interaction between a user and your agent (can be bare LLM agent, like
 `openai_agent` or `anthropic_agent`, can also be a custom agent that you define
 yourself):
 
-⚠️ **ATTENTION!** Make sure to set your Anthropic API key in the
-`ANTHROPIC_API_KEY` environment variable before running the example below. ⚠️
+⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your
+Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
+the example below (or just replace `anthropic_agent` with `openai_agent` and
+`"claude-3-5-sonnet-20240620"` with `"gpt-4o-2024-05-13"` if you already set up
+the previous example). ⚠️
 
 ```python
 from miniagents import MiniAgents
@@ -136,8 +140,7 @@ from miniagents.ext import (
     console_user_agent,
     markdown_history_agent,
 )
-from miniagents.ext.llm import SystemMessage
-from miniagents.ext.llm.anthropic import anthropic_agent
+from miniagents.ext.llm import SystemMessage, anthropic_agent
 
 
 async def main() -> None:

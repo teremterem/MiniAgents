@@ -18,6 +18,8 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
+markdown-it-py = "*"
+prompt-toolkit = "*"
 pydantic = ">=2.0.0,<3.0.0"
 
 [tool.poetry.dev-dependencies]
@@ -29,11 +31,10 @@ jupyterlab = "*"
 langchain = "*"
 langgraph = "*"
 llama-index = "*"
-markdown-it-py = "*"
 notebook = "*"
 openai = "*"
 pre-commit = "*"
-# promptlayer = "*"
+promptlayer = "*"
 pylint = "*"
 pytest = "*"
 pytest-asyncio = "*"
