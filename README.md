@@ -427,7 +427,7 @@ Echo: Hello
 Echo: World
 ```
 
-### 🛠️ Using `MiniAgents()` context
+### 🛠️ Global `MiniAgents()` context
 
 There are three ways to use the `MiniAgents()` context:
 
