@@ -13,8 +13,7 @@ from miniagents import Message, MiniAgents, MiniAgent
 load_dotenv()
 
 # pylint: disable=wrong-import-position
-from miniagents.ext.llm.anthropic import anthropic_agent
-from miniagents.ext.llm.openai import openai_agent
+from miniagents.ext.llm import anthropic_agent, openai_agent
 
 
 def _check_openai_response(message: Message) -> None:
