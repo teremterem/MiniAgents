@@ -1,4 +1,4 @@
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,import-outside-toplevel
 """
 This module integrates OpenAI language models with MiniAgents.
 """
@@ -115,7 +115,6 @@ async def openai_agent(
 @cache
 def _default_openai_client() -> "openai_original.AsyncOpenAI":
     try:
-        # pylint: disable=import-outside-toplevel
         # noinspection PyShadowingNames
         import openai as openai_original
     except ModuleNotFoundError as exc:
