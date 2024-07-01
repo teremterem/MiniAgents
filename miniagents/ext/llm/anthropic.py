@@ -24,6 +24,9 @@ class AnthropicMessage(AssistantMessage):
     """
 
 
+AnthropicAgent: MiniAgents
+
+
 @miniagent
 class AnthropicAgent:
     """
