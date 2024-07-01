@@ -497,7 +497,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 finally:
                     await asyncio.gather(*ctx._tasks_to_wait_for, return_exceptions=True)
 
-            return AgentCallNode(
+            return AgentCallNode(  # TODO Oleksandr: why not "persist" this node before the agent function finishes ?
                 messages=await self._input_sequence_promise,
                 agent_alias=self._mini_agent.alias,
                 **self._mini_agent._interact_metadata_dict,
