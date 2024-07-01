@@ -94,7 +94,7 @@ class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename
             )
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
-            self.ctx.reply(
+            self.ctx.reply(  # TODO Oleksandr: introduce `reply_with_token_stream()` method ?
                 AnthropicMessage.promise(
                     start_asap=False,  # the agent is already running and will collect tokens from the model (see below)
                     message_token_streamer=token_appender,
@@ -104,6 +104,9 @@ class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename
                     **(self.reply_metadata or {}),
                 )
             )
+            # we already know that we there will be no more response messages, so we close the response sequence
+            # (we are closing the sequence of response messages, not the sequence of message tokens)
+            self.ctx.finish_early()
 
             if self.stream:
                 async with self.async_client.messages.stream(

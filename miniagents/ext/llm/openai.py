@@ -76,6 +76,9 @@ async def openai_agent(
                 **(reply_metadata or {}),
             )
         )
+        # we already know that we there will be no more response messages, so we close the response sequence
+        # (we are closing the sequence of response messages, not the sequence of message tokens)
+        ctx.finish_early()
 
         openai_response = await async_client.chat.completions.create(
             messages=message_dicts, model=model, stream=stream, **kwargs
