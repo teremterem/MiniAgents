@@ -12,7 +12,7 @@ from miniagents.ext.llm import AnthropicAgent, openai_agent
 
 load_dotenv()
 
-MAX_OUTPUT_TOKENS = 4095
+MAX_OUTPUT_TOKENS = 4096
 
 MODEL_AGENT_FACTORIES = {
     "gpt-4o-2024-05-13": openai_agent.fork(temperature=0),

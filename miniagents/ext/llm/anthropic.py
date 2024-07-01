@@ -10,7 +10,7 @@ from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
 from miniagents.messages import MessageTokenAppender
-from miniagents.miniagents import miniagent, MiniAgents, InteractionContext
+from miniagents.miniagents import MiniAgent, miniagent, MiniAgents, InteractionContext
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
@@ -24,7 +24,8 @@ class AnthropicMessage(AssistantMessage):
     """
 
 
-AnthropicAgent: MiniAgents
+# this is for pylint to understand that `AnthropicAgent` becomes an instance of `MiniAgents` after decoration
+AnthropicAgent: MiniAgent
 
 
 @miniagent
