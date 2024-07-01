@@ -40,11 +40,40 @@ async def anthropic_agent(
     """
     An agent that represents Large Language Models by Anthropic.
     """
+    # pylint: disable=too-many-locals
     if not async_client:
         async_client = _default_anthropic_client()
 
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
+
+    message_dicts = [message_to_llm_dict(msg) for msg in await ctx.message_promises]
+    message_dicts = _fix_message_dicts(
+        message_dicts,
+        fake_first_user_message=fake_first_user_message,
+        message_delimiter_for_same_role=message_delimiter_for_same_role,
+    )
+
+    if message_dicts and message_dicts[-1]["role"] == "system":
+        # let's strip away the system message at the end (look at the implementation of `_fix_message_dicts()`
+        # to see why it's there)
+        system_message_dict = message_dicts.pop()
+        system_combined = (
+            system_message_dict["content"]
+            if system is None
+            else f"{system}{message_delimiter_for_same_role}{system_message_dict['content']}"
+        )
+    else:
+        system_combined = system
+
+    if system_combined is None:
+        # noinspection PyShadowingNames
+        import anthropic as anthropic_original
+
+        system_combined = anthropic_original.NOT_GIVEN
+
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n", pformat(message_dicts), pformat(system_combined))
 
     with MessageTokenAppender(capture_errors=True) as token_appender:
         ctx.reply(
@@ -57,35 +86,6 @@ async def anthropic_agent(
                 **(reply_metadata or {}),
             )
         )
-
-        message_dicts = [message_to_llm_dict(msg) for msg in await ctx.message_promises]
-        message_dicts = _fix_message_dicts(
-            message_dicts,
-            fake_first_user_message=fake_first_user_message,
-            message_delimiter_for_same_role=message_delimiter_for_same_role,
-        )
-
-        if message_dicts and message_dicts[-1]["role"] == "system":
-            # let's strip away the system message at the end
-            system_message_dict = message_dicts.pop()
-            system_combined = (
-                system_message_dict["content"]
-                if system is None
-                else f"{system}{message_delimiter_for_same_role}{system_message_dict['content']}"
-            )
-        else:
-            system_combined = system
-
-        if system_combined is None:
-            # noinspection PyShadowingNames
-            import anthropic as anthropic_original
-
-            system_combined = anthropic_original.NOT_GIVEN
-
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(
-                "SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n", pformat(message_dicts), pformat(system_combined)
-            )
 
         if stream:
             async with async_client.messages.stream(
@@ -129,15 +129,16 @@ def _fix_message_dicts(
     if not message_dicts:
         return []
 
-    # let's put all the system messages at the end (they will be stripped away)
+    # let's put all the system messages at the end (they will later be combined into a single message
+    # and stripped away)
     non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
     system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
     message_dicts = non_system_message_dicts + system_message_dicts
 
     fixed_message_dicts = []
     if message_dicts[0]["role"] != "user":
-        # Anthropic requires the first message to come from the user (system messages don't count - their content
-        # will go into a separate, `system` parameter of the API call)
+        # Anthropic requires the first message to come from the user (system messages don't count -
+        # their content will go into a separate, `system` parameter of the API call)
         fixed_message_dicts.append({"role": "user", "content": fake_first_user_message})
 
     # if multiple messages with the same role are sent in a row, they should be concatenated
