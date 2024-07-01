@@ -69,6 +69,8 @@ You said: Hello
 You said: World
 ```
 
+**TODO** show how (and when) to create class-based agents
+
 ### 🧠 Work with LLMs
 
 MiniAgents provides built-in support for OpenAI and Anthropic language models
@@ -198,8 +200,8 @@ could say:
 
 Here is how you can implement a dialog loop between an agent and a user from
 ground up yourself (for simplicity there is no history agent in this example -
-checkout `in_memory_history_agent` and how it is used if you want to know how to
-implement your own history agent too):
+check out `in_memory_history_agent` and how it is used if you want to know how
+to implement your own history agent too):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
@@ -248,6 +250,8 @@ ASSISTANT: You said "bye"
 
 **TODO** explain why the presence of `AWAIT` sentinel is important in the
 example above
+
+**TODO** or even better - show how to implement agent_loop from scratch
 
 ### 📦 Some other pre-packaged agents (`miniagents.ext`)
 
