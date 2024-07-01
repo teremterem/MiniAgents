@@ -62,12 +62,7 @@ class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename
         """
         An agent that represents Large Language Models by Anthropic.
         """
-        message_dicts = [message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
-        message_dicts = _fix_message_dicts(
-            message_dicts,
-            fake_first_user_message=self.fake_first_user_message,
-            message_delimiter_for_same_role=self.message_delimiter_for_same_role,
-        )
+        message_dicts = await self._prepare_message_dicts()
 
         if message_dicts and message_dicts[-1]["role"] == "system":
             # let's strip away the system message at the end (look at the implementation of `_fix_message_dicts()`
@@ -129,6 +124,32 @@ class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename
 
             token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 
+    async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
+        message_dicts = [message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
+        if not message_dicts:
+            return []
+
+        # let's put all the system messages at the end (they will later be combined into a single message
+        # and stripped away)
+        non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
+        system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
+        message_dicts = non_system_message_dicts + system_message_dicts
+
+        fixed_message_dicts = []
+        if message_dicts[0]["role"] != "user":
+            # Anthropic requires the first message to come from the user (system messages don't count -
+            # their content will go into a separate, `system` parameter of the API call)
+            fixed_message_dicts.append({"role": "user", "content": self.fake_first_user_message})
+
+        # if multiple messages with the same role are sent in a row, they should be concatenated
+        for message_dict in message_dicts:
+            if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
+                fixed_message_dicts[-1]["content"] += self.message_delimiter_for_same_role + message_dict["content"]
+            else:
+                fixed_message_dicts.append(message_dict)
+
+        return fixed_message_dicts
+
 
 @cache
 def _default_anthropic_client() -> "anthropic_original.AsyncAnthropic":
@@ -143,31 +164,3 @@ def _default_anthropic_client() -> "anthropic_original.AsyncAnthropic":
         ) from exc
 
     return anthropic_original.AsyncAnthropic()
-
-
-def _fix_message_dicts(
-    message_dicts: list[dict[str, Any]], fake_first_user_message: str, message_delimiter_for_same_role: str
-) -> list[dict[str, Any]]:
-    if not message_dicts:
-        return []
-
-    # let's put all the system messages at the end (they will later be combined into a single message
-    # and stripped away)
-    non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
-    system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
-    message_dicts = non_system_message_dicts + system_message_dicts
-
-    fixed_message_dicts = []
-    if message_dicts[0]["role"] != "user":
-        # Anthropic requires the first message to come from the user (system messages don't count -
-        # their content will go into a separate, `system` parameter of the API call)
-        fixed_message_dicts.append({"role": "user", "content": fake_first_user_message})
-
-    # if multiple messages with the same role are sent in a row, they should be concatenated
-    for message_dict in message_dicts:
-        if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
-            fixed_message_dicts[-1]["content"] += message_delimiter_for_same_role + message_dict["content"]
-        else:
-            fixed_message_dicts.append(message_dict)
-
-    return fixed_message_dicts

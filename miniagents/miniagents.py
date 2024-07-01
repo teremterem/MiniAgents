@@ -244,6 +244,7 @@ class MiniAgent:
             normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
             interaction_metadata={**self._interact_metadata_dict, **(interaction_metadata or {})},
+            **self._static_kwargs,
             **static_kwargs,
         )
 
