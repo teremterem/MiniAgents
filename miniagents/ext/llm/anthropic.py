@@ -25,7 +25,7 @@ class AnthropicMessage(AssistantMessage):
 
 
 @miniagent
-class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename to `AnthropicAgent`
+class AnthropicAgent:
     """
     An agent that represents Large Language Models by Anthropic.
     """
@@ -59,33 +59,14 @@ class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename
             self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def __call__(self) -> None:
-        """
-        An agent that represents Large Language Models by Anthropic.
-        """
         message_dicts = await self._prepare_message_dicts()
-
-        if message_dicts and message_dicts[-1]["role"] == "system":
-            # let's strip away the system message at the end (look at the implementation of `_fix_message_dicts()`
-            # to see why it's there)
-            system_message_dict = message_dicts.pop()
-            system_combined = (
-                system_message_dict["content"]
-                if self.system is None
-                else f"{self.system}{self.message_delimiter_for_same_role}{system_message_dict['content']}"
-            )
-        else:
-            system_combined = self.system
-
-        if system_combined is None:
-            # pylint: disable=import-outside-toplevel
-            # noinspection PyShadowingNames
-            import anthropic as anthropic_original
-
-            system_combined = anthropic_original.NOT_GIVEN
+        resulting_system_message = await self._cut_off_system_message(message_dicts)
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(
-                "SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n", pformat(message_dicts), pformat(system_combined)
+                "SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n",
+                pformat(message_dicts),
+                pformat(resulting_system_message),
             )
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
@@ -99,32 +80,42 @@ class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename
                     **(self.reply_metadata or {}),
                 )
             )
-            # we already know that we there will be no more response messages, so we close the response sequence
+            # we already know that there will be no more response messages, so we close the response sequence
             # (we are closing the sequence of response messages, not the sequence of message tokens)
             self.ctx.finish_early()
 
-            if self.stream:
-                async with self.async_client.messages.stream(
-                    messages=message_dicts, system=system_combined, model=self.model, **self.other_kwargs
-                ) as response:
-                    async for token in response.text_stream:
-                        token_appender.append(token)
-                    anthropic_final_message = await response.get_final_message()
-            else:
-                anthropic_final_message = await self.async_client.messages.create(
-                    messages=message_dicts, stream=False, system=system_combined, model=self.model, **self.other_kwargs
-                )
-                if len(anthropic_final_message.content) != 1:
-                    raise RuntimeError(
-                        f"exactly one TextBlock was expected from Anthropic, "
-                        f"but {len(anthropic_final_message.content)} were returned instead"
-                    )
-                # send the complete message text as a single token
-                token_appender.append(anthropic_final_message.content[0].text)
+            await self._produce_tokens(token_appender, message_dicts, resulting_system_message)
 
-            token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
+    async def _produce_tokens(
+        self, token_appender: MessageTokenAppender, message_dicts: list[dict[str, Any]], system_message: str
+    ) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        if self.stream:
+            async with self.async_client.messages.stream(
+                messages=message_dicts, system=system_message, model=self.model, **self.other_kwargs
+            ) as response:
+                async for token in response.text_stream:
+                    token_appender.append(token)
+                anthropic_final_message = await response.get_final_message()
+        else:
+            anthropic_final_message = await self.async_client.messages.create(
+                messages=message_dicts, stream=False, system=system_message, model=self.model, **self.other_kwargs
+            )
+            if len(anthropic_final_message.content) != 1:
+                raise RuntimeError(
+                    f"exactly one TextBlock was expected from Anthropic, "
+                    f"but {len(anthropic_final_message.content)} were returned instead"
+                )
+            # send the complete message text as a single token
+            token_appender.append(anthropic_final_message.content[0].text)
+        token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 
     async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
+        """
+        TODO Oleksandr: docstring
+        """
         message_dicts = [message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
         if not message_dicts:
             return []
@@ -149,6 +140,31 @@ class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename
                 fixed_message_dicts.append(message_dict)
 
         return fixed_message_dicts
+
+    async def _cut_off_system_message(self, message_dicts: list[dict[str, Any]]) -> str:
+        """
+        TODO Oleksandr: docstring
+        """
+        if message_dicts and message_dicts[-1]["role"] == "system":
+            # let's strip away the system message at the end (look at the implementation of `_fix_message_dicts()`
+            # to see why it's there)
+            system_message_dict = message_dicts.pop()
+            resulting_system_message = (
+                system_message_dict["content"]
+                if self.system is None
+                else f"{self.system}{self.message_delimiter_for_same_role}{system_message_dict['content']}"
+            )
+        else:
+            resulting_system_message = self.system
+
+        if resulting_system_message is None:
+            # pylint: disable=import-outside-toplevel
+            # noinspection PyShadowingNames
+            import anthropic as anthropic_original
+
+            resulting_system_message = anthropic_original.NOT_GIVEN
+
+        return resulting_system_message
 
 
 @cache

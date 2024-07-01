@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from miniagents import MiniAgents, Message
 from miniagents.ext import markdown_history_agent
-from miniagents.ext.llm import anthropic_agent, openai_agent
+from miniagents.ext.llm import AnthropicAgent, openai_agent
 
 load_dotenv()
 
@@ -18,9 +18,9 @@ MODEL_AGENT_FACTORIES = {
     "gpt-4o-2024-05-13": openai_agent.fork(temperature=0),
     "gpt-4-turbo-2024-04-09": openai_agent.fork(temperature=0),
     "gpt-3.5-turbo-0125": openai_agent.fork(temperature=0),
-    "claude-3-5-sonnet-20240620": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
-    "claude-3-opus-20240229": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
-    "claude-3-haiku-20240307": anthropic_agent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    "claude-3-5-sonnet-20240620": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    "claude-3-opus-20240229": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    "claude-3-haiku-20240307": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
 }
 MODEL_AGENTS = {
     model: MODEL_AGENT_FACTORIES[model].fork(model=model)

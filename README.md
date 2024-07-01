@@ -126,12 +126,12 @@ message text will just be returned as a single "token" in the latter case.
 The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop
 between a user agent and an assistant agent. Here is how you can use it to set
 up an interaction between a user and your agent (can be bare LLM agent, like
-`openai_agent` or `anthropic_agent`, can also be a custom agent that you define
+`openai_agent` or `AnthropicAgent`, can also be a custom agent that you define
 yourself):
 
 ⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your
 Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
-the example below (or just replace `anthropic_agent` with `openai_agent` and
+the example below (or just replace `AnthropicAgent` with `openai_agent` and
 `"claude-3-5-sonnet-20240620"` with `"gpt-4o-2024-05-13"` if you already set up
 the previous example). ⚠️
 
@@ -142,7 +142,7 @@ from miniagents.ext import (
     console_user_agent,
     markdown_history_agent,
 )
-from miniagents.ext.llm import SystemMessage, anthropic_agent
+from miniagents.ext.llm import SystemMessage, AnthropicAgent
 
 
 async def main() -> None:
@@ -153,7 +153,7 @@ async def main() -> None:
             # you want to customize).
             history_agent=markdown_history_agent
         ),
-        assistant_agent=anthropic_agent.fork(
+        assistant_agent=AnthropicAgent.fork(
             model="claude-3-5-sonnet-20240620",
             max_tokens=1000,
         ),
