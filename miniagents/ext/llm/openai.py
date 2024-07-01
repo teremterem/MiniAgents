@@ -52,6 +52,20 @@ async def openai_agent(
     if n != 1:
         raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
+    if system is None:
+        message_dicts = []
+    else:
+        message_dicts = [
+            {
+                "role": "system",
+                "content": system,
+            },
+        ]
+    message_dicts.extend(message_to_llm_dict(msg) for msg in await ctx.message_promises)
+
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
+
     with MessageTokenAppender(capture_errors=True) as token_appender:
         ctx.reply(
             OpenAIMessage.promise(
@@ -63,20 +77,6 @@ async def openai_agent(
                 **(reply_metadata or {}),
             )
         )
-
-        if system is None:
-            message_dicts = []
-        else:
-            message_dicts = [
-                {
-                    "role": "system",
-                    "content": system,
-                },
-            ]
-        message_dicts.extend(message_to_llm_dict(msg) for msg in await ctx.message_promises)
-
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
 
         openai_response = await async_client.chat.completions.create(
             messages=message_dicts, model=model, stream=stream, **kwargs
