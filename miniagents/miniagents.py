@@ -437,8 +437,8 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         """
         # first collect all the message promises
         msg_promises = [msg_promise async for msg_promise in seq_promise]
-        # then resolve them all # pylint: disable=consider-using-generator
-        return tuple([await msg_promise for msg_promise in msg_promises])
+        # then resolve them all
+        return tuple([await msg_promise for msg_promise in msg_promises])  # pylint: disable=consider-using-generator
 
 
 # noinspection PyProtectedMember
