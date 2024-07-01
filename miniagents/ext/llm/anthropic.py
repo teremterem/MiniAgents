@@ -24,7 +24,7 @@ class AnthropicMessage(AssistantMessage):
     """
 
 
-# this is for pylint to understand that `AnthropicAgent` becomes an instance of `MiniAgents` after decoration
+# this is for pylint to understand that `AnthropicAgent` becomes an instance of `MiniAgent` after decoration
 AnthropicAgent: MiniAgent
 
 
