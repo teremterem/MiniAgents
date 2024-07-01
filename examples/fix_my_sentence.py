@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 
 from miniagents import MiniAgents
 from miniagents.ext import dialog_loop, console_user_agent
-from miniagents.ext.llm import SystemMessage
-from miniagents.ext.llm.openai import openai_agent
+from miniagents.ext.llm import SystemMessage, openai_agent
 
 load_dotenv()
 

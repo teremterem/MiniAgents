@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 
 from miniagents import MiniAgents, Message
 from miniagents.ext import markdown_history_agent
-from miniagents.ext.llm.anthropic import anthropic_agent
-from miniagents.ext.llm.openai import openai_agent
+from miniagents.ext.llm import anthropic_agent, openai_agent
 
 load_dotenv()
 
