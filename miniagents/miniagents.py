@@ -5,7 +5,7 @@
 import asyncio
 import copy
 import logging
-from functools import partial
+import re
 from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
 
 from pydantic import BaseModel
@@ -99,41 +99,41 @@ class MiniAgents(PromisingContext):
 
 
 def miniagent(
-    func: Optional[AgentFunction] = None,
+    func_or_class: Optional[Union[AgentFunction, type]] = None,
     alias: Optional[str] = None,
     description: Optional[str] = None,
-    uppercase_func_name: bool = True,
+    normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
-    **partial_kwargs,
+    **static_kwargs,
 ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
     """
-    if func is None:
+    if func_or_class is None:
         # the decorator `@miniagent(...)` was used with arguments
-        def _decorator(f: AgentFunction) -> "MiniAgent":
+        def _decorator(f_or_cls: Union[AgentFunction, type]) -> "MiniAgent":
             return MiniAgent(
-                f,
+                f_or_cls,
                 alias=alias,
                 description=description,
-                uppercase_func_name=uppercase_func_name,
+                normalize_func_or_class_name=normalize_func_or_class_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
                 interaction_metadata=interaction_metadata,
-                **partial_kwargs,
+                **static_kwargs,
             )
 
         return _decorator
 
     # the decorator `@miniagent` was used either without arguments or as a direct function call
     return MiniAgent(
-        func,
+        func_or_class,
         alias=alias,
         description=description,
-        uppercase_func_name=uppercase_func_name,
+        normalize_func_or_class_name=normalize_func_or_class_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
         interaction_metadata=interaction_metadata,
-        **partial_kwargs,
+        **static_kwargs,
     )
 
 
@@ -148,21 +148,19 @@ class MiniAgent:
 
     def __init__(
         self,
-        func: AgentFunction,
+        func_or_class: Union[AgentFunction, type],
         alias: Optional[str] = None,
         description: Optional[str] = None,
         # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
-        uppercase_func_name: bool = True,
+        normalize_func_or_class_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
         interaction_metadata: Optional[dict[str, Any]] = None,
-        **partial_kwargs,
+        **static_kwargs,
     ) -> None:
-        self._func = func
-        if partial_kwargs:
-            # NOTE: we cannot deep-copy the partial_kwargs here, because they may contain objects that are
-            # not serializable (for ex. AsyncAnthropic and AsyncOpenAI objects in case of anthropic and openai
-            # miniagents)
-            self._func = partial(func, **partial_kwargs)
+        self._func_or_class = func_or_class
+        # NOTE: we cannot deep-copy `static_kwargs`, because they may contain objects that are not serializable
+        # (for ex. AsyncAnthropic and AsyncOpenAI objects in case of anthropic and openai miniagents)
+        self._static_kwargs = static_kwargs
 
         # validate interaction metadata
         # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
@@ -171,13 +169,16 @@ class MiniAgent:
 
         self.alias = alias
         if self.alias is None:
-            self.alias = func.__name__
-            if uppercase_func_name:
+            self.alias = func_or_class.__name__
+            if normalize_func_or_class_name:
+                # split `self.alias` by capitalization, assuming it is in camel case
+                # (if it is not, it will not be split)
+                self.alias = "_".join(part for part in re.findall(".+?(?=[A-Z]|$)", self.alias))
                 self.alias = self.alias.upper()
 
         self.description = description
         if self.description is None:
-            self.description = func.__doc__
+            self.description = func_or_class.__doc__
             if self.description and normalize_spaces_in_docstring:
                 self.description = " ".join(self.description.split())
         if self.description:
@@ -231,19 +232,19 @@ class MiniAgent:
         alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce some "fork identifier" ?
         description: Optional[str] = None,
         interaction_metadata: Optional[dict[str, Any]] = None,
-        **partial_kwargs,
+        **static_kwargs,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
         TODO Oleksandr: docstring
         """
         return MiniAgent(
-            self._func,
+            self._func_or_class,
             alias=alias or self.alias,
             description=description or self.description,
-            uppercase_func_name=False,
+            normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
             interaction_metadata={**self._interact_metadata_dict, **(interaction_metadata or {})},
-            **partial_kwargs,
+            **static_kwargs,
         )
 
 
@@ -476,7 +477,23 @@ class AgentReplyMessageSequence(MessageSequence):
             with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
                 try:
-                    await self._mini_agent._func(ctx, **self._function_kwargs)
+                    if isinstance(self._mini_agent._func_or_class, type):
+                        # the miniagent is defined as a class, not as a function -> let's create an instance of this
+                        # class and call its `__call__` method
+                        actual_func = self._mini_agent._func_or_class(
+                            # if we want Pydantic models to also be used as class-based agents, we can't pass
+                            # `ctx` as a positional argument (BaseModel's `__init__` doesn't accept positional
+                            # arguments unless it is overridden)
+                            ctx=ctx,
+                            **self._mini_agent._static_kwargs,
+                            **self._function_kwargs,
+                        )
+                        await actual_func()
+                    else:
+                        # the miniagent is a function
+                        await self._mini_agent._func_or_class(
+                            ctx, **self._mini_agent._static_kwargs, **self._function_kwargs
+                        )
                 finally:
                     await asyncio.gather(*ctx._tasks_to_wait_for, return_exceptions=True)
 

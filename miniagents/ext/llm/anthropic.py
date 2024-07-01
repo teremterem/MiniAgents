@@ -1,4 +1,3 @@
-# pylint: disable=duplicate-code,import-outside-toplevel
 """
 This module integrates Anthropic language models with MiniAgents.
 """
@@ -26,92 +25,112 @@ class AnthropicMessage(AssistantMessage):
 
 
 @miniagent
-async def anthropic_agent(
-    ctx: InteractionContext,
-    model: str,
-    stream: Optional[bool] = None,
-    system: Optional[str] = None,
-    fake_first_user_message: str = "/start",
-    message_delimiter_for_same_role: str = "\n\n",
-    async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
-    reply_metadata: Optional[dict[str, Any]] = None,
-    **kwargs,
-) -> None:
+class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename to `AnthropicAgent`
     """
     An agent that represents Large Language Models by Anthropic.
     """
-    # pylint: disable=too-many-locals
-    if not async_client:
-        async_client = _default_anthropic_client()
 
-    if stream is None:
-        stream = MiniAgents.get_current().stream_llm_tokens_by_default
+    def __init__(
+        self,
+        ctx: InteractionContext,
+        model: str,
+        stream: Optional[bool] = None,
+        system: Optional[str] = None,
+        fake_first_user_message: str = "/start",
+        message_delimiter_for_same_role: str = "\n\n",
+        async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
+        reply_metadata: Optional[dict[str, Any]] = None,
+        **other_kwargs,
+    ) -> None:
+        self.ctx = ctx
+        self.model = model
+        self.stream = stream
+        self.system = system
+        self.fake_first_user_message = fake_first_user_message
+        self.message_delimiter_for_same_role = message_delimiter_for_same_role
+        self.async_client = async_client
+        self.reply_metadata = reply_metadata
+        self.other_kwargs = other_kwargs
 
-    message_dicts = [message_to_llm_dict(msg) for msg in await ctx.message_promises]
-    message_dicts = _fix_message_dicts(
-        message_dicts,
-        fake_first_user_message=fake_first_user_message,
-        message_delimiter_for_same_role=message_delimiter_for_same_role,
-    )
+        if not self.async_client:
+            self.async_client = _default_anthropic_client()
 
-    if message_dicts and message_dicts[-1]["role"] == "system":
-        # let's strip away the system message at the end (look at the implementation of `_fix_message_dicts()`
-        # to see why it's there)
-        system_message_dict = message_dicts.pop()
-        system_combined = (
-            system_message_dict["content"]
-            if system is None
-            else f"{system}{message_delimiter_for_same_role}{system_message_dict['content']}"
+        if self.stream is None:
+            self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
+
+    async def __call__(self) -> None:
+        """
+        An agent that represents Large Language Models by Anthropic.
+        """
+        message_dicts = [message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
+        message_dicts = _fix_message_dicts(
+            message_dicts,
+            fake_first_user_message=self.fake_first_user_message,
+            message_delimiter_for_same_role=self.message_delimiter_for_same_role,
         )
-    else:
-        system_combined = system
 
-    if system_combined is None:
-        # noinspection PyShadowingNames
-        import anthropic as anthropic_original
-
-        system_combined = anthropic_original.NOT_GIVEN
-
-    if logger.isEnabledFor(logging.DEBUG):
-        logger.debug("SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n", pformat(message_dicts), pformat(system_combined))
-
-    with MessageTokenAppender(capture_errors=True) as token_appender:
-        ctx.reply(
-            AnthropicMessage.promise(
-                start_asap=False,  # the agent is already running and will collect tokens from the model (see below)
-                message_token_streamer=token_appender,
-                # preliminary metadata:
-                model=model,
-                agent_alias=ctx.this_agent.alias,
-                **(reply_metadata or {}),
+        if message_dicts and message_dicts[-1]["role"] == "system":
+            # let's strip away the system message at the end (look at the implementation of `_fix_message_dicts()`
+            # to see why it's there)
+            system_message_dict = message_dicts.pop()
+            system_combined = (
+                system_message_dict["content"]
+                if self.system is None
+                else f"{self.system}{self.message_delimiter_for_same_role}{system_message_dict['content']}"
             )
-        )
-
-        if stream:
-            async with async_client.messages.stream(
-                messages=message_dicts, system=system_combined, model=model, **kwargs
-            ) as response:
-                async for token in response.text_stream:
-                    token_appender.append(token)
-                anthropic_final_message = await response.get_final_message()
         else:
-            anthropic_final_message = await async_client.messages.create(
-                messages=message_dicts, stream=False, system=system_combined, model=model, **kwargs
-            )
-            if len(anthropic_final_message.content) != 1:
-                raise RuntimeError(
-                    f"exactly one TextBlock was expected from Anthropic, "
-                    f"but {len(anthropic_final_message.content)} were returned instead"
-                )
-            # send the complete message text as a single token
-            token_appender.append(anthropic_final_message.content[0].text)
+            system_combined = self.system
 
-        token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
+        if system_combined is None:
+            # pylint: disable=import-outside-toplevel
+            # noinspection PyShadowingNames
+            import anthropic as anthropic_original
+
+            system_combined = anthropic_original.NOT_GIVEN
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n", pformat(message_dicts), pformat(system_combined)
+            )
+
+        with MessageTokenAppender(capture_errors=True) as token_appender:
+            self.ctx.reply(
+                AnthropicMessage.promise(
+                    start_asap=False,  # the agent is already running and will collect tokens from the model (see below)
+                    message_token_streamer=token_appender,
+                    # preliminary metadata:
+                    model=self.model,
+                    agent_alias=self.ctx.this_agent.alias,
+                    **(self.reply_metadata or {}),
+                )
+            )
+
+            if self.stream:
+                async with self.async_client.messages.stream(
+                    messages=message_dicts, system=system_combined, model=self.model, **self.other_kwargs
+                ) as response:
+                    async for token in response.text_stream:
+                        token_appender.append(token)
+                    anthropic_final_message = await response.get_final_message()
+            else:
+                anthropic_final_message = await self.async_client.messages.create(
+                    messages=message_dicts, stream=False, system=system_combined, model=self.model, **self.other_kwargs
+                )
+                if len(anthropic_final_message.content) != 1:
+                    raise RuntimeError(
+                        f"exactly one TextBlock was expected from Anthropic, "
+                        f"but {len(anthropic_final_message.content)} were returned instead"
+                    )
+                # send the complete message text as a single token
+                token_appender.append(anthropic_final_message.content[0].text)
+
+            token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 
 
 @cache
 def _default_anthropic_client() -> "anthropic_original.AsyncAnthropic":
     try:
+        # pylint: disable=import-outside-toplevel
         # noinspection PyShadowingNames
         import anthropic as anthropic_original
     except ModuleNotFoundError as exc:
