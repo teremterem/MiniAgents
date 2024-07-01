@@ -5,10 +5,10 @@
 from functools import cached_property
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
-from miniagents import StreamAppender
 from miniagents.miniagent_typing import MessageTokenStreamer
+from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen
-from miniagents.promising.promising import StreamedPromise
+from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 
@@ -166,6 +166,12 @@ class MessagePromise(StreamedPromise[str, Message]):
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
             if isinstance(message_token_streamer, MessageTokenAppender):
+                if not message_token_streamer.was_open:
+                    # this check prevents potential deadlocks
+                    raise AppenderNotOpenError(
+                        "The MessageTokenAppender must be opened before it can be used. Put this statement "
+                        "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
+                    )
                 self._metadata_so_far = message_token_streamer.metadata_so_far
                 self._metadata_so_far.update(self.preliminary_metadata.frozen_fields_and_values())
             else:
@@ -213,7 +219,7 @@ class MessageTokenAppender(StreamAppender[str]):
     @property
     def metadata_so_far(self) -> dict[str, Any]:
         """
-        This property protects `metadata_so_far` dictionary from being replaced completely. You should only modify
+        This property protects `_metadata_so_far` dictionary from being replaced completely. You should only modify
         it, not replace it.
         """
         return self._metadata_so_far

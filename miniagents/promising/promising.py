@@ -158,8 +158,13 @@ class PromisingContext:
     async def __aenter__(self) -> "PromisingContext":
         return self.activate()
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(self, *args, **kwargs) -> None:
         await self.afinalize()
+
+    def __enter__(self) -> "PromisingContext":
+        raise RuntimeError(f"Use `async with {type(self).__name__}()` instead of `with {type(self).__name__}`.")
+
+    def __exit__(self, *args, **kwargs) -> None: ...
 
 
 class Promise(Generic[T]):
@@ -420,12 +425,20 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
 
     def __init__(self, capture_errors: Union[bool, Sentinel] = DEFAULT) -> None:
         self._queue = asyncio.Queue()
-        self._append_open = False
+        self._append_was_open = False
         self._append_closed = False
         if capture_errors is DEFAULT:
             self._capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
         else:
             self._capture_errors = capture_errors
+
+    @property
+    def was_open(self) -> bool:
+        """
+        Return True if the appender was ever open for appending (it doesn't matter whether it is now closed or not,
+        as long as it was open ever at all).
+        """
+        return self._append_was_open
 
     def __enter__(self) -> "StreamAppender":
         return self.open()
@@ -448,7 +461,11 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
                     exc_info=True,
                 )
             else:
-                logger.debug("An error occurred while appending pieces to a StreamAppender", exc_info=exc_value)
+                logger.debug(
+                    "An error occurred while appending pieces to a %s",
+                    type(self).__name__,
+                    exc_info=exc_value,
+                )
                 self.append(exc_value)
         self.close()
 
@@ -456,19 +473,24 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
         return error_should_be_squashed
 
+    async def __aenter__(self) -> "StreamAppender":
+        raise RuntimeError(f"Use `with {type(self).__name__}()` instead of `async with {type(self).__name__}()`.")
+
+    async def __aexit__(self, *args, **kwargs) -> bool: ...
+
     def append(self, piece: PIECE) -> "StreamAppender":
         """
         Append a `piece` to the streamer. This method can only be called when the streamer is open for appending (and
         also not closed yet). Consequently, the `piece` is delivered to the `StreamedPromise` that is consuming from
         this streamer.
         """
-        if not self._append_open:
+        if not self._append_was_open:
             raise AppenderNotOpenError(
-                "You need to put the `append()` operation inside a `with StreamAppender()` block "
+                f"You need to put the `append()` operation inside a `with {type(self).__name__}()` block "
                 "(or call `open()` and `close()` manually)."
             )
         if self._append_closed:
-            raise AppenderClosedError("The StreamAppender has already been closed for appending.")
+            raise AppenderClosedError(f"The {type(self).__name__} has already been closed for appending.")
         self._queue.put_nowait(piece)
         return self
 
@@ -483,8 +505,8 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         (and the code that is consuming from it) waiting for more `pieces` forever.
         """
         if self._append_closed:
-            raise AppenderClosedError("Once closed, the StreamAppender cannot be opened again.")
-        self._append_open = True
+            raise AppenderClosedError(f"Once closed, the {type(self).__name__} cannot be opened again.")
+        self._append_was_open = True
         return self
 
     def close(self) -> None:

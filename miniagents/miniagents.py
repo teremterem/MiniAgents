@@ -435,8 +435,10 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
         and return them as a tuple of Message objects.
         """
-        # pylint: disable=consider-using-generator
-        return tuple([await msg_promise async for msg_promise in seq_promise])
+        # first collect all the message promises
+        msg_promises = [msg_promise async for msg_promise in seq_promise]
+        # then resolve them all  # pylint: disable=consider-using-generator
+        return tuple([await msg_promise for msg_promise in msg_promises])
 
 
 # noinspection PyProtectedMember

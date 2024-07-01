@@ -7,9 +7,10 @@ import logging
 import typing
 from functools import cache
 from pprint import pformat
-from typing import AsyncIterator, Any, Optional
+from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
+from miniagents.messages import MessageTokenAppender
 from miniagents.miniagents import (
     miniagent,
     MiniAgents,
@@ -51,7 +52,18 @@ async def openai_agent(
     if n != 1:
         raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
-    async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+    with MessageTokenAppender(capture_errors=True) as token_appender:
+        ctx.reply(
+            OpenAIMessage.promise(
+                start_asap=False,  # the agent itself is already running anyway
+                message_token_streamer=token_appender,
+                # preliminary metadata:
+                model=model,
+                agent_alias=ctx.this_agent.alias,
+                **(reply_metadata or {}),
+            )
+        )
+
         if system is None:
             message_dicts = []
         else:
@@ -78,11 +90,13 @@ async def openai_agent(
                     )
                 token = chunk.choices[0].delta.content
                 if token:
-                    yield token
+                    token_appender.append(token)
 
-                metadata_so_far["role"] = chunk.choices[0].delta.role or metadata_so_far["role"]
+                token_appender.metadata_so_far["role"] = (
+                    chunk.choices[0].delta.role or token_appender.metadata_so_far["role"]
+                )
                 _merge_openai_dicts(
-                    metadata_so_far,
+                    token_appender.metadata_so_far,
                     chunk.model_dump(exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}),
                 )
         else:
@@ -91,25 +105,15 @@ async def openai_agent(
                     f"exactly one Choice was expected from OpenAI, "
                     f"but {len(openai_response.choices)} were returned instead"
                 )
-            yield openai_response.choices[0].message.content  # yield the whole text as one "piece"
+            # send the complete message text as a single token
+            token_appender.append(openai_response.choices[0].message.content)
 
-            metadata_so_far["role"] = openai_response.choices[0].message.role
-            metadata_so_far.update(
+            token_appender.metadata_so_far["role"] = openai_response.choices[0].message.role
+            token_appender.metadata_so_far.update(
                 openai_response.model_dump(
                     exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
                 )
             )
-
-    ctx.reply(
-        OpenAIMessage.promise(
-            start_asap=True,  # TODO Oleksandr: should this be customizable ?
-            message_token_streamer=message_token_streamer,
-            # preliminary metadata:
-            model=model,
-            agent_alias=ctx.this_agent.alias,
-            **(reply_metadata or {}),
-        )
-    )
 
 
 @cache
