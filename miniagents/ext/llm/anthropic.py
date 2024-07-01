@@ -7,9 +7,10 @@ import logging
 import typing
 from functools import cache
 from pprint import pformat
-from typing import AsyncIterator, Any, Optional
+from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
+from miniagents.messages import MessageTokenAppender
 from miniagents.miniagents import miniagent, MiniAgents, InteractionContext
 
 if typing.TYPE_CHECKING:
@@ -45,7 +46,18 @@ async def anthropic_agent(
     if stream is None:
         stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
-    async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+    with MessageTokenAppender(capture_errors=True) as token_appender:
+        ctx.reply(
+            AnthropicMessage.promise(
+                start_asap=False,  # the agent is already running and will collect tokens from the model (see below)
+                message_token_streamer=token_appender,
+                # preliminary metadata:
+                model=model,
+                agent_alias=ctx.this_agent.alias,
+                **(reply_metadata or {}),
+            )
+        )
+
         message_dicts = [message_to_llm_dict(msg) for msg in await ctx.message_promises]
         message_dicts = _fix_message_dicts(
             message_dicts,
@@ -76,12 +88,11 @@ async def anthropic_agent(
             )
 
         if stream:
-            # pylint: disable=not-async-context-manager
             async with async_client.messages.stream(
                 messages=message_dicts, system=system_combined, model=model, **kwargs
             ) as response:
                 async for token in response.text_stream:
-                    yield token
+                    token_appender.append(token)
                 anthropic_final_message = await response.get_final_message()
         else:
             anthropic_final_message = await async_client.messages.create(
@@ -92,20 +103,10 @@ async def anthropic_agent(
                     f"exactly one TextBlock was expected from Anthropic, "
                     f"but {len(anthropic_final_message.content)} were returned instead"
                 )
-            yield anthropic_final_message.content[0].text  # yield the whole text as one "piece"
+            # send the complete message text as a single token
+            token_appender.append(anthropic_final_message.content[0].text)
 
-        metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
-
-    ctx.reply(
-        AnthropicMessage.promise(
-            start_asap=True,  # TODO Oleksandr: should this be customizable ?
-            message_token_streamer=message_token_streamer,
-            # preliminary metadata:
-            model=model,
-            agent_alias=ctx.this_agent.alias,
-            **(reply_metadata or {}),
-        )
-    )
+        token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 
 
 @cache
