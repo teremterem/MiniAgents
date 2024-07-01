@@ -94,9 +94,9 @@ class anthropic_agent:  # pylint: disable=invalid-name  # TODO Oleksandr: rename
             )
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
-            self.ctx.reply(  # TODO Oleksandr: introduce `reply_with_token_stream()` method ?
+            self.ctx.reply(
                 AnthropicMessage.promise(
-                    start_asap=False,  # the agent is already running and will collect tokens from the model (see below)
+                    start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
                     message_token_streamer=token_appender,
                     # preliminary metadata:
                     model=self.model,

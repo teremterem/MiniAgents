@@ -68,7 +68,7 @@ async def openai_agent(
     with MessageTokenAppender(capture_errors=True) as token_appender:
         ctx.reply(
             OpenAIMessage.promise(
-                start_asap=False,  # the agent is already running and will collect tokens from the model (see below)
+                start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
                 message_token_streamer=token_appender,
                 # preliminary metadata:
                 model=model,
