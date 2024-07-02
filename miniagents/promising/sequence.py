@@ -3,12 +3,11 @@ The main class in this module is `FlatSequence`. See its docstring for more info
 """
 
 from functools import partial
-from typing import Generic, AsyncIterator, Union, Optional
+from typing import Generic, AsyncIterator, Optional
 
 from miniagents.promising.errors import FunctionNotProvidedError
 from miniagents.promising.promise_typing import SequenceFlattener, IN, OUT, PromiseStreamer
 from miniagents.promising.promising import StreamedPromise
-from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 
 class FlatSequence(Generic[IN, OUT]):
@@ -22,7 +21,7 @@ class FlatSequence(Generic[IN, OUT]):
         self,
         incoming_streamer: PromiseStreamer[IN],
         flattener: Optional[SequenceFlattener[IN, OUT]] = None,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         sequence_promise_class: type[StreamedPromise[OUT, tuple[OUT, ...]]] = StreamedPromise[OUT, tuple[OUT, ...]],
     ) -> None:
         if flattener:

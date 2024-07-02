@@ -20,7 +20,7 @@ from miniagents.promising.promise_typing import (
     PromiseResolvedEventHandler,
     PromiseResolver,
 )
-from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
+from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
 
 logger = logging.getLogger(__name__)
 
@@ -89,16 +89,15 @@ class PromisingContext:
         return handler
 
     def start_asap(
-        self,
-        awaitable: Awaitable,
-        suppress_errors: bool = False,
-        log_level_for_errors: int = logging.DEBUG,
+        self, awaitable: Awaitable, suppress_errors: bool = True, log_level_for_errors: Optional[int] = None
     ) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
         before finalizing the context.
         """
+        if log_level_for_errors is None:
+            log_level_for_errors = self.log_level_for_errors
 
         async def awaitable_wrapper() -> Any:
             # pylint: disable=broad-except
@@ -174,14 +173,14 @@ class Promise(Generic[T]):
 
     def __init__(
         self,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if start_asap is DEFAULT:
+        if start_asap is None:
             start_asap = promising_context.start_everything_asap_by_default
 
         if resolver:
@@ -197,9 +196,7 @@ class Promise(Generic[T]):
         self._resolver_lock = asyncio.Lock()
 
         if start_asap and prefill_result is NO_VALUE:
-            promising_context.start_asap(
-                self, suppress_errors=True, log_level_for_errors=promising_context.log_level_for_errors
-            )
+            promising_context.start_asap(self)
 
     async def _resolver(self) -> T:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -235,11 +232,7 @@ class Promise(Generic[T]):
         promising_context = PromisingContext.get_current()
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
-                promising_context.start_asap(
-                    handler(self, self._result),
-                    suppress_errors=True,
-                    log_level_for_errors=promising_context.log_level_for_errors,
-                )
+                promising_context.start_asap(handler(self, self._result))
             promising_context = promising_context.parent
 
 
@@ -267,12 +260,12 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if start_asap is DEFAULT:
+        if start_asap is None:
             start_asap = promising_context.start_everything_asap_by_default
 
         super().__init__(
@@ -295,11 +288,7 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
         if start_asap and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.start_asap(
-                self._aconsume_the_stream(),
-                suppress_errors=True,
-                log_level_for_errors=promising_context.log_level_for_errors,
-            )
+            promising_context.start_asap(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
@@ -423,14 +412,13 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
     TODO Oleksandr: explain the `capture_errors` parameter
     """
 
-    def __init__(self, capture_errors: Union[bool, Sentinel] = DEFAULT) -> None:
+    def __init__(self, capture_errors: Optional[bool] = None) -> None:
+        if capture_errors is None:
+            capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
+        self._capture_errors = capture_errors
         self._queue = asyncio.Queue()
         self._append_was_open = False
         self._append_closed = False
-        if capture_errors is DEFAULT:
-            self._capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
-        else:
-            self._capture_errors = capture_errors
 
     @property
     def was_open(self) -> bool:

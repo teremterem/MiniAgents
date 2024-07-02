@@ -9,7 +9,6 @@ from miniagents.miniagent_typing import MessageTokenStreamer
 from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import StreamedPromise, StreamAppender
-from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 
 class Message(Frozen):
@@ -30,7 +29,7 @@ class Message(Frozen):
     @classmethod
     def promise(
         cls,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **preliminary_metadata,
     ) -> "MessagePromise":
@@ -147,7 +146,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     def __init__(
         self,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,

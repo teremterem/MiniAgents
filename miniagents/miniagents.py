@@ -15,7 +15,6 @@ from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessa
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseStreamer, PromiseResolvedEventHandler
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
-from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
 logger = logging.getLogger(__name__)
@@ -78,23 +77,19 @@ class MiniAgents(PromisingContext):
         if not isinstance(obj, Message):
             return
 
-        log_level_for_errors = MiniAgents.get_current().log_level_for_errors
-
         for sub_message in obj.sub_messages():
             if sub_message._persist_message_event_triggered:
                 continue
 
             for handler in self.on_persist_message_handlers:
-                self.start_asap(
-                    handler(_, sub_message), suppress_errors=True, log_level_for_errors=log_level_for_errors
-                )
+                self.start_asap(handler(_, sub_message))
             sub_message._persist_message_event_triggered = True
 
         if obj._persist_message_event_triggered:
             return
 
         for handler in self.on_persist_message_handlers:
-            self.start_asap(handler(_, obj), suppress_errors=True, log_level_for_errors=log_level_for_errors)
+            self.start_asap(handler(_, obj))
         obj._persist_message_event_triggered = True
 
 
@@ -151,7 +146,8 @@ class MiniAgent:
         func_or_class: Union[AgentFunction, type],
         alias: Optional[str] = None,
         description: Optional[str] = None,
-        # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
+        # TODO Oleksandr: use None (a sentinel for "default") for the following two arguments and put them
+        #  into the `MiniAgents` class
         normalize_func_or_class_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
         interaction_metadata: Optional[dict[str, Any]] = None,
@@ -193,7 +189,7 @@ class MiniAgent:
     def inquire(
         self,
         messages: Optional[MessageType] = None,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         **function_kwargs,
     ) -> MessageSequencePromise:
         """
@@ -206,7 +202,7 @@ class MiniAgent:
 
     def initiate_inquiry(
         self,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         **function_kwargs,
     ) -> "AgentCall":
         """
@@ -285,17 +281,30 @@ class InteractionContext:
         #  in the code below)
         self._reply_streamer.append(messages)
 
-    def wait_for(self, awaitable: Awaitable[Any]) -> None:
+    def wait_for(self, awaitable: Awaitable[Any], start_asap_if_coroutine: bool = True) -> None:
         """
         Wait for the completion of the provided awaitable before exiting the agent (before "closing" the agent's
         reply sequence).
         """
+        if asyncio.iscoroutine(awaitable) and start_asap_if_coroutine:
+            # let's turn this coroutine into our special kind of task and start it as soon as possible
+            awaitable = MiniAgents.get_current().start_asap(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
-    def finish_early(self) -> None:
+    async def await_for_subtasks(self) -> None:
+        """
+        Wait for all the awaitables that were fed into the `wait_for` method to finish. If this method is not called
+        in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's reply
+        sequence is closed.
+        """
+        await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
+
+    async def afinish_early(self, await_for_subtasks: bool = True) -> None:
         """
         TODO Oleksandr: docstring
         """
+        if await_for_subtasks:
+            await self.await_for_subtasks()
         self._reply_streamer.close()
 
 
@@ -376,8 +385,8 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
     def __init__(
         self,
-        appender_capture_errors: Union[bool, Sentinel] = DEFAULT,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        appender_capture_errors: Optional[bool] = None,
+        start_asap: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
     ) -> None:
         if incoming_streamer:
@@ -498,7 +507,7 @@ class AgentReplyMessageSequence(MessageSequence):
                             ctx, **self._mini_agent._static_kwargs, **self._function_kwargs
                         )
                 finally:
-                    await asyncio.gather(*ctx._tasks_to_wait_for, return_exceptions=True)
+                    await ctx.await_for_subtasks()
 
             return AgentCallNode(  # TODO Oleksandr: why not "persist" this node before the agent function finishes ?
                 messages=await self._input_sequence_promise,

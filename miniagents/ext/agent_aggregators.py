@@ -5,8 +5,9 @@ This module contains agents that are used to aggregate other agents into chains,
 from typing import Union, Iterable, Optional
 
 from miniagents.ext.history_agents import in_memory_history_agent
-from miniagents.ext.misc_agents import console_echo_agent, console_prompt_agent
+from miniagents.ext.misc_agents import console_output_agent, console_input_agent
 from miniagents.messages import MessageSequencePromise
+from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
 
@@ -16,8 +17,8 @@ _DEFAULT_IN_MEMORY_HISTORY_AGENT = in_memory_history_agent.fork(message_list=[])
 @miniagent
 async def user_agent(
     ctx: InteractionContext,
-    echo_agent: Optional[MiniAgent],
-    prompt_agent: Optional[MiniAgent],  # TODO Oleksandr: rename prompt_agent to input_agent ?
+    output_agent: Optional[MiniAgent],
+    input_agent: Optional[MiniAgent],
     history_agent: Optional[MiniAgent] = _DEFAULT_IN_MEMORY_HISTORY_AGENT,
 ) -> None:
     """
@@ -25,10 +26,10 @@ async def user_agent(
     chat history as a reply (so it can be further submitted to an LLM agent, for example).
     TODO Oleksandr: add more details
     """
-    ctx.reply(agent_chain.fork(agents=[echo_agent, prompt_agent, history_agent]).inquire(ctx.message_promises))
+    ctx.reply(agent_chain.fork(agents=[output_agent, input_agent, history_agent]).inquire(ctx.message_promises))
 
 
-console_user_agent = user_agent.fork(echo_agent=console_echo_agent, prompt_agent=console_prompt_agent)
+console_user_agent = user_agent.fork(output_agent=console_output_agent, input_agent=console_input_agent)
 
 
 # noinspection PyShadowingNames
@@ -39,20 +40,42 @@ async def dialog_loop(
     assistant_agent: Optional[MiniAgent],
 ) -> None:
     """
-    Run a loop that chains the user agent and the assistant agent in a dialog.
-    TODO Oleksandr: add more details
+    Run a loop that chains the user agent and the assistant agent in a dialog. The `dialog_loop` agent uses
+    its own incoming messages as a prompt to the assistant agent and doesn't share his own incoming messages
+    the user agent (which also means that they aren't shared with the underlying `history_agent` and don't
+    show up in chat history as a result).
     """
     ctx.reply(
         agent_loop.fork(
             agents=[
                 user_agent,
-                AWAIT,  # TODO Oleksandr: explain this with an inline comment
-                assistant_agent,
+                AWAIT,
+                prompt_agent.fork(target_agent=assistant_agent, prompt_prefix=ctx.message_promises),
             ],
             raise_keyboard_interrupt=False,
-        ).inquire(
-            # TODO Oleksandr: "starting" messages should be treated as a prompt and should not go to the chat history
-            ctx.message_promises
+        ).inquire()
+    )
+
+
+@miniagent
+async def prompt_agent(
+    ctx: InteractionContext,
+    target_agent: MiniAgent,
+    prompt_prefix: MessageType = (),
+    prompt_suffix: MessageType = (),
+    **target_kwargs,
+):
+    """
+    An agent that prompts the target agent with the given messages and then replies with the target agent's response.
+    """
+    ctx.reply(
+        target_agent.inquire(
+            [
+                prompt_prefix,
+                ctx.message_promises,
+                prompt_suffix,
+            ],
+            **target_kwargs,
         )
     )
 

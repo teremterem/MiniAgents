@@ -66,7 +66,7 @@ class LLMAgent:
         )
         # we already know that there will be no more response messages, so we close the response sequence
         # (we are closing the sequence of response messages, not the sequence of message tokens)
-        self.ctx.finish_early()
+        await self.ctx.afinish_early()
 
     @staticmethod
     def _message_to_llm_dict(message: Message) -> dict[str, Any]:

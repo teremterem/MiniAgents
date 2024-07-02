@@ -8,10 +8,10 @@ from typing import Union
 import pytest
 
 from miniagents import MiniAgents, miniagent, InteractionContext
-from miniagents.promising.sentinels import DEFAULT, Sentinel
+from miniagents.promising.sentinels import Sentinel
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None:
     """
@@ -40,8 +40,8 @@ async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None
             await replies1
             await replies2
 
-    if start_asap is DEFAULT or start_asap is True:
-        # for MiniAgents() True is the DEFAULT
+    if start_asap in [True, None]:
+        # `start_asap` is True by default in `MiniAgents()`
         assert event_sequence == [
             "agent1 - start",
             "agent2 - start",
@@ -58,7 +58,7 @@ async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None
         ]
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_sub_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None:
     """
@@ -91,8 +91,8 @@ async def test_sub_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> 
             # for their respective functions to be called
             await replies
 
-    if start_asap is DEFAULT or start_asap is True:
-        # for MiniAgents() True is the DEFAULT
+    if start_asap in [True, None]:
+        # `start_asap` is True by default in `MiniAgents()`
         assert event_sequence == [
             "agent1 - start",
             "agent2 - start",

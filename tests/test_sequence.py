@@ -7,11 +7,10 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promising.promising import PromisingContext, StreamAppender
-from miniagents.promising.sentinels import DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_flat_sequence(start_asap: bool) -> None:
     """
