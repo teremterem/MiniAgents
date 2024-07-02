@@ -173,7 +173,9 @@ class MiniAgent:
             if normalize_func_or_class_name:
                 # split `self.alias` by capitalization, assuming it is in camel case
                 # (if it is not, it will not be split)
-                self.alias = "_".join(part for part in re.findall(".+?(?=[A-Z]|$)", self.alias))
+                self.alias = "_".join(
+                    part for part in re.findall(r"[A-Z][a-z]+?(?=[A-Z]+$)|.+?(?=[A-Z][a-z]|$)", self.alias)
+                )
                 self.alias = self.alias.upper()
 
         self.description = description
