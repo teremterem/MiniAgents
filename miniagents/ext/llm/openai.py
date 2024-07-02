@@ -10,7 +10,7 @@ from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
 from miniagents.messages import MessageTokenAppender
-from miniagents.miniagents import MiniAgent, miniagent, MiniAgents, InteractionContext
+from miniagents.miniagents import MiniAgent, miniagent, InteractionContext
 
 if typing.TYPE_CHECKING:
     import openai as openai_original
@@ -52,9 +52,6 @@ class OpenAIAgent(LLMAgent):
         self.system = system
         self.async_client = async_client or _default_openai_client()
         self.other_kwargs = other_kwargs
-
-        if self.stream is None:
-            self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def __call__(self) -> None:
         message_dicts = await self._prepare_message_dicts()
