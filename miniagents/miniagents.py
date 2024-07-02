@@ -293,14 +293,18 @@ class InteractionContext:
 
     async def await_for_subtasks(self) -> None:
         """
-        Wait for all the awaitables that were fed into the `wait_for` method to finish.
+        Wait for all the awaitables that were fed into the `wait_for` method to finish. If this method is not called
+        in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's reply
+        sequence is closed.
         """
         await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
 
-    def finish_early(self) -> None:
+    async def afinish_early(self, await_for_subtasks: bool = True) -> None:
         """
         TODO Oleksandr: docstring
         """
+        if await_for_subtasks:
+            await self.await_for_subtasks()
         self._reply_streamer.close()
 
 
