@@ -3,13 +3,32 @@ Make all the functions and classes in agent_aggregators, history_agents, and mis
 available at the package level.
 """
 
-from miniagents.ext import agent_aggregators, history_agents, misc_agents
-from miniagents.ext.agent_aggregators import *
-from miniagents.ext.history_agents import *
-from miniagents.ext.misc_agents import *
-
-__all__ = (
-    [name for name in dir(agent_aggregators) if not name.startswith("_")]
-    + [name for name in dir(history_agents) if not name.startswith("_")]
-    + [name for name in dir(misc_agents) if not name.startswith("_")]
+from miniagents.ext.agent_aggregators import (
+    agent_chain,
+    agent_loop,
+    console_user_agent,
+    dialog_loop,
+    user_agent,
 )
+from miniagents.ext.history_agents import (
+    in_memory_history_agent,
+    MarkdownHistoryAgent,
+)
+from miniagents.ext.misc_agents import (
+    console_echo_agent,
+    console_prompt_agent,
+    file_agent,
+)
+
+__all__ = [
+    "agent_chain",
+    "agent_loop",
+    "console_echo_agent",
+    "console_prompt_agent",
+    "console_user_agent",
+    "dialog_loop",
+    "file_agent",
+    "in_memory_history_agent",
+    "MarkdownHistoryAgent",
+    "user_agent",
+]
