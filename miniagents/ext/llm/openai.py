@@ -10,11 +10,7 @@ from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
 from miniagents.messages import MessageTokenAppender
-from miniagents.miniagents import (
-    miniagent,
-    MiniAgents,
-    InteractionContext,
-)
+from miniagents.miniagents import MiniAgent, miniagent, MiniAgents, InteractionContext
 
 if typing.TYPE_CHECKING:
     import openai as openai_original
@@ -28,94 +24,112 @@ class OpenAIMessage(AssistantMessage):
     """
 
 
+# this is for pylint to understand that `OpenAIAgent` becomes an instance of `MiniAgent` after decoration
+OpenAIAgent: MiniAgent
+
+
 @miniagent
-async def openai_agent(
-    ctx: InteractionContext,
-    model: str,
-    stream: Optional[bool] = None,
-    system: Optional[str] = None,
-    n: int = 1,
-    async_client: Optional["openai_original.AsyncOpenAI"] = None,
-    reply_metadata: Optional[dict[str, Any]] = None,
-    **kwargs,
-) -> None:
+class OpenAIAgent:
     """
     An agent that represents Large Language Models by OpenAI.
     """
-    if not async_client:
-        async_client = _default_openai_client()
 
-    if stream is None:
-        stream = MiniAgents.get_current().stream_llm_tokens_by_default
+    def __init__(
+        self,
+        ctx: InteractionContext,
+        model: str,
+        stream: Optional[bool] = None,
+        system: Optional[str] = None,
+        n: int = 1,
+        async_client: Optional["openai_original.AsyncOpenAI"] = None,
+        reply_metadata: Optional[dict[str, Any]] = None,
+        **other_kwargs,
+    ) -> None:
+        if n != 1:
+            raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
-    if n != 1:
-        raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
+        self.ctx = ctx
+        self.model = model
+        self.stream = stream
+        self.system = system
+        self.async_client = async_client
+        self.reply_metadata = reply_metadata
+        self.other_kwargs = other_kwargs
 
-    if system is None:
-        message_dicts = []
-    else:
-        message_dicts = [
-            {
-                "role": "system",
-                "content": system,
-            },
-        ]
-    message_dicts.extend(message_to_llm_dict(msg) for msg in await ctx.message_promises)
+        if not self.async_client:
+            self.async_client = _default_openai_client()
 
-    if logger.isEnabledFor(logging.DEBUG):
-        logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
+        if self.stream is None:
+            self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
-    with MessageTokenAppender(capture_errors=True) as token_appender:
-        ctx.reply(
-            OpenAIMessage.promise(
-                start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
-                message_token_streamer=token_appender,
-                # preliminary metadata:
-                model=model,
-                agent_alias=ctx.this_agent.alias,
-                **(reply_metadata or {}),
+    async def __call__(self) -> None:
+        if self.system is None:
+            message_dicts = []
+        else:
+            message_dicts = [
+                {
+                    "role": "system",
+                    "content": self.system,
+                },
+            ]
+        message_dicts.extend(message_to_llm_dict(msg) for msg in await self.ctx.message_promises)
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
+
+        with MessageTokenAppender(capture_errors=True) as token_appender:
+            self.ctx.reply(
+                OpenAIMessage.promise(
+                    start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
+                    message_token_streamer=token_appender,
+                    # preliminary metadata:
+                    model=self.model,
+                    agent_alias=self.ctx.this_agent.alias,
+                    **(self.reply_metadata or {}),
+                )
             )
-        )
-        # we already know that we there will be no more response messages, so we close the response sequence
-        # (we are closing the sequence of response messages, not the sequence of message tokens)
-        ctx.finish_early()
+            # we already know that we there will be no more response messages, so we close the response sequence
+            # (we are closing the sequence of response messages, not the sequence of message tokens)
+            self.ctx.finish_early()
 
-        openai_response = await async_client.chat.completions.create(
-            messages=message_dicts, model=model, stream=stream, **kwargs
-        )
-        if stream:
-            async for chunk in openai_response:
-                if len(chunk.choices) != 1:  # TODO Oleksandr: do I really need to check it for every token ?
+            openai_response = await self.async_client.chat.completions.create(
+                messages=message_dicts, model=self.model, stream=self.stream, **self.other_kwargs
+            )
+            if self.stream:
+                async for chunk in openai_response:
+                    if len(chunk.choices) != 1:  # TODO Oleksandr: do I really need to check it for every token ?
+                        raise RuntimeError(
+                            f"exactly one Choice was expected from OpenAI, "
+                            f"but {len(openai_response.choices)} were returned instead"
+                        )
+                    token = chunk.choices[0].delta.content
+                    if token:
+                        token_appender.append(token)
+
+                    token_appender.metadata_so_far["role"] = (
+                        chunk.choices[0].delta.role or token_appender.metadata_so_far["role"]
+                    )
+                    _merge_openai_dicts(
+                        token_appender.metadata_so_far,
+                        chunk.model_dump(
+                            exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}
+                        ),
+                    )
+            else:
+                if len(openai_response.choices) != 1:
                     raise RuntimeError(
                         f"exactly one Choice was expected from OpenAI, "
                         f"but {len(openai_response.choices)} were returned instead"
                     )
-                token = chunk.choices[0].delta.content
-                if token:
-                    token_appender.append(token)
+                # send the complete message text as a single token
+                token_appender.append(openai_response.choices[0].message.content)
 
-                token_appender.metadata_so_far["role"] = (
-                    chunk.choices[0].delta.role or token_appender.metadata_so_far["role"]
+                token_appender.metadata_so_far["role"] = openai_response.choices[0].message.role
+                token_appender.metadata_so_far.update(
+                    openai_response.model_dump(
+                        exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
+                    )
                 )
-                _merge_openai_dicts(
-                    token_appender.metadata_so_far,
-                    chunk.model_dump(exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}),
-                )
-        else:
-            if len(openai_response.choices) != 1:
-                raise RuntimeError(
-                    f"exactly one Choice was expected from OpenAI, "
-                    f"but {len(openai_response.choices)} were returned instead"
-                )
-            # send the complete message text as a single token
-            token_appender.append(openai_response.choices[0].message.content)
-
-            token_appender.metadata_so_far["role"] = openai_response.choices[0].message.role
-            token_appender.metadata_so_far.update(
-                openai_response.model_dump(
-                    exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
-                )
-            )
 
 
 @cache

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from miniagents import MiniAgents
 from miniagents.ext import dialog_loop, console_user_agent
-from miniagents.ext.llm import SystemMessage, openai_agent
+from miniagents.ext.llm import SystemMessage, OpenAIAgent
 
 load_dotenv()
 
@@ -19,7 +19,7 @@ async def main() -> None:
     """
     await dialog_loop.fork(
         user_agent=console_user_agent,
-        assistant_agent=openai_agent.fork(model="gpt-4o-2024-05-13"),
+        assistant_agent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"),
     ).inquire(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences that the user throws at you. "

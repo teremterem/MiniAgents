@@ -82,13 +82,13 @@ below. ⚠️
 
 ```python
 from miniagents import MiniAgents
-from miniagents.ext.llm import openai_agent
+from miniagents.ext.llm import OpenAIAgent
 
 # NOTE: "Forking" an agent is a convenient way of creating a new agent instance
 # with the specified configuration. Alternatively, you could pass the `model`
-# parameter to `openai_agent.inquire()` directly everytime you talk to the
+# parameter to `OpenAIAgent.inquire()` directly everytime you talk to the
 # agent.
-gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
+gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-2024-05-13")
 
 
 async def main():
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 ```
 
 Even though OpenAI models return a single assistant response, the
-`openai_agent.inquire()` method is still designed to return a sequence of
+`OpenAIAgent.inquire()` method is still designed to return a sequence of
 multiple message promises. This generalizes to arbitrary agents, making agents
 in the MiniAgents framework easily interchangeable (agents in this framework
 support sending and receiving zero or more messages).
@@ -126,12 +126,12 @@ message text will just be returned as a single "token" in the latter case.
 The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop
 between a user agent and an assistant agent. Here is how you can use it to set
 up an interaction between a user and your agent (can be bare LLM agent, like
-`openai_agent` or `AnthropicAgent`, can also be a custom agent that you define
+`OpenAIAgent` or `AnthropicAgent`, can also be a custom agent that you define
 yourself):
 
 ⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your
 Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
-the example below (or just replace `AnthropicAgent` with `openai_agent` and
+the example below (or just replace `AnthropicAgent` with `OpenAIAgent` and
 `"claude-3-5-sonnet-20240620"` with `"gpt-4o-2024-05-13"` if you already set up
 the previous example). ⚠️
 

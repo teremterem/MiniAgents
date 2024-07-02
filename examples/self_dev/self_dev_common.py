@@ -8,16 +8,16 @@ from dotenv import load_dotenv
 
 from miniagents import MiniAgents, Message
 from miniagents.ext import markdown_history_agent
-from miniagents.ext.llm import AnthropicAgent, openai_agent
+from miniagents.ext.llm import AnthropicAgent, OpenAIAgent
 
 load_dotenv()
 
 MAX_OUTPUT_TOKENS = 4096
 
 MODEL_AGENT_FACTORIES = {
-    "gpt-4o-2024-05-13": openai_agent.fork(temperature=0),
-    "gpt-4-turbo-2024-04-09": openai_agent.fork(temperature=0),
-    "gpt-3.5-turbo-0125": openai_agent.fork(temperature=0),
+    "gpt-4o-2024-05-13": OpenAIAgent.fork(temperature=0),
+    "gpt-4-turbo-2024-04-09": OpenAIAgent.fork(temperature=0),
+    "gpt-3.5-turbo-0125": OpenAIAgent.fork(temperature=0),
     "claude-3-5-sonnet-20240620": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-opus-20240229": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-haiku-20240307": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
