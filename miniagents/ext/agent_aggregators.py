@@ -7,6 +7,7 @@ from typing import Union, Iterable, Optional
 from miniagents.ext.history_agents import in_memory_history_agent
 from miniagents.ext.misc_agents import console_output_agent, console_input_agent
 from miniagents.messages import MessageSequencePromise
+from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
 
@@ -39,20 +40,42 @@ async def dialog_loop(
     assistant_agent: Optional[MiniAgent],
 ) -> None:
     """
-    Run a loop that chains the user agent and the assistant agent in a dialog.
-    TODO Oleksandr: add more details
+    Run a loop that chains the user agent and the assistant agent in a dialog. The `dialog_loop` agent uses
+    its own incoming messages as a prompt to the assistant agent and doesn't share his own incoming messages
+    the user agent (which also means that they aren't shared with the underlying `history_agent` and don't
+    show up in chat history as a result).
     """
     ctx.reply(
         agent_loop.fork(
             agents=[
                 user_agent,
-                AWAIT,  # TODO Oleksandr: explain this with an inline comment
-                assistant_agent,
+                AWAIT,
+                prompt_agent.fork(target_agent=assistant_agent, prompt_prefix=ctx.message_promises),
             ],
             raise_keyboard_interrupt=False,
-        ).inquire(
-            # TODO Oleksandr: "starting" messages should be treated as a prompt and should not go to the chat history
-            ctx.message_promises
+        ).inquire()
+    )
+
+
+@miniagent
+async def prompt_agent(
+    ctx: InteractionContext,
+    target_agent: MiniAgent,
+    prompt_prefix: MessageType = (),
+    prompt_suffix: MessageType = (),
+    **target_kwargs,
+):
+    """
+    An agent that prompts the target agent with the given messages and then replies with the target agent's response.
+    """
+    ctx.reply(
+        target_agent.inquire(
+            [
+                prompt_prefix,
+                ctx.message_promises,
+                prompt_suffix,
+            ],
+            **target_kwargs,
         )
     )
 
