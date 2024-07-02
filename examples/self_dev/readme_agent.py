@@ -2,8 +2,6 @@
 This agent is a part of the self-development process. It is designed to improve the README file of the MiniAgents.
 """
 
-import asyncio
-
 from dotenv import load_dotenv
 
 from examples.self_dev.self_dev_common import (
@@ -46,7 +44,6 @@ async def readme_agent(ctx: InteractionContext) -> None:
 
         token_appender.append(f"Generating {len(MODEL_AGENTS)} variants of README.md\n\n")
 
-        report_tasks = []
         # start all model agents in parallel
         for model, model_agent in MODEL_AGENTS.items():
             md_file_name = f"README__{model}.md"
@@ -55,11 +52,9 @@ async def readme_agent(ctx: InteractionContext) -> None:
                 model_agent.inquire(prompt),
                 file=str(MINIAGENTS_ROOT / md_file_name),
             )
-            report_tasks.append(mini_agents.start_asap(_report_file_written(md_file_name, model_response)))
+            ctx.wait_for(_report_file_written(md_file_name, model_response))
 
-        # TODO Oleksandr: instead of having to "gather" these tasks, make sure all spawned tasks are awaited before the
-        #  agent exits ? no, that would be a disaster, you need something else
-        await asyncio.gather(*report_tasks, return_exceptions=True)
+        await ctx.await_for_subtasks()
 
         token_appender.append("\nALL DONE")
 

@@ -89,16 +89,15 @@ class PromisingContext:
         return handler
 
     def start_asap(
-        self,
-        awaitable: Awaitable,
-        suppress_errors: bool = False,
-        log_level_for_errors: int = logging.DEBUG,
+        self, awaitable: Awaitable, suppress_errors: bool = True, log_level_for_errors: Optional[int] = None
     ) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
-        before finalizing the context.
+        before finalizing the global context.
         """
+        if log_level_for_errors is None:
+            log_level_for_errors = self.log_level_for_errors
 
         async def awaitable_wrapper() -> Any:
             # pylint: disable=broad-except
@@ -197,9 +196,7 @@ class Promise(Generic[T]):
         self._resolver_lock = asyncio.Lock()
 
         if start_asap and prefill_result is NO_VALUE:
-            promising_context.start_asap(
-                self, suppress_errors=True, log_level_for_errors=promising_context.log_level_for_errors
-            )
+            promising_context.start_asap(self)
 
     async def _resolver(self) -> T:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -235,11 +232,7 @@ class Promise(Generic[T]):
         promising_context = PromisingContext.get_current()
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
-                promising_context.start_asap(
-                    handler(self, self._result),
-                    suppress_errors=True,
-                    log_level_for_errors=promising_context.log_level_for_errors,
-                )
+                promising_context.start_asap(handler(self, self._result))
             promising_context = promising_context.parent
 
 
@@ -295,11 +288,7 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
         if start_asap and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.start_asap(
-                self._aconsume_the_stream(),
-                suppress_errors=True,
-                log_level_for_errors=promising_context.log_level_for_errors,
-            )
+            promising_context.start_asap(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None

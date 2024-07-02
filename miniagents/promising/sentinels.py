@@ -13,7 +13,7 @@ class Sentinel:
 
 
 NO_VALUE = Sentinel()
-DEFAULT = Sentinel()
+DEFAULT = Sentinel()  # TODO Oleksandr: right now it seems that in all cases None could be used instead of DEFAULT
 FAILED = Sentinel()
 END_OF_QUEUE = Sentinel()
 AWAIT = Sentinel()
