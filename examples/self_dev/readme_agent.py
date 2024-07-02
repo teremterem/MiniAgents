@@ -16,7 +16,7 @@ from examples.self_dev.self_dev_common import (
     PROMPT_LOG_PATH_PREFIX,
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
-from miniagents import miniagent, InteractionContext, StreamAppender, Message, MessageSequencePromise
+from miniagents import miniagent, InteractionContext, Message, MessageSequencePromise, MessageTokenAppender
 from miniagents.ext import file_agent, dialog_loop, MarkdownHistoryAgent, console_user_agent
 from miniagents.ext.llm import SystemMessage
 
@@ -37,14 +37,13 @@ async def readme_agent(ctx: InteractionContext) -> None:
     ]
     await prompt_logger_agent.inquire(prompt, history_md_file=f"{PROMPT_LOG_PATH_PREFIX}{ctx.this_agent.alias}.md")
 
-    token_appender = StreamAppender[str]()
-    ctx.reply(Message.promise(message_token_streamer=token_appender))
-
     async def _report_file_written(_md_file_name: str, _model_response: MessageSequencePromise) -> None:
         await _model_response
         token_appender.append(f"{_md_file_name}\n")
 
-    with token_appender:
+    with MessageTokenAppender() as token_appender:
+        ctx.reply(Message.promise(message_token_streamer=token_appender))
+
         token_appender.append(f"Generating {len(MODEL_AGENTS)} variants of README.md\n\n")
 
         report_tasks = []
