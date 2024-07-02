@@ -6,8 +6,9 @@ from functools import cached_property
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
 from miniagents.miniagent_typing import MessageTokenStreamer
+from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen
-from miniagents.promising.promising import StreamedPromise
+from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 
@@ -147,7 +148,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     def __init__(
         self,
         start_asap: Union[bool, Sentinel] = DEFAULT,
-        message_token_streamer: Optional[MessageTokenStreamer] = None,
+        message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
         **preliminary_metadata,
@@ -164,7 +165,17 @@ class MessagePromise(StreamedPromise[str, Message]):
             )
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
-            self._metadata_so_far = self.preliminary_metadata.frozen_fields_and_values()
+            if isinstance(message_token_streamer, MessageTokenAppender):
+                if not message_token_streamer.was_open:
+                    # this check prevents potential deadlocks
+                    raise AppenderNotOpenError(
+                        "The MessageTokenAppender must be opened before it can be used. Put this statement "
+                        "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
+                    )
+                self._metadata_so_far = message_token_streamer.metadata_so_far
+                self._metadata_so_far.update(self.preliminary_metadata.frozen_fields_and_values())
+            else:
+                self._metadata_so_far = self.preliminary_metadata.frozen_fields_and_values()
 
             self._message_token_streamer = message_token_streamer
             self._message_class = message_class
@@ -193,3 +204,22 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
         from miniagents.utils import join_messages  # pylint: disable=import-outside-toplevel
 
         return join_messages(self, start_asap=False, **kwargs)
+
+
+class MessageTokenAppender(StreamAppender[str]):
+    """
+    A stream appender that appends message tokens to the message promise. It also maintains `metadata_so_far`
+    dictionary so metadata can be added as tokens are appended.
+    """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._metadata_so_far = {}
+
+    @property
+    def metadata_so_far(self) -> dict[str, Any]:
+        """
+        This property protects `_metadata_so_far` dictionary from being replaced completely. You should only modify
+        it, not replace it.
+        """
+        return self._metadata_so_far

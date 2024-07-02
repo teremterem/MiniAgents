@@ -8,14 +8,14 @@ from dotenv import load_dotenv
 
 from miniagents import MiniAgents, Message
 from miniagents.ext import console_echo_agent
-from miniagents.ext.llm.openai import openai_agent
+from miniagents.ext.llm import OpenAIAgent
 
 load_dotenv()
 
 # logging.basicConfig(level=logging.DEBUG)
 
-# llm_agent = anthropic_agent.fork(model="claude-3-haiku-20240307")  # claude-3-opus-20240229
-llm_agent = openai_agent.fork(model="gpt-4o-2024-05-13")  # gpt-3.5-turbo-0125
+# llm_agent = AnthropicAgent.fork(model="claude-3-haiku-20240307")  # claude-3-opus-20240229
+llm_agent = OpenAIAgent.fork(model="gpt-4o-2024-05-13")  # gpt-3.5-turbo-0125
 
 mini_agents = MiniAgents()
 

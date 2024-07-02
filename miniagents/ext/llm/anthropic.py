@@ -1,4 +1,3 @@
-# pylint: disable=duplicate-code,import-outside-toplevel
 """
 This module integrates Anthropic language models with MiniAgents.
 """
@@ -7,10 +6,11 @@ import logging
 import typing
 from functools import cache
 from pprint import pformat
-from typing import AsyncIterator, Any, Optional
+from typing import Any, Optional
 
-from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
-from miniagents.miniagents import miniagent, MiniAgents, InteractionContext
+from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
+from miniagents.messages import MessageTokenAppender
+from miniagents.miniagents import MiniAgent, miniagent, InteractionContext
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
@@ -24,93 +24,135 @@ class AnthropicMessage(AssistantMessage):
     """
 
 
+# this is for pylint to understand that `AnthropicAgent` becomes an instance of `MiniAgent` after decoration
+AnthropicAgent: MiniAgent
+
+
 @miniagent
-async def anthropic_agent(
-    ctx: InteractionContext,
-    model: str,
-    stream: Optional[bool] = None,
-    system: Optional[str] = None,
-    fake_first_user_message: str = "/start",
-    message_delimiter_for_same_role: str = "\n\n",
-    async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
-    reply_metadata: Optional[dict[str, Any]] = None,
-    **kwargs,
-) -> None:
+class AnthropicAgent(LLMAgent):
     """
     An agent that represents Large Language Models by Anthropic.
     """
-    if not async_client:
-        async_client = _default_anthropic_client()
 
-    if stream is None:
-        stream = MiniAgents.get_current().stream_llm_tokens_by_default
+    def __init__(
+        self,
+        ctx: InteractionContext,
+        model: str,
+        stream: Optional[bool] = None,
+        system: Optional[str] = None,
+        fake_first_user_message: str = "/start",
+        message_delimiter_for_same_role: str = "\n\n",
+        async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
+        reply_metadata: Optional[dict[str, Any]] = None,
+        **other_kwargs,
+    ) -> None:
+        super().__init__(ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata)
+        self.system = system
+        self.fake_first_user_message = fake_first_user_message
+        self.message_delimiter_for_same_role = message_delimiter_for_same_role
+        self.async_client = async_client or _default_anthropic_client()
+        self.other_kwargs = other_kwargs
 
-    async def message_token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
-        message_dicts = [message_to_llm_dict(msg) for msg in await ctx.message_promises]
-        message_dicts = _fix_message_dicts(
-            message_dicts,
-            fake_first_user_message=fake_first_user_message,
-            message_delimiter_for_same_role=message_delimiter_for_same_role,
-        )
-
-        if message_dicts and message_dicts[-1]["role"] == "system":
-            # let's strip away the system message at the end
-            system_message_dict = message_dicts.pop()
-            system_combined = (
-                system_message_dict["content"]
-                if system is None
-                else f"{system}{message_delimiter_for_same_role}{system_message_dict['content']}"
-            )
-        else:
-            system_combined = system
-
-        if system_combined is None:
-            # noinspection PyShadowingNames
-            import anthropic as anthropic_original
-
-            system_combined = anthropic_original.NOT_GIVEN
+    async def __call__(self) -> None:
+        message_dicts = await self._prepare_message_dicts()
+        resulting_system_message = await self._cut_off_system_message(message_dicts)
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(
-                "SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n", pformat(message_dicts), pformat(system_combined)
+                "SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n",
+                pformat(message_dicts),
+                pformat(resulting_system_message),
             )
 
-        if stream:
-            # pylint: disable=not-async-context-manager
-            async with async_client.messages.stream(
-                messages=message_dicts, system=system_combined, model=model, **kwargs
+        with MessageTokenAppender(capture_errors=True) as token_appender:
+            await self._promise_and_close(token_appender, AnthropicMessage)
+            await self._produce_tokens(token_appender, message_dicts, resulting_system_message)
+
+    async def _produce_tokens(
+        self, token_appender: MessageTokenAppender, message_dicts: list[dict[str, Any]], system_message: str
+    ) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        if self.stream:
+            async with self.async_client.messages.stream(
+                messages=message_dicts, system=system_message, model=self.model, **self.other_kwargs
             ) as response:
                 async for token in response.text_stream:
-                    yield token
+                    token_appender.append(token)
                 anthropic_final_message = await response.get_final_message()
         else:
-            anthropic_final_message = await async_client.messages.create(
-                messages=message_dicts, stream=False, system=system_combined, model=model, **kwargs
+            anthropic_final_message = await self.async_client.messages.create(
+                messages=message_dicts, stream=False, system=system_message, model=self.model, **self.other_kwargs
             )
             if len(anthropic_final_message.content) != 1:
                 raise RuntimeError(
                     f"exactly one TextBlock was expected from Anthropic, "
                     f"but {len(anthropic_final_message.content)} were returned instead"
                 )
-            yield anthropic_final_message.content[0].text  # yield the whole text as one "piece"
+            # send the complete message text as a single token
+            token_appender.append(anthropic_final_message.content[0].text)
+        token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 
-        metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
+    async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
+        """
+        TODO Oleksandr: docstring
+        """
+        message_dicts = [self._message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
+        if not message_dicts:
+            return []
 
-    ctx.reply(
-        AnthropicMessage.promise(
-            start_asap=True,  # TODO Oleksandr: should this be customizable ?
-            message_token_streamer=message_token_streamer,
-            # preliminary metadata:
-            model=model,
-            agent_alias=ctx.this_agent.alias,
-            **(reply_metadata or {}),
-        )
-    )
+        # let's put all the system messages at the end (they will later be combined into a single message
+        # and stripped away)
+        non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
+        system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
+        message_dicts = non_system_message_dicts + system_message_dicts
+
+        fixed_message_dicts = []
+        if message_dicts[0]["role"] != "user":
+            # Anthropic requires the first message to come from the user (system messages don't count -
+            # their content will go into a separate, `system` parameter of the API call)
+            fixed_message_dicts.append({"role": "user", "content": self.fake_first_user_message})
+
+        # if multiple messages with the same role are sent in a row, they should be concatenated
+        for message_dict in message_dicts:
+            if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
+                fixed_message_dicts[-1]["content"] += self.message_delimiter_for_same_role + message_dict["content"]
+            else:
+                fixed_message_dicts.append(message_dict)
+
+        return fixed_message_dicts
+
+    async def _cut_off_system_message(self, message_dicts: list[dict[str, Any]]) -> str:
+        """
+        TODO Oleksandr: docstring
+        """
+        if message_dicts and message_dicts[-1]["role"] == "system":
+            # let's strip away the system message at the end (look at the implementation of `_fix_message_dicts()`
+            # to see why it's there)
+            system_message_dict = message_dicts.pop()
+            resulting_system_message = (
+                system_message_dict["content"]
+                if self.system is None
+                else f"{self.system}{self.message_delimiter_for_same_role}{system_message_dict['content']}"
+            )
+        else:
+            resulting_system_message = self.system
+
+        if resulting_system_message is None:
+            # pylint: disable=import-outside-toplevel
+            # noinspection PyShadowingNames
+            import anthropic as anthropic_original
+
+            resulting_system_message = anthropic_original.NOT_GIVEN
+
+        return resulting_system_message
 
 
 @cache
 def _default_anthropic_client() -> "anthropic_original.AsyncAnthropic":
     try:
+        # pylint: disable=import-outside-toplevel
         # noinspection PyShadowingNames
         import anthropic as anthropic_original
     except ModuleNotFoundError as exc:
@@ -120,30 +162,3 @@ def _default_anthropic_client() -> "anthropic_original.AsyncAnthropic":
         ) from exc
 
     return anthropic_original.AsyncAnthropic()
-
-
-def _fix_message_dicts(
-    message_dicts: list[dict[str, Any]], fake_first_user_message: str, message_delimiter_for_same_role: str
-) -> list[dict[str, Any]]:
-    if not message_dicts:
-        return []
-
-    # let's put all the system messages at the end (they will be stripped away)
-    non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
-    system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
-    message_dicts = non_system_message_dicts + system_message_dicts
-
-    fixed_message_dicts = []
-    if message_dicts[0]["role"] != "user":
-        # Anthropic requires the first message to come from the user (system messages don't count - their content
-        # will go into a separate, `system` parameter of the API call)
-        fixed_message_dicts.append({"role": "user", "content": fake_first_user_message})
-
-    # if multiple messages with the same role are sent in a row, they should be concatenated
-    for message_dict in message_dicts:
-        if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
-            fixed_message_dicts[-1]["content"] += message_delimiter_for_same_role + message_dict["content"]
-        else:
-            fixed_message_dicts.append(message_dict)
-
-    return fixed_message_dicts
