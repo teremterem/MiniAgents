@@ -5,7 +5,7 @@ This module contains agents that are used to aggregate other agents into chains,
 from typing import Union, Iterable, Optional
 
 from miniagents.ext.history_agents import in_memory_history_agent
-from miniagents.ext.misc_agents import console_echo_agent, console_prompt_agent
+from miniagents.ext.misc_agents import console_output_agent, console_input_agent
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
@@ -16,8 +16,8 @@ _DEFAULT_IN_MEMORY_HISTORY_AGENT = in_memory_history_agent.fork(message_list=[])
 @miniagent
 async def user_agent(
     ctx: InteractionContext,
-    echo_agent: Optional[MiniAgent],
-    prompt_agent: Optional[MiniAgent],  # TODO Oleksandr: rename prompt_agent to input_agent ?
+    output_agent: Optional[MiniAgent],
+    input_agent: Optional[MiniAgent],
     history_agent: Optional[MiniAgent] = _DEFAULT_IN_MEMORY_HISTORY_AGENT,
 ) -> None:
     """
@@ -25,10 +25,10 @@ async def user_agent(
     chat history as a reply (so it can be further submitted to an LLM agent, for example).
     TODO Oleksandr: add more details
     """
-    ctx.reply(agent_chain.fork(agents=[echo_agent, prompt_agent, history_agent]).inquire(ctx.message_promises))
+    ctx.reply(agent_chain.fork(agents=[output_agent, input_agent, history_agent]).inquire(ctx.message_promises))
 
 
-console_user_agent = user_agent.fork(echo_agent=console_echo_agent, prompt_agent=console_prompt_agent)
+console_user_agent = user_agent.fork(output_agent=console_output_agent, input_agent=console_input_agent)
 
 
 # noinspection PyShadowingNames

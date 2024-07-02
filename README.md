@@ -255,8 +255,8 @@ example above
 
 ### 📦 Some other pre-packaged agents (`miniagents.ext`)
 
-- `console_echo_agent`: Echoes messages to the console token by token.
-- `console_prompt_agent`: Prompts the user for input via the console.
+- `console_input_agent`: Prompts the user for input via the console.
+- `console_output_agent`: Echoes messages to the console token by token.
 - `user_agent`: A user agent that echoes messages from the agent that called it,
   then reads the user input and returns the user input as its response. This
   agent is an aggregation of the previous two.
@@ -405,13 +405,13 @@ from miniagents import miniagent, InteractionContext, MiniAgents
 
 
 @miniagent
-async def echo_agent(ctx: InteractionContext):
+async def output_agent(ctx: InteractionContext):
     async for msg_promise in ctx.message_promises:
         ctx.reply(f"Echo: {await msg_promise}")
 
 
 async def main():
-    agent_call = echo_agent.initiate_inquiry()
+    agent_call = output_agent.initiate_inquiry()
     agent_call.send_message("Hello")
     agent_call.send_message("World")
     reply_sequence = agent_call.reply_sequence()

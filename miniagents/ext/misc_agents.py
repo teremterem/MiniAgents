@@ -18,7 +18,7 @@ from miniagents.miniagents import miniagent, InteractionContext
 
 
 @miniagent
-async def console_prompt_agent(
+async def console_input_agent(
     ctx: InteractionContext,
     greeting: str = "YOU ARE NOW IN A CHAT WITH AN AI ASSISTANT",
     hide_system_messages: bool = True,
@@ -64,7 +64,7 @@ async def console_prompt_agent(
 
 
 @miniagent
-async def console_echo_agent(
+async def console_output_agent(
     ctx: InteractionContext,
     assistant_style: Union[str, int] = "92;1",
     mention_aliases: bool = True,
@@ -97,7 +97,7 @@ async def console_echo_agent(
 
 
 @miniagent
-async def file_agent(ctx: InteractionContext, file: Union[str, Path]) -> None:
+async def file_output_agent(ctx: InteractionContext, file: Union[str, Path], **kwargs) -> None:
     """
     MiniAgent that writes the content of `messages` to a file.
     """
@@ -111,7 +111,7 @@ async def file_agent(ctx: InteractionContext, file: Union[str, Path]) -> None:
         buffering=1,  # line buffering
         encoding="utf-8",
     ) as file_stream:
-        async for token in ctx.message_promises.as_single_promise():
+        async for token in ctx.message_promises.as_single_promise(**kwargs):
             file_stream.write(token)
 
 

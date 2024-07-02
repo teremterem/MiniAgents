@@ -7,7 +7,7 @@ from pprint import pprint
 from dotenv import load_dotenv
 
 from miniagents import MiniAgents, Message
-from miniagents.ext import console_echo_agent
+from miniagents.ext import console_output_agent
 from miniagents.ext.llm import OpenAIAgent
 
 load_dotenv()
@@ -35,7 +35,7 @@ async def main() -> None:
     """
     Send a message to an LLM agent and print the response.
     """
-    console_echo_agent.inquire(
+    console_output_agent.inquire(
         llm_agent.inquire(
             "How are you today?",
             max_tokens=1000,

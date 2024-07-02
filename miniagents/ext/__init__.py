@@ -15,19 +15,19 @@ from miniagents.ext.history_agents import (
     MarkdownHistoryAgent,
 )
 from miniagents.ext.misc_agents import (
-    console_echo_agent,
-    console_prompt_agent,
-    file_agent,
+    console_input_agent,
+    console_output_agent,
+    file_output_agent,
 )
 
 __all__ = [
     "agent_chain",
     "agent_loop",
-    "console_echo_agent",
-    "console_prompt_agent",
+    "console_input_agent",
+    "console_output_agent",
     "console_user_agent",
     "dialog_loop",
-    "file_agent",
+    "file_output_agent",
     "in_memory_history_agent",
     "MarkdownHistoryAgent",
     "user_agent",
