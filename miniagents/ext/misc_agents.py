@@ -21,7 +21,6 @@ from miniagents.miniagents import miniagent, InteractionContext
 async def console_input_agent(
     ctx: InteractionContext,
     greeting: str = "YOU ARE NOW IN A CHAT WITH AN AI ASSISTANT",
-    hide_system_messages: bool = True,
 ) -> None:
     """
     TODO Oleksandr: docstring
@@ -31,9 +30,6 @@ async def console_input_agent(
 
     # let's wait for all the previous messages to be resolved before we show the user prompt
     messages = await ctx.message_promises
-    if hide_system_messages:
-        messages = [msg for msg in messages if getattr(msg, "role", None) != "system"]
-
     if not messages:
         # if there were no previous messages, we can assume it is the start of a dialog - let's print instructions
         print(
@@ -69,7 +65,6 @@ async def console_output_agent(
     assistant_style: Union[str, int] = "92;1",
     mention_aliases: bool = True,
     default_role: str = "assistant",
-    hide_system_messages: bool = True,
 ) -> None:
     """
     MiniAgent that echoes messages to the console token by token.
@@ -80,9 +75,6 @@ async def console_output_agent(
     #  (to interrupt whoever is producing it) ?
 
     async for msg_promise in ctx.message_promises:
-        if hide_system_messages and getattr(msg_promise.preliminary_metadata, "role", None) == "system":
-            continue
-
         if mention_aliases:
             try:
                 agent_alias = msg_promise.preliminary_metadata.agent_alias
