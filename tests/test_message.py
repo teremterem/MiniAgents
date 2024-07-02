@@ -10,7 +10,6 @@ import pytest
 from miniagents import Message, MiniAgents
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import PromisingContext, Promise
-from miniagents.promising.sentinels import DEFAULT
 
 
 @pytest.mark.asyncio
@@ -71,7 +70,7 @@ async def test_message_nesting_vs_hash_key() -> None:
 
 
 # noinspection PyAsyncCall
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_on_persist_message_event_called_once(start_asap: bool) -> None:
     """
@@ -101,7 +100,7 @@ async def test_on_persist_message_event_called_once(start_asap: bool) -> None:
     assert persist_message_calls == 1
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_on_persist_message_event_called_twice(start_asap: bool) -> None:
     """
@@ -132,7 +131,7 @@ async def test_on_persist_message_event_called_twice(start_asap: bool) -> None:
     assert persist_message_calls == 2
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_on_persist_message_event_not_called(start_asap: bool) -> None:
     """

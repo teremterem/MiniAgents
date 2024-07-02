@@ -20,7 +20,7 @@ from miniagents.promising.promise_typing import (
     PromiseResolvedEventHandler,
     PromiseResolver,
 )
-from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
+from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
 
 logger = logging.getLogger(__name__)
 
@@ -173,14 +173,14 @@ class Promise(Generic[T]):
 
     def __init__(
         self,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if start_asap is DEFAULT:
+        if start_asap is None:
             start_asap = promising_context.start_everything_asap_by_default
 
         if resolver:
@@ -260,12 +260,12 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if start_asap is DEFAULT:
+        if start_asap is None:
             start_asap = promising_context.start_everything_asap_by_default
 
         super().__init__(
@@ -412,14 +412,13 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
     TODO Oleksandr: explain the `capture_errors` parameter
     """
 
-    def __init__(self, capture_errors: Union[bool, Sentinel] = DEFAULT) -> None:
+    def __init__(self, capture_errors: Optional[bool] = None) -> None:
+        if capture_errors is None:
+            capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
+        self._capture_errors = capture_errors
         self._queue = asyncio.Queue()
         self._append_was_open = False
         self._append_closed = False
-        if capture_errors is DEFAULT:
-            self._capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
-        else:
-            self._capture_errors = capture_errors
 
     @property
     def was_open(self) -> bool:

@@ -7,10 +7,9 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promising.promising import StreamedPromise, StreamAppender, PromisingContext
-from miniagents.promising.sentinels import DEFAULT
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_stream_replay_iterator(start_asap: bool) -> None:
     """
@@ -42,7 +41,7 @@ async def test_stream_replay_iterator(start_asap: bool) -> None:
     assert streamer_iterations == 5
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_stream_replay_iterator_exception(start_asap: bool) -> None:
     """
@@ -94,7 +93,7 @@ async def _async_streamer_but_not_generator(_):
         _async_streamer_but_not_generator,
     ],
 )
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_broken_streamer(broken_streamer, start_asap: bool) -> None:
     """
@@ -134,7 +133,7 @@ async def test_broken_streamer(broken_streamer, start_asap: bool) -> None:
         TypeError,
     ],
 )
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_broken_stream_resolver(broken_resolver, start_asap: bool) -> None:
     """
@@ -177,7 +176,7 @@ async def test_broken_stream_resolver(broken_resolver, start_asap: bool) -> None
     assert actual_resolver_call_count == expected_resolver_call_count
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_streamed_promise_aresolve(start_asap: bool) -> None:
     """
@@ -214,7 +213,7 @@ async def test_streamed_promise_aresolve(start_asap: bool) -> None:
         assert result2 is result1  # the promise should always return the exact same instance of the result object
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_stream_appender_dont_capture_errors(start_asap: bool) -> None:
     """
@@ -242,7 +241,7 @@ async def test_stream_appender_dont_capture_errors(start_asap: bool) -> None:
         assert await streamed_promise == [1, 2]
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_streamed_promise_same_instance(start_asap: bool) -> None:
     """

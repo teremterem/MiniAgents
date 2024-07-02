@@ -3,13 +3,12 @@ Utility functions of the MiniAgents framework.
 """
 
 import logging
-from typing import AsyncIterator, Any, Optional, Union
+from typing import AsyncIterator, Any, Optional
 
 # noinspection PyProtectedMember
 from pydantic._internal._model_construction import ModelMetaclass
 
 from miniagents.miniagents import MessageType, MessageSequence, MessagePromise, Message
-from miniagents.promising.sentinels import Sentinel, DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ def join_messages(
     delimiter: Optional[str] = "\n\n",
     strip_leading_newlines: bool = False,
     reference_original_messages: bool = True,
-    start_asap: Union[bool, Sentinel] = DEFAULT,  # TODO Oleksandr: why not just make it False ?
+    start_asap: Optional[bool] = False,
     **message_metadata,
 ) -> MessagePromise:
     """

@@ -15,7 +15,6 @@ from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessa
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseStreamer, PromiseResolvedEventHandler
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
-from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
 logger = logging.getLogger(__name__)
@@ -147,7 +146,8 @@ class MiniAgent:
         func_or_class: Union[AgentFunction, type],
         alias: Optional[str] = None,
         description: Optional[str] = None,
-        # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
+        # TODO Oleksandr: use None (a sentinel for "default") for the following two arguments and put them
+        #  into the `MiniAgents` class
         normalize_func_or_class_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
         interaction_metadata: Optional[dict[str, Any]] = None,
@@ -189,7 +189,7 @@ class MiniAgent:
     def inquire(
         self,
         messages: Optional[MessageType] = None,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         **function_kwargs,
     ) -> MessageSequencePromise:
         """
@@ -202,7 +202,7 @@ class MiniAgent:
 
     def initiate_inquiry(
         self,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         **function_kwargs,
     ) -> "AgentCall":
         """
@@ -381,8 +381,8 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
     def __init__(
         self,
-        appender_capture_errors: Union[bool, Sentinel] = DEFAULT,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        appender_capture_errors: Optional[bool] = None,
+        start_asap: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
     ) -> None:
         if incoming_streamer:

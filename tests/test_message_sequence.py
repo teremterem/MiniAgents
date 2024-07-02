@@ -7,10 +7,9 @@ import pytest
 from miniagents import Message
 from miniagents.miniagents import MessageSequence
 from miniagents.promising.promising import PromisingContext
-from miniagents.promising.sentinels import DEFAULT
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_message_sequence(start_asap: bool) -> None:
     """
@@ -80,7 +79,7 @@ async def test_message_sequence(start_asap: bool) -> None:
         ]
 
 
-@pytest.mark.parametrize("start_asap", [False, True, DEFAULT])
+@pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
 async def test_message_sequence_error(start_asap: bool) -> None:
     """
