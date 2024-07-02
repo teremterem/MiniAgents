@@ -140,7 +140,7 @@ from miniagents import MiniAgents
 from miniagents.ext import (
     dialog_loop,
     console_user_agent,
-    markdown_history_agent,
+    MarkdownHistoryAgent,
 )
 from miniagents.ext.llm import SystemMessage, AnthropicAgent
 
@@ -149,9 +149,9 @@ async def main() -> None:
     await dialog_loop.fork(
         user_agent=console_user_agent.fork(
             # Write chat history to a markdown file (`CHAT.md` in the current
-            # working directory by default, fork `markdown_history_agent` if
+            # working directory by default, fork `MarkdownHistoryAgent` if
             # you want to customize).
-            history_agent=markdown_history_agent
+            history_agent=MarkdownHistoryAgent
         ),
         assistant_agent=AnthropicAgent.fork(
             model="claude-3-5-sonnet-20240620",

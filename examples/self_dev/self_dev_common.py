@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from miniagents import MiniAgents, Message
-from miniagents.ext import markdown_history_agent
+from miniagents.ext import MarkdownHistoryAgent
 from miniagents.ext.llm import AnthropicAgent, OpenAIAgent
 
 load_dotenv()
@@ -42,7 +42,7 @@ PROMPT_LOG_PATH_PREFIX = str(SELF_DEV_TRANSIENT / "PROMPT__")
 
 mini_agents = MiniAgents()
 
-prompt_logger_agent = markdown_history_agent.fork(default_role="user", only_write=True, append=False)
+prompt_logger_agent = MarkdownHistoryAgent.fork(default_role="user", only_write=True, append=False)
 
 
 class RepoFileMessage(Message):
