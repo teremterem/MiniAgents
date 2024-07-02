@@ -52,27 +52,15 @@ class OpenAIAgent:
         self.model = model
         self.stream = stream
         self.system = system
-        self.async_client = async_client
+        self.async_client = async_client or _default_openai_client()
         self.reply_metadata = reply_metadata
         self.other_kwargs = other_kwargs
-
-        if not self.async_client:
-            self.async_client = _default_openai_client()
 
         if self.stream is None:
             self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def __call__(self) -> None:
-        if self.system is None:
-            message_dicts = []
-        else:
-            message_dicts = [
-                {
-                    "role": "system",
-                    "content": self.system,
-                },
-            ]
-        message_dicts.extend(message_to_llm_dict(msg) for msg in await self.ctx.message_promises)
+        message_dicts = await self._prepare_message_dicts()
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
@@ -92,44 +80,84 @@ class OpenAIAgent:
             # (we are closing the sequence of response messages, not the sequence of message tokens)
             self.ctx.finish_early()
 
-            openai_response = await self.async_client.chat.completions.create(
-                messages=message_dicts, model=self.model, stream=self.stream, **self.other_kwargs
-            )
-            if self.stream:
-                async for chunk in openai_response:
-                    if len(chunk.choices) != 1:  # TODO Oleksandr: do I really need to check it for every token ?
-                        raise RuntimeError(
-                            f"exactly one Choice was expected from OpenAI, "
-                            f"but {len(openai_response.choices)} were returned instead"
-                        )
-                    token = chunk.choices[0].delta.content
-                    if token:
-                        token_appender.append(token)
+            await self._produce_tokens(token_appender, message_dicts)
 
-                    token_appender.metadata_so_far["role"] = (
-                        chunk.choices[0].delta.role or token_appender.metadata_so_far["role"]
-                    )
-                    _merge_openai_dicts(
-                        token_appender.metadata_so_far,
-                        chunk.model_dump(
-                            exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}
-                        ),
-                    )
-            else:
-                if len(openai_response.choices) != 1:
+    async def _produce_tokens(self, token_appender: MessageTokenAppender, message_dicts: list[dict[str, Any]]) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        openai_response = await self.async_client.chat.completions.create(
+            messages=message_dicts, model=self.model, stream=self.stream, **self.other_kwargs
+        )
+        if self.stream:
+            async for chunk in openai_response:
+                if len(chunk.choices) != 1:  # TODO Oleksandr: do I really need to check it for every token ?
                     raise RuntimeError(
                         f"exactly one Choice was expected from OpenAI, "
                         f"but {len(openai_response.choices)} were returned instead"
                     )
-                # send the complete message text as a single token
-                token_appender.append(openai_response.choices[0].message.content)
+                token = chunk.choices[0].delta.content
+                if token:
+                    token_appender.append(token)
 
-                token_appender.metadata_so_far["role"] = openai_response.choices[0].message.role
-                token_appender.metadata_so_far.update(
-                    openai_response.model_dump(
-                        exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
-                    )
+                token_appender.metadata_so_far["role"] = (
+                    chunk.choices[0].delta.role or token_appender.metadata_so_far["role"]
                 )
+                self._merge_openai_dicts(
+                    token_appender.metadata_so_far,
+                    chunk.model_dump(exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}),
+                )
+        else:
+            if len(openai_response.choices) != 1:
+                raise RuntimeError(
+                    f"exactly one Choice was expected from OpenAI, "
+                    f"but {len(openai_response.choices)} were returned instead"
+                )
+            # send the complete message text as a single token
+            token_appender.append(openai_response.choices[0].message.content)
+
+            token_appender.metadata_so_far["role"] = openai_response.choices[0].message.role
+            token_appender.metadata_so_far.update(
+                openai_response.model_dump(
+                    exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
+                )
+            )
+
+    async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
+        """
+        TODO Oleksandr: docstring
+        """
+        if self.system is None:
+            message_dicts = []
+        else:
+            message_dicts = [
+                {
+                    "role": "system",
+                    "content": self.system,
+                },
+            ]
+        message_dicts.extend(message_to_llm_dict(msg) for msg in await self.ctx.message_promises)
+        return message_dicts
+
+    @classmethod
+    def _merge_openai_dicts(cls, destination_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
+        """
+        Merge the dict_to_merge into the destination_dict.
+        """
+        for key, value in dict_to_merge.items():
+            if value is not None:
+                existing_value = destination_dict.get(key)
+                if isinstance(existing_value, dict):
+                    cls._merge_openai_dicts(existing_value, value)
+                elif isinstance(existing_value, list):
+                    if key == "choices":
+                        if not existing_value:
+                            destination_dict[key] = [{}]  # we only expect a single choice in our implementation
+                        cls._merge_openai_dicts(destination_dict[key][0], value[0])
+                    else:
+                        destination_dict[key].extend(value)
+                else:
+                    destination_dict[key] = value
 
 
 @cache
@@ -145,23 +173,3 @@ def _default_openai_client() -> "openai_original.AsyncOpenAI":
         ) from exc
 
     return openai_original.AsyncOpenAI()
-
-
-def _merge_openai_dicts(destination_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
-    """
-    Merge the dict_to_merge into the destination_dict.
-    """
-    for key, value in dict_to_merge.items():
-        if value is not None:
-            existing_value = destination_dict.get(key)
-            if isinstance(existing_value, dict):
-                _merge_openai_dicts(existing_value, value)
-            elif isinstance(existing_value, list):
-                if key == "choices":
-                    if not existing_value:
-                        destination_dict[key] = [{}]  # we only expect a single choice in our implementation
-                    _merge_openai_dicts(destination_dict[key][0], value[0])
-                else:
-                    destination_dict[key].extend(value)
-            else:
-                destination_dict[key] = value

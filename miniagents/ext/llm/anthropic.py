@@ -52,12 +52,9 @@ class AnthropicAgent:
         self.system = system
         self.fake_first_user_message = fake_first_user_message
         self.message_delimiter_for_same_role = message_delimiter_for_same_role
-        self.async_client = async_client
+        self.async_client = async_client or _default_anthropic_client()
         self.reply_metadata = reply_metadata
         self.other_kwargs = other_kwargs
-
-        if not self.async_client:
-            self.async_client = _default_anthropic_client()
 
         if self.stream is None:
             self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
