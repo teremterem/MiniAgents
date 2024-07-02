@@ -10,7 +10,7 @@ from miniagents.messages import MessageSequencePromise
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
 
-DEFAULT_IN_MEMORY_HISTORY_AGENT = in_memory_history_agent.fork(message_list=[])
+_DEFAULT_IN_MEMORY_HISTORY_AGENT = in_memory_history_agent.fork(message_list=[])
 
 
 @miniagent
@@ -18,7 +18,7 @@ async def user_agent(
     ctx: InteractionContext,
     echo_agent: Optional[MiniAgent],
     prompt_agent: Optional[MiniAgent],  # TODO Oleksandr: rename prompt_agent to input_agent ?
-    history_agent: Optional[MiniAgent] = DEFAULT_IN_MEMORY_HISTORY_AGENT,
+    history_agent: Optional[MiniAgent] = _DEFAULT_IN_MEMORY_HISTORY_AGENT,
 ) -> None:
     """
     A user agent that echoes `messages` from the agent that called it, reads the user input and then returns full

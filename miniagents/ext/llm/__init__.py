@@ -2,13 +2,28 @@
 Make all the functions and classes in related to integrations with LLMs available at the package level.
 """
 
-from miniagents.ext.llm import anthropic, llm_common, openai
-from miniagents.ext.llm.anthropic import *
-from miniagents.ext.llm.llm_common import *
-from miniagents.ext.llm.openai import *
-
-__all__ = (
-    [name for name in dir(anthropic) if not name.startswith("_")]
-    + [name for name in dir(llm_common) if not name.startswith("_")]
-    + [name for name in dir(openai) if not name.startswith("_")]
+from miniagents.ext.llm.anthropic import (
+    AnthropicAgent,
+    AnthropicMessage,
 )
+from miniagents.ext.llm.llm_common import (
+    AssistantMessage,
+    LLMAgent,
+    SystemMessage,
+    UserMessage,
+)
+from miniagents.ext.llm.openai import (
+    OpenAIAgent,
+    OpenAIMessage,
+)
+
+__all__ = [
+    "AnthropicAgent",
+    "AnthropicMessage",
+    "AssistantMessage",
+    "LLMAgent",
+    "OpenAIAgent",
+    "OpenAIMessage",
+    "SystemMessage",
+    "UserMessage",
+]
