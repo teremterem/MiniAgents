@@ -8,7 +8,7 @@ from functools import cache
 from pprint import pformat
 from typing import Any, Optional
 
-from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
+from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
 from miniagents.messages import MessageTokenAppender
 from miniagents.miniagents import MiniAgent, miniagent, MiniAgents, InteractionContext
 
@@ -29,7 +29,7 @@ OpenAIAgent: MiniAgent
 
 
 @miniagent
-class OpenAIAgent:
+class OpenAIAgent(LLMAgent):
     """
     An agent that represents Large Language Models by OpenAI.
     """
@@ -48,12 +48,9 @@ class OpenAIAgent:
         if n != 1:
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
-        self.ctx = ctx
-        self.model = model
-        self.stream = stream
+        super().__init__(ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata)
         self.system = system
         self.async_client = async_client or _default_openai_client()
-        self.reply_metadata = reply_metadata
         self.other_kwargs = other_kwargs
 
         if self.stream is None:
@@ -66,20 +63,7 @@ class OpenAIAgent:
             logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
-            self.ctx.reply(
-                OpenAIMessage.promise(
-                    start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
-                    message_token_streamer=token_appender,
-                    # preliminary metadata:
-                    model=self.model,
-                    agent_alias=self.ctx.this_agent.alias,
-                    **(self.reply_metadata or {}),
-                )
-            )
-            # we already know that we there will be no more response messages, so we close the response sequence
-            # (we are closing the sequence of response messages, not the sequence of message tokens)
-            self.ctx.finish_early()
-
+            await self._promise_and_close(token_appender, OpenAIMessage)
             await self._produce_tokens(token_appender, message_dicts)
 
     async def _produce_tokens(self, token_appender: MessageTokenAppender, message_dicts: list[dict[str, Any]]) -> None:
@@ -136,7 +120,7 @@ class OpenAIAgent:
                     "content": self.system,
                 },
             ]
-        message_dicts.extend(message_to_llm_dict(msg) for msg in await self.ctx.message_promises)
+        message_dicts.extend(self._message_to_llm_dict(msg) for msg in await self.ctx.message_promises)
         return message_dicts
 
     @classmethod

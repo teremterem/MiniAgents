@@ -8,9 +8,9 @@ from functools import cache
 from pprint import pformat
 from typing import Any, Optional
 
-from miniagents.ext.llm.llm_common import message_to_llm_dict, AssistantMessage
+from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
 from miniagents.messages import MessageTokenAppender
-from miniagents.miniagents import MiniAgent, miniagent, MiniAgents, InteractionContext
+from miniagents.miniagents import MiniAgent, miniagent, InteractionContext
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
@@ -29,7 +29,7 @@ AnthropicAgent: MiniAgent
 
 
 @miniagent
-class AnthropicAgent:
+class AnthropicAgent(LLMAgent):
     """
     An agent that represents Large Language Models by Anthropic.
     """
@@ -46,18 +46,12 @@ class AnthropicAgent:
         reply_metadata: Optional[dict[str, Any]] = None,
         **other_kwargs,
     ) -> None:
-        self.ctx = ctx
-        self.model = model
-        self.stream = stream
+        super().__init__(ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata)
         self.system = system
         self.fake_first_user_message = fake_first_user_message
         self.message_delimiter_for_same_role = message_delimiter_for_same_role
         self.async_client = async_client or _default_anthropic_client()
-        self.reply_metadata = reply_metadata
         self.other_kwargs = other_kwargs
-
-        if self.stream is None:
-            self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
     async def __call__(self) -> None:
         message_dicts = await self._prepare_message_dicts()
@@ -71,20 +65,7 @@ class AnthropicAgent:
             )
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
-            self.ctx.reply(
-                AnthropicMessage.promise(
-                    start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
-                    message_token_streamer=token_appender,
-                    # preliminary metadata:
-                    model=self.model,
-                    agent_alias=self.ctx.this_agent.alias,
-                    **(self.reply_metadata or {}),
-                )
-            )
-            # we already know that there will be no more response messages, so we close the response sequence
-            # (we are closing the sequence of response messages, not the sequence of message tokens)
-            self.ctx.finish_early()
-
+            await self._promise_and_close(token_appender, AnthropicMessage)
             await self._produce_tokens(token_appender, message_dicts, resulting_system_message)
 
     async def _produce_tokens(
@@ -117,7 +98,7 @@ class AnthropicAgent:
         """
         TODO Oleksandr: docstring
         """
-        message_dicts = [message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
+        message_dicts = [self._message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
         if not message_dicts:
             return []
 
