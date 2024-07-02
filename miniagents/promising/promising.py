@@ -94,7 +94,7 @@ class PromisingContext:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
-        before finalizing the global context.
+        before finalizing the context.
         """
         if log_level_for_errors is None:
             log_level_for_errors = self.log_level_for_errors
