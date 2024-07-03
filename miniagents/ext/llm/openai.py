@@ -6,7 +6,7 @@ import typing
 from functools import cache
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from miniagents import Message
 from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
@@ -46,13 +46,17 @@ class OpenAIAgent(LLMAgent):
     of all class-based miniagents are `__init__` and `__call__`).
     """
 
+    n: int = 1
     async_client: Any = Field(default_factory=_default_openai_client)
     response_message_class: type[Message] = OpenAIMessage
 
-    def __init__(self, n: int = 1, **other_kwargs) -> None:
+    # noinspection PyNestedDecorators
+    @field_validator("n")
+    @classmethod
+    def _validate_n(cls, n: int) -> int:
         if n != 1:
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
-        super().__init__(response_message_class=OpenAIMessage, **other_kwargs)
+        return n
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
         """
