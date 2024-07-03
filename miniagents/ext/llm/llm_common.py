@@ -68,9 +68,21 @@ class LLMAgent(ABC):
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
             response_promise = await self._promise_and_close(token_appender)
+
             if self.llm_logger_agent:
-                # TODO Oleksandr: pass "metadata" too (all the other arguments that go into the LLM)
-                self.llm_logger_agent.kick_off([message_dicts, response_promise])
+                self.llm_logger_agent.kick_off(
+                    [
+                        message_dicts,
+                        response_promise,
+                    ],
+                    metadata={
+                        "agent_alias": self.ctx.this_agent.alias,
+                        "model": self.model,
+                        "stream": self.stream,
+                        "system": self.system,
+                        **self.other_kwargs,
+                    },
+                )
             await self._produce_tokens(message_dicts, token_appender)
 
     @abstractmethod
