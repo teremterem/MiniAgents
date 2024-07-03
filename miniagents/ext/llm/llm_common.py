@@ -97,7 +97,7 @@ class LLMAgent(ABC, BaseModel):
             "agent_alias": self.ctx.this_agent.alias,
             "model": self.model,
             "stream": self.stream,
-            "system": self.system,
+            # "system": self.system,  # this field usually automatically becomes part of the prompt messages
             **self.__pydantic_extra__,
         }
 
