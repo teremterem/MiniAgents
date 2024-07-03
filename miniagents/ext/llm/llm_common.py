@@ -72,6 +72,8 @@ class LLMAgent(ABC, BaseModel):
                     ],
                     metadata=self._metadata_to_log(),
                 )
+
+            # here is where the actual request to the LLM is made
             await self._produce_tokens(message_dicts, token_appender)
 
     @staticmethod
