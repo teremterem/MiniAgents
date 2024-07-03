@@ -35,7 +35,7 @@ async def main() -> None:
     """
     Send a message to an LLM agent and print the response.
     """
-    console_output_agent.inquire(
+    console_output_agent.kick_off(
         llm_agent.inquire(
             "How are you today?",
             max_tokens=1000,

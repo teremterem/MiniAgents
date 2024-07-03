@@ -2,16 +2,11 @@
 Common classes and functions for working with large language models.
 """
 
-import logging
 from abc import ABC, abstractmethod
-from pprint import pformat
 from typing import Any, Optional, Type
 
-from miniagents import InteractionContext
-from miniagents.messages import Message, MessageTokenAppender
-from miniagents.miniagents import MiniAgents
-
-logger = logging.getLogger(__name__)
+from miniagents.messages import Message, MessageTokenAppender, MessagePromise
+from miniagents.miniagents import InteractionContext, MiniAgents, MiniAgent
 
 
 class UserMessage(Message):
@@ -52,12 +47,14 @@ class LLMAgent(ABC):
         stream: Optional[bool] = None,
         response_metadata: Optional[dict[str, Any]] = None,
         response_message_class: Type[Message] = AssistantMessage,
+        llm_logger_agent: Optional[MiniAgent] = None,
     ) -> None:
         self.ctx = ctx
         self.model = model
         self.stream = stream
         self.response_metadata = response_metadata
-        self._response_message_class = response_message_class
+        self.response_message_class = response_message_class
+        self.llm_logger_agent = llm_logger_agent
 
         if self.stream is None:
             self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
@@ -65,11 +62,10 @@ class LLMAgent(ABC):
     async def __call__(self) -> None:
         message_dicts = await self._prepare_message_dicts()
 
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("SENDING TO LLM:\n\n%s\n", pformat(message_dicts))
-
         with MessageTokenAppender(capture_errors=True) as token_appender:
-            await self._promise_and_close(token_appender, self._response_message_class)
+            response_promise = await self._promise_and_close(token_appender)
+            if self.llm_logger_agent:
+                self.llm_logger_agent.kick_off([message_dicts, response_promise])
             await self._produce_tokens(message_dicts, token_appender)
 
     @abstractmethod
@@ -84,23 +80,24 @@ class LLMAgent(ABC):
         TODO Oleksandr: docstring
         """
 
-    async def _promise_and_close(self, token_appender: MessageTokenAppender, message_class: Type[Message]) -> None:
+    async def _promise_and_close(self, token_appender: MessageTokenAppender) -> MessagePromise:
         """
         TODO Oleksandr: docstring
         """
-        self.ctx.reply(
-            message_class.promise(
-                start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
-                message_token_streamer=token_appender,
-                # preliminary metadata:
-                model=self.model,
-                agent_alias=self.ctx.this_agent.alias,
-                **(self.response_metadata or {}),
-            )
+        response_promise = self.response_message_class.promise(
+            start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
+            message_token_streamer=token_appender,
+            # preliminary metadata:
+            model=self.model,
+            agent_alias=self.ctx.this_agent.alias,
+            **(self.response_metadata or {}),
         )
+        self.ctx.reply(response_promise)
         # we already know that there will be no more response messages, so we close the response sequence
         # (we are closing the sequence of response messages, not the sequence of message tokens)
         await self.ctx.afinish_early()
+
+        return response_promise
 
     @staticmethod
     def _message_to_llm_dict(message: Message) -> dict[str, Any]:

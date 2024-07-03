@@ -17,10 +17,10 @@ async def main() -> None:
     """
     The main conversation loop.
     """
-    await dialog_loop.fork(
+    dialog_loop.fork(
         user_agent=console_user_agent,
         assistant_agent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"),
-    ).inquire(
+    ).kick_off(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences that the user throws at you. "
             "Leave the sentences unchanged if they seem fine."

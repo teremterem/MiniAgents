@@ -187,10 +187,7 @@ class MiniAgent:
         self.__doc__ = self.description
 
     def inquire(
-        self,
-        messages: Optional[MessageType] = None,
-        start_asap: Optional[bool] = None,
-        **function_kwargs,
+        self, messages: Optional[MessageType] = None, start_asap: Optional[bool] = None, **function_kwargs
     ) -> MessageSequencePromise:
         """
         TODO Oleksandr: docstring
@@ -200,11 +197,13 @@ class MiniAgent:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
-    def initiate_inquiry(
-        self,
-        start_asap: Optional[bool] = None,
-        **function_kwargs,
-    ) -> "AgentCall":
+    def kick_off(self, messages: Optional[MessageType] = None, **function_kwargs) -> None:
+        """
+        Make a call to the agent and ignore the response.
+        """
+        self.inquire(messages, start_asap=True, **function_kwargs)
+
+    def initiate_inquiry(self, start_asap: Optional[bool] = None, **function_kwargs) -> "AgentCall":
         """
         Start an inquiry with the agent. The agent will be called with the provided function kwargs.
         TODO Oleksandr: expand this docstring ?
