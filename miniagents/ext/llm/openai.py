@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
 from miniagents.messages import MessageTokenAppender
-from miniagents.miniagents import MiniAgent, miniagent, InteractionContext
+from miniagents.miniagents import MiniAgent, miniagent
 
 if typing.TYPE_CHECKING:
     import openai as openai_original
@@ -33,29 +33,13 @@ class OpenAIAgent(LLMAgent):
     """
 
     def __init__(
-        self,
-        ctx: InteractionContext,
-        model: str,
-        stream: Optional[bool] = None,
-        system: Optional[str] = None,
-        n: int = 1,
-        async_client: Optional["openai_original.AsyncOpenAI"] = None,
-        response_metadata: Optional[dict[str, Any]] = None,
-        **other_kwargs,
+        self, n: int = 1, async_client: Optional["openai_original.AsyncOpenAI"] = None, **other_kwargs
     ) -> None:
         if n != 1:
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
-        super().__init__(
-            ctx=ctx,
-            model=model,
-            stream=stream,
-            response_metadata=response_metadata,
-            response_message_class=OpenAIMessage,
-        )
-        self.system = system
+        super().__init__(response_message_class=OpenAIMessage, **other_kwargs)
         self.async_client = async_client or _default_openai_client()
-        self.other_kwargs = other_kwargs
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
         """

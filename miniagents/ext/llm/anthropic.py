@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
 from miniagents.messages import MessageTokenAppender
-from miniagents.miniagents import MiniAgent, miniagent, InteractionContext
+from miniagents.miniagents import MiniAgent, miniagent
 
 if typing.TYPE_CHECKING:
     import anthropic as anthropic_original
@@ -37,28 +37,15 @@ class AnthropicAgent(LLMAgent):
 
     def __init__(
         self,
-        ctx: InteractionContext,
-        model: str,
-        stream: Optional[bool] = None,
-        system: Optional[str] = None,
         fake_first_user_message: str = "/start",
         message_delimiter_for_same_role: str = "\n\n",
         async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
-        response_metadata: Optional[dict[str, Any]] = None,
         **other_kwargs,
     ) -> None:
-        super().__init__(
-            ctx=ctx,
-            model=model,
-            stream=stream,
-            response_metadata=response_metadata,
-            response_message_class=AnthropicMessage,
-        )
-        self.system = system
+        super().__init__(response_message_class=AnthropicMessage, **other_kwargs)
         self.fake_first_user_message = fake_first_user_message
         self.message_delimiter_for_same_role = message_delimiter_for_same_role
         self.async_client = async_client or _default_anthropic_client()
-        self.other_kwargs = other_kwargs
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
         """

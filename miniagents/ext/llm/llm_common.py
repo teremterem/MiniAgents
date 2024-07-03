@@ -45,16 +45,20 @@ class LLMAgent(ABC):
         ctx: InteractionContext,
         model: str,
         stream: Optional[bool] = None,
+        system: Optional[str] = None,
         response_metadata: Optional[dict[str, Any]] = None,
         response_message_class: Type[Message] = AssistantMessage,
         llm_logger_agent: Optional[MiniAgent] = None,
+        **other_kwargs,
     ) -> None:
         self.ctx = ctx
         self.model = model
         self.stream = stream
+        self.system = system
         self.response_metadata = response_metadata
         self.response_message_class = response_message_class
         self.llm_logger_agent = llm_logger_agent
+        self.other_kwargs = other_kwargs
 
         if self.stream is None:
             self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
@@ -65,6 +69,7 @@ class LLMAgent(ABC):
         with MessageTokenAppender(capture_errors=True) as token_appender:
             response_promise = await self._promise_and_close(token_appender)
             if self.llm_logger_agent:
+                # TODO Oleksandr: pass "metadata" too (all the other arguments that go into the LLM)
                 self.llm_logger_agent.kick_off([message_dicts, response_promise])
             await self._produce_tokens(message_dicts, token_appender)
 
