@@ -3,7 +3,9 @@ Common classes and functions for working with large language models.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Type
+from typing import Any, Optional
+
+from pydantic import ConfigDict, Field, BaseModel
 
 from miniagents.messages import Message, MessageTokenAppender, MessagePromise
 from miniagents.miniagents import InteractionContext, MiniAgents, MiniAgent
@@ -35,33 +37,20 @@ class AssistantMessage(Message):
     agent_alias: Optional[str] = None
 
 
-class LLMAgent(ABC):
+class LLMAgent(ABC, BaseModel):
     """
     A base class for agents that represents various Large Language Models.
     """
 
-    def __init__(
-        self,
-        ctx: InteractionContext,
-        model: str,
-        stream: Optional[bool] = None,
-        system: Optional[str] = None,
-        response_metadata: Optional[dict[str, Any]] = None,
-        response_message_class: Type[Message] = AssistantMessage,
-        llm_logger_agent: Optional[MiniAgent] = None,
-        **other_kwargs,
-    ) -> None:
-        self.ctx = ctx
-        self.model = model
-        self.stream = stream
-        self.system = system
-        self.response_metadata = response_metadata
-        self.response_message_class = response_message_class
-        self.llm_logger_agent = llm_logger_agent
-        self.other_kwargs = other_kwargs
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
-        if self.stream is None:
-            self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
+    ctx: InteractionContext
+    model: str
+    stream: bool = Field(default_factory=lambda: MiniAgents.get_current().stream_llm_tokens_by_default)
+    system: Optional[str] = None
+    response_metadata: Optional[dict[str, Any]] = None
+    response_message_class: type[Message] = AssistantMessage
+    llm_logger_agent: Optional[MiniAgent] = None
 
     async def __call__(self) -> None:
         message_dicts = await self._prepare_message_dicts()
@@ -80,7 +69,7 @@ class LLMAgent(ABC):
                         "model": self.model,
                         "stream": self.stream,
                         "system": self.system,
-                        **self.other_kwargs,
+                        **self.__pydantic_extra__,
                     },
                 )
             await self._produce_tokens(message_dicts, token_appender)
