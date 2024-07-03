@@ -5,7 +5,6 @@ This module integrates Anthropic language models with MiniAgents.
 import logging
 import typing
 from functools import cache
-from pprint import pformat
 from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
@@ -31,7 +30,9 @@ AnthropicAgent: MiniAgent
 @miniagent
 class AnthropicAgent(LLMAgent):
     """
-    An agent that represents Large Language Models by Anthropic.
+    An agent that represents Large Language Models by Anthropic. Check out the implementation of the async `__call__`
+    method in the base class `LLMAgent` to understand how agents like this one work (the two most important methods
+    of all class-based miniagents are `__init__` and `__call__`).
     """
 
     def __init__(
@@ -46,24 +47,14 @@ class AnthropicAgent(LLMAgent):
         reply_metadata: Optional[dict[str, Any]] = None,
         **other_kwargs,
     ) -> None:
-        super().__init__(ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata)
+        super().__init__(
+            ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata, response_message_class=AnthropicMessage
+        )
         self.system = system
         self.fake_first_user_message = fake_first_user_message
         self.message_delimiter_for_same_role = message_delimiter_for_same_role
         self.async_client = async_client or _default_anthropic_client()
         self.other_kwargs = other_kwargs
-
-        self._message_class = AnthropicMessage
-
-    async def __call__(self) -> None:
-        message_dicts = await self._prepare_message_dicts()
-
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("SENDING TO LLM:\n\n%s\n", pformat(message_dicts))
-
-        with MessageTokenAppender(capture_errors=True) as token_appender:
-            await self._promise_and_close(token_appender, self._message_class)
-            await self._produce_tokens(message_dicts, token_appender)
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
         """

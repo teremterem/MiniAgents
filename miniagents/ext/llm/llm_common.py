@@ -2,10 +2,16 @@
 Common classes and functions for working with large language models.
 """
 
+import logging
+from abc import ABC, abstractmethod
+from pprint import pformat
 from typing import Any, Optional, Type
 
+from miniagents import InteractionContext
 from miniagents.messages import Message, MessageTokenAppender
 from miniagents.miniagents import MiniAgents
+
+logger = logging.getLogger(__name__)
 
 
 class UserMessage(Message):
@@ -34,25 +40,53 @@ class AssistantMessage(Message):
     agent_alias: Optional[str] = None
 
 
-class LLMAgent:
+class LLMAgent(ABC):
     """
     A base class for agents that represents various Large Language Models.
     """
 
     def __init__(
-        self, ctx, model: str, stream: Optional[bool] = None, reply_metadata: Optional[dict[str, Any]] = None
+        self,
+        ctx: InteractionContext,
+        model: str,
+        stream: Optional[bool] = None,
+        reply_metadata: Optional[dict[str, Any]] = None,
+        response_message_class: Type[Message] = AssistantMessage,
     ) -> None:
         self.ctx = ctx
         self.model = model
         self.stream = stream
         self.reply_metadata = reply_metadata
+        self._response_message_class = response_message_class
 
         if self.stream is None:
             self.stream = MiniAgents.get_current().stream_llm_tokens_by_default
 
+    async def __call__(self) -> None:
+        message_dicts = await self._prepare_message_dicts()
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("SENDING TO LLM:\n\n%s\n", pformat(message_dicts))
+
+        with MessageTokenAppender(capture_errors=True) as token_appender:
+            await self._promise_and_close(token_appender, self._response_message_class)
+            await self._produce_tokens(message_dicts, token_appender)
+
+    @abstractmethod
+    async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
+        """
+        TODO Oleksandr: docstring
+        """
+
+    @abstractmethod
+    async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+
     async def _promise_and_close(self, token_appender: MessageTokenAppender, message_class: Type[Message]) -> None:
         """
-        TODO Oleksandr
+        TODO Oleksandr: docstring
         """
         self.ctx.reply(
             message_class.promise(

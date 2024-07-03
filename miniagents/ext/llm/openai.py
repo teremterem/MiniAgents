@@ -2,10 +2,8 @@
 This module integrates OpenAI language models with MiniAgents.
 """
 
-import logging
 import typing
 from functools import cache
-from pprint import pformat
 from typing import Any, Optional
 
 from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
@@ -14,8 +12,6 @@ from miniagents.miniagents import MiniAgent, miniagent, InteractionContext
 
 if typing.TYPE_CHECKING:
     import openai as openai_original
-
-logger = logging.getLogger(__name__)
 
 
 class OpenAIMessage(AssistantMessage):
@@ -31,7 +27,9 @@ OpenAIAgent: MiniAgent
 @miniagent
 class OpenAIAgent(LLMAgent):
     """
-    An agent that represents Large Language Models by OpenAI.
+    An agent that represents Large Language Models by OpenAI. Check out the implementation of the async `__call__`
+    method in the base class `LLMAgent` to understand how agents like this one work (the two most important methods
+    of all class-based miniagents are `__init__` and `__call__`).
     """
 
     def __init__(
@@ -48,22 +46,12 @@ class OpenAIAgent(LLMAgent):
         if n != 1:
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
-        super().__init__(ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata)
+        super().__init__(
+            ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata, response_message_class=OpenAIMessage
+        )
         self.system = system
         self.async_client = async_client or _default_openai_client()
         self.other_kwargs = other_kwargs
-
-        self._message_class = OpenAIMessage
-
-    async def __call__(self) -> None:
-        message_dicts = await self._prepare_message_dicts()
-
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("SENDING TO LLM:\n\n%s\n", pformat(message_dicts))
-
-        with MessageTokenAppender(capture_errors=True) as token_appender:
-            await self._promise_and_close(token_appender, self._message_class)
-            await self._produce_tokens(message_dicts, token_appender)
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
         """
