@@ -50,13 +50,13 @@ class LLMAgent(ABC):
         ctx: InteractionContext,
         model: str,
         stream: Optional[bool] = None,
-        reply_metadata: Optional[dict[str, Any]] = None,
+        response_metadata: Optional[dict[str, Any]] = None,
         response_message_class: Type[Message] = AssistantMessage,
     ) -> None:
         self.ctx = ctx
         self.model = model
         self.stream = stream
-        self.reply_metadata = reply_metadata
+        self.response_metadata = response_metadata
         self._response_message_class = response_message_class
 
         if self.stream is None:
@@ -95,7 +95,7 @@ class LLMAgent(ABC):
                 # preliminary metadata:
                 model=self.model,
                 agent_alias=self.ctx.this_agent.alias,
-                **(self.reply_metadata or {}),
+                **(self.response_metadata or {}),
             )
         )
         # we already know that there will be no more response messages, so we close the response sequence

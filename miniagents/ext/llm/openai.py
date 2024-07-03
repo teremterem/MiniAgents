@@ -40,14 +40,18 @@ class OpenAIAgent(LLMAgent):
         system: Optional[str] = None,
         n: int = 1,
         async_client: Optional["openai_original.AsyncOpenAI"] = None,
-        reply_metadata: Optional[dict[str, Any]] = None,
+        response_metadata: Optional[dict[str, Any]] = None,
         **other_kwargs,
     ) -> None:
         if n != 1:
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
 
         super().__init__(
-            ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata, response_message_class=OpenAIMessage
+            ctx=ctx,
+            model=model,
+            stream=stream,
+            response_metadata=response_metadata,
+            response_message_class=OpenAIMessage,
         )
         self.system = system
         self.async_client = async_client or _default_openai_client()

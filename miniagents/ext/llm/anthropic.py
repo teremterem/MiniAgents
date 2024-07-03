@@ -44,11 +44,15 @@ class AnthropicAgent(LLMAgent):
         fake_first_user_message: str = "/start",
         message_delimiter_for_same_role: str = "\n\n",
         async_client: Optional["anthropic_original.AsyncAnthropic"] = None,
-        reply_metadata: Optional[dict[str, Any]] = None,
+        response_metadata: Optional[dict[str, Any]] = None,
         **other_kwargs,
     ) -> None:
         super().__init__(
-            ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata, response_message_class=AnthropicMessage
+            ctx=ctx,
+            model=model,
+            stream=stream,
+            response_metadata=response_metadata,
+            response_message_class=AnthropicMessage,
         )
         self.system = system
         self.fake_first_user_message = fake_first_user_message
