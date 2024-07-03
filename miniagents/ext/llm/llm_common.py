@@ -64,15 +64,21 @@ class LLMAgent(ABC, BaseModel):
                         message_dicts,
                         response_promise,
                     ],
-                    metadata={
-                        "agent_alias": self.ctx.this_agent.alias,
-                        "model": self.model,
-                        "stream": self.stream,
-                        "system": self.system,
-                        **self.__pydantic_extra__,
-                    },
+                    metadata=self._metadata_to_log(),
                 )
             await self._produce_tokens(message_dicts, token_appender)
+
+    def _metadata_to_log(self) -> dict[str, Any]:
+        """
+        TODO Oleksandr: docstring
+        """
+        return {
+            "agent_alias": self.ctx.this_agent.alias,
+            "model": self.model,
+            "stream": self.stream,
+            "system": self.system,
+            **self.__pydantic_extra__,
+        }
 
     @abstractmethod
     async def _prepare_message_dicts(self) -> list[dict[str, Any]]:

@@ -63,7 +63,7 @@ class OpenAIAgent(LLMAgent):
         TODO Oleksandr: docstring
         """
         openai_response = await self.async_client.chat.completions.create(  # pylint: disable=no-member
-            messages=message_dicts, model=self.model, stream=self.stream, **self.__pydantic_extra__
+            messages=message_dicts, model=self.model, stream=self.stream, n=self.n, **self.__pydantic_extra__
         )
         if self.stream:
             async for chunk in openai_response:
