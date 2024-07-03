@@ -53,27 +53,24 @@ class AnthropicAgent(LLMAgent):
         self.async_client = async_client or _default_anthropic_client()
         self.other_kwargs = other_kwargs
 
+        self._message_class = AnthropicMessage
+
     async def __call__(self) -> None:
         message_dicts = await self._prepare_message_dicts()
-        resulting_system_message = await self._cut_off_system_message(message_dicts)
 
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(
-                "SENDING TO ANTHROPIC:\n\n%s\nSYSTEM:\n%s\n",
-                pformat(message_dicts),
-                pformat(resulting_system_message),
-            )
+            logger.debug("SENDING TO LLM:\n\n%s\n", pformat(message_dicts))
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
-            await self._promise_and_close(token_appender, AnthropicMessage)
-            await self._produce_tokens(token_appender, message_dicts, resulting_system_message)
+            await self._promise_and_close(token_appender, self._message_class)
+            await self._produce_tokens(message_dicts, token_appender)
 
-    async def _produce_tokens(
-        self, token_appender: MessageTokenAppender, message_dicts: list[dict[str, Any]], system_message: str
-    ) -> None:
+    async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
         """
         TODO Oleksandr: docstring
         """
+        system_message = await self._cut_off_system_message(message_dicts)
+
         if self.stream:
             async with self.async_client.messages.stream(
                 messages=message_dicts, system=system_message, model=self.model, **self.other_kwargs

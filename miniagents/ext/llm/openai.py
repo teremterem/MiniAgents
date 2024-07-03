@@ -53,17 +53,19 @@ class OpenAIAgent(LLMAgent):
         self.async_client = async_client or _default_openai_client()
         self.other_kwargs = other_kwargs
 
+        self._message_class = OpenAIMessage
+
     async def __call__(self) -> None:
         message_dicts = await self._prepare_message_dicts()
 
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
+            logger.debug("SENDING TO LLM:\n\n%s\n", pformat(message_dicts))
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
-            await self._promise_and_close(token_appender, OpenAIMessage)
-            await self._produce_tokens(token_appender, message_dicts)
+            await self._promise_and_close(token_appender, self._message_class)
+            await self._produce_tokens(message_dicts, token_appender)
 
-    async def _produce_tokens(self, token_appender: MessageTokenAppender, message_dicts: list[dict[str, Any]]) -> None:
+    async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
         """
         TODO Oleksandr: docstring
         """
