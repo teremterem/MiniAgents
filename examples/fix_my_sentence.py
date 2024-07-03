@@ -2,8 +2,6 @@
 This example demonstrates how to use an LLM agent to fix the user's sentences.
 """
 
-import logging
-
 from dotenv import load_dotenv
 
 from miniagents import MiniAgents
@@ -29,7 +27,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
-    # logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
-
     MiniAgents().run(main())

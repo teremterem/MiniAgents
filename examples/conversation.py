@@ -2,8 +2,6 @@
 A conversation example between the user and multiple LLMs using the MiniAgents framework.
 """
 
-import logging
-
 from dotenv import load_dotenv
 
 from examples.self_dev.self_dev_common import MODEL_AGENT_FACTORIES
@@ -50,7 +48,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
-    # logging.getLogger("miniagents.ext.llm").setLevel(logging.DEBUG)
-
     MiniAgents().run(main())
