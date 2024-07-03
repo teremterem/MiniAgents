@@ -37,6 +37,12 @@ class AssistantMessage(Message):
     agent_alias: Optional[str] = None
 
 
+class PromptLogMessage(Message):
+    """
+    A message that is a part of a prompt to be logged.
+    """
+
+
 class LLMAgent(ABC, BaseModel):
     """
     A base class for agents that represents various Large Language Models.
@@ -61,12 +67,25 @@ class LLMAgent(ABC, BaseModel):
             if self.llm_logger_agent:
                 self.llm_logger_agent.kick_off(
                     [
-                        message_dicts,
+                        self._prompt_messages_to_log(message_dicts),
                         response_promise,
                     ],
                     metadata=self._metadata_to_log(),
                 )
             await self._produce_tokens(message_dicts, token_appender)
+
+    @staticmethod
+    def _prompt_messages_to_log(message_dicts: list[dict[str, Any]]) -> list[PromptLogMessage]:
+        """
+        TODO Oleksandr: docstring
+        """
+        return [
+            PromptLogMessage(
+                text=message_dict.get("content"),
+                **{key: value for key, value in message_dict.items() if key != "content"},
+            )
+            for message_dict in message_dicts
+        ]
 
     def _metadata_to_log(self) -> dict[str, Any]:
         """
