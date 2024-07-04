@@ -69,6 +69,8 @@ You said: Hello
 You said: World
 ```
 
+**TODO** show how (and when) to create class-based agents
+
 ### 🧠 Work with LLMs
 
 MiniAgents provides built-in support for OpenAI and Anthropic language models
@@ -80,13 +82,13 @@ below. ⚠️
 
 ```python
 from miniagents import MiniAgents
-from miniagents.ext.llm import openai_agent
+from miniagents.ext.llm import OpenAIAgent
 
 # NOTE: "Forking" an agent is a convenient way of creating a new agent instance
 # with the specified configuration. Alternatively, you could pass the `model`
-# parameter to `openai_agent.inquire()` directly everytime you talk to the
+# parameter to `OpenAIAgent.inquire()` directly everytime you talk to the
 # agent.
-gpt_4o_agent = openai_agent.fork(model="gpt-4o-2024-05-13")
+gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-2024-05-13")
 
 
 async def main():
@@ -110,7 +112,7 @@ if __name__ == "__main__":
 ```
 
 Even though OpenAI models return a single assistant response, the
-`openai_agent.inquire()` method is still designed to return a sequence of
+`OpenAIAgent.inquire()` method is still designed to return a sequence of
 multiple message promises. This generalizes to arbitrary agents, making agents
 in the MiniAgents framework easily interchangeable (agents in this framework
 support sending and receiving zero or more messages).
@@ -124,12 +126,12 @@ message text will just be returned as a single "token" in the latter case.
 The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop
 between a user agent and an assistant agent. Here is how you can use it to set
 up an interaction between a user and your agent (can be bare LLM agent, like
-`openai_agent` or `anthropic_agent`, can also be a custom agent that you define
+`OpenAIAgent` or `AnthropicAgent`, can also be a custom agent that you define
 yourself):
 
 ⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your
 Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
-the example below (or just replace `anthropic_agent` with `openai_agent` and
+the example below (or just replace `AnthropicAgent` with `OpenAIAgent` and
 `"claude-3-5-sonnet-20240620"` with `"gpt-4o-2024-05-13"` if you already set up
 the previous example). ⚠️
 
@@ -138,24 +140,24 @@ from miniagents import MiniAgents
 from miniagents.ext import (
     dialog_loop,
     console_user_agent,
-    markdown_history_agent,
+    MarkdownHistoryAgent,
 )
-from miniagents.ext.llm import SystemMessage, anthropic_agent
+from miniagents.ext.llm import SystemMessage, AnthropicAgent
 
 
 async def main() -> None:
-    await dialog_loop.fork(
+    dialog_loop.fork(
         user_agent=console_user_agent.fork(
             # Write chat history to a markdown file (`CHAT.md` in the current
-            # working directory by default, fork `markdown_history_agent` if
+            # working directory by default, fork `MarkdownHistoryAgent` if
             # you want to customize).
-            history_agent=markdown_history_agent
+            history_agent=MarkdownHistoryAgent
         ),
-        assistant_agent=anthropic_agent.fork(
+        assistant_agent=AnthropicAgent.fork(
             model="claude-3-5-sonnet-20240620",
             max_tokens=1000,
         ),
-    ).inquire(
+    ).kick_off(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences "
             "that the user throws at you. Leave the sentences unchanged if "
@@ -198,8 +200,8 @@ could say:
 
 Here is how you can implement a dialog loop between an agent and a user from
 ground up yourself (for simplicity there is no history agent in this example -
-checkout `in_memory_history_agent` and how it is used if you want to know how to
-implement your own history agent too):
+check out `in_memory_history_agent` and how it is used if you want to know how
+to implement your own history agent too):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
@@ -228,7 +230,7 @@ async def assistant_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    await agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).inquire()
+    agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).kick_off()
 
 
 if __name__ == "__main__":
@@ -249,10 +251,12 @@ ASSISTANT: You said "bye"
 **TODO** explain why the presence of `AWAIT` sentinel is important in the
 example above
 
+**TODO** or even better - show how to implement agent_loop from scratch
+
 ### 📦 Some other pre-packaged agents (`miniagents.ext`)
 
-- `console_echo_agent`: Echoes messages to the console token by token.
-- `console_prompt_agent`: Prompts the user for input via the console.
+- `console_input_agent`: Prompts the user for input via the console.
+- `console_output_agent`: Echoes messages to the console token by token.
 - `user_agent`: A user agent that echoes messages from the agent that called it,
   then reads the user input and returns the user input as its response. This
   agent is an aggregation of the previous two.
@@ -401,13 +405,13 @@ from miniagents import miniagent, InteractionContext, MiniAgents
 
 
 @miniagent
-async def echo_agent(ctx: InteractionContext):
+async def output_agent(ctx: InteractionContext):
     async for msg_promise in ctx.message_promises:
         ctx.reply(f"Echo: {await msg_promise}")
 
 
 async def main():
-    agent_call = echo_agent.initiate_inquiry()
+    agent_call = output_agent.initiate_inquiry()
     agent_call.send_message("Hello")
     agent_call.send_message("World")
     reply_sequence = agent_call.reply_sequence()

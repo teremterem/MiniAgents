@@ -20,7 +20,7 @@ from miniagents.promising.promise_typing import (
     PromiseResolvedEventHandler,
     PromiseResolver,
 )
-from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE, DEFAULT
+from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
 
 logger = logging.getLogger(__name__)
 
@@ -89,16 +89,15 @@ class PromisingContext:
         return handler
 
     def start_asap(
-        self,
-        awaitable: Awaitable,
-        suppress_errors: bool = False,
-        log_level_for_errors: int = logging.DEBUG,
+        self, awaitable: Awaitable, suppress_errors: bool = True, log_level_for_errors: Optional[int] = None
     ) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
         before finalizing the context.
         """
+        if log_level_for_errors is None:
+            log_level_for_errors = self.log_level_for_errors
 
         async def awaitable_wrapper() -> Any:
             # pylint: disable=broad-except
@@ -158,8 +157,13 @@ class PromisingContext:
     async def __aenter__(self) -> "PromisingContext":
         return self.activate()
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(self, *args, **kwargs) -> None:
         await self.afinalize()
+
+    def __enter__(self) -> "PromisingContext":
+        raise RuntimeError(f"Use `async with {type(self).__name__}()` instead of `with {type(self).__name__}`.")
+
+    def __exit__(self, *args, **kwargs) -> None: ...
 
 
 class Promise(Generic[T]):
@@ -169,14 +173,14 @@ class Promise(Generic[T]):
 
     def __init__(
         self,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if start_asap is DEFAULT:
+        if start_asap is None:
             start_asap = promising_context.start_everything_asap_by_default
 
         if resolver:
@@ -192,9 +196,7 @@ class Promise(Generic[T]):
         self._resolver_lock = asyncio.Lock()
 
         if start_asap and prefill_result is NO_VALUE:
-            promising_context.start_asap(
-                self, suppress_errors=True, log_level_for_errors=promising_context.log_level_for_errors
-            )
+            promising_context.start_asap(self)
 
     async def _resolver(self) -> T:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -230,11 +232,7 @@ class Promise(Generic[T]):
         promising_context = PromisingContext.get_current()
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
-                promising_context.start_asap(
-                    handler(self, self._result),
-                    suppress_errors=True,
-                    log_level_for_errors=promising_context.log_level_for_errors,
-                )
+                promising_context.start_asap(handler(self, self._result))
             promising_context = promising_context.parent
 
 
@@ -262,12 +260,12 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
         prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T]] = None,
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        start_asap: Optional[bool] = None,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
         promising_context = PromisingContext.get_current()
 
-        if start_asap is DEFAULT:
+        if start_asap is None:
             start_asap = promising_context.start_everything_asap_by_default
 
         super().__init__(
@@ -290,11 +288,7 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
         if start_asap and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.start_asap(
-                self._aconsume_the_stream(),
-                suppress_errors=True,
-                log_level_for_errors=promising_context.log_level_for_errors,
-            )
+            promising_context.start_asap(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
@@ -418,14 +412,21 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
     TODO Oleksandr: explain the `capture_errors` parameter
     """
 
-    def __init__(self, capture_errors: Union[bool, Sentinel] = DEFAULT) -> None:
+    def __init__(self, capture_errors: Optional[bool] = None) -> None:
+        if capture_errors is None:
+            capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
+        self._capture_errors = capture_errors
         self._queue = asyncio.Queue()
-        self._append_open = False
+        self._append_was_open = False
         self._append_closed = False
-        if capture_errors is DEFAULT:
-            self._capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
-        else:
-            self._capture_errors = capture_errors
+
+    @property
+    def was_open(self) -> bool:
+        """
+        Return True if the appender was ever open for appending (it doesn't matter whether it is now closed or not,
+        as long as it was open ever at all).
+        """
+        return self._append_was_open
 
     def __enter__(self) -> "StreamAppender":
         return self.open()
@@ -448,7 +449,11 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
                     exc_info=True,
                 )
             else:
-                logger.debug("An error occurred while appending pieces to a StreamAppender", exc_info=exc_value)
+                logger.debug(
+                    "An error occurred while appending pieces to a %s",
+                    type(self).__name__,
+                    exc_info=exc_value,
+                )
                 self.append(exc_value)
         self.close()
 
@@ -456,19 +461,24 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
         return error_should_be_squashed
 
+    async def __aenter__(self) -> "StreamAppender":
+        raise RuntimeError(f"Use `with {type(self).__name__}()` instead of `async with {type(self).__name__}()`.")
+
+    async def __aexit__(self, *args, **kwargs) -> bool: ...
+
     def append(self, piece: PIECE) -> "StreamAppender":
         """
         Append a `piece` to the streamer. This method can only be called when the streamer is open for appending (and
         also not closed yet). Consequently, the `piece` is delivered to the `StreamedPromise` that is consuming from
         this streamer.
         """
-        if not self._append_open:
+        if not self._append_was_open:
             raise AppenderNotOpenError(
-                "You need to put the `append()` operation inside a `with StreamAppender()` block "
+                f"You need to put the `append()` operation inside a `with {type(self).__name__}()` block "
                 "(or call `open()` and `close()` manually)."
             )
         if self._append_closed:
-            raise AppenderClosedError("The StreamAppender has already been closed for appending.")
+            raise AppenderClosedError(f"The {type(self).__name__} has already been closed for appending.")
         self._queue.put_nowait(piece)
         return self
 
@@ -483,8 +493,8 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         (and the code that is consuming from it) waiting for more `pieces` forever.
         """
         if self._append_closed:
-            raise AppenderClosedError("Once closed, the StreamAppender cannot be opened again.")
-        self._append_open = True
+            raise AppenderClosedError(f"Once closed, the {type(self).__name__} cannot be opened again.")
+        self._append_was_open = True
         return self
 
     def close(self) -> None:

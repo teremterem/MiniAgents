@@ -5,7 +5,7 @@
 import asyncio
 import copy
 import logging
-from functools import partial
+import re
 from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
 
 from pydantic import BaseModel
@@ -15,7 +15,6 @@ from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessa
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseStreamer, PromiseResolvedEventHandler
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
-from miniagents.promising.sentinels import Sentinel, DEFAULT
 from miniagents.promising.sequence import FlatSequence
 
 logger = logging.getLogger(__name__)
@@ -27,13 +26,19 @@ class MiniAgents(PromisingContext):
     """
 
     stream_llm_tokens_by_default: bool
+    llm_logger_agent: Union["MiniAgent", bool]
+    normalize_agent_func_and_class_names: bool
+    normalize_spaces_in_agent_docstrings: bool
     on_persist_message_handlers: list[PersistMessageEventHandler]
 
     def __init__(
         self,
         stream_llm_tokens_by_default: bool = True,
-        on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        llm_logger_agent: Union["MiniAgent", bool] = False,
+        normalize_agent_func_and_class_names: bool = True,
+        normalize_spaces_in_agent_docstrings: bool = True,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
+        on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         **kwargs,
     ) -> None:
         on_promise_resolved = (
@@ -43,6 +48,9 @@ class MiniAgents(PromisingContext):
         )
         super().__init__(on_promise_resolved=on_promise_resolved, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
+        self.llm_logger_agent = llm_logger_agent
+        self.normalize_agent_func_and_class_names = normalize_agent_func_and_class_names
+        self.normalize_spaces_in_agent_docstrings = normalize_spaces_in_agent_docstrings
         self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
             [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
         )
@@ -78,62 +86,58 @@ class MiniAgents(PromisingContext):
         if not isinstance(obj, Message):
             return
 
-        log_level_for_errors = MiniAgents.get_current().log_level_for_errors
-
         for sub_message in obj.sub_messages():
             if sub_message._persist_message_event_triggered:
                 continue
 
             for handler in self.on_persist_message_handlers:
-                self.start_asap(
-                    handler(_, sub_message), suppress_errors=True, log_level_for_errors=log_level_for_errors
-                )
+                self.start_asap(handler(_, sub_message))
             sub_message._persist_message_event_triggered = True
 
         if obj._persist_message_event_triggered:
             return
 
         for handler in self.on_persist_message_handlers:
-            self.start_asap(handler(_, obj), suppress_errors=True, log_level_for_errors=log_level_for_errors)
+            self.start_asap(handler(_, obj))
         obj._persist_message_event_triggered = True
 
 
 def miniagent(
-    func: Optional[AgentFunction] = None,
+    func_or_class: Optional[Union[AgentFunction, type]] = None,
     alias: Optional[str] = None,
     description: Optional[str] = None,
-    uppercase_func_name: bool = True,
+    normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
-    **partial_kwargs,
+    **static_kwargs,
 ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
     """
-    if func is None:
+    if func_or_class is None:
         # the decorator `@miniagent(...)` was used with arguments
-        def _decorator(f: AgentFunction) -> "MiniAgent":
+        def _decorator(f_or_cls: Union[AgentFunction, type]) -> "MiniAgent":
             return MiniAgent(
-                f,
+                f_or_cls,
                 alias=alias,
                 description=description,
-                uppercase_func_name=uppercase_func_name,
+                normalize_func_or_class_name=normalize_func_or_class_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
                 interaction_metadata=interaction_metadata,
-                **partial_kwargs,
+                **static_kwargs,
             )
 
         return _decorator
 
     # the decorator `@miniagent` was used either without arguments or as a direct function call
     return MiniAgent(
-        func,
+        func_or_class,
         alias=alias,
         description=description,
-        uppercase_func_name=uppercase_func_name,
+        normalize_func_or_class_name=normalize_func_or_class_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
         interaction_metadata=interaction_metadata,
-        **partial_kwargs,
+        **static_kwargs,
     )
 
 
@@ -148,21 +152,23 @@ class MiniAgent:
 
     def __init__(
         self,
-        func: AgentFunction,
+        func_or_class: Union[AgentFunction, type],
         alias: Optional[str] = None,
         description: Optional[str] = None,
-        # TODO Oleksandr: use DEFAULT for the following two arguments (and put them into MiniAgents class)
-        uppercase_func_name: bool = True,
-        normalize_spaces_in_docstring: bool = True,
+        normalize_func_or_class_name: Optional[bool] = None,
+        normalize_spaces_in_docstring: Optional[bool] = None,
         interaction_metadata: Optional[dict[str, Any]] = None,
-        **partial_kwargs,
+        **static_kwargs,
     ) -> None:
-        self._func = func
-        if partial_kwargs:
-            # NOTE: we cannot deep-copy the partial_kwargs here, because they may contain objects that are
-            # not serializable (for ex. AsyncAnthropic and AsyncOpenAI objects in case of anthropic and openai
-            # miniagents)
-            self._func = partial(func, **partial_kwargs)
+        if normalize_func_or_class_name is None:
+            normalize_func_or_class_name = MiniAgents.get_current().normalize_agent_func_and_class_names
+        if normalize_spaces_in_docstring is None:
+            normalize_spaces_in_docstring = MiniAgents.get_current().normalize_spaces_in_agent_docstrings
+
+        self._func_or_class = func_or_class
+        # NOTE: we cannot deep-copy `static_kwargs`, because they may contain objects that are not serializable
+        # (for ex. AsyncAnthropic and AsyncOpenAI objects in case of anthropic and openai miniagents)
+        self._static_kwargs = static_kwargs
 
         # validate interaction metadata
         # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
@@ -171,13 +177,18 @@ class MiniAgent:
 
         self.alias = alias
         if self.alias is None:
-            self.alias = func.__name__
-            if uppercase_func_name:
+            self.alias = func_or_class.__name__
+            if normalize_func_or_class_name:
+                # split `self.alias` by capitalization, assuming it is in camel case
+                # (if it is not, it will not be split)
+                self.alias = "_".join(
+                    part for part in re.findall(r"[A-Z][a-z]+?(?=[A-Z]+$)|.+?(?=[A-Z][a-z]|$)", self.alias)
+                )
                 self.alias = self.alias.upper()
 
         self.description = description
         if self.description is None:
-            self.description = func.__doc__
+            self.description = func_or_class.__doc__
             if self.description and normalize_spaces_in_docstring:
                 self.description = " ".join(self.description.split())
         if self.description:
@@ -188,10 +199,7 @@ class MiniAgent:
         self.__doc__ = self.description
 
     def inquire(
-        self,
-        messages: Optional[MessageType] = None,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
-        **function_kwargs,
+        self, messages: Optional[MessageType] = None, start_asap: Optional[bool] = None, **function_kwargs
     ) -> MessageSequencePromise:
         """
         TODO Oleksandr: docstring
@@ -201,11 +209,13 @@ class MiniAgent:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
-    def initiate_inquiry(
-        self,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
-        **function_kwargs,
-    ) -> "AgentCall":
+    def kick_off(self, messages: Optional[MessageType] = None, **function_kwargs) -> None:
+        """
+        Make a call to the agent and ignore the response.
+        """
+        self.inquire(messages, start_asap=True, **function_kwargs)
+
+    def initiate_inquiry(self, start_asap: Optional[bool] = None, **function_kwargs) -> "AgentCall":
         """
         Start an inquiry with the agent. The agent will be called with the provided function kwargs.
         TODO Oleksandr: expand this docstring ?
@@ -231,19 +241,20 @@ class MiniAgent:
         alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce some "fork identifier" ?
         description: Optional[str] = None,
         interaction_metadata: Optional[dict[str, Any]] = None,
-        **partial_kwargs,
+        **static_kwargs,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
         TODO Oleksandr: docstring
         """
         return MiniAgent(
-            self._func,
+            self._func_or_class,
             alias=alias or self.alias,
             description=description or self.description,
-            uppercase_func_name=False,
+            normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
             interaction_metadata={**self._interact_metadata_dict, **(interaction_metadata or {})},
-            **partial_kwargs,
+            **self._static_kwargs,
+            **static_kwargs,
         )
 
 
@@ -281,17 +292,30 @@ class InteractionContext:
         #  in the code below)
         self._reply_streamer.append(messages)
 
-    def wait_for(self, awaitable: Awaitable[Any]) -> None:
+    def wait_for(self, awaitable: Awaitable[Any], start_asap_if_coroutine: bool = True) -> None:
         """
         Wait for the completion of the provided awaitable before exiting the agent (before "closing" the agent's
         reply sequence).
         """
+        if asyncio.iscoroutine(awaitable) and start_asap_if_coroutine:
+            # let's turn this coroutine into our special kind of task and start it as soon as possible
+            awaitable = MiniAgents.get_current().start_asap(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
-    def finish_early(self) -> None:
+    async def await_for_subtasks(self) -> None:
+        """
+        Wait for all the awaitables that were fed into the `wait_for` method to finish. If this method is not called
+        in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's reply
+        sequence is closed.
+        """
+        await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
+
+    async def afinish_early(self, await_for_subtasks: bool = True) -> None:
         """
         TODO Oleksandr: docstring
         """
+        if await_for_subtasks:
+            await self.await_for_subtasks()
         self._reply_streamer.close()
 
 
@@ -372,8 +396,8 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
     def __init__(
         self,
-        appender_capture_errors: Union[bool, Sentinel] = DEFAULT,
-        start_asap: Union[bool, Sentinel] = DEFAULT,
+        appender_capture_errors: Optional[bool] = None,
+        start_asap: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
     ) -> None:
         if incoming_streamer:
@@ -435,8 +459,10 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
         and return them as a tuple of Message objects.
         """
-        # pylint: disable=consider-using-generator
-        return tuple([await msg_promise async for msg_promise in seq_promise])
+        # first collect all the message promises
+        msg_promises = [msg_promise async for msg_promise in seq_promise]
+        # then resolve them all
+        return tuple([await msg_promise for msg_promise in msg_promises])  # pylint: disable=consider-using-generator
 
 
 # noinspection PyProtectedMember
@@ -474,11 +500,27 @@ class AgentReplyMessageSequence(MessageSequence):
             with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
                 try:
-                    await self._mini_agent._func(ctx, **self._function_kwargs)
+                    if isinstance(self._mini_agent._func_or_class, type):
+                        # the miniagent is defined as a class, not as a function -> let's create an instance of this
+                        # class and call its `__call__` method
+                        actual_func = self._mini_agent._func_or_class(
+                            # if we want Pydantic models to also be used as class-based agents, we can't pass
+                            # `ctx` as a positional argument (BaseModel's `__init__` doesn't accept positional
+                            # arguments unless it is overridden)
+                            ctx=ctx,
+                            **self._mini_agent._static_kwargs,
+                            **self._function_kwargs,
+                        )
+                        await actual_func()
+                    else:
+                        # the miniagent is a function
+                        await self._mini_agent._func_or_class(
+                            ctx, **self._mini_agent._static_kwargs, **self._function_kwargs
+                        )
                 finally:
-                    await asyncio.gather(*ctx._tasks_to_wait_for, return_exceptions=True)
+                    await ctx.await_for_subtasks()
 
-            return AgentCallNode(
+            return AgentCallNode(  # TODO Oleksandr: why not "persist" this node before the agent function finishes ?
                 messages=await self._input_sequence_promise,
                 agent_alias=self._mini_agent.alias,
                 **self._mini_agent._interact_metadata_dict,
