@@ -65,7 +65,8 @@ class LLMAgent(ABC, BaseModel):
     system: Optional[str] = None
     response_metadata: Optional[dict[str, Any]] = None
     response_message_class: type[Message] = AssistantMessage
-    llm_logger_agent: Optional[Union[MiniAgent, bool]] = None
+    # TODO Oleksandr: configure `llm_logger_agent` globally, through MiniAgents
+    llm_logger_agent: Optional[Union[MiniAgent, bool]] = False
 
     async def __call__(self) -> None:
         message_dicts = await self._prepare_message_dicts()
