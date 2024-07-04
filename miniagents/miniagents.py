@@ -31,8 +31,9 @@ class MiniAgents(PromisingContext):
     def __init__(
         self,
         stream_llm_tokens_by_default: bool = True,
-        on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        llm_logger_agent: Optional[Union["MiniAgent", bool]] = False,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
+        on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         **kwargs,
     ) -> None:
         on_promise_resolved = (
@@ -42,6 +43,7 @@ class MiniAgents(PromisingContext):
         )
         super().__init__(on_promise_resolved=on_promise_resolved, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
+        self.llm_logger_agent = llm_logger_agent
         self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
             [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
         )
