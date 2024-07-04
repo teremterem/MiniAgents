@@ -2,9 +2,12 @@
 This module provides agents working with chat history.
 """
 
+import random
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
+from pprint import pformat
+from typing import Optional, Union, Any
 
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
@@ -16,7 +19,8 @@ from miniagents.miniagents import InteractionContext, miniagent
 @miniagent
 async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Message]) -> None:
     """
-    TODO Oleksandr: docstring
+    An agent that stores incoming messages in the `message_list` and then returns all the messages that this list
+    already contains as a reply (including the ones that existed in the list before the current interaction).
     """
     message_list.extend(await ctx.message_promises)
     ctx.reply(message_list)
@@ -77,7 +81,7 @@ class MarkdownHistoryAgent(BaseModel):
     def _load_chat_history_md(self) -> tuple[Message, ...]:
         """
         Parse a markdown content as a dialog.
-        TODO Oleksandr: implement exhaustive unit tests for this function
+        TODO Oleksandr: implement exhaustive unit tests for this function ?
         """
         md_content = Path(self.history_md_file).read_text(encoding="utf-8")
 
@@ -154,6 +158,36 @@ class MarkdownHistoryAgent(BaseModel):
         model: Optional[str]
         content_start_line: int
         content: Optional[str] = None
+
+
+@miniagent
+async def markdown_llm_logger_agent(
+    ctx: InteractionContext, log_folder: Union[str, Path] = "llm_logs/", metadata: Optional[dict[str, Any]] = None
+) -> None:
+    """
+    TODO Oleksandr: docstring
+    """
+    log_folder = Path(log_folder)
+    log_folder.mkdir(parents=True, exist_ok=True)
+
+    if metadata and "model" in metadata:
+        model_suffix = f"__{metadata['model']}"
+    else:
+        model_suffix = ""
+
+    log_file = (
+        log_folder / f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
+    )
+
+    if log_file.exists():
+        # this should not happen - not only there are milliseconds in the file name, but also a random number in the
+        # range of 0 through 4095 (0 through 0xfff)
+        raise FileExistsError(f"Log file already exists: {log_file}")
+
+    if metadata:
+        log_file.write_text(f"```python\n{pformat(metadata)}\n```\n", encoding="utf-8")
+    # TODO Oleksandr: separate prompt messages from the completion message visually ?
+    MarkdownHistoryAgent.kick_off(ctx.message_promises, history_md_file=str(log_file), only_write=True)
 
 
 _md = MarkdownIt()

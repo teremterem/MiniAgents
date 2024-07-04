@@ -146,7 +146,7 @@ from miniagents.ext.llm import SystemMessage, AnthropicAgent
 
 
 async def main() -> None:
-    await dialog_loop.fork(
+    dialog_loop.fork(
         user_agent=console_user_agent.fork(
             # Write chat history to a markdown file (`CHAT.md` in the current
             # working directory by default, fork `MarkdownHistoryAgent` if
@@ -157,7 +157,7 @@ async def main() -> None:
             model="claude-3-5-sonnet-20240620",
             max_tokens=1000,
         ),
-    ).inquire(
+    ).kick_off(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences "
             "that the user throws at you. Leave the sentences unchanged if "
@@ -230,7 +230,7 @@ async def assistant_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    await agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).inquire()
+    agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).kick_off()
 
 
 if __name__ == "__main__":

@@ -26,13 +26,19 @@ class MiniAgents(PromisingContext):
     """
 
     stream_llm_tokens_by_default: bool
+    llm_logger_agent: Union["MiniAgent", bool]
+    normalize_agent_func_and_class_names: bool
+    normalize_spaces_in_agent_docstrings: bool
     on_persist_message_handlers: list[PersistMessageEventHandler]
 
     def __init__(
         self,
         stream_llm_tokens_by_default: bool = True,
-        on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        llm_logger_agent: Union["MiniAgent", bool] = False,
+        normalize_agent_func_and_class_names: bool = True,
+        normalize_spaces_in_agent_docstrings: bool = True,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
+        on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         **kwargs,
     ) -> None:
         on_promise_resolved = (
@@ -42,6 +48,9 @@ class MiniAgents(PromisingContext):
         )
         super().__init__(on_promise_resolved=on_promise_resolved, **kwargs)
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
+        self.llm_logger_agent = llm_logger_agent
+        self.normalize_agent_func_and_class_names = normalize_agent_func_and_class_names
+        self.normalize_spaces_in_agent_docstrings = normalize_spaces_in_agent_docstrings
         self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
             [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
         )
@@ -146,13 +155,16 @@ class MiniAgent:
         func_or_class: Union[AgentFunction, type],
         alias: Optional[str] = None,
         description: Optional[str] = None,
-        # TODO Oleksandr: use None (a sentinel for "default") for the following two arguments and put them
-        #  into the `MiniAgents` class
-        normalize_func_or_class_name: bool = True,
-        normalize_spaces_in_docstring: bool = True,
+        normalize_func_or_class_name: Optional[bool] = None,
+        normalize_spaces_in_docstring: Optional[bool] = None,
         interaction_metadata: Optional[dict[str, Any]] = None,
         **static_kwargs,
     ) -> None:
+        if normalize_func_or_class_name is None:
+            normalize_func_or_class_name = MiniAgents.get_current().normalize_agent_func_and_class_names
+        if normalize_spaces_in_docstring is None:
+            normalize_spaces_in_docstring = MiniAgents.get_current().normalize_spaces_in_agent_docstrings
+
         self._func_or_class = func_or_class
         # NOTE: we cannot deep-copy `static_kwargs`, because they may contain objects that are not serializable
         # (for ex. AsyncAnthropic and AsyncOpenAI objects in case of anthropic and openai miniagents)
@@ -187,10 +199,7 @@ class MiniAgent:
         self.__doc__ = self.description
 
     def inquire(
-        self,
-        messages: Optional[MessageType] = None,
-        start_asap: Optional[bool] = None,
-        **function_kwargs,
+        self, messages: Optional[MessageType] = None, start_asap: Optional[bool] = None, **function_kwargs
     ) -> MessageSequencePromise:
         """
         TODO Oleksandr: docstring
@@ -200,11 +209,13 @@ class MiniAgent:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
-    def initiate_inquiry(
-        self,
-        start_asap: Optional[bool] = None,
-        **function_kwargs,
-    ) -> "AgentCall":
+    def kick_off(self, messages: Optional[MessageType] = None, **function_kwargs) -> None:
+        """
+        Make a call to the agent and ignore the response.
+        """
+        self.inquire(messages, start_asap=True, **function_kwargs)
+
+    def initiate_inquiry(self, start_asap: Optional[bool] = None, **function_kwargs) -> "AgentCall":
         """
         Start an inquiry with the agent. The agent will be called with the provided function kwargs.
         TODO Oleksandr: expand this docstring ?

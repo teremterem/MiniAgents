@@ -2,20 +2,19 @@
 This module integrates OpenAI language models with MiniAgents.
 """
 
-import logging
 import typing
 from functools import cache
-from pprint import pformat
-from typing import Any, Optional
+from typing import Any
 
+from pydantic import Field, field_validator
+
+from miniagents import Message
 from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
 from miniagents.messages import MessageTokenAppender
-from miniagents.miniagents import MiniAgent, miniagent, InteractionContext
+from miniagents.miniagents import miniagent
 
 if typing.TYPE_CHECKING:
     import openai as openai_original
-
-logger = logging.getLogger(__name__)
 
 
 class OpenAIMessage(AssistantMessage):
@@ -24,51 +23,47 @@ class OpenAIMessage(AssistantMessage):
     """
 
 
-# this is for pylint to understand that `OpenAIAgent` becomes an instance of `MiniAgent` after decoration
-OpenAIAgent: MiniAgent
+@cache
+def _default_openai_client() -> "openai_original.AsyncOpenAI":
+    try:
+        # pylint: disable=import-outside-toplevel
+        # noinspection PyShadowingNames
+        import openai as openai_original
+    except ModuleNotFoundError as exc:
+        raise ImportError(
+            "The 'openai' package is required for the 'openai' extension of MiniAgents. "
+            "Please install it via 'pip install -U openai'."
+        ) from exc
+
+    return openai_original.AsyncOpenAI()
 
 
 @miniagent
 class OpenAIAgent(LLMAgent):
     """
-    An agent that represents Large Language Models by OpenAI.
+    An agent that represents Large Language Models by OpenAI. Check out the implementation of the async `__call__`
+    method in the base class `LLMAgent` to understand how agents like this one work (the two most important methods
+    of all class-based miniagents are `__init__` and `__call__`).
     """
 
-    def __init__(
-        self,
-        ctx: InteractionContext,
-        model: str,
-        stream: Optional[bool] = None,
-        system: Optional[str] = None,
-        n: int = 1,
-        async_client: Optional["openai_original.AsyncOpenAI"] = None,
-        reply_metadata: Optional[dict[str, Any]] = None,
-        **other_kwargs,
-    ) -> None:
+    n: int = 1
+    async_client: Any = Field(default_factory=_default_openai_client)
+    response_message_class: type[Message] = OpenAIMessage
+
+    # noinspection PyNestedDecorators
+    @field_validator("n")
+    @classmethod
+    def _validate_n(cls, n: int) -> int:
         if n != 1:
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
+        return n
 
-        super().__init__(ctx=ctx, model=model, stream=stream, reply_metadata=reply_metadata)
-        self.system = system
-        self.async_client = async_client or _default_openai_client()
-        self.other_kwargs = other_kwargs
-
-    async def __call__(self) -> None:
-        message_dicts = await self._prepare_message_dicts()
-
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("SENDING TO OPENAI:\n\n%s\n", pformat(message_dicts))
-
-        with MessageTokenAppender(capture_errors=True) as token_appender:
-            await self._promise_and_close(token_appender, OpenAIMessage)
-            await self._produce_tokens(token_appender, message_dicts)
-
-    async def _produce_tokens(self, token_appender: MessageTokenAppender, message_dicts: list[dict[str, Any]]) -> None:
+    async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
         """
         TODO Oleksandr: docstring
         """
         openai_response = await self.async_client.chat.completions.create(
-            messages=message_dicts, model=self.model, stream=self.stream, **self.other_kwargs
+            messages=message_dicts, model=self.model, stream=self.stream, n=self.n, **self.__pydantic_extra__
         )
         if self.stream:
             async for chunk in openai_response:
@@ -139,18 +134,3 @@ class OpenAIAgent(LLMAgent):
                         destination_dict[key].extend(value)
                 else:
                     destination_dict[key] = value
-
-
-@cache
-def _default_openai_client() -> "openai_original.AsyncOpenAI":
-    try:
-        # pylint: disable=import-outside-toplevel
-        # noinspection PyShadowingNames
-        import openai as openai_original
-    except ModuleNotFoundError as exc:
-        raise ImportError(
-            "The 'openai' package is required for the 'openai' extension of MiniAgents. "
-            "Please install it via 'pip install -U openai'."
-        ) from exc
-
-    return openai_original.AsyncOpenAI()

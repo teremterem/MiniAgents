@@ -1,5 +1,6 @@
 .DS_Store
 transient/
+llm_logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

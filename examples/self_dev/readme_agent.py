@@ -10,8 +10,6 @@ from examples.self_dev.self_dev_common import (
     FullRepoMessage,
     mini_agents,
     SELF_DEV_OUTPUT,
-    prompt_logger_agent,
-    PROMPT_LOG_PATH_PREFIX,
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
 from miniagents import miniagent, InteractionContext, Message, MessageSequencePromise, MessageTokenAppender
@@ -33,9 +31,8 @@ async def readme_agent(ctx: InteractionContext) -> None:
         SystemMessage(SYSTEM_IMPROVE_README),
         ctx.message_promises,
     ]
-    await prompt_logger_agent.inquire(prompt, history_md_file=f"{PROMPT_LOG_PATH_PREFIX}{ctx.this_agent.alias}.md")
 
-    async def _report_file_written(_md_file_name: str, _model_response: MessageSequencePromise) -> None:
+    async def _report_that_file_was_written(_md_file_name: str, _model_response: MessageSequencePromise) -> None:
         await _model_response
         token_appender.append(f"{_md_file_name}\n")
 
@@ -52,7 +49,7 @@ async def readme_agent(ctx: InteractionContext) -> None:
                 model_agent.inquire(prompt),
                 file=str(MINIAGENTS_ROOT / md_file_name),
             )
-            ctx.wait_for(_report_file_written(md_file_name, model_response))
+            ctx.wait_for(_report_that_file_was_written(md_file_name, model_response))
 
         await ctx.await_for_subtasks()
 
@@ -63,12 +60,12 @@ async def main() -> None:
     """
     The main conversation loop.
     """
-    await dialog_loop.fork(
+    dialog_loop.fork(
         user_agent=console_user_agent.fork(
             history_agent=MarkdownHistoryAgent.fork(history_md_file=SELF_DEV_OUTPUT / f"CHAT__{readme_agent.alias}.md")
         ),
         assistant_agent=readme_agent,
-    ).inquire()
+    ).kick_off()
 
 
 if __name__ == "__main__":

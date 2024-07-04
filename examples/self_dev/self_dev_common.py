@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from miniagents import MiniAgents, Message
-from miniagents.ext import MarkdownHistoryAgent
+from miniagents.ext import markdown_llm_logger_agent
 from miniagents.ext.llm import AnthropicAgent, OpenAIAgent
 
 load_dotenv()
@@ -36,13 +36,9 @@ MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent
 
 SELF_DEV_OUTPUT = SELF_DEV_ROOT / "output"
 SELF_DEV_PROMPTS = SELF_DEV_ROOT / "self_dev_prompts.py"
-SELF_DEV_TRANSIENT = SELF_DEV_ROOT / "transient"
+SELF_DEV_LLM_LOGS = SELF_DEV_ROOT / "llm_logs"
 
-PROMPT_LOG_PATH_PREFIX = str(SELF_DEV_TRANSIENT / "PROMPT__")
-
-mini_agents = MiniAgents()
-
-prompt_logger_agent = MarkdownHistoryAgent.fork(default_role="user", only_write=True, append=False)
+mini_agents = MiniAgents(llm_logger_agent=markdown_llm_logger_agent.fork(log_folder=SELF_DEV_LLM_LOGS))
 
 
 class RepoFileMessage(Message):
@@ -83,9 +79,9 @@ class FullRepoMessage(Message):
                     for prefix in [
                         ".",
                         "dist/",
+                        relative_posix_path(SELF_DEV_LLM_LOGS),
                         relative_posix_path(SELF_DEV_OUTPUT),
                         # relative_posix_path(SELF_DEV_PROMPTS),  # TODO Oleksandr: skip the prompts file ?
-                        relative_posix_path(SELF_DEV_TRANSIENT),
                         "htmlcov/",
                         "images/",
                         # "LICENSE",
