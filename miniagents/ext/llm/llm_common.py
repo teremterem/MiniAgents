@@ -3,10 +3,11 @@ Common classes and functions for working with large language models.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import ConfigDict, Field, BaseModel
 
+from miniagents.ext.history_agents import markdown_llm_logger_agent
 from miniagents.messages import Message, MessageTokenAppender, MessagePromise
 from miniagents.miniagents import InteractionContext, MiniAgents, MiniAgent
 
@@ -64,7 +65,7 @@ class LLMAgent(ABC, BaseModel):
     system: Optional[str] = None
     response_metadata: Optional[dict[str, Any]] = None
     response_message_class: type[Message] = AssistantMessage
-    llm_logger_agent: Optional[MiniAgent] = None
+    llm_logger_agent: Optional[Union[MiniAgent, bool]] = None
 
     async def __call__(self) -> None:
         message_dicts = await self._prepare_message_dicts()
@@ -73,7 +74,13 @@ class LLMAgent(ABC, BaseModel):
             response_promise = await self._promise_and_close(token_appender)
 
             if self.llm_logger_agent:
-                self.llm_logger_agent.kick_off(
+                if self.llm_logger_agent is True:
+                    # the default logger agent
+                    logger_agent = markdown_llm_logger_agent
+                else:
+                    logger_agent = self.llm_logger_agent
+
+                logger_agent.kick_off(
                     [
                         self._prompt_messages_to_log(message_dicts),
                         response_promise,

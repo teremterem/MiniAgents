@@ -13,6 +13,7 @@ from miniagents.ext.agent_aggregators import (
 from miniagents.ext.history_agents import (
     in_memory_history_agent,
     MarkdownHistoryAgent,
+    markdown_llm_logger_agent,
 )
 from miniagents.ext.misc_agents import (
     console_input_agent,
@@ -30,5 +31,6 @@ __all__ = [
     "file_output_agent",
     "in_memory_history_agent",
     "MarkdownHistoryAgent",
+    "markdown_llm_logger_agent",
     "user_agent",
 ]
