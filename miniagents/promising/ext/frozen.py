@@ -100,7 +100,7 @@ class Frozen(BaseModel):
             for field in self.model_fields:
                 yield field, getattr(self, field)
 
-        for field, value in self.__pydantic_extra__.items():  # pylint: disable=no-member
+        for field, value in self.__pydantic_extra__.items():
             yield field, value
 
     def _as_string(self) -> str:
