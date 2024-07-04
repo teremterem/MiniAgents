@@ -58,7 +58,7 @@ class AnthropicAgent(LLMAgent):
         system_message = await self._cut_off_system_message(message_dicts)
 
         if self.stream:
-            async with self.async_client.messages.stream(  # pylint: disable=no-member
+            async with self.async_client.messages.stream(
                 messages=message_dicts,
                 system=system_message,
                 model=self.model,
@@ -69,7 +69,7 @@ class AnthropicAgent(LLMAgent):
                 anthropic_final_message = await response.get_final_message()
 
         else:
-            anthropic_final_message = await self.async_client.messages.create(  # pylint: disable=no-member
+            anthropic_final_message = await self.async_client.messages.create(
                 messages=message_dicts,
                 stream=False,
                 system=system_message,

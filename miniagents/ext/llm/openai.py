@@ -62,7 +62,7 @@ class OpenAIAgent(LLMAgent):
         """
         TODO Oleksandr: docstring
         """
-        openai_response = await self.async_client.chat.completions.create(  # pylint: disable=no-member
+        openai_response = await self.async_client.chat.completions.create(
             messages=message_dicts, model=self.model, stream=self.stream, n=self.n, **self.__pydantic_extra__
         )
         if self.stream:
