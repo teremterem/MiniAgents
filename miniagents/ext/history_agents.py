@@ -19,7 +19,8 @@ from miniagents.miniagents import InteractionContext, miniagent
 @miniagent
 async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Message]) -> None:
     """
-    TODO Oleksandr: docstring
+    An agent that stores incoming messages in the `message_list` and then returns all the messages that this list
+    already contains as a reply (including the ones that existed in the list before the current interaction).
     """
     message_list.extend(await ctx.message_promises)
     ctx.reply(message_list)
@@ -80,7 +81,7 @@ class MarkdownHistoryAgent(BaseModel):
     def _load_chat_history_md(self) -> tuple[Message, ...]:
         """
         Parse a markdown content as a dialog.
-        TODO Oleksandr: implement exhaustive unit tests for this function
+        TODO Oleksandr: implement exhaustive unit tests for this function ?
         """
         md_content = Path(self.history_md_file).read_text(encoding="utf-8")
 
