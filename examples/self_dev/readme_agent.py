@@ -10,8 +10,6 @@ from examples.self_dev.self_dev_common import (
     FullRepoMessage,
     mini_agents,
     SELF_DEV_OUTPUT,
-    prompt_logger_agent,
-    PROMPT_LOG_PATH_PREFIX,
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
 from miniagents import miniagent, InteractionContext, Message, MessageSequencePromise, MessageTokenAppender
@@ -33,7 +31,6 @@ async def readme_agent(ctx: InteractionContext) -> None:
         SystemMessage(SYSTEM_IMPROVE_README),
         ctx.message_promises,
     ]
-    await prompt_logger_agent.inquire(prompt, history_md_file=f"{PROMPT_LOG_PATH_PREFIX}{ctx.this_agent.alias}.md")
 
     async def _report_that_file_was_written(_md_file_name: str, _model_response: MessageSequencePromise) -> None:
         await _model_response
