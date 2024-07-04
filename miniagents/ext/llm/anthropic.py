@@ -95,19 +95,19 @@ class AnthropicAgent(LLMAgent):
         if not message_dicts:
             return []
 
-        # let's put all the system messages at the end (they will later be combined into a single message
-        # and stripped away)
         non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
-        system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
-        message_dicts = non_system_message_dicts + system_message_dicts
-
-        fixed_message_dicts = []
-        if message_dicts[0]["role"] != "user":
+        if non_system_message_dicts and non_system_message_dicts[0]["role"] != "user":
             # Anthropic requires the first message to come from the user (system messages don't count -
             # their content will go into a separate, `system` parameter of the API call)
-            fixed_message_dicts.append({"role": "user", "content": self.fake_first_user_message})
+            non_system_message_dicts.insert(0, {"role": "user", "content": self.fake_first_user_message})
+
+        system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
+        # let's put all the system messages in the beginning (they will later be combined into a single message
+        # and stripped away)
+        message_dicts = system_message_dicts + non_system_message_dicts
 
         # if multiple messages with the same role are sent in a row, they should be concatenated
+        fixed_message_dicts = []
         for message_dict in message_dicts:
             if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
                 fixed_message_dicts[-1]["content"] += self.message_delimiter_for_same_role + message_dict["content"]
@@ -120,10 +120,10 @@ class AnthropicAgent(LLMAgent):
         """
         TODO Oleksandr: docstring
         """
-        if message_dicts and message_dicts[-1]["role"] == "system":
-            # let's strip away the system message at the end (look at the implementation of `_fix_message_dicts()`
-            # to see why it's there)
-            system_message_dict = message_dicts.pop()
+        if message_dicts and message_dicts[0]["role"] == "system":
+            # let's strip away the system message from the beginning (look at the implementation of
+            # `_fix_message_dicts()` to see why it's there)
+            system_message_dict = message_dicts.pop(0)
             resulting_system_message = (
                 system_message_dict["content"]
                 if self.system is None
