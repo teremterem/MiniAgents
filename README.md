@@ -48,7 +48,7 @@ from miniagents import miniagent, InteractionContext, MiniAgents
 
 
 @miniagent
-async def my_agent(ctx: InteractionContext):
+async def my_agent(ctx: InteractionContext) -> None:
     async for msg_promise in ctx.message_promises:
         ctx.reply(f"You said: {await msg_promise}")
 
@@ -91,7 +91,7 @@ from miniagents.ext.llm import OpenAIAgent
 gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-2024-05-13")
 
 
-async def main():
+async def main() -> None:
     reply_sequence = gpt_4o_agent.inquire(
         "Hello, how are you?",
         system="You are a helpful assistant.",
@@ -405,12 +405,12 @@ from miniagents import miniagent, InteractionContext, MiniAgents
 
 
 @miniagent
-async def output_agent(ctx: InteractionContext):
+async def output_agent(ctx: InteractionContext) -> None:
     async for msg_promise in ctx.message_promises:
         ctx.reply(f"Echo: {await msg_promise}")
 
 
-async def main():
+async def main() -> None:
     agent_call = output_agent.initiate_inquiry()
     agent_call.send_message("Hello")
     agent_call.send_message("World")
