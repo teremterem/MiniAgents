@@ -186,8 +186,15 @@ async def markdown_llm_logger_agent(
 
     if metadata:
         log_file.write_text(f"```python\n{pformat(metadata)}\n```\n", encoding="utf-8")
-    # TODO Oleksandr: separate prompt messages from the completion message visually ?
-    MarkdownHistoryAgent.kick_off(ctx.message_promises, history_md_file=str(log_file), only_write=True)
+
+    await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file), only_write=True)
+    messages = await ctx.message_promises
+    if not messages:
+        return
+
+    with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
+        metadata = messages[-1].model_dump(exclude={"text", "text_template"})
+        log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(metadata)}\n```\n")
 
 
 _md = MarkdownIt()
