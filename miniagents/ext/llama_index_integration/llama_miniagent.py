@@ -31,6 +31,7 @@ from llama_index.llms.openai import OpenAI
 from llama_index.llms.openai.utils import OpenAIToolCall
 
 from miniagents.ext.llama_index_integration.llama_miniagent_llm import LlamaMiniAgentLLM
+from miniagents.ext.llama_index_integration.llama_miniagent_worker import LlamaMiniAgentWorker
 
 DEFAULT_MAX_FUNCTION_CALLS = 5
 
@@ -62,7 +63,7 @@ class LlamaMiniAgent(AgentRunner):
     ) -> None:
         """Init params."""
         callback_manager = callback_manager or llm.callback_manager
-        step_engine = OpenAIAgentWorker.from_tools(
+        step_engine = LlamaMiniAgentWorker.from_tools(
             tools=tools,
             tool_retriever=tool_retriever,
             llm=llm,
