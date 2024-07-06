@@ -1,12 +1,15 @@
 from dotenv import load_dotenv
-from llama_index.agent.openai import OpenAIAgent
-from llama_index.core import load_index_from_storage, StorageContext
+from llama_index.core import load_index_from_storage, StorageContext, Settings
 from llama_index.core.query_engine import SubQuestionQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 
 from miniagents import MiniAgents
+from miniagents.ext.llama_index_integration.llama_miniagent import LlamaMiniAgent
+from miniagents.ext.llama_index_integration.llama_miniagent_llm import LlamaMiniAgentLLM
 
 load_dotenv()
+
+Settings.llm = LlamaMiniAgentLLM()
 
 
 async def main() -> None:
@@ -48,7 +51,7 @@ async def main() -> None:
 
     tools = individual_query_engine_tools + [query_engine_tool]
 
-    agent = OpenAIAgent.from_tools(tools, verbose=True)
+    agent = LlamaMiniAgent.from_tools(tools, verbose=True)
 
     # response = agent.chat("hi, i am bob")
     # print(str(response))
