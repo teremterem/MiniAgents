@@ -1,10 +1,10 @@
-import asyncio
-
 from dotenv import load_dotenv
 from llama_index.agent.openai import OpenAIAgent
 from llama_index.core import load_index_from_storage, StorageContext
 from llama_index.core.query_engine import SubQuestionQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
+
+from miniagents import MiniAgents
 
 load_dotenv()
 
@@ -50,11 +50,11 @@ async def main() -> None:
 
     agent = OpenAIAgent.from_tools(tools, verbose=True)
 
-    response = agent.chat("hi, i am bob")
-    print(str(response))
-
-    response = agent.chat("What were some of the biggest risk factors in 2020 for Uber?")
-    print(str(response))
+    # response = agent.chat("hi, i am bob")
+    # print(str(response))
+    #
+    # response = agent.chat("What were some of the biggest risk factors in 2020 for Uber?")
+    # print(str(response))
 
     cross_query_str = (
         "Compare/contrast the risk factors described in the Uber 10-K across" " years. Give answer in bullet points."
@@ -65,19 +65,17 @@ async def main() -> None:
         print(token, end="", flush=True)
     print()
 
-    return
-
-    agent = OpenAIAgent.from_tools(tools)  # verbose=False by default
-
-    while True:
-        text_input = input("User: ")
-        if text_input == "exit":
-            break
-        response = agent.chat(text_input)
-        print(f"Agent: {response}")
+    # agent = OpenAIAgent.from_tools(tools)  # verbose=False by default
+    #
+    # while True:
+    #     text_input = input("User: ")
+    #     if text_input == "exit":
+    #         break
+    #     response = agent.chat(text_input)
+    #     print(f"Agent: {response}")
 
     # User: What were some of the legal proceedings against Uber in 2022?
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    MiniAgents().run(main())
