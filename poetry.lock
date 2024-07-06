@@ -1911,6 +1911,22 @@ SQLAlchemy = ">=1.4,<3"
 tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<9.0.0"
 
 [[package]]
+name = "langchain-anthropic"
+version = "0.1.19"
+description = "An integration package connecting AnthropicMessages and LangChain"
+optional = false
+python-versions = "<4.0,>=3.8.1"
+files = [
+    {file = "langchain_anthropic-0.1.19-py3-none-any.whl", hash = "sha256:ed0d5823dcf65802c6367a8fada2e82610aa1c96dfaae5400b6920131483707b"},
+    {file = "langchain_anthropic-0.1.19.tar.gz", hash = "sha256:7f4b3834947bbefdc43f5dc4ebbaddac4b58253c0c54684ac960af5054acc341"},
+]
+
+[package.dependencies]
+anthropic = ">=0.28.0,<1"
+defusedxml = ">=0.7.1,<0.8.0"
+langchain-core = ">=0.2.10,<0.3"
+
+[[package]]
 name = "langchain-core"
 version = "0.2.11"
 description = "Building applications with LLMs through composability"
@@ -1931,6 +1947,22 @@ pydantic = [
 ]
 PyYAML = ">=5.3"
 tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<9.0.0"
+
+[[package]]
+name = "langchain-openai"
+version = "0.1.14"
+description = "An integration package connecting OpenAI and LangChain"
+optional = false
+python-versions = "<4.0,>=3.8.1"
+files = [
+    {file = "langchain_openai-0.1.14-py3-none-any.whl", hash = "sha256:fcd34cc5b5713798908a5828d364b4426e3b1afccbd564d344e5477acb86634a"},
+    {file = "langchain_openai-0.1.14.tar.gz", hash = "sha256:1f13d6041e8bedddf6eb47ccad7416e05af38fa169324f7f1bdf4f385780f8d8"},
+]
+
+[package.dependencies]
+langchain-core = ">=0.2.2,<0.3"
+openai = ">=1.32.0,<2.0.0"
+tiktoken = ">=0.7,<1"
 
 [[package]]
 name = "langchain-text-splitters"
@@ -5118,4 +5150,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "5431e4f62e6eab1e431ffe6d7369f4b3161d540d6f5bb9817365e8643026c4d9"
+content-hash = "ce476aec471cd8501a12288fcd168bd6280b7d9b5b05daee4cfc9dee008892fe"
