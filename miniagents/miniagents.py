@@ -173,7 +173,7 @@ class MiniAgent:
         # validate interaction metadata
         # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         self.interaction_metadata = Frozen(**(interaction_metadata or {}))
-        self._interact_metadata_dict = self.interaction_metadata.frozen_fields_and_values()
+        self._interact_metadata_dict = self.interaction_metadata.fields_and_values()
 
         self.alias = alias
         if self.alias is None:
@@ -480,7 +480,7 @@ class AgentReplyMessageSequence(MessageSequence):
         **kwargs,
     ) -> None:
         # this validates the agent function kwargs
-        self._frozen_func_kwargs = Frozen(**function_kwargs).frozen_fields_and_values()
+        self._frozen_func_kwargs = Frozen(**function_kwargs).fields_and_values()
         self._function_kwargs = copy.deepcopy(function_kwargs)
 
         self._mini_agent = mini_agent
