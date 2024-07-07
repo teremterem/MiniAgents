@@ -12,7 +12,7 @@ from typing import Optional, Union, Any
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
-from miniagents.messages import Message
+from miniagents.messages import Message, MESSAGE_TEXT_AND_TEMPLATE
 from miniagents.miniagents import InteractionContext, miniagent
 
 
@@ -175,8 +175,8 @@ async def markdown_llm_logger_agent(
     else:
         model_suffix = ""
 
-    log_file = (
-        log_folder / f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
+    log_file = log_folder / (
+        f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
     )
 
     if log_file.exists():
@@ -193,7 +193,7 @@ async def markdown_llm_logger_agent(
         return
 
     with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
-        metadata = messages[-1].model_dump(exclude={"text", "text_template"})
+        metadata = messages[-1].model_dump(exclude=MESSAGE_TEXT_AND_TEMPLATE)
         log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(metadata)}\n```\n")
 
 

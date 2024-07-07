@@ -3,10 +3,9 @@ The main class in this module is `Frozen`. See its docstring for more informatio
 """
 
 import hashlib
-import itertools
 import json
 from functools import cached_property
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Iterator, Optional, Union, Iterable
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -73,28 +72,21 @@ class Frozen(BaseModel):
             hash_key = hash_key[:40]
         return hash_key
 
-    def frozen_fields(self, exclude_class: bool = False) -> Iterator[str]:
-        """
-        Get the list of field names of the object. This includes the model fields (both, explicitly set and the ones
-        with default values) and the extra fields that are not part of the model.
-        """
-        if exclude_class:
-            return itertools.chain(
-                (field for field in self.model_fields if field != "class_"), self.__pydantic_extra__
-            )
-        return itertools.chain(self.model_fields, self.__pydantic_extra__)
-
-    def frozen_fields_and_values(self, exclude_class: bool = True) -> dict[str, Any]:
+    def fields_and_values(self, exclude: Iterable[str] = (), exclude_class_field: bool = True) -> dict[str, Any]:
         """
         Get a dict of field names and values of this Pydantic object. This includes the model fields (both,
         explicitly set and the ones with default values) and the extra fields that are not part of the model.
+        TODO Oleksandr: explain how it is different from model_dump()
         """
-        return dict(self._frozen_fields_and_values(exclude_class=exclude_class))
+        exclude = set(exclude)
+        if exclude_class_field:
+            exclude.add("class_")
+        return dict(self._fields_and_values(exclude=exclude))
 
-    def _frozen_fields_and_values(self, exclude_class: bool) -> Iterator[tuple[str, Any]]:
-        if exclude_class:
+    def _fields_and_values(self, exclude: Optional[set[str]] = None) -> Iterator[tuple[str, Any]]:
+        if exclude:
             for field in self.model_fields:
-                if field != "class_":
+                if field not in exclude:
                     yield field, getattr(self, field)
         else:
             for field in self.model_fields:

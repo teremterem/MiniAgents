@@ -3,12 +3,15 @@
 """
 
 from functools import cached_property
-from typing import AsyncIterator, Any, Union, Optional, Iterator
+from typing import AsyncIterator, Any, Union, Optional, Iterator, Iterable
 
 from miniagents.miniagent_typing import MessageTokenStreamer
 from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import StreamedPromise, StreamAppender
+from miniagents.utils import join_messages
+
+MESSAGE_TEXT_AND_TEMPLATE = frozenset({"text", "text_template"})
 
 
 class Message(Frozen):
@@ -75,6 +78,17 @@ class Message(Frozen):
                     yield from message.sub_messages()
                     yield message
 
+    def fields_and_values(
+        self, exclude: Iterable[str] = (), exclude_class_field: bool = True, exclude_text_and_template: bool = False
+    ) -> dict[str, Any]:
+        """
+        TODO Oleksandr: docstring
+        """
+        if exclude_text_and_template:
+            exclude = set(exclude)
+            exclude.update(MESSAGE_TEXT_AND_TEMPLATE)
+        return super().fields_and_values(exclude=exclude, exclude_class_field=exclude_class_field)
+
     @cached_property
     def _serialization_metadata(
         self,
@@ -91,7 +105,7 @@ class Message(Frozen):
             node_path: tuple[Union[str, int], ...],
         ) -> None:
             # pylint: disable=protected-access
-            for field, value in node._frozen_fields_and_values(exclude_class=False):
+            for field, value in node._fields_and_values():
                 if isinstance(value, Message):
                     sub_messages[(*node_path, field)] = value
 
@@ -128,8 +142,7 @@ class Message(Frozen):
         if self.text is not None:
             return self.text
         if self.text_template is not None:
-            # TODO Oleksandr: exclude_class=False ?
-            return self.text_template.format(**self.frozen_fields_and_values())
+            return self.text_template.format(**self.fields_and_values(exclude_class_field=False))
         return super()._as_string()
 
     def __init__(self, text: Optional[str] = None, **metadata: Any) -> None:
@@ -172,9 +185,9 @@ class MessagePromise(StreamedPromise[str, Message]):
                         "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
                     )
                 self._metadata_so_far = message_token_streamer.metadata_so_far
-                self._metadata_so_far.update(self.preliminary_metadata.frozen_fields_and_values())
+                self._metadata_so_far.update(self.preliminary_metadata.fields_and_values())
             else:
-                self._metadata_so_far = self.preliminary_metadata.frozen_fields_and_values()
+                self._metadata_so_far = self.preliminary_metadata.fields_and_values()
 
             self._message_token_streamer = message_token_streamer
             self._message_class = message_class
@@ -200,8 +213,6 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
         Convert this sequence promise into a single message promise that will contain all the messages from this
         sequence (separated by double newlines by default).
         """
-        from miniagents.utils import join_messages  # pylint: disable=import-outside-toplevel
-
         return join_messages(self, start_asap=False, **kwargs)
 
 

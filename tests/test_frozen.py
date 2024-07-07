@@ -81,7 +81,7 @@ async def test_model_hash_key() -> None:
     """
     async with PromisingContext():
         model = Frozen(content="test", final_sender_alias="user", custom_field={"role": "user"})
-        # print(json.dumps(model.model_dump(exclude={"forum_trees"}), ensure_ascii=False, sort_keys=True))
+        # print(json.dumps(model.model_dump(), ensure_ascii=False, sort_keys=True))
         expected_hash_key = hashlib.sha256(
             '{"class_": "Frozen", "content": "test", "custom_field": {"class_": "Frozen", "role": "user"}, '
             '"final_sender_alias": "user"}'.encode("utf-8")
