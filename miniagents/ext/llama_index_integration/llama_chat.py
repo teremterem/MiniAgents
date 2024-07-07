@@ -4,8 +4,8 @@ from llama_index.core.query_engine import SubQuestionQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 
 from miniagents import MiniAgents
-from miniagents.ext.llama_index_integration.llama_miniagent import LlamaMiniAgent
-from miniagents.ext.llama_index_integration.llama_miniagent_llm import LlamaMiniAgentLLM
+from miniagents.ext.llama_index_integration.llama_index_miniagent import LlamaMiniAgent
+from miniagents.ext.llama_index_integration.llama_index_miniagent_llm import LlamaMiniAgentLLM
 
 load_dotenv()
 

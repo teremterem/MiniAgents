@@ -29,8 +29,8 @@ from llama_index.core.tools import BaseTool
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.openai.utils import OpenAIToolCall
 
-from miniagents.ext.llama_index_integration.llama_miniagent_llm import LlamaMiniAgentLLM
-from miniagents.ext.llama_index_integration.llama_miniagent_worker import LlamaMiniAgentWorker
+from miniagents.ext.llama_index_integration.llama_index_miniagent_llm import LlamaMiniAgentLLM
+from miniagents.ext.llama_index_integration.llama_index_miniagent_worker import LlamaMiniAgentWorker
 
 DEFAULT_MAX_FUNCTION_CALLS = 5
 

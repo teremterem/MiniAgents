@@ -45,7 +45,7 @@ from llama_index.core.types import Thread
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.openai.utils import OpenAIToolCall
 
-from miniagents.ext.llama_index_integration.llama_miniagent_llm import LlamaMiniAgentLLM
+from miniagents.ext.llama_index_integration.llama_index_miniagent_llm import LlamaMiniAgentLLM
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
