@@ -76,6 +76,7 @@ class Frozen(BaseModel):
         """
         Get a dict of field names and values of this Pydantic object. This includes the model fields (both,
         explicitly set and the ones with default values) and the extra fields that are not part of the model.
+        TODO Oleksandr: explain how it is different from model_dump()
         """
         exclude = set(exclude)
         if exclude_class_field:
