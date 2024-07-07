@@ -175,8 +175,8 @@ async def markdown_llm_logger_agent(
     else:
         model_suffix = ""
 
-    log_file = (
-        log_folder / f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
+    log_file = log_folder / (
+        f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
     )
 
     if log_file.exists():
