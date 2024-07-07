@@ -9,6 +9,7 @@ from llama_index.core.base.llms.types import (
     CompletionResponseAsyncGen,
     LLMMetadata,
     CompletionResponseGen,
+    MessageRole,
 )
 from llama_index.core.llms.callbacks import (
     llm_chat_callback,
@@ -17,6 +18,7 @@ from llama_index.core.llms.callbacks import (
 from llama_index.core.llms.llm import LLM
 
 from miniagents import MiniAgent
+from miniagents.ext.llm.llm_common import LLMMessage
 
 
 class LlamaIndexMiniAgentLLM(LLM):
@@ -60,8 +62,19 @@ class LlamaIndexMiniAgentLLM(LLM):
         messages: Sequence[ChatMessage],
         **kwargs: Any,
     ) -> ChatResponse:
-        # TODO TODO TODO
-        return self.chat(messages, **kwargs)
+        miniagent_messages = [
+            LLMMessage(text=chat_message.content, role=chat_message.role) for chat_message in messages
+        ]
+        miniagent_response = await self.underlying_miniagent.inquire(miniagent_messages).as_single_promise()
+
+        return ChatResponse(
+            message=ChatMessage(
+                role=miniagent_response.role,
+                content=miniagent_response.text,
+                additional_kwargs=miniagent_response.fields_and_values(exclude_text_and_template=True),
+            ),
+            raw=miniagent_response.model_dump(),
+        )
 
     @llm_chat_callback()
     async def astream_chat(
@@ -69,12 +82,41 @@ class LlamaIndexMiniAgentLLM(LLM):
         messages: Sequence[ChatMessage],
         **kwargs: Any,
     ) -> ChatResponseAsyncGen:
-        async def gen() -> ChatResponseAsyncGen:
-            for message in self.stream_chat(messages, **kwargs):
-                yield message
+        miniagent_messages = [
+            LLMMessage(text=chat_message.content, role=chat_message.role) for chat_message in messages
+        ]
+        miniagent_resp_promise = await self.underlying_miniagent.inquire(miniagent_messages).as_single_promise()
 
-        # NOTE: convert generator to async generator
-        return gen()
+        preliminary_metadata = miniagent_resp_promise.preliminary_metadata
+        preliminary_metadata_dict = preliminary_metadata.model_dump()
+        yield ChatResponse(
+            message=ChatMessage(
+                role=getattr(preliminary_metadata, "role") or MessageRole.ASSISTANT,
+                additional_kwargs=preliminary_metadata.fields_and_values(
+                    exclude={"role"}, exclude_text_and_template=True
+                ),
+            ),
+            raw=preliminary_metadata_dict,
+        )
+
+        async for token in miniagent_resp_promise:
+            yield ChatResponse(
+                message=ChatMessage(
+                    role=getattr(preliminary_metadata, "role") or MessageRole.ASSISTANT,
+                    content=token,
+                ),
+            )
+
+        miniagent_resp_message = await miniagent_resp_promise
+        yield ChatResponse(
+            message=ChatMessage(
+                role=getattr(miniagent_resp_message, "role") or MessageRole.ASSISTANT,
+                additional_kwargs=miniagent_resp_message.fields_and_values(
+                    exclude={"role"}, exclude_text_and_template=True
+                ),
+            ),
+            raw=miniagent_resp_message.model_dump(),
+        )
 
     @llm_completion_callback()
     async def acomplete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
