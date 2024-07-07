@@ -6,10 +6,11 @@ from llama_index.core.tools import QueryEngineTool, ToolMetadata
 
 from miniagents import MiniAgents
 from miniagents.ext.llama_index_integration.llama_index_miniagent_llm import LlamaIndexMiniAgentLLM
+from miniagents.ext.llm import OpenAIAgent
 
 load_dotenv()
 
-Settings.llm = LlamaIndexMiniAgentLLM()
+Settings.llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
 
 
 async def main() -> None:
@@ -28,7 +29,7 @@ async def main() -> None:
             query_engine=index_set[year].as_query_engine(),
             metadata=ToolMetadata(
                 name=f"vector_index_{year}",
-                description="useful for when you want to answer queries about the" f" {year} SEC 10-K for Uber",
+                description="useful for when you want to answer queries about the {year} SEC 10-K for Uber",
             ),
         )
         for year in years
@@ -62,7 +63,7 @@ async def main() -> None:
     # print(str(response))
 
     cross_query_str = (
-        "Compare/contrast the risk factors described in the Uber 10-K across" " years. Give answer in bullet points."
+        "Compare/contrast the risk factors described in the Uber 10-K across years. Give answer in bullet points."
     )
 
     response = await agent.astream_chat(cross_query_str)

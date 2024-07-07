@@ -33,25 +33,24 @@ class LlamaIndexMiniAgentLLM(LLM):
 
     def stream_complete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponseGen:
         raise NotImplementedError(
-            f"{self.__class__.__name__} does not support synchronous model completion. "
+            f"`{self.__class__.__name__}` does not support synchronous operations. "
             f"Use `astream_complete` instead of `stream_complete`."
         )
 
     def complete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
         raise NotImplementedError(
-            f"{self.__class__.__name__} does not support synchronous model completion. "
+            f"`{self.__class__.__name__}` does not support synchronous operations. "
             f"Use `acomplete` instead of `complete`."
         )
 
     def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> ChatResponse:
         raise NotImplementedError(
-            f"{self.__class__.__name__} does not support synchronous model completion. "
-            f"Use `achat` instead of `chat`."
+            f"`{self.__class__.__name__}` does not support synchronous operations. Use `achat` instead of `chat`."
         )
 
     def stream_chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> ChatResponseGen:
         raise NotImplementedError(
-            f"{self.__class__.__name__} does not support synchronous model completion. "
+            f"`{self.__class__.__name__}` does not support synchronous operations. "
             f"Use `astream_chat` instead of `stream_chat`."
         )
 
