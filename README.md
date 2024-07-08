@@ -553,7 +553,7 @@ mini_agents = MiniAgents()
 @mini_agents.on_persist_message
 async def persist_message(_, message: Message) -> None:
     print(f"Persisting message with hash key: {message.hash_key}")
-    # Here you could implement logic to save the message to a database, for example
+    # Here you could save the message to a database or log it to a file
 ```
 
 ## 📂 Modules
