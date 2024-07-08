@@ -49,8 +49,8 @@ class RepoFileMessage(Message):
     file_posix_path: str
 
     def _as_string(self) -> str:
-        extra_newline = "" if self.text.endswith("\n") else "\n"
-        return f'<source_file path="{self.file_posix_path}">\n{self.text}{extra_newline}</source_file>'
+        extra_newline = "" if self.content.endswith("\n") else "\n"
+        return f'<source_file path="{self.file_posix_path}">\n{self.content}{extra_newline}</source_file>'
 
 
 class FullRepoMessage(Message):
@@ -71,7 +71,7 @@ class FullRepoMessage(Message):
             if file.is_file() and file.stat().st_size > 0
         ]
         miniagent_files = [
-            RepoFileMessage(file_posix_path=file_posix_path, text=file.read_text(encoding="utf-8"))
+            RepoFileMessage(file_posix_path=file_posix_path, content=file.read_text(encoding="utf-8"))
             for file_posix_path, file in miniagent_files
             if (
                 not any(

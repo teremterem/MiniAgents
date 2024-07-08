@@ -92,17 +92,11 @@ class LLMAgent(ABC, BaseModel):
             await self._produce_tokens(message_dicts, token_appender)
 
     @staticmethod
-    def _prompt_messages_to_log(message_dicts: list[dict[str, Any]]) -> list[PromptLogMessage]:
+    def _prompt_messages_to_log(message_dicts: list[dict[str, Any]]) -> tuple[PromptLogMessage, ...]:
         """
         TODO Oleksandr: docstring
         """
-        return [
-            PromptLogMessage(
-                text=message_dict.get("content"),
-                **{key: value for key, value in message_dict.items() if key != "content"},
-            )
-            for message_dict in message_dicts
-        ]
+        return tuple(PromptLogMessage(**message_dict) for message_dict in message_dicts)
 
     def _metadata_to_log(self) -> dict[str, Any]:
         """

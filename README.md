@@ -119,7 +119,7 @@ support sending and receiving zero or more messages).
 
 You can read agent responses token-by-token as shown above regardless of whether
 the agent is streaming token by token or returning full messages. The complete
-message text will just be returned as a single "token" in the latter case.
+message content will just be returned as a single "token" in the latter case.
 
 ## 🔄 A dialog loop between a user and an AI assistant
 
@@ -469,9 +469,9 @@ about it.
 ```python
 from miniagents.ext.llm import UserMessage, SystemMessage, AssistantMessage
 
-user_message = UserMessage(text="Hello!")
-system_message = SystemMessage(text="System message")
-assistant_message = AssistantMessage(text="Assistant message")
+user_message = UserMessage("Hello!")
+system_message = SystemMessage("System message")
+assistant_message = AssistantMessage("Assistant message")
 ```
 
 The difference between these message types is in the default values of
@@ -493,8 +493,8 @@ class CustomMessage(Message):
     custom_field: str
 
 
-message = CustomMessage(text="Hello", custom_field="Custom Value")
-print(message.text)  # Output: Hello
+message = CustomMessage("Hello", custom_field="Custom Value")
+print(message.content)  # Output: Hello
 print(message.custom_field)  # Output: Custom Value
 ```
 
@@ -597,8 +597,8 @@ Here are some of the core concepts in the MiniAgents framework:
   behavior. Created using the `@miniagent` decorator.
 - **InteractionContext**: Passed to each agent function, provides access to
   incoming messages and allows sending replies.
-- **Message**: Represents a message exchanged between agents. Can contain text,
-  metadata, and nested messages. Immutable once created.
+- **Message**: Represents a message exchanged between agents. Can contain
+  content, metadata, and nested messages. Immutable once created.
 - **MessagePromise**: A promise of a message that can be streamed token by
   token.
 - **MessageSequencePromise**: A promise of a sequence of message promises.

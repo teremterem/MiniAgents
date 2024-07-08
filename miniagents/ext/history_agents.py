@@ -122,7 +122,7 @@ class MarkdownHistoryAgent(BaseModel):
             last_section.content = self._grab_and_clean_up_lines(md_lines, last_section.content_start_line)
             sections.append(last_section)
 
-        return tuple(Message(role=section.role, model=section.model, text=section.content) for section in sections)
+        return tuple(Message(role=section.role, model=section.model, content=section.content) for section in sections)
 
     @staticmethod
     def _grab_and_clean_up_lines(md_lines: list[str], start_line: int, end_line: Optional[int] = None) -> str:

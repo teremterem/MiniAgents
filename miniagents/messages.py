@@ -11,7 +11,7 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.utils import join_messages
 
-MESSAGE_CONTENT_AND_TEMPLATE = frozenset({"text", "content_template"})
+MESSAGE_CONTENT_AND_TEMPLATE = frozenset({"content", "content_template"})
 
 
 class Message(Frozen):
@@ -19,7 +19,7 @@ class Message(Frozen):
     A message that can be sent between agents.
     """
 
-    text: Optional[str] = None
+    content: Optional[str] = None
     content_template: Optional[str] = None
 
     @cached_property
@@ -139,14 +139,14 @@ class Message(Frozen):
         return include_into_serialization, sub_messages
 
     def _as_string(self) -> str:
-        if self.text is not None:
-            return self.text
+        if self.content is not None:
+            return self.content
         if self.content_template is not None:
             return self.content_template.format(**self.fields_and_values(exclude_class_field=False))
         return super()._as_string()
 
-    def __init__(self, text: Optional[str] = None, **metadata: Any) -> None:
-        super().__init__(text=text, **metadata)
+    def __init__(self, content: Optional[str] = None, **metadata: Any) -> None:
+        super().__init__(content=content, **metadata)
         self._persist_message_event_triggered = False
 
 
@@ -198,7 +198,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     async def _resolver(self) -> Message:
         return self._message_class(
-            text="".join([token async for token in self]),
+            content="".join([token async for token in self]),
             **self._metadata_so_far,
         )
 

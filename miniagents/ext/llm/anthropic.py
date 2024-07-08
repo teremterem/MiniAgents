@@ -82,7 +82,7 @@ class AnthropicAgent(LLMAgent):
                     f"exactly one TextBlock was expected from Anthropic, "
                     f"but {len(anthropic_final_message.content)} were returned instead"
                 )
-            # send the complete message text as a single token
+            # send the complete message content as a single token
             token_appender.append(anthropic_final_message.content[0].text)
 
         token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))

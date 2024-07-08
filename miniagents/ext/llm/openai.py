@@ -89,7 +89,7 @@ class OpenAIAgent(LLMAgent):
                     f"exactly one Choice was expected from OpenAI, "
                     f"but {len(openai_response.choices)} were returned instead"
                 )
-            # send the complete message text as a single token
+            # send the complete message content as a single token
             token_appender.append(openai_response.choices[0].message.content)
 
             token_appender.metadata_so_far["role"] = openai_response.choices[0].message.role

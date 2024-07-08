@@ -26,22 +26,22 @@ async def test_message_nesting_vs_hash_key() -> None:
 
     async with PromisingContext():
         message = Message(
-            text="юнікод",
+            content="юнікод",
             extra_field=[
                 15,
                 {
                     "role": "user",
-                    "nested_nested": (Message(text="nested_text"), Message(text="nested_text2")),
-                    "nested_nested2": [Message(text="nested_text2")],
+                    "nested_nested": (Message(content="nested_text"), Message(content="nested_text2")),
+                    "nested_nested2": [Message(content="nested_text2")],
                 },
             ],
-            extra_node=SpecialNode(nested_nested=Message(text="nested_text3")),
-            nested_message=Message(text="nested_text"),
+            extra_node=SpecialNode(nested_nested=Message(content="nested_text3")),
+            nested_message=Message(content="nested_text"),
         )
 
         expected_structure = {
             "class_": "Message",
-            "text": "юнікод",
+            "content": "юнікод",
             "content_template": None,
             "extra_field": (
                 15,
@@ -49,17 +49,17 @@ async def test_message_nesting_vs_hash_key() -> None:
                     "class_": "Frozen",
                     "role": "user",
                     "nested_nested__hash_keys": (
-                        "3275491949deff73da05e207b9e7d2142149fa72",
-                        "e2212ae920e280316155704074f98b3fcd9ef092",
+                        "03ebecb2b3a3d5508ea47adf49fb9dfcefec45c6",
+                        "b4b1128ee0d4be12150e3e5f69b5d7f302db689f",
                     ),
-                    "nested_nested2__hash_keys": ("e2212ae920e280316155704074f98b3fcd9ef092",),
+                    "nested_nested2__hash_keys": ("b4b1128ee0d4be12150e3e5f69b5d7f302db689f",),
                 },
             ),
             "extra_node": {
                 "class_": "SpecialNode",
-                "nested_nested__hash_key": "5c8a6949584202a1553f7efdb728e21078719f4d",
+                "nested_nested__hash_key": "af776c46f2e2c2e01e159cd8622320686bc6b4b2",
             },
-            "nested_message__hash_key": "3275491949deff73da05e207b9e7d2142149fa72",
+            "nested_message__hash_key": "03ebecb2b3a3d5508ea47adf49fb9dfcefec45c6",
         }
         assert message.serialize() == expected_structure
 
