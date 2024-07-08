@@ -14,7 +14,7 @@ from examples.self_dev.self_dev_common import (
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
 from miniagents import miniagent, InteractionContext, Message, MessageSequencePromise, MessageTokenAppender
 from miniagents.ext import file_output_agent, dialog_loop, MarkdownHistoryAgent, console_user_agent
-from miniagents.ext.llm import SystemMessage
+from miniagents.ext.llms import SystemMessage
 
 load_dotenv()
 

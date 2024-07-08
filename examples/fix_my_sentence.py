@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from miniagents import MiniAgents
 from miniagents.ext import dialog_loop, console_user_agent
-from miniagents.ext.llm import SystemMessage, OpenAIAgent
+from miniagents.ext.llms import SystemMessage, OpenAIAgent
 
 load_dotenv()
 

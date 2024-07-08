@@ -13,7 +13,7 @@ from examples.self_dev.self_dev_common import (
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES
 from miniagents import miniagent, InteractionContext
 from miniagents.ext import dialog_loop, MarkdownHistoryAgent, console_user_agent
-from miniagents.ext.llm import SystemMessage
+from miniagents.ext.llms import SystemMessage
 
 load_dotenv()
 

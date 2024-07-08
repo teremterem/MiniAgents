@@ -4,8 +4,8 @@ This module contains agents that are used to aggregate other agents into chains,
 
 from typing import Union, Iterable, Optional
 
-from miniagents.ext.history_agents import in_memory_history_agent
-from miniagents.ext.misc_agents import console_output_agent, console_input_agent
+from miniagents.ext.agents.history_agents import in_memory_history_agent
+from miniagents.ext.agents.misc_agents import console_output_agent, console_input_agent
 from miniagents.messages import MessageSequencePromise
 from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent

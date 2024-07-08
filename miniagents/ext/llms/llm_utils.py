@@ -7,7 +7,7 @@ from typing import Any, Optional, Union
 
 from pydantic import ConfigDict, Field, BaseModel
 
-from miniagents.ext.history_agents import markdown_llm_logger_agent
+from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
 from miniagents.messages import Message, MessageTokenAppender, MessagePromise
 from miniagents.miniagents import InteractionContext, MiniAgents, MiniAgent
 
