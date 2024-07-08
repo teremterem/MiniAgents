@@ -11,7 +11,7 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.utils import join_messages
 
-MESSAGE_TEXT_AND_TEMPLATE = frozenset({"text", "text_template"})
+MESSAGE_CONTENT_AND_TEMPLATE = frozenset({"text", "content_template"})
 
 
 class Message(Frozen):
@@ -20,7 +20,7 @@ class Message(Frozen):
     """
 
     text: Optional[str] = None
-    text_template: Optional[str] = None
+    content_template: Optional[str] = None
 
     @cached_property
     def as_promise(self) -> "MessagePromise":
@@ -79,14 +79,14 @@ class Message(Frozen):
                     yield message
 
     def fields_and_values(
-        self, exclude: Iterable[str] = (), exclude_class_field: bool = True, exclude_text_and_template: bool = False
+        self, exclude: Iterable[str] = (), exclude_class_field: bool = True, exclude_content_and_template: bool = False
     ) -> dict[str, Any]:
         """
         TODO Oleksandr: docstring
         """
-        if exclude_text_and_template:
+        if exclude_content_and_template:
             exclude = set(exclude)
-            exclude.update(MESSAGE_TEXT_AND_TEMPLATE)
+            exclude.update(MESSAGE_CONTENT_AND_TEMPLATE)
         return super().fields_and_values(exclude=exclude, exclude_class_field=exclude_class_field)
 
     @cached_property
@@ -141,8 +141,8 @@ class Message(Frozen):
     def _as_string(self) -> str:
         if self.text is not None:
             return self.text
-        if self.text_template is not None:
-            return self.text_template.format(**self.fields_and_values(exclude_class_field=False))
+        if self.content_template is not None:
+            return self.content_template.format(**self.fields_and_values(exclude_class_field=False))
         return super()._as_string()
 
     def __init__(self, text: Optional[str] = None, **metadata: Any) -> None:

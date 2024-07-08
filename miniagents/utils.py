@@ -102,7 +102,7 @@ def join_messages(
                 metadata_so_far["original_messages"].append(await message_promise)
 
             # TODO Oleksandr: should I care about merging values of the same keys instead of just overwriting them ?
-            metadata_so_far.update((await message_promise).fields_and_values(exclude_text_and_template=True))
+            metadata_so_far.update((await message_promise).fields_and_values(exclude_content_and_template=True))
 
             first_message = False
 

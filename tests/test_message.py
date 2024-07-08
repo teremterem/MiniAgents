@@ -42,24 +42,24 @@ async def test_message_nesting_vs_hash_key() -> None:
         expected_structure = {
             "class_": "Message",
             "text": "юнікод",
-            "text_template": None,
+            "content_template": None,
             "extra_field": (
                 15,
                 {
                     "class_": "Frozen",
                     "role": "user",
                     "nested_nested__hash_keys": (
-                        "47e977f85cff13ea8980cf3d76959caec8a4984a",
-                        "91868c8c8398b49deb9a04a73c4ea95bdb2eaa65",
+                        "3275491949deff73da05e207b9e7d2142149fa72",
+                        "e2212ae920e280316155704074f98b3fcd9ef092",
                     ),
-                    "nested_nested2__hash_keys": ("91868c8c8398b49deb9a04a73c4ea95bdb2eaa65",),
+                    "nested_nested2__hash_keys": ("e2212ae920e280316155704074f98b3fcd9ef092",),
                 },
             ),
             "extra_node": {
                 "class_": "SpecialNode",
-                "nested_nested__hash_key": "25a897f6457abf51fad6a28d86905918bb610038",
+                "nested_nested__hash_key": "5c8a6949584202a1553f7efdb728e21078719f4d",
             },
-            "nested_message__hash_key": "47e977f85cff13ea8980cf3d76959caec8a4984a",
+            "nested_message__hash_key": "3275491949deff73da05e207b9e7d2142149fa72",
         }
         assert message.serialize() == expected_structure
 
