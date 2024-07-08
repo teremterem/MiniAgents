@@ -440,7 +440,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, dict):
             yield Message(**zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, str):
-            yield Message(text=zero_or_more_items).as_promise
+            yield Message(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
             raise zero_or_more_items
         elif hasattr(zero_or_more_items, "__iter__"):
