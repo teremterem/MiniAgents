@@ -9,6 +9,7 @@ from miniagents.ext.llms.anthropic import (
 from miniagents.ext.llms.llm_utils import (
     AssistantMessage,
     LLMAgent,
+    LLMMessage,
     SystemMessage,
     UserMessage,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "AnthropicMessage",
     "AssistantMessage",
     "LLMAgent",
+    "LLMMessage",
     "OpenAIAgent",
     "OpenAIMessage",
     "SystemMessage",
