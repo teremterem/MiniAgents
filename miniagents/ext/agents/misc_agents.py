@@ -13,7 +13,7 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
-from miniagents.ext.llm.llm_common import UserMessage
+from miniagents.ext.llms.llm_utils import UserMessage
 from miniagents.miniagents import miniagent, InteractionContext
 
 

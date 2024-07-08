@@ -82,7 +82,7 @@ below. ⚠️
 
 ```python
 from miniagents import MiniAgents
-from miniagents.ext.llm import OpenAIAgent
+from miniagents.ext.llms import OpenAIAgent
 
 # NOTE: "Forking" an agent is a convenient way of creating a new agent instance
 # with the specified configuration. Alternatively, you could pass the `model`
@@ -142,7 +142,7 @@ from miniagents.ext import (
     console_user_agent,
     MarkdownHistoryAgent,
 )
-from miniagents.ext.llm import SystemMessage, AnthropicAgent
+from miniagents.ext.llms import SystemMessage, AnthropicAgent
 
 
 async def main() -> None:
@@ -467,7 +467,7 @@ about it.
 ### 💬 Existing `Message` models
 
 ```python
-from miniagents.ext.llm import UserMessage, SystemMessage, AssistantMessage
+from miniagents.ext.llms import UserMessage, SystemMessage, AssistantMessage
 
 user_message = UserMessage("Hello!")
 system_message = SystemMessage("System message")
@@ -557,6 +557,8 @@ async def persist_message(_, message: Message) -> None:
 ```
 
 ## 📂 Modules
+
+**TODO** the structure of this section is outdated - update it
 
 Here's an overview of the module structure and hierarchy in the MiniAgents
 framework:

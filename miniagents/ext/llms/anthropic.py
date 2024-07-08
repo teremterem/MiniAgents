@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import Field
 
 from miniagents import Message
-from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
+from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent
 from miniagents.messages import MessageTokenAppender
 from miniagents.miniagents import miniagent
 

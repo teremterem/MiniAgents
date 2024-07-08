@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from miniagents import MiniAgents, Message
 from miniagents.ext import markdown_llm_logger_agent
-from miniagents.ext.llm import AnthropicAgent, OpenAIAgent
+from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
 load_dotenv()
 
