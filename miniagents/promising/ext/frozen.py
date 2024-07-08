@@ -11,6 +11,8 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 FrozenType = Optional[Union[str, int, float, bool, tuple["FrozenType", ...], "Frozen"]]
 
+FROZEN_CLASS = "class_"
+
 
 class Frozen(BaseModel):
     """
@@ -80,7 +82,7 @@ class Frozen(BaseModel):
         """
         exclude = set(exclude)
         if exclude_class_field:
-            exclude.add("class_")
+            exclude.add(FROZEN_CLASS)
         return dict(self._fields_and_values(exclude=exclude))
 
     def _fields_and_values(self, exclude: Optional[set[str]] = None) -> Iterator[tuple[str, Any]]:
@@ -107,15 +109,9 @@ class Frozen(BaseModel):
         """
         Preprocess the values before validation and freezing.
         """
-        # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
-        if "class_" in values:
-            if values["class_"] != cls.__name__:
-                raise ValueError(
-                    f"the `class_` field of a Frozen must be equal to its actual class name, "
-                    f"got {values['class_']!r} instead of {cls.__name__!r}"
-                )
-        else:
-            values = {"class_": cls.__name__, **values}
+        if values.get(FROZEN_CLASS) != cls.__name__:
+            # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
+            values = {**values, FROZEN_CLASS: cls.__name__}
         return values
 
     # noinspection PyNestedDecorators

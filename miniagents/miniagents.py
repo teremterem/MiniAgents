@@ -173,7 +173,7 @@ class MiniAgent:
         # validate interaction metadata
         # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         self.interaction_metadata = Frozen(**(interaction_metadata or {}))
-        self._interact_metadata_dict = self.interaction_metadata.fields_and_values()
+        self._interact_metadata_dict = dict(self.interaction_metadata)
 
         self.alias = alias
         if self.alias is None:

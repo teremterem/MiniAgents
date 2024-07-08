@@ -105,7 +105,7 @@ class Message(Frozen):
             node_path: tuple[Union[str, int], ...],
         ) -> None:
             # pylint: disable=protected-access
-            for field, value in node._fields_and_values():
+            for field, value in node:
                 if isinstance(value, Message):
                     sub_messages[(*node_path, field)] = value
 
@@ -139,10 +139,10 @@ class Message(Frozen):
         return include_into_serialization, sub_messages
 
     def _as_string(self) -> str:
+        if self.content_template is not None:
+            return self.content_template.format(**dict(self))
         if self.content is not None:
             return self.content
-        if self.content_template is not None:
-            return self.content_template.format(**self.fields_and_values(exclude_class_field=False))
         return super()._as_string()
 
     def __init__(self, content: Optional[str] = None, **metadata: Any) -> None:
@@ -177,6 +177,7 @@ class MessagePromise(StreamedPromise[str, Message]):
             )
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
+
             if isinstance(message_token_streamer, MessageTokenAppender):
                 if not message_token_streamer.was_open:
                     # this check prevents potential deadlocks
@@ -185,9 +186,9 @@ class MessagePromise(StreamedPromise[str, Message]):
                         "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
                     )
                 self._metadata_so_far = message_token_streamer.metadata_so_far
-                self._metadata_so_far.update(self.preliminary_metadata.fields_and_values())
+                self._metadata_so_far.update(self.preliminary_metadata)
             else:
-                self._metadata_so_far = self.preliminary_metadata.fields_and_values()
+                self._metadata_so_far = dict(self.preliminary_metadata)
 
             self._message_token_streamer = message_token_streamer
             self._message_class = message_class
