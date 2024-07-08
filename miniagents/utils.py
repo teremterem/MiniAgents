@@ -85,7 +85,7 @@ def join_messages(
 
         first_message = True
         async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
-            metadata_so_far.update(message_promise.preliminary_metadata)
+            metadata_so_far.update(message_promise.preliminary_metadata.fields_and_values())
             if delimiter and not first_message:
                 yield delimiter
 

@@ -111,8 +111,8 @@ class Frozen(BaseModel):
         if "class_" in values:
             if values["class_"] != cls.__name__:
                 raise ValueError(
-                    f"the `class_` field of a Frozen must be equal to its actual class name, got {values['class_']} "
-                    f"instead of {cls.__name__}"
+                    f"the `class_` field of a Frozen must be equal to its actual class name, "
+                    f"got {values['class_']!r} instead of {cls.__name__!r}"
                 )
         else:
             values = {"class_": cls.__name__, **values}

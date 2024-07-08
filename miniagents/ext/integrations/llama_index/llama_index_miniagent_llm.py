@@ -89,34 +89,42 @@ class LlamaIndexMiniAgentLLM(LLM):
 
         preliminary_metadata = miniagent_resp_promise.preliminary_metadata
         preliminary_metadata_dict = preliminary_metadata.model_dump()
-        yield ChatResponse(
-            message=ChatMessage(
-                role=getattr(preliminary_metadata, "role") or MessageRole.ASSISTANT,
-                additional_kwargs=preliminary_metadata.fields_and_values(
-                    exclude={"role"}, exclude_text_and_template=True
-                ),
-            ),
-            raw=preliminary_metadata_dict,
-        )
 
-        async for token in miniagent_resp_promise:
+        async def gen() -> ChatResponseAsyncGen:
             yield ChatResponse(
                 message=ChatMessage(
                     role=getattr(preliminary_metadata, "role") or MessageRole.ASSISTANT,
-                    content=token,
+                    additional_kwargs=preliminary_metadata.fields_and_values(
+                        exclude={"role"}, exclude_content_and_template=True
+                    ),
                 ),
+                raw=preliminary_metadata_dict,
             )
 
-        miniagent_resp_message = await miniagent_resp_promise
-        yield ChatResponse(
-            message=ChatMessage(
-                role=getattr(miniagent_resp_message, "role") or MessageRole.ASSISTANT,
-                additional_kwargs=miniagent_resp_message.fields_and_values(
-                    exclude={"role"}, exclude_text_and_template=True
+            content = ""
+            async for token in miniagent_resp_promise:
+                content += token
+                yield ChatResponse(
+                    message=ChatMessage(
+                        role=getattr(preliminary_metadata, "role") or MessageRole.ASSISTANT,
+                        content=content,
+                    ),
+                    delta=token,
+                )
+
+            miniagent_resp_message = await miniagent_resp_promise
+            yield ChatResponse(
+                message=ChatMessage(
+                    role=getattr(miniagent_resp_message, "role") or MessageRole.ASSISTANT,
+                    content=content,
+                    additional_kwargs=miniagent_resp_message.fields_and_values(
+                        exclude={"role"}, exclude_content_and_template=True
+                    ),
                 ),
-            ),
-            raw=miniagent_resp_message.model_dump(),
-        )
+                raw=miniagent_resp_message.model_dump(),
+            )
+
+        return gen()
 
     @llm_completion_callback()
     async def acomplete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
