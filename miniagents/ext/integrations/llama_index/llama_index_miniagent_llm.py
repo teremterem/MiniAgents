@@ -71,7 +71,7 @@ class LlamaIndexMiniAgentLLM(LLM):
         return ChatResponse(
             message=ChatMessage(
                 role=miniagent_response.role,
-                content=miniagent_response.text,
+                content=miniagent_response.content,
                 additional_kwargs={
                     key: value
                     for key, value in miniagent_response
