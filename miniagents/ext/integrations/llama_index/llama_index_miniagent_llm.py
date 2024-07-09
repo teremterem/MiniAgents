@@ -19,6 +19,7 @@ from llama_index.core.llms.llm import LLM
 
 from miniagents import MiniAgent
 from miniagents.ext.llms import LLMMessage
+from miniagents.messages import MESSAGE_CONTENT_AND_TEMPLATE
 
 
 class LlamaIndexMiniAgentLLM(LLM):
@@ -71,7 +72,11 @@ class LlamaIndexMiniAgentLLM(LLM):
             message=ChatMessage(
                 role=miniagent_response.role,
                 content=miniagent_response.text,
-                additional_kwargs=miniagent_response.fields_and_values(exclude_text_and_template=True),
+                additional_kwargs={
+                    key: value
+                    for key, value in miniagent_response
+                    if key != "role" and key not in MESSAGE_CONTENT_AND_TEMPLATE
+                },
             ),
             raw=miniagent_response.model_dump(),
         )
@@ -85,20 +90,18 @@ class LlamaIndexMiniAgentLLM(LLM):
         miniagent_messages = [
             LLMMessage(text=chat_message.content, role=chat_message.role) for chat_message in messages
         ]
-        miniagent_resp_promise = await self.underlying_miniagent.inquire(miniagent_messages).as_single_promise()
-
-        preliminary_metadata = miniagent_resp_promise.preliminary_metadata
-        preliminary_metadata_dict = preliminary_metadata.model_dump()
+        miniagent_resp_promise = self.underlying_miniagent.inquire(miniagent_messages).as_single_promise()
+        role = getattr(miniagent_resp_promise.preliminary_metadata, "role", None) or MessageRole.ASSISTANT
 
         async def gen() -> ChatResponseAsyncGen:
             yield ChatResponse(
                 message=ChatMessage(
-                    role=getattr(preliminary_metadata, "role") or MessageRole.ASSISTANT,
-                    additional_kwargs=preliminary_metadata.fields_and_values(
-                        exclude={"role"}, exclude_content_and_template=True
-                    ),
+                    role=role,
+                    additional_kwargs={
+                        key: value for key, value in miniagent_resp_promise.preliminary_metadata if key != "role"
+                    },
                 ),
-                raw=preliminary_metadata_dict,
+                raw=dict(miniagent_resp_promise.preliminary_metadata),
             )
 
             content = ""
@@ -106,7 +109,7 @@ class LlamaIndexMiniAgentLLM(LLM):
                 content += token
                 yield ChatResponse(
                     message=ChatMessage(
-                        role=getattr(preliminary_metadata, "role") or MessageRole.ASSISTANT,
+                        role=role,
                         content=content,
                     ),
                     delta=token,
@@ -115,13 +118,15 @@ class LlamaIndexMiniAgentLLM(LLM):
             miniagent_resp_message = await miniagent_resp_promise
             yield ChatResponse(
                 message=ChatMessage(
-                    role=getattr(miniagent_resp_message, "role") or MessageRole.ASSISTANT,
+                    role=getattr(miniagent_resp_message, "role", None) or MessageRole.ASSISTANT,
                     content=content,
-                    additional_kwargs=miniagent_resp_message.fields_and_values(
-                        exclude={"role"}, exclude_content_and_template=True
-                    ),
+                    additional_kwargs={
+                        key: value
+                        for key, value in miniagent_resp_message
+                        if key != "role" and key not in MESSAGE_CONTENT_AND_TEMPLATE
+                    },
                 ),
-                raw=miniagent_resp_message.model_dump(),
+                raw=dict(miniagent_resp_message),
             )
 
         return gen()

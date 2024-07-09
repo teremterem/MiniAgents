@@ -3,7 +3,7 @@
 """
 
 from functools import cached_property
-from typing import AsyncIterator, Any, Union, Optional, Iterator, Iterable
+from typing import AsyncIterator, Any, Union, Optional, Iterator
 
 from miniagents.miniagent_typing import MessageTokenStreamer
 from miniagents.promising.errors import AppenderNotOpenError
@@ -77,17 +77,6 @@ class Message(Frozen):
                 for message in message_or_messages:
                     yield from message.sub_messages()
                     yield message
-
-    def fields_and_values(
-        self, exclude: Iterable[str] = (), exclude_class_field: bool = True, exclude_content_and_template: bool = False
-    ) -> dict[str, Any]:
-        """
-        TODO Oleksandr: docstring
-        """
-        if exclude_content_and_template:
-            exclude = set(exclude)
-            exclude.update(MESSAGE_CONTENT_AND_TEMPLATE)
-        return super().fields_and_values(exclude=exclude, exclude_class_field=exclude_class_field)
 
     @cached_property
     def _serialization_metadata(

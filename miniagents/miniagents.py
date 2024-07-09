@@ -3,7 +3,6 @@
 """
 
 import asyncio
-import copy
 import logging
 import re
 from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
@@ -479,9 +478,10 @@ class AgentReplyMessageSequence(MessageSequence):
         function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
-        # this validates the agent function kwargs
-        self._frozen_func_kwargs = Frozen(**function_kwargs).fields_and_values()
-        self._function_kwargs = copy.deepcopy(function_kwargs)
+        # TODO Oleksandr: emphasize somewhere in the documentation that passing parameters to `miniagent.inquire()`
+        #  method is different than passing parameters through `miniagent.fork()` because the former will "freeze"
+        #  parameters before sending them to the agent function, while the latter will eventually pass them as-is
+        self._frozen_func_kwargs = Frozen(**function_kwargs).as_kwargs()
 
         self._mini_agent = mini_agent
         self._input_sequence_promise = input_sequence_promise
@@ -509,13 +509,13 @@ class AgentReplyMessageSequence(MessageSequence):
                             # arguments unless it is overridden)
                             ctx=ctx,
                             **self._mini_agent._static_kwargs,
-                            **self._function_kwargs,
+                            **self._frozen_func_kwargs,
                         )
                         await actual_func()
                     else:
                         # the miniagent is a function
                         await self._mini_agent._func_or_class(
-                            ctx, **self._mini_agent._static_kwargs, **self._function_kwargs
+                            ctx, **self._mini_agent._static_kwargs, **self._frozen_func_kwargs
                         )
                 finally:
                     await ctx.await_for_subtasks()

@@ -27,4 +27,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    MiniAgents().run(main())
+    MiniAgents(llm_logger_agent=True).run(main())

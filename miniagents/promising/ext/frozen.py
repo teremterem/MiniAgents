@@ -5,7 +5,7 @@ The main class in this module is `Frozen`. See its docstring for more informatio
 import hashlib
 import json
 from functools import cached_property
-from typing import Any, Iterator, Optional, Union, Iterable
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -42,6 +42,7 @@ class Frozen(BaseModel):
         """
         Get the full JSON representation of this Frozen object together with all its nested objects. This is a cached
         property, so it is calculated only the first time it is accessed.
+        TODO Oleksandr: explain how it is different from serialized
         """
         return self.model_dump_json()
 
@@ -74,28 +75,12 @@ class Frozen(BaseModel):
             hash_key = hash_key[:40]
         return hash_key
 
-    def fields_and_values(self, exclude: Iterable[str] = (), exclude_class_field: bool = True) -> dict[str, Any]:
+    def as_kwargs(self) -> dict[str, Any]:
         """
-        Get a dict of field names and values of this Pydantic object. This includes the model fields (both,
-        explicitly set and the ones with default values) and the extra fields that are not part of the model.
-        TODO Oleksandr: explain how it is different from model_dump()
+        Get a dict of field names and values of this Pydantic object which can be used as keyword arguments for
+        a function call ("class_" field is excluded, because it wouldn't likely to make sense as a keyword argument).
         """
-        exclude = set(exclude)
-        if exclude_class_field:
-            exclude.add(FROZEN_CLASS)
-        return dict(self._fields_and_values(exclude=exclude))
-
-    def _fields_and_values(self, exclude: Optional[set[str]] = None) -> Iterator[tuple[str, Any]]:
-        if exclude:
-            for field in self.model_fields:
-                if field not in exclude:
-                    yield field, getattr(self, field)
-        else:
-            for field in self.model_fields:
-                yield field, getattr(self, field)
-
-        for field, value in self.__pydantic_extra__.items():
-            yield field, value
+        return {key: value for key, value in self if key != FROZEN_CLASS}
 
     def _as_string(self) -> str:
         """
