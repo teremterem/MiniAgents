@@ -11,7 +11,7 @@ from typing import AsyncIterator, Any, Optional
 from pydantic._internal._model_construction import ModelMetaclass
 
 if typing.TYPE_CHECKING:
-    from miniagents.messages import Message, MessagePromise, MESSAGE_CONTENT_AND_TEMPLATE
+    from miniagents.messages import Message, MessagePromise
     from miniagents.miniagent_typing import MessageType
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ def join_messages(
     before it is resolved.
     :param message_class: A class of the resulting message. If None, the default Message class will be used.
     """
-    from miniagents.messages import Message
+    from miniagents.messages import Message, MESSAGE_CONTENT_AND_TEMPLATE
     from miniagents.miniagents import MessageSequence
 
     if message_class is None:
