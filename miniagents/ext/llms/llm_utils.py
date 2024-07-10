@@ -55,6 +55,7 @@ class PromptLogMessage(LLMMessage):
 class LLMAgent(ABC, BaseModel):
     """
     A base class for agents that represents various Large Language Models.
+    TODO Oleksandr: support OpenAI-style function calls
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
