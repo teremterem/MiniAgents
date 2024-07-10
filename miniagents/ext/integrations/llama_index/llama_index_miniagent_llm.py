@@ -73,9 +73,7 @@ class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
         messages: Sequence[ChatMessage],
         **kwargs: Any,
     ) -> ChatResponse:
-        miniagent_messages = [
-            LLMMessage(text=chat_message.content, role=chat_message.role) for chat_message in messages
-        ]
+        miniagent_messages = [LLMMessage(chat_message.content, role=chat_message.role) for chat_message in messages]
         miniagent_response = await self.underlying_miniagent.inquire(miniagent_messages).as_single_promise()
 
         return ChatResponse(
@@ -97,9 +95,7 @@ class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
         messages: Sequence[ChatMessage],
         **kwargs: Any,
     ) -> ChatResponseAsyncGen:
-        miniagent_messages = [
-            LLMMessage(text=chat_message.content, role=chat_message.role) for chat_message in messages
-        ]
+        miniagent_messages = [LLMMessage(chat_message.content, role=chat_message.role) for chat_message in messages]
         miniagent_resp_promise = self.underlying_miniagent.inquire(miniagent_messages).as_single_promise()
         role = getattr(miniagent_resp_promise.preliminary_metadata, "role", None) or MessageRole.ASSISTANT
 
