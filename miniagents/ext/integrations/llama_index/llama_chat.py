@@ -29,7 +29,7 @@ async def main() -> None:
             query_engine=index_set[year].as_query_engine(),
             metadata=ToolMetadata(
                 name=f"vector_index_{year}",
-                description="useful for when you want to answer queries about the {year} SEC 10-K for Uber",
+                description=f"useful for when you want to answer queries about the {year} SEC 10-K for Uber",
             ),
         )
         for year in years
