@@ -1,3 +1,7 @@
+"""
+MiniAgent wrapper for llama-index LLM.
+"""
+
 from typing import Any, Sequence
 
 from llama_index.core.base.llms.types import (
@@ -22,7 +26,11 @@ from miniagents.ext.llms import LLMMessage
 from miniagents.messages import MESSAGE_CONTENT_AND_TEMPLATE
 
 
-class LlamaIndexMiniAgentLLM(LLM):
+class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
+    """
+    MiniAgent wrapper for llama-index LLM.
+    """
+
     underlying_miniagent: MiniAgent
 
     @classmethod
@@ -31,8 +39,10 @@ class LlamaIndexMiniAgentLLM(LLM):
 
     @property
     def metadata(self) -> LLMMetadata:
-        # TODO Oleksandr: fill this in
-        return LLMMetadata()
+        return LLMMetadata(
+            is_chat_model=True,
+            model_name=self.underlying_miniagent.alias,
+        )
 
     def stream_complete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponseGen:
         raise NotImplementedError(
@@ -78,7 +88,7 @@ class LlamaIndexMiniAgentLLM(LLM):
                     if key != "role" and key not in MESSAGE_CONTENT_AND_TEMPLATE
                 },
             ),
-            raw=miniagent_response.model_dump(),
+            raw=dict(miniagent_response),
         )
 
     @llm_chat_callback()
@@ -133,15 +143,38 @@ class LlamaIndexMiniAgentLLM(LLM):
 
     @llm_completion_callback()
     async def acomplete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
-        return self.complete(prompt, formatted=formatted, **kwargs)
+        miniagent_response = await self.underlying_miniagent.inquire(prompt).as_single_promise()
+
+        return CompletionResponse(
+            text=miniagent_response.content,
+            additional_kwargs={
+                key: value for key, value in miniagent_response if key not in MESSAGE_CONTENT_AND_TEMPLATE
+            },
+            raw=miniagent_response.model_dump(),
+        )
 
     @llm_completion_callback()
     async def astream_complete(
         self, prompt: str, formatted: bool = False, **kwargs: Any
     ) -> CompletionResponseAsyncGen:
-        async def gen() -> CompletionResponseAsyncGen:
-            for message in self.stream_complete(prompt, formatted=formatted, **kwargs):
-                yield message
+        miniagent_resp_promise = self.underlying_miniagent.inquire(prompt).as_single_promise()
 
-        # NOTE: convert generator to async generator
+        async def gen() -> CompletionResponseAsyncGen:
+            preliminary_dict = dict(miniagent_resp_promise.preliminary_metadata)
+            yield CompletionResponse(additional_kwargs=preliminary_dict, raw=preliminary_dict)
+
+            content = ""
+            async for token in miniagent_resp_promise:
+                content += token
+                yield CompletionResponse(text=content, delta=token)
+
+            miniagent_resp_message = await miniagent_resp_promise
+            yield CompletionResponse(
+                text=content,
+                additional_kwargs={
+                    key: value for key, value in miniagent_resp_message if key not in MESSAGE_CONTENT_AND_TEMPLATE
+                },
+                raw=dict(miniagent_resp_message),
+            )
+
         return gen()
