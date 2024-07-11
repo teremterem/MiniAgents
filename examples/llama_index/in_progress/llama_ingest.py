@@ -26,7 +26,7 @@ async def main() -> None:
     doc_set = {}
     all_docs = []
     for year in years:
-        year_docs = loader.load_data(file=Path(f"./data/UBER/UBER_{year}.html"), split_documents=False)
+        year_docs = loader.load_data(file=Path(f"./transient/data/UBER/UBER_{year}.html"), split_documents=False)
         # insert year metadata into each year
         for d in year_docs:
             d.metadata = {"year": year}
@@ -42,7 +42,7 @@ async def main() -> None:
             use_async=True,
         )
         index_set[year] = cur_index
-        storage_context.persist(persist_dir=f"./storage/{year}")
+        storage_context.persist(persist_dir=f"./transient/storage/{year}")
 
 
 if __name__ == "__main__":
