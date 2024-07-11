@@ -54,6 +54,7 @@ class OpenAIAgent(LLMAgent):
     An agent that represents Large Language Models by OpenAI. Check out the implementation of the async `__call__`
     method in the base class `LLMAgent` to understand how agents like this one work (the two most important methods
     of all class-based miniagents are `__init__` and `__call__`).
+    TODO Oleksandr: explain parameters
     """
 
     n: int = 1
@@ -158,6 +159,7 @@ async def openai_embedding_agent(
 ) -> None:
     """
     An agent that produces embedding(s) for text(s) of the provided message(s) using OpenAI embedding models.
+    TODO Oleksandr: explain parameters (especially `batch_mode`)
     """
     if not async_client:
         async_client = _default_openai_client()
