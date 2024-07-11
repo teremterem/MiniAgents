@@ -5,6 +5,8 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 import asyncio
 import contextvars
 import logging
+import re
+import traceback
 from asyncio import Task
 from contextvars import ContextVar
 from functools import partial
@@ -23,6 +25,30 @@ from miniagents.promising.promise_typing import (
 from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
 
 logger = logging.getLogger(__name__)
+
+
+class NoPromiseTracebackFormatter(logging.Formatter):
+    """
+    A custom log formatter that removes the traceback lines that are related to the `promising` package.
+    """
+
+    def formatException(self, ei) -> str:
+        # TODO Oleksandr: add a message that mentions that some parts of the traceback are omitted
+        # TODO Oleksandr: support a flag in PromisingContext that would allow to show the full traceback
+        # TODO Oleksandr: if the error originated in the `promising` package, show the full traceback regardless
+        return "".join(
+            [
+                line
+                for line in traceback.format_exception(*ei)
+                # TODO Oleksandr: replace with a more robust solution ? (filter the raw traceback instead ?)
+                if not re.match(r'^\s*File ".*miniagents[/\\]promising[/\\].+\.py", line \d+, in ', line)
+            ]
+        )
+
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(NoPromiseTracebackFormatter())
+logger.addHandler(_handler)
 
 
 class PromisingContext:
@@ -435,7 +461,7 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         self,
         exc_type: Optional[type[BaseException]],
         exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_traceback: Optional[TracebackType],
     ) -> bool:
         is_append_closed_error = isinstance(exc_value, AppenderClosedError)
         error_should_be_squashed = self._capture_errors and not is_append_closed_error
