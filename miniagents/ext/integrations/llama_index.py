@@ -1,9 +1,10 @@
 """
-MiniAgent wrapper for llama-index LLM.
+Integrations of llama-index with MiniAgents.
 """
 
 from typing import Any, Sequence
 
+from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.llms.types import (
     ChatMessage,
     ChatResponse,
@@ -28,7 +29,7 @@ from miniagents.messages import MESSAGE_CONTENT_AND_TEMPLATE
 
 class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
     """
-    MiniAgent wrapper for llama-index LLM.
+    A proxy from llama-index LLM to a MiniAgent.
     """
 
     underlying_miniagent: MiniAgent
@@ -174,3 +175,45 @@ class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
             )
 
         return gen()
+
+
+class LlamaIndexMiniAgentEmbedding(BaseEmbedding):  # pylint: disable=too-many-ancestors
+    """
+    A proxy from llama-index embedding to a MiniAgent.
+    """
+
+    underlying_miniagent: MiniAgent
+
+    @classmethod
+    def class_name(cls) -> str:
+        return "llama_index_miniagent_embedding"
+
+    def _get_query_embedding(self, query: str) -> list[float]:
+        raise NotImplementedError(
+            f"`{self.__class__.__name__}` does not support synchronous operations. "
+            f"Use `aget_query_embedding` instead of `get_query_embedding`."
+        )
+
+    async def _aget_query_embedding(self, query: str) -> list[float]:
+        response_msg = await self.underlying_miniagent.inquire(query).as_single_promise()
+        return response_msg.embedding
+
+    def _get_text_embedding(self, text: str) -> list[float]:
+        raise NotImplementedError(
+            f"`{self.__class__.__name__}` does not support synchronous operations. "
+            f"Use `aget_text_embedding` instead of `get_text_embedding`."
+        )
+
+    async def _aget_text_embedding(self, text: str) -> list[float]:
+        response_msg = await self.underlying_miniagent.inquire(text).as_single_promise()
+        return response_msg.embedding
+
+    def _get_text_embeddings(self, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError(
+            f"`{self.__class__.__name__}` does not support synchronous operations. "
+            f"Use `aget_text_embeddings` instead of `get_text_embeddings`."
+        )
+
+    async def _aget_text_embeddings(self, texts: list[str]) -> list[list[float]]:
+        response_messages = await self.underlying_miniagent.inquire(texts, batch_mode=True)
+        return [response_msg.embedding for response_msg in response_messages]
