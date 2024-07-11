@@ -21,7 +21,7 @@ async def main() -> None:
 
     index_set = {}
     for year in years:
-        storage_context = StorageContext.from_defaults(persist_dir=f"./transient/{year}")
+        storage_context = StorageContext.from_defaults(persist_dir=f"./transient/storage/{year}")
         cur_index = load_index_from_storage(
             storage_context,
         )

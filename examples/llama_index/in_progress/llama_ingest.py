@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import nest_asyncio
 from dotenv import load_dotenv
 from llama_index.core import Settings
 from llama_index.core import VectorStoreIndex, StorageContext
@@ -46,4 +47,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    nest_asyncio.apply()
     MiniAgents(llm_logger_agent=True).run(main())
