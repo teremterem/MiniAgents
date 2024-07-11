@@ -5,12 +5,15 @@ from llama_index.core.query_engine import SubQuestionQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 
 from miniagents import MiniAgents
-from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentLLM
-from miniagents.ext.llms import OpenAIAgent
+from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentLLM, LlamaIndexMiniAgentEmbedding
+from miniagents.ext.llms import OpenAIAgent, openai_embedding_agent
 
 load_dotenv()
 
 Settings.llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
+Settings.embed_model = LlamaIndexMiniAgentEmbedding(
+    underlying_miniagent=openai_embedding_agent.fork(model="text-embedding-3-small")
+)
 
 
 async def main() -> None:

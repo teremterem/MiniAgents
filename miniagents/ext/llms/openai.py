@@ -8,11 +8,10 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, field_validator
 
-from miniagents import Message, InteractionContext, MiniAgent, MiniAgents
-from miniagents.ext import markdown_llm_logger_agent
+from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
 from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent, PromptLogMessage
-from miniagents.messages import MessageTokenAppender
-from miniagents.miniagents import miniagent
+from miniagents.messages import MessageTokenAppender, Message
+from miniagents.miniagents import miniagent, InteractionContext, MiniAgent, MiniAgents
 from miniagents.promising.ext.frozen import Frozen
 
 if typing.TYPE_CHECKING:
