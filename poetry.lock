@@ -123,13 +123,13 @@ files = [
 
 [[package]]
 name = "anthropic"
-version = "0.30.1"
+version = "0.31.0"
 description = "The official Python library for the anthropic API"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "anthropic-0.30.1-py3-none-any.whl", hash = "sha256:a58a8c3865a3df21e3b10e5fbd1a54b84cb01386f3e9fea9c65334b3cb306c6f"},
-    {file = "anthropic-0.30.1.tar.gz", hash = "sha256:e082aa2601834a8a374f8bb45bca68493d892b2a03a1c44cfcc38465550c9b8b"},
+    {file = "anthropic-0.31.0-py3-none-any.whl", hash = "sha256:77f7a428e1723b79a571c2427ae885d9257c68f700726dff7ce684c3972d6598"},
+    {file = "anthropic-0.31.0.tar.gz", hash = "sha256:14f8f65231859a65ec9aacbbea070e412c8bd41a5d3f36793dac4292c3c78d3a"},
 ]
 
 [package.dependencies]
@@ -1996,13 +1996,13 @@ langchain-core = ">=0.2.10,<0.3"
 
 [[package]]
 name = "langchain-core"
-version = "0.2.12"
+version = "0.2.13"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain_core-0.2.12-py3-none-any.whl", hash = "sha256:319d0989ffbb53b2365ba3ed8d1ae15ccdacf338163b7514155dba90cd16729f"},
-    {file = "langchain_core-0.2.12.tar.gz", hash = "sha256:a55f3ee8005c3b4a28f434d646b268acde86d88877b7ae8e077e3ad89605e7d3"},
+    {file = "langchain_core-0.2.13-py3-none-any.whl", hash = "sha256:b9f52003bfda464975413751737c7e6781781398ba14d9aa6c604046d6fc0c6f"},
+    {file = "langchain_core-0.2.13.tar.gz", hash = "sha256:a5d8b436639b6aa0955f6db287beb4030c46a8e85951ba3873739c4d47645ee1"},
 ]
 
 [package.dependencies]
@@ -2018,17 +2018,17 @@ tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<9.0.0"
 
 [[package]]
 name = "langchain-openai"
-version = "0.1.14"
+version = "0.1.15"
 description = "An integration package connecting OpenAI and LangChain"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain_openai-0.1.14-py3-none-any.whl", hash = "sha256:fcd34cc5b5713798908a5828d364b4426e3b1afccbd564d344e5477acb86634a"},
-    {file = "langchain_openai-0.1.14.tar.gz", hash = "sha256:1f13d6041e8bedddf6eb47ccad7416e05af38fa169324f7f1bdf4f385780f8d8"},
+    {file = "langchain_openai-0.1.15-py3-none-any.whl", hash = "sha256:7e3cd4c77ccb3a7d28743daaefeb0d34fc1665b03bdfe3f3db5d44894d10b92f"},
+    {file = "langchain_openai-0.1.15.tar.gz", hash = "sha256:016da6be25c1accdb0f7468868d3b294329ae97d73c2425c580656e9c30ad7be"},
 ]
 
 [package.dependencies]
-langchain-core = ">=0.2.2,<0.3"
+langchain-core = ">=0.2.13,<0.3.0"
 openai = ">=1.32.0,<2.0.0"
 tiktoken = ">=0.7,<1"
 
@@ -2062,13 +2062,13 @@ six = "*"
 
 [[package]]
 name = "langgraph"
-version = "0.1.6"
+version = "0.1.7"
 description = "Building stateful, multi-actor applications with LLMs"
 optional = false
 python-versions = "<4.0,>=3.9.0"
 files = [
-    {file = "langgraph-0.1.6-py3-none-any.whl", hash = "sha256:07743d26de9b70ea0b77fd766722323d100ab4738e27125db27fe0e6a5137daa"},
-    {file = "langgraph-0.1.6.tar.gz", hash = "sha256:c519e8ab52c1efa341cc1847abbc236c476e43a450550c69d36687c0a1ff786b"},
+    {file = "langgraph-0.1.7-py3-none-any.whl", hash = "sha256:ada2eb600976a86b0399995e4b30ff0ebb62436ae7a2199b11c255250c25bafd"},
+    {file = "langgraph-0.1.7.tar.gz", hash = "sha256:a5675f75707e98c1163ee8a4d8add5be89894883c6c20f436f654825f95d04d2"},
 ]
 
 [package.dependencies]
@@ -2076,13 +2076,13 @@ langchain-core = ">=0.2.11,<0.3"
 
 [[package]]
 name = "langsmith"
-version = "0.1.84"
+version = "0.1.85"
 description = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langsmith-0.1.84-py3-none-any.whl", hash = "sha256:01f3c6390dba26c583bac8dd0e551ce3d0509c7f55cad714db0b5c8d36e4c7ff"},
-    {file = "langsmith-0.1.84.tar.gz", hash = "sha256:5220c0439838b9a5bd320fd3686be505c5083dcee22d2452006c23891153bea1"},
+    {file = "langsmith-0.1.85-py3-none-any.whl", hash = "sha256:c1f94384f10cea96f7b4d33fd3db7ec180c03c7468877d50846f881d2017ff94"},
+    {file = "langsmith-0.1.85.tar.gz", hash = "sha256:acff31f9e53efa48586cf8e32f65625a335c74d7c4fa306d1655ac18452296f6"},
 ]
 
 [package.dependencies]
@@ -2126,13 +2126,13 @@ pydantic = ">=1.10"
 
 [[package]]
 name = "llama-index"
-version = "0.10.53"
+version = "0.10.54"
 description = "Interface between LLMs and your data"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index-0.10.53-py3-none-any.whl", hash = "sha256:c61566311ac2e825296efd0bb919d6460ea4ecd61e4d3e7371e72b0b53fefeac"},
-    {file = "llama_index-0.10.53.tar.gz", hash = "sha256:3823eaeabec20c8aecfcdf01686cb07446c235cd2447c06d914e900eec78644c"},
+    {file = "llama_index-0.10.54-py3-none-any.whl", hash = "sha256:778e7038bd2ccc2ee5eea969ef6d7367253b5c5f82614f9c2419159a93b26dd0"},
+    {file = "llama_index-0.10.54.tar.gz", hash = "sha256:d60b601cf166ed0351bb4a4b5ffb1fab100610f898bf882cf1b1a3855b54ebdc"},
 ]
 
 [package.dependencies]
@@ -2233,17 +2233,17 @@ llama-index-core = ">=0.10.1,<0.11.0"
 
 [[package]]
 name = "llama-index-indices-managed-llama-cloud"
-version = "0.2.3"
+version = "0.2.4"
 description = "llama-index indices llama-cloud integration"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index_indices_managed_llama_cloud-0.2.3-py3-none-any.whl", hash = "sha256:d2b1a4e8156e7833da1495e3143c6947f1f0c95cf9e7892d65449938f2af7a10"},
-    {file = "llama_index_indices_managed_llama_cloud-0.2.3.tar.gz", hash = "sha256:73cf5039ba9204ffc1e2d5ac2402d21987419cae27027b9d7e813a1dd8130629"},
+    {file = "llama_index_indices_managed_llama_cloud-0.2.4-py3-none-any.whl", hash = "sha256:35ecc8c4d6098588e911b4bf990f8786765dab94fcd311729de2c2c7b3237bf3"},
+    {file = "llama_index_indices_managed_llama_cloud-0.2.4.tar.gz", hash = "sha256:8ee6b11e47f2c5e7302a749b6e2baf893ab602967d86b13c84455b8ee1fb1404"},
 ]
 
 [package.dependencies]
-llama-cloud = ">=0.0.6,<0.0.7"
+llama-cloud = ">=0.0.6"
 llama-index-core = ">=0.10.48.post1,<0.11.0"
 
 [[package]]
@@ -2347,13 +2347,13 @@ llama-index-program-openai = ">=0.1.1,<0.2.0"
 
 [[package]]
 name = "llama-index-readers-file"
-version = "0.1.29"
+version = "0.1.30"
 description = "llama-index readers file integration"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index_readers_file-0.1.29-py3-none-any.whl", hash = "sha256:b25f3dbf7bf3e0635290e499e808db5ba955eab67f205a3ff1cea6a4eb93556a"},
-    {file = "llama_index_readers_file-0.1.29.tar.gz", hash = "sha256:f9f696e738383e7d14078e75958fba5a7030f7994a20586e3140e1ca41395a54"},
+    {file = "llama_index_readers_file-0.1.30-py3-none-any.whl", hash = "sha256:d5f6cdd4685ee73103c68b9bc0dfb0d05439033133fc6bd45ef31ff41519e723"},
+    {file = "llama_index_readers_file-0.1.30.tar.gz", hash = "sha256:32f40465f2a8a65fa5773e03c9f4dd55164be934ae67fad62113680436787d91"},
 ]
 
 [package.dependencies]
@@ -3093,13 +3093,13 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.35.12"
+version = "1.35.13"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.7.1"
 files = [
-    {file = "openai-1.35.12-py3-none-any.whl", hash = "sha256:c3a8c9be524480ae32a3212b78d90786b112844eb8f96235ebb8bc5f35cb1e72"},
-    {file = "openai-1.35.12.tar.gz", hash = "sha256:2dd0f1d9ff34bf6bc89d15246245369d281b2ba01ae07eae5555a00da4b51e0b"},
+    {file = "openai-1.35.13-py3-none-any.whl", hash = "sha256:36ec3e93e0d1f243f69be85c89b9221a471c3e450dfd9df16c9829e3cdf63e60"},
+    {file = "openai-1.35.13.tar.gz", hash = "sha256:c684f3945608baf7d2dcc0ef3ee6f3e27e4c66f21076df0b47be45d57e6ae6e4"},
 ]
 
 [package.dependencies]
@@ -4972,13 +4972,13 @@ files = [
 
 [[package]]
 name = "tomlkit"
-version = "0.12.5"
+version = "0.13.0"
 description = "Style preserving TOML library"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "tomlkit-0.12.5-py3-none-any.whl", hash = "sha256:af914f5a9c59ed9d0762c7b64d3b5d5df007448eb9cd2edc8a46b1eafead172f"},
-    {file = "tomlkit-0.12.5.tar.gz", hash = "sha256:eef34fba39834d4d6b73c9ba7f3e4d1c417a4e56f89a7e96e090dd0d24b8fb3c"},
+    {file = "tomlkit-0.13.0-py3-none-any.whl", hash = "sha256:7075d3042d03b80f603482d69bf0c8f345c2b30e41699fd8883227f89972b264"},
+    {file = "tomlkit-0.13.0.tar.gz", hash = "sha256:08ad192699734149f5b97b45f1f18dad7eb1b6d16bc72ad0c2335772650d7b72"},
 ]
 
 [[package]]
