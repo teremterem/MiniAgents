@@ -435,7 +435,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, Message):
             yield zero_or_more_items.as_promise
         elif isinstance(zero_or_more_items, BaseModel):
-            yield Message(**zero_or_more_items.model_dump()).as_promise
+            yield Message(**dict(zero_or_more_items)).as_promise
         elif isinstance(zero_or_more_items, dict):
             yield Message(**zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, str):
