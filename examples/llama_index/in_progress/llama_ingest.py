@@ -5,6 +5,7 @@ from llama_index.core import Settings
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.readers.file import UnstructuredReader
 
+from miniagents import MiniAgents
 from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentLLM, LlamaIndexMiniAgentEmbedding
 from miniagents.ext.llms import OpenAIAgent, openai_embedding_agent
 
@@ -42,3 +43,7 @@ async def main() -> None:
         )
         index_set[year] = cur_index
         storage_context.persist(persist_dir=f"./storage/{year}")
+
+
+if __name__ == "__main__":
+    MiniAgents(llm_logger_agent=True).run(main())
