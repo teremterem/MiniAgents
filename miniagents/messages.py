@@ -161,6 +161,8 @@ class MessagePromise(StreamedPromise[str, Message]):
 
             super().__init__(
                 start_asap=start_asap,
+                # TODO Oleksandr: shouldn't the prefilling of pieces be lazy ? the consumer might never need the
+                #  textual representation of the message...
                 prefill_pieces=[str(prefill_message)],
                 prefill_result=prefill_message,
             )
