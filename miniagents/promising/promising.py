@@ -10,8 +10,9 @@ import traceback
 from asyncio import Task
 from contextvars import ContextVar
 from functools import partial
+from pathlib import Path
 from types import TracebackType
-from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
+from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any, Match
 
 from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
 from miniagents.promising.promise_typing import (
@@ -26,28 +27,65 @@ from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QU
 
 logger = logging.getLogger(__name__)
 
+# TODO Oleksandr: The `_framework_root` variable (along with the `ReducedTracebackFormatter` class) might not belong
+#  here - it points to `miniagents`, but we are in `promising`. The `promising` sub-library should not be aware of
+#  `miniagents` at all.
+_framework_root = Path(__file__).parent.parent
 
-class NoPromiseTracebackFormatter(logging.Formatter):
+
+class ReducedTracebackFormatter(logging.Formatter):
     """
-    A custom log formatter that removes the traceback lines that are related to the `promising` package.
+    A custom log formatter that removes the traceback lines that are related to the `miniagents` framework.
     """
+
+    @staticmethod
+    def _get_script_path(line: str) -> Optional[Path]:
+        match: Match = re.search(r'^\s*File "(.+?\.py)", line \d+, in ', line)
+        if not match:
+            return None
+
+        return Path(match.group(1))
 
     def formatException(self, ei) -> str:
+        if not PromisingContext.get_current().log_reduced_tracebacks:
+            return super().formatException(ei)
+
         # TODO Oleksandr: add a message that mentions that some parts of the traceback are omitted
-        # TODO Oleksandr: support a flag in PromisingContext that would allow to show the full traceback
-        # TODO Oleksandr: if the error originated in the `promising` package, show the full traceback regardless
-        return "".join(
-            [
-                line
-                for line in traceback.format_exception(*ei)
-                # TODO Oleksandr: replace with a more robust solution ? (filter the raw traceback instead ?)
-                if not re.match(r'^\s*File ".*miniagents[/\\]promising[/\\].+\.py", line \d+, in ', line)
-            ]
-        )
+        exception_lines = traceback.format_exception(*ei)
+        # first we will collect script paths in `show_lines`, but later we will replace them with true/false flags
+        # to indicate whether the corresponding traceback lines should be shown or not
+        show_lines: list[Union[Optional[Path], bool]] = [self._get_script_path(line) for line in exception_lines]
+
+        exception_origin_already_shown = False
+        for line_no in range(len(show_lines) - 1, -1, -1):
+            script_path = show_lines[line_no]
+            if not script_path:
+                # it's not even a script path line, so we show it
+                show_lines[line_no] = True
+                continue
+
+            if not script_path.is_relative_to(_framework_root):
+                # it's not a framework script, so we show it
+                show_lines[line_no] = True
+                continue
+
+            # it's a script path line, and it belongs to the framework
+            if not exception_origin_already_shown:
+                # if it's the very last script path in the traceback, we should show it regardless (because it
+                # discloses the origin of the exception)
+                show_lines[line_no] = True
+                exception_origin_already_shown = True
+                continue
+
+            # it's a script path line, and it belongs to the framework, but it's not the very last one - we hide it
+            # to reduce the verbosity of the traceback
+            show_lines[line_no] = False
+
+        return "".join([line for line, show in zip(exception_lines, show_lines) if show])
 
 
 _handler = logging.StreamHandler()
-_handler.setFormatter(NoPromiseTracebackFormatter())
+_handler.setFormatter(ReducedTracebackFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 logger.addHandler(_handler)
 
 
@@ -62,6 +100,7 @@ class PromisingContext:
     appenders_capture_errors_by_default: bool
     longer_hash_keys: bool
     log_level_for_errors: int
+    log_reduced_tracebacks: bool
     on_promise_resolved_handlers: list[PromiseResolvedEventHandler]
     parent: Optional["PromisingContext"]
     child_tasks: set[Task]
@@ -74,6 +113,7 @@ class PromisingContext:
         appenders_capture_errors_by_default: bool = False,
         longer_hash_keys: bool = False,
         log_level_for_errors: int = logging.ERROR,
+        log_reduced_tracebacks: bool = True,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
@@ -87,6 +127,7 @@ class PromisingContext:
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_hash_keys = longer_hash_keys
         self.log_level_for_errors = log_level_for_errors
+        self.log_reduced_tracebacks = log_reduced_tracebacks
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 

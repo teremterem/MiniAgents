@@ -174,7 +174,7 @@ async def openai_embedding_agent(
     else:
         # if we are not in batch mode, and we still receive multiple messages, we will concatenate them all into
         # a single piece of text with parts (messages) separated by double newlines
-        texts = [(await ctx.message_promises.as_single_promise()).content]
+        texts = [str(await ctx.message_promises.as_single_promise())]
 
     logger_call = None
     try:
