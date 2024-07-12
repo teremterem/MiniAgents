@@ -2,10 +2,12 @@
 """
 Utility functions of the MiniAgents framework.
 """
-
 import logging
+import re
+import traceback
 import typing
-from typing import AsyncIterator, Any, Optional
+from pathlib import Path
+from typing import AsyncIterator, Any, Optional, Union, Iterable
 
 # noinspection PyProtectedMember
 from pydantic._internal._model_construction import ModelMetaclass
@@ -13,8 +15,6 @@ from pydantic._internal._model_construction import ModelMetaclass
 if typing.TYPE_CHECKING:
     from miniagents.messages import Message, MessagePromise
     from miniagents.miniagent_typing import MessageType
-
-logger = logging.getLogger(__name__)
 
 
 class SingletonMeta(type):
@@ -113,3 +113,59 @@ def join_messages(
         start_asap=start_asap,
         **preliminary_metadata,
     )
+
+
+class ReducedTracebackFormatter(logging.Formatter):
+    """
+    A custom log formatter that hides traceback lines that reference scripts which reside in `packages_to_exclude`.
+    """
+
+    packages_to_exclude: list[Path]
+
+    def __init__(self, *args, packages_to_exclude: Optional[Iterable[Path]] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if packages_to_exclude is None:
+            packages_to_exclude = [Path(__file__).parent]  # the whole "miniagents" library by default
+        self.packages_to_exclude = packages_to_exclude
+
+    @staticmethod
+    def _get_script_path(line: str) -> Optional[Path]:
+        match: re.Match = re.search(r'^\s*File "(.+?\.py)", line \d+, in ', line)
+        if not match:
+            return None
+
+        return Path(match.group(1))
+
+    def formatException(self, ei) -> str:
+        # TODO Oleksandr: add a message that mentions that some parts of the traceback are omitted
+        #  (and how to turn them back on)
+        exception_lines = traceback.format_exception(*ei)
+        # first we will collect script paths in `show_lines`, but later we will replace them with true/false flags
+        # to indicate whether the corresponding traceback lines should be shown or not
+        show_lines: list[Union[Optional[Path], bool]] = [self._get_script_path(line) for line in exception_lines]
+
+        exception_origin_already_shown = False
+        for line_no in range(len(show_lines) - 1, -1, -1):
+            script_path = show_lines[line_no]
+            if not script_path:
+                # this line does not represent any particular script - we show it
+                show_lines[line_no] = True
+                continue
+
+            if not any(script_path.is_relative_to(pkg) for pkg in self.packages_to_exclude):
+                # it's a script, but not from `packages_to_exclude` - we show it
+                show_lines[line_no] = True
+                continue
+
+            if not exception_origin_already_shown:
+                # it's a script from `packages_to_exclude`, but it's the very last script in the traceback -
+                # we show it, because it discloses the origin of the exception
+                show_lines[line_no] = True
+                exception_origin_already_shown = True
+                continue
+
+            # it's a script from `packages_to_exclude` and it's not the very last one in the traceback - we hide it
+            # to reduce the verbosity of the traceback
+            show_lines[line_no] = False
+
+        return "".join([line for line, show in zip(exception_lines, show_lines) if show])

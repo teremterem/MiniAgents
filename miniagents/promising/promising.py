@@ -5,14 +5,11 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 import asyncio
 import contextvars
 import logging
-import re
-import traceback
 from asyncio import Task
 from contextvars import ContextVar
 from functools import partial
-from pathlib import Path
 from types import TracebackType
-from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any, Match
+from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
 from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
 from miniagents.promising.promise_typing import (
@@ -25,69 +22,6 @@ from miniagents.promising.promise_typing import (
 )
 from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
 
-logger = logging.getLogger(__name__)
-
-# TODO Oleksandr: The `_framework_root` variable (along with the `ReducedTracebackFormatter` class) might not belong
-#  here - it points to `miniagents`, but we are in `promising`. The `promising` sub-library should not be aware of
-#  `miniagents` at all.
-_framework_root = Path(__file__).parent.parent
-
-
-class ReducedTracebackFormatter(logging.Formatter):
-    """
-    A custom log formatter that removes the traceback lines that are related to the `miniagents` framework.
-    """
-
-    @staticmethod
-    def _get_script_path(line: str) -> Optional[Path]:
-        match: Match = re.search(r'^\s*File "(.+?\.py)", line \d+, in ', line)
-        if not match:
-            return None
-
-        return Path(match.group(1))
-
-    def formatException(self, ei) -> str:
-        if not PromisingContext.get_current().log_reduced_tracebacks:
-            return super().formatException(ei)
-
-        # TODO Oleksandr: add a message that mentions that some parts of the traceback are omitted
-        exception_lines = traceback.format_exception(*ei)
-        # first we will collect script paths in `show_lines`, but later we will replace them with true/false flags
-        # to indicate whether the corresponding traceback lines should be shown or not
-        show_lines: list[Union[Optional[Path], bool]] = [self._get_script_path(line) for line in exception_lines]
-
-        exception_origin_already_shown = False
-        for line_no in range(len(show_lines) - 1, -1, -1):
-            script_path = show_lines[line_no]
-            if not script_path:
-                # it's not even a script path line, so we show it
-                show_lines[line_no] = True
-                continue
-
-            if not script_path.is_relative_to(_framework_root):
-                # it's not a framework script, so we show it
-                show_lines[line_no] = True
-                continue
-
-            # it's a script path line, and it belongs to the framework
-            if not exception_origin_already_shown:
-                # if it's the very last script path in the traceback, we should show it regardless (because it
-                # discloses the origin of the exception)
-                show_lines[line_no] = True
-                exception_origin_already_shown = True
-                continue
-
-            # it's a script path line, and it belongs to the framework, but it's not the very last one - we hide it
-            # to reduce the verbosity of the traceback
-            show_lines[line_no] = False
-
-        return "".join([line for line, show in zip(exception_lines, show_lines) if show])
-
-
-_handler = logging.StreamHandler()
-_handler.setFormatter(ReducedTracebackFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
-logger.addHandler(_handler)
-
 
 class PromisingContext:
     """
@@ -99,8 +33,8 @@ class PromisingContext:
     start_everything_asap_by_default: bool
     appenders_capture_errors_by_default: bool
     longer_hash_keys: bool
+    logger: logging.Logger
     log_level_for_errors: int
-    log_reduced_tracebacks: bool
     on_promise_resolved_handlers: list[PromiseResolvedEventHandler]
     parent: Optional["PromisingContext"]
     child_tasks: set[Task]
@@ -112,8 +46,8 @@ class PromisingContext:
         start_everything_asap_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
         longer_hash_keys: bool = False,
+        logger: Optional[logging.Logger] = None,
         log_level_for_errors: int = logging.ERROR,
-        log_reduced_tracebacks: bool = True,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
     ) -> None:
         self.parent = self._current.get()
@@ -126,8 +60,8 @@ class PromisingContext:
         self.start_everything_asap_by_default = start_everything_asap_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_hash_keys = longer_hash_keys
+        self.logger = logger or logging.getLogger("Promising")
         self.log_level_for_errors = log_level_for_errors
-        self.log_reduced_tracebacks = log_reduced_tracebacks
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
@@ -172,7 +106,7 @@ class PromisingContext:
             try:
                 return await awaitable
             except Exception:
-                logger.log(
+                self.logger.log(
                     log_level_for_errors,
                     "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK",
                     exc_info=True,
@@ -245,10 +179,11 @@ class Promise(Generic[T]):
         prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
-        promising_context = PromisingContext.get_current()
+        self._promising_context = PromisingContext.get_current()
 
         if start_asap is None:
-            start_asap = promising_context.start_everything_asap_by_default
+            start_asap = self._promising_context.start_everything_asap_by_default
+        self._start_asap = start_asap
 
         if resolver:
             self._resolver = partial(resolver, self)
@@ -263,7 +198,7 @@ class Promise(Generic[T]):
         self._resolver_lock = asyncio.Lock()
 
         if start_asap and prefill_result is NO_VALUE:
-            promising_context.start_asap(self)
+            self._promising_context.start_asap(self)
 
     async def _resolver(self) -> T:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -283,7 +218,9 @@ class Promise(Generic[T]):
                     try:
                         self._result = await self._resolver()
                     except BaseException as exc:  # pylint: disable=broad-except
-                        logger.debug("An error occurred while resolving a Promise", exc_info=True)
+                        self._promising_context.logger.debug(
+                            "An error occurred while resolving a Promise", exc_info=True
+                        )
                         self._result = exc
 
                     self._trigger_promise_resolved_event()
@@ -330,16 +267,14 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
         start_asap: Optional[bool] = None,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
-        promising_context = PromisingContext.get_current()
-
-        if start_asap is None:
-            start_asap = promising_context.start_everything_asap_by_default
-
         super().__init__(
             start_asap=start_asap,
             resolver=resolver,
             prefill_result=prefill_result,
         )
+        # ATTENTION !!! DO NOT use `start_asap` directly, USE `self._start_asap` instead !!!
+        # Unlike the former, the parent class initializes the latter with the default value if it is None.
+        del start_asap
 
         if streamer:
             self._streamer = partial(streamer, self)
@@ -352,10 +287,10 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._streamer_lock = asyncio.Lock()
 
-        if start_asap and prefill_pieces is NO_VALUE:
+        if self._start_asap and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            promising_context.start_asap(self._aconsume_the_stream())
+            self._promising_context.start_asap(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
@@ -398,7 +333,9 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
                 if not callable(self._streamer_aiter.__anext__):
                     raise TypeError("The streamer must return an async iterator")
             except BaseException as exc:
-                logger.debug("An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True)
+                self._promising_context.logger.debug(
+                    "An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True
+                )
                 self._streamer_aiter = FAILED
                 return exc
 
@@ -410,8 +347,9 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
             return await self._streamer_aiter.__anext__()
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
-                logger.debug(
-                    'An error occurred while fetching a single "piece" of a StreamedPromise from its pieces streamer.',
+                self._promising_context.logger.debug(
+                    'An error occurred while fetching a single "piece" of a StreamedPromise '
+                    "from its pieces streamer.",
                     exc_info=True,
                 )
             # Any exception, apart from `StopAsyncIteration`, will always be stored in the `_pieces_so_far` list
@@ -480,8 +418,9 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
     """
 
     def __init__(self, capture_errors: Optional[bool] = None) -> None:
+        self._promising_context = PromisingContext.get_current()
         if capture_errors is None:
-            capture_errors = PromisingContext.get_current().appenders_capture_errors_by_default
+            capture_errors = self._promising_context.appenders_capture_errors_by_default
         self._capture_errors = capture_errors
         self._queue = asyncio.Queue()
         self._append_was_open = False
@@ -509,14 +448,14 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
 
         if exc_value and error_should_be_squashed:
             if self._append_closed:
-                logger.log(
+                self._promising_context.logger.log(
                     PromisingContext.get_current().log_level_for_errors,
                     "A STREAM APPENDER WAS NOT ABLE TO CAPTURE THE FOLLOWING ERROR "
                     "BECAUSE APPEND WAS ALREADY CLOSED:",
                     exc_info=True,
                 )
             else:
-                logger.debug(
+                self._promising_context.logger.debug(
                     "An error occurred while appending pieces to a %s",
                     type(self).__name__,
                     exc_info=exc_value,
