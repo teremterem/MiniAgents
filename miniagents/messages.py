@@ -12,8 +12,7 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.utils import join_messages
 
-MESSAGE_CONTENT = "content"
-MESSAGE_CONTENT_TEMPLATE = "content_template"
+MESSAGE_CONTENT_FIELD = "content"
 
 
 class Message(Frozen):
@@ -140,7 +139,7 @@ class Message(Frozen):
         if len(args) > 1:
             raise ValueError("No more than one positional argument is allowed (no more than two if counting `self`).")
         if len(args) == 1:
-            kwargs[MESSAGE_CONTENT] = args[0]
+            kwargs[MESSAGE_CONTENT_FIELD] = args[0]
 
         super().__init__(**kwargs)
         self._persist_message_event_triggered = False
@@ -199,9 +198,9 @@ class MessagePromise(StreamedPromise[str, Message]):
         content = "".join([token async for token in self])
         # `self._metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
 
-        if MESSAGE_CONTENT in self._metadata_so_far:
+        if MESSAGE_CONTENT_FIELD in self._metadata_so_far:
             raise ValueError(
-                f"The `metadata_so_far` dictionary must NOT contain {MESSAGE_CONTENT!r} "
+                f"The `metadata_so_far` dictionary must NOT contain {MESSAGE_CONTENT_FIELD!r} "
                 f"as it is meant to be resolved from the stream.\n"
                 f"\n"
                 f"Dictionary that was received:\n"

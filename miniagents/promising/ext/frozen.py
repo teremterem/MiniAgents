@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 FrozenType = Optional[Union[str, int, float, bool, tuple["FrozenType", ...], "Frozen"]]
 
-FROZEN_CLASS = "class_"
+FROZEN_CLASS_FIELD = "class_"
 
 
 class Frozen(BaseModel):
@@ -80,7 +80,7 @@ class Frozen(BaseModel):
         Get a dict of field names and values of this Pydantic object which can be used as keyword arguments for
         a function call ("class_" field is excluded, because it wouldn't likely to make sense as a keyword argument).
         """
-        return {key: value for key, value in self if key != FROZEN_CLASS}
+        return {key: value for key, value in self if key != FROZEN_CLASS_FIELD}
 
     def _as_string(self) -> str:
         """
@@ -94,9 +94,9 @@ class Frozen(BaseModel):
         """
         Preprocess the values before validation and freezing.
         """
-        if values.get(FROZEN_CLASS) != cls.__name__:
+        if values.get(FROZEN_CLASS_FIELD) != cls.__name__:
             # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
-            values = {**values, FROZEN_CLASS: cls.__name__}
+            values = {**values, FROZEN_CLASS_FIELD: cls.__name__}
         return values
 
     # noinspection PyNestedDecorators

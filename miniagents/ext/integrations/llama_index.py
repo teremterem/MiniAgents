@@ -23,7 +23,7 @@ from llama_index.core.llms.callbacks import (
 from llama_index.core.llms.llm import LLM
 
 from miniagents.ext.llms.llm_utils import LLMMessage
-from miniagents.messages import MESSAGE_CONTENT
+from miniagents.messages import MESSAGE_CONTENT_FIELD
 from miniagents.miniagents import MiniAgent
 
 
@@ -82,7 +82,7 @@ class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
                 role=miniagent_response.role,
                 content=miniagent_response.content,
                 additional_kwargs={
-                    key: value for key, value in miniagent_response if key not in ("role", MESSAGE_CONTENT)
+                    key: value for key, value in miniagent_response if key not in ("role", MESSAGE_CONTENT_FIELD)
                 },
             ),
             raw=dict(miniagent_response),
@@ -126,7 +126,9 @@ class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
                     role=getattr(miniagent_resp_message, "role", None) or MessageRole.ASSISTANT,
                     content=content,
                     additional_kwargs={
-                        key: value for key, value in miniagent_resp_message if key not in ("role", MESSAGE_CONTENT)
+                        key: value
+                        for key, value in miniagent_resp_message
+                        if key not in ("role", MESSAGE_CONTENT_FIELD)
                     },
                 ),
                 raw=dict(miniagent_resp_message),
@@ -140,7 +142,7 @@ class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
 
         return CompletionResponse(
             text=miniagent_response.content,
-            additional_kwargs={key: value for key, value in miniagent_response if key != MESSAGE_CONTENT},
+            additional_kwargs={key: value for key, value in miniagent_response if key != MESSAGE_CONTENT_FIELD},
             raw=miniagent_response.model_dump(),
         )
 
@@ -162,7 +164,9 @@ class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
             miniagent_resp_message = await miniagent_resp_promise
             yield CompletionResponse(
                 text=content,
-                additional_kwargs={key: value for key, value in miniagent_resp_message if key != MESSAGE_CONTENT},
+                additional_kwargs={
+                    key: value for key, value in miniagent_resp_message if key != MESSAGE_CONTENT_FIELD
+                },
                 raw=dict(miniagent_resp_message),
             )
 
