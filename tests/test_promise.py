@@ -48,29 +48,28 @@ async def test_stream_replay_iterator_exception(start_asap: bool) -> None:
     Assert that when a `StreamedPromise` is iterated over multiple times and an exception is raised in the middle of
     the `streamer` iterations, the exact same sequence of exceptions is replayed.
     """
-
-    with StreamAppender(capture_errors=True) as appender:
-        for i in range(1, 6):
-            if i == 3:
-                raise ValueError("Test error")
-            appender.append(i)
-
-    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
-        return [piece async for piece in _streamed_promise]
-
-    async def iterate_over_promise():
-        promise_iterator = streamed_promise.__aiter__()
-
-        assert await promise_iterator.__anext__() == 1
-        assert await promise_iterator.__anext__() == 2
-        with pytest.raises(ValueError):
-            await promise_iterator.__anext__()
-        with pytest.raises(StopAsyncIteration):
-            await promise_iterator.__anext__()
-        with pytest.raises(StopAsyncIteration):
-            await promise_iterator.__anext__()
-
     async with PromisingContext():
+        with StreamAppender(capture_errors=True) as appender:
+            for i in range(1, 6):
+                if i == 3:
+                    raise ValueError("Test error")
+                appender.append(i)
+
+        async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
+            return [piece async for piece in _streamed_promise]
+
+        async def iterate_over_promise():
+            promise_iterator = streamed_promise.__aiter__()
+
+            assert await promise_iterator.__anext__() == 1
+            assert await promise_iterator.__anext__() == 2
+            with pytest.raises(ValueError):
+                await promise_iterator.__anext__()
+            with pytest.raises(StopAsyncIteration):
+                await promise_iterator.__anext__()
+            with pytest.raises(StopAsyncIteration):
+                await promise_iterator.__anext__()
+
         streamed_promise = StreamedPromise(
             streamer=appender,
             resolver=resolver,
@@ -151,11 +150,11 @@ async def test_broken_stream_resolver(broken_resolver, start_asap: bool) -> None
             actual_resolver_call_count += 1
             raise error_class("Test error")
 
-    with StreamAppender(capture_errors=True) as appender:
-        for i in range(1, 6):
-            appender.append(i)
-
     async with PromisingContext():
+        with StreamAppender(capture_errors=True) as appender:
+            for i in range(1, 6):
+                appender.append(i)
+
         streamed_promise = StreamedPromise(
             streamer=appender,
             resolver=broken_resolver,
@@ -186,16 +185,16 @@ async def test_streamed_promise_aresolve(start_asap: bool) -> None:
     """
     resolver_calls = 0
 
-    with StreamAppender(capture_errors=False) as appender:
-        for i in range(1, 6):
-            appender.append(i)
-
-    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
-        nonlocal resolver_calls
-        resolver_calls += 1
-        return [piece async for piece in _streamed_promise]
-
     async with PromisingContext():
+        with StreamAppender(capture_errors=False) as appender:
+            for i in range(1, 6):
+                appender.append(i)
+
+        async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
+            nonlocal resolver_calls
+            resolver_calls += 1
+            return [piece async for piece in _streamed_promise]
+
         streamed_promise = StreamedPromise(
             streamer=appender,
             resolver=resolver,
@@ -221,17 +220,17 @@ async def test_stream_appender_dont_capture_errors(start_asap: bool) -> None:
     - the error is raised beyond the context manager;
     - the `StreamedPromise` is not affected by the error and is just returning the elements up to the error.
     """
-    with pytest.raises(ValueError):
-        with StreamAppender(capture_errors=False) as appender:
-            for i in range(1, 6):
-                if i == 3:
-                    raise ValueError("Test error")
-                appender.append(i)
-
-    async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
-        return [piece async for piece in _streamed_promise]
-
     async with PromisingContext():
+        with pytest.raises(ValueError):
+            with StreamAppender(capture_errors=False) as appender:
+                for i in range(1, 6):
+                    if i == 3:
+                        raise ValueError("Test error")
+                    appender.append(i)
+
+        async def resolver(_streamed_promise: StreamedPromise) -> list[int]:
+            return [piece async for piece in _streamed_promise]
+
         streamed_promise = StreamedPromise(
             streamer=appender,
             resolver=resolver,
