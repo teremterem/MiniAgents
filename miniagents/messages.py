@@ -3,6 +3,7 @@
 """
 
 from functools import cached_property
+from pprint import pformat
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
 from miniagents.miniagent_typing import MessageTokenStreamer
@@ -11,7 +12,9 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.utils import join_messages
 
-MESSAGE_CONTENT_AND_TEMPLATE = frozenset({"content", "content_template"})
+MESSAGE_CONTENT = "content"
+MESSAGE_CONTENT_TEMPLATE = "content_template"
+MESSAGE_CONTENT_AND_TEMPLATE = frozenset({MESSAGE_CONTENT, MESSAGE_CONTENT_TEMPLATE})
 
 
 class Message(Frozen):
@@ -138,7 +141,7 @@ class Message(Frozen):
         if len(args) > 1:
             raise ValueError("No more than one positional argument is allowed (no more than two if counting `self`).")
         if len(args) == 1:
-            kwargs["content"] = args[0]
+            kwargs[MESSAGE_CONTENT] = args[0]
 
         super().__init__(**kwargs)
         self._persist_message_event_triggered = False
@@ -194,8 +197,21 @@ class MessagePromise(StreamedPromise[str, Message]):
         return self._message_token_streamer(self._metadata_so_far)
 
     async def _resolver(self) -> Message:
+        content = "".join([token async for token in self])
+        # `self._metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
+
+        if MESSAGE_CONTENT in self._metadata_so_far:
+            raise ValueError(
+                f"The `metadata_so_far` dictionary must NOT contain {MESSAGE_CONTENT!r} "
+                f"as it is meant to be resolved from the stream.\n"
+                f"\n"
+                f"Dictionary that was received:\n"
+                f"\n"
+                f"{pformat(self._metadata_so_far)}"
+            )
+
         return self._message_class(
-            content="".join([token async for token in self]),
+            content=content,
             **self._metadata_so_far,
         )
 
