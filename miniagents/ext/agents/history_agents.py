@@ -12,7 +12,7 @@ from typing import Optional, Union
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
-from miniagents.messages import Message, MESSAGE_CONTENT_AND_TEMPLATE
+from miniagents.messages import Message, MESSAGE_CONTENT
 from miniagents.miniagents import InteractionContext, miniagent
 from miniagents.promising.ext.frozen import Frozen
 
@@ -194,7 +194,7 @@ async def markdown_llm_logger_agent(
         return
 
     with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
-        metadata = messages[-1].model_dump(exclude=MESSAGE_CONTENT_AND_TEMPLATE)
+        metadata = messages[-1].model_dump(exclude={MESSAGE_CONTENT})
         log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(metadata)}\n```\n")
 
 

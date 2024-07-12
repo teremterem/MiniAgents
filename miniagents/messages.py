@@ -14,7 +14,6 @@ from miniagents.utils import join_messages
 
 MESSAGE_CONTENT = "content"
 MESSAGE_CONTENT_TEMPLATE = "content_template"
-MESSAGE_CONTENT_AND_TEMPLATE = frozenset({MESSAGE_CONTENT, MESSAGE_CONTENT_TEMPLATE})
 
 
 class Message(Frozen):
