@@ -137,8 +137,6 @@ class ReducedTracebackFormatter(logging.Formatter):
         return Path(match.group(1))
 
     def formatException(self, ei) -> str:
-        # TODO Oleksandr: add a message that mentions that some parts of the traceback are omitted
-        #  (and how to turn them back on)
         exception_lines = traceback.format_exception(*ei)
         # first we will collect script paths in `show_lines`, but later we will replace them with true/false flags
         # to indicate whether the corresponding traceback lines should be shown or not
@@ -168,4 +166,11 @@ class ReducedTracebackFormatter(logging.Formatter):
             # to reduce the verbosity of the traceback
             show_lines[line_no] = False
 
-        return "".join([line for line, show in zip(exception_lines, show_lines) if show])
+        resulting_lines = [line for line, show in zip(exception_lines, show_lines) if show]
+        resulting_lines.append(
+            "\n"
+            "ATTENTION! Some parts of the traceback above were omitted for readability.\n"
+            "Use `MiniAgents(log_reduced_traceback=False)` to see the full traceback.\n"
+        )
+
+        return "".join(resulting_lines)
