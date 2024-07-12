@@ -155,6 +155,7 @@ class ReducedTracebackFormatter(logging.Formatter):
             if not any(script_path.is_relative_to(pkg) for pkg in self.packages_to_exclude):
                 # it's a script, but not from `packages_to_exclude` - we show it
                 show_lines[line_no] = True
+                exception_origin_already_shown = True
                 continue
 
             if not exception_origin_already_shown:
