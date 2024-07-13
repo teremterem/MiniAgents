@@ -7,13 +7,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from pprint import pformat
-from typing import Optional, Union, Any
+from typing import Optional, Union
 
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
-from miniagents.messages import Message, MESSAGE_CONTENT_AND_TEMPLATE
+from miniagents.messages import Message, MESSAGE_CONTENT_FIELD
 from miniagents.miniagents import InteractionContext, miniagent
+from miniagents.promising.ext.frozen import Frozen
 
 
 @miniagent
@@ -162,7 +163,7 @@ class MarkdownHistoryAgent(BaseModel):
 
 @miniagent
 async def markdown_llm_logger_agent(
-    ctx: InteractionContext, log_folder: Union[str, Path] = "llm_logs/", metadata: Optional[dict[str, Any]] = None
+    ctx: InteractionContext, log_folder: Union[str, Path] = "llm_logs/", metadata: Optional[Frozen] = None
 ) -> None:
     """
     TODO Oleksandr: docstring
@@ -170,9 +171,9 @@ async def markdown_llm_logger_agent(
     log_folder = Path(log_folder)
     log_folder.mkdir(parents=True, exist_ok=True)
 
-    if metadata and "model" in metadata:
-        model_suffix = f"__{metadata['model']}"
-    else:
+    try:
+        model_suffix = f"__{metadata.model}"
+    except AttributeError:
         model_suffix = ""
 
     log_file = log_folder / (
@@ -185,7 +186,7 @@ async def markdown_llm_logger_agent(
         raise FileExistsError(f"Log file already exists: {log_file}")
 
     if metadata:
-        log_file.write_text(f"```python\n{pformat(metadata)}\n```\n", encoding="utf-8")
+        log_file.write_text(f"```python\n{pformat(metadata.model_dump())}\n```\n", encoding="utf-8")
 
     await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file), only_write=True)
     messages = await ctx.message_promises
@@ -193,7 +194,7 @@ async def markdown_llm_logger_agent(
         return
 
     with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
-        metadata = messages[-1].model_dump(exclude=MESSAGE_CONTENT_AND_TEMPLATE)
+        metadata = messages[-1].model_dump(exclude={MESSAGE_CONTENT_FIELD})
         log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(metadata)}\n```\n")
 
 

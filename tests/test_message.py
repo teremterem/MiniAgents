@@ -159,3 +159,15 @@ async def test_on_persist_message_event_not_called(start_asap: bool) -> None:
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
     assert persist_message_calls == 0
+
+
+def test_message_content_template() -> None:
+    """
+    Test that the variable substitution in the content template works as expected.
+    """
+    message = Message(
+        "Some content",
+        content_template="Hello, {name}! I am {class_}. Here is some content: {content}",
+        name="Alice",
+    )
+    assert str(message) == "Hello, Alice! I am Message. Here is some content: Some content"

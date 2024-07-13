@@ -24,6 +24,7 @@ pydantic = ">=2.0.0,<3.0.0"
 
 [tool.poetry.dev-dependencies]
 anthropic = "*"
+anyio = "*"
 black = "*"
 haystack-ai = "*"
 ipython = "*"
@@ -43,6 +44,7 @@ pytest-asyncio = "*"
 pytest-cov = "*"
 python-dotenv = "*"
 trafilatura = "*"
+trio= "*"
 unstructured = "*"
 
 [build-system]

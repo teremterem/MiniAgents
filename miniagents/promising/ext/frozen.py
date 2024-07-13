@@ -4,12 +4,41 @@ The main class in this module is `Frozen`. See its docstring for more informatio
 
 import hashlib
 import json
-from functools import cached_property
-from typing import Any, Iterator, Optional, Union, Iterable
+from functools import wraps
+from typing import Any, Optional, Union, Callable
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from miniagents.promising.sentinels import NO_VALUE
+
 FrozenType = Optional[Union[str, int, float, bool, tuple["FrozenType", ...], "Frozen"]]
+
+FROZEN_CLASS_FIELD = "class_"
+
+
+def cached_privately(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    """
+    Unlike `@functools.cached_property`, this decorator caches the result of the method call in a private attribute
+    instead of replacing the original method with the calculated value. This approach prevents the cached value from
+    being registered as a field value in the Pydantic model upon evaluation.
+
+    Another difference is that this decorator does not automatically turn the method into a property - you need to
+    additionally decorate your method with `@property` on top of this decorator. This decision was made because IDEs
+    like PyCharm don't seem to realize that the method became a property if it wasn't explicitly decorated with known
+    decorators like `@property` or `@functools.cached_property` (they might have hardcoded these names in PyCharm
+    source code).
+    """
+
+    @wraps(func)
+    def wrapper(self: Any) -> Any:
+        attr_name = f"__{type(self).__name__}__{func.__name__}__cache"
+        result = getattr(self, attr_name, NO_VALUE)
+        if result is NO_VALUE:
+            result = func(self)
+            setattr(self, attr_name, result)
+        return result
+
+    return wrapper
 
 
 class Frozen(BaseModel):
@@ -26,7 +55,8 @@ class Frozen(BaseModel):
     def __str__(self) -> str:
         return self.as_string
 
-    @cached_property
+    @property
+    @cached_privately
     def as_string(self) -> str:
         """
         Return a string representation of this model. This is usually the representation that will be used when
@@ -35,15 +65,18 @@ class Frozen(BaseModel):
         # NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         return self._as_string()
 
-    @cached_property
+    @property
+    @cached_privately
     def full_json(self) -> str:
         """
         Get the full JSON representation of this Frozen object together with all its nested objects. This is a cached
         property, so it is calculated only the first time it is accessed.
+        TODO Oleksandr: explain how it is different from serialized
         """
         return self.model_dump_json()
 
-    @cached_property
+    @property
+    @cached_privately
     def serialized(self) -> str:
         """
         The representation of this Frozen object that you would usually get by calling `serialize()`, but as a string
@@ -59,7 +92,8 @@ class Frozen(BaseModel):
         """
         return self.model_dump()
 
-    @cached_property
+    @property
+    @cached_privately
     def hash_key(self) -> str:
         """
         Get the hash key for this object. It is a hash of the JSON representation of the object.
@@ -72,28 +106,12 @@ class Frozen(BaseModel):
             hash_key = hash_key[:40]
         return hash_key
 
-    def fields_and_values(self, exclude: Iterable[str] = (), exclude_class_field: bool = True) -> dict[str, Any]:
+    def as_kwargs(self) -> dict[str, Any]:
         """
-        Get a dict of field names and values of this Pydantic object. This includes the model fields (both,
-        explicitly set and the ones with default values) and the extra fields that are not part of the model.
-        TODO Oleksandr: explain how it is different from model_dump()
+        Get a dict of field names and values of this Pydantic object which can be used as keyword arguments for
+        a function call ("class_" field is excluded, because it wouldn't likely to make sense as a keyword argument).
         """
-        exclude = set(exclude)
-        if exclude_class_field:
-            exclude.add("class_")
-        return dict(self._fields_and_values(exclude=exclude))
-
-    def _fields_and_values(self, exclude: Optional[set[str]] = None) -> Iterator[tuple[str, Any]]:
-        if exclude:
-            for field in self.model_fields:
-                if field not in exclude:
-                    yield field, getattr(self, field)
-        else:
-            for field in self.model_fields:
-                yield field, getattr(self, field)
-
-        for field, value in self.__pydantic_extra__.items():
-            yield field, value
+        return {key: value for key, value in self if key != FROZEN_CLASS_FIELD}
 
     def _as_string(self) -> str:
         """
@@ -107,15 +125,9 @@ class Frozen(BaseModel):
         """
         Preprocess the values before validation and freezing.
         """
-        # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
-        if "class_" in values:
-            if values["class_"] != cls.__name__:
-                raise ValueError(
-                    f"the `class_` field of a Frozen must be equal to its actual class name, got {values['class_']} "
-                    f"instead of {cls.__name__}"
-                )
-        else:
-            values = {"class_": cls.__name__, **values}
+        if values.get(FROZEN_CLASS_FIELD) != cls.__name__:
+            # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
+            values = {**values, FROZEN_CLASS_FIELD: cls.__name__}
         return values
 
     # noinspection PyNestedDecorators

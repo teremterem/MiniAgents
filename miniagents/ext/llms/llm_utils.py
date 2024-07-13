@@ -10,6 +10,7 @@ from pydantic import ConfigDict, Field, BaseModel
 from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
 from miniagents.messages import Message, MessageTokenAppender, MessagePromise
 from miniagents.miniagents import InteractionContext, MiniAgents, MiniAgent
+from miniagents.promising.ext.frozen import Frozen
 
 
 class LLMMessage(Message):
@@ -55,6 +56,8 @@ class PromptLogMessage(LLMMessage):
 class LLMAgent(ABC, BaseModel):
     """
     A base class for agents that represents various Large Language Models.
+    TODO Oleksandr: support OpenAI-style function calls
+    TODO Oleksandr: explain parameters
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
@@ -63,7 +66,7 @@ class LLMAgent(ABC, BaseModel):
     model: str
     stream: bool = Field(default_factory=lambda: MiniAgents.get_current().stream_llm_tokens_by_default)
     system: Optional[str] = None
-    response_metadata: Optional[dict[str, Any]] = None
+    response_metadata: Optional[Frozen] = None
     response_message_class: type[Message] = AssistantMessage
     llm_logger_agent: Union[MiniAgent, bool] = Field(default_factory=lambda: MiniAgents.get_current().llm_logger_agent)
 
@@ -132,7 +135,7 @@ class LLMAgent(ABC, BaseModel):
             # preliminary metadata:
             model=self.model,
             agent_alias=self.ctx.this_agent.alias,
-            **(self.response_metadata or {}),
+            **dict(self.response_metadata or Frozen()),
         )
         self.ctx.reply(response_promise)
         # we already know that there will be no more response messages, so we close the response sequence

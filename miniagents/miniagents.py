@@ -3,7 +3,6 @@
 """
 
 import asyncio
-import copy
 import logging
 import re
 from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
@@ -16,8 +15,7 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseStreamer, PromiseResolvedEventHandler
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
 from miniagents.promising.sequence import FlatSequence
-
-logger = logging.getLogger(__name__)
+from miniagents.utils import ReducedTracebackFormatter
 
 
 class MiniAgents(PromisingContext):
@@ -30,6 +28,7 @@ class MiniAgents(PromisingContext):
     normalize_agent_func_and_class_names: bool
     normalize_spaces_in_agent_docstrings: bool
     on_persist_message_handlers: list[PersistMessageEventHandler]
+    log_reduced_tracebacks: bool
 
     def __init__(
         self,
@@ -39,6 +38,8 @@ class MiniAgents(PromisingContext):
         normalize_spaces_in_agent_docstrings: bool = True,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        log_reduced_tracebacks: bool = True,
+        logger: Optional[logging.Logger] = None,
         **kwargs,
     ) -> None:
         on_promise_resolved = (
@@ -46,7 +47,16 @@ class MiniAgents(PromisingContext):
             if callable(on_promise_resolved)
             else [self._trigger_persist_message_event, *on_promise_resolved]
         )
-        super().__init__(on_promise_resolved=on_promise_resolved, **kwargs)
+        if not logger:
+            logger = logging.getLogger("MiniAgents")
+            formatter_class = ReducedTracebackFormatter if log_reduced_tracebacks else logging.Formatter
+            formatter = formatter_class(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+
+        super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
+
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
         self.normalize_agent_func_and_class_names = normalize_agent_func_and_class_names
@@ -173,7 +183,7 @@ class MiniAgent:
         # validate interaction metadata
         # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         self.interaction_metadata = Frozen(**(interaction_metadata or {}))
-        self._interact_metadata_dict = self.interaction_metadata.fields_and_values()
+        self._interact_metadata_dict = dict(self.interaction_metadata)
 
         self.alias = alias
         if self.alias is None:
@@ -436,7 +446,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, Message):
             yield zero_or_more_items.as_promise
         elif isinstance(zero_or_more_items, BaseModel):
-            yield Message(**zero_or_more_items.model_dump()).as_promise
+            yield Message(**dict(zero_or_more_items)).as_promise
         elif isinstance(zero_or_more_items, dict):
             yield Message(**zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, str):
@@ -479,9 +489,10 @@ class AgentReplyMessageSequence(MessageSequence):
         function_kwargs: dict[str, Any],
         **kwargs,
     ) -> None:
-        # this validates the agent function kwargs
-        self._frozen_func_kwargs = Frozen(**function_kwargs).fields_and_values()
-        self._function_kwargs = copy.deepcopy(function_kwargs)
+        # TODO Oleksandr: emphasize somewhere in the documentation that passing parameters to `miniagent.inquire()`
+        #  method is different than passing parameters through `miniagent.fork()` because the former will "freeze"
+        #  parameters before sending them to the agent function, while the latter will eventually pass them as-is
+        self._frozen_func_kwargs = Frozen(**function_kwargs).as_kwargs()
 
         self._mini_agent = mini_agent
         self._input_sequence_promise = input_sequence_promise
@@ -509,13 +520,13 @@ class AgentReplyMessageSequence(MessageSequence):
                             # arguments unless it is overridden)
                             ctx=ctx,
                             **self._mini_agent._static_kwargs,
-                            **self._function_kwargs,
+                            **self._frozen_func_kwargs,
                         )
                         await actual_func()
                     else:
                         # the miniagent is a function
                         await self._mini_agent._func_or_class(
-                            ctx, **self._mini_agent._static_kwargs, **self._function_kwargs
+                            ctx, **self._mini_agent._static_kwargs, **self._frozen_func_kwargs
                         )
                 finally:
                     await ctx.await_for_subtasks()

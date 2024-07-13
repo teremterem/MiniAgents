@@ -1,11 +1,13 @@
-# pylint: disable=import-outside-toplevel
+# pylint: disable=import-outside-toplevel,cyclic-import
 """
 Utility functions of the MiniAgents framework.
 """
-
 import logging
+import re
+import traceback
 import typing
-from typing import AsyncIterator, Any, Optional
+from pathlib import Path
+from typing import AsyncIterator, Any, Optional, Union, Iterable
 
 # noinspection PyProtectedMember
 from pydantic._internal._model_construction import ModelMetaclass
@@ -13,8 +15,6 @@ from pydantic._internal._model_construction import ModelMetaclass
 if typing.TYPE_CHECKING:
     from miniagents.messages import Message, MessagePromise
     from miniagents.miniagent_typing import MessageType
-
-logger = logging.getLogger(__name__)
 
 
 class SingletonMeta(type):
@@ -73,7 +73,7 @@ def join_messages(
     before it is resolved.
     :param message_class: A class of the resulting message. If None, the default Message class will be used.
     """
-    from miniagents.messages import Message
+    from miniagents.messages import Message, MESSAGE_CONTENT_FIELD
     from miniagents.miniagents import MessageSequence
 
     if message_class is None:
@@ -85,7 +85,9 @@ def join_messages(
 
         first_message = True
         async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
-            metadata_so_far.update(message_promise.preliminary_metadata)
+            metadata_so_far.update(
+                (key, value) for key, value in message_promise.preliminary_metadata if key != MESSAGE_CONTENT_FIELD
+            )
             if delimiter and not first_message:
                 yield delimiter
 
@@ -102,7 +104,9 @@ def join_messages(
                 metadata_so_far["original_messages"].append(await message_promise)
 
             # TODO Oleksandr: should I care about merging values of the same keys instead of just overwriting them ?
-            metadata_so_far.update((await message_promise).fields_and_values(exclude_content_and_template=True))
+            metadata_so_far.update(
+                (key, value) for key, value in await message_promise if key != MESSAGE_CONTENT_FIELD
+            )
 
             first_message = False
 
@@ -111,3 +115,65 @@ def join_messages(
         start_asap=start_asap,
         **preliminary_metadata,
     )
+
+
+class ReducedTracebackFormatter(logging.Formatter):
+    """
+    A custom log formatter that hides traceback lines that reference scripts which reside in `packages_to_exclude`.
+    """
+
+    packages_to_exclude: list[Path]
+
+    def __init__(self, *args, packages_to_exclude: Optional[Iterable[Path]] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if packages_to_exclude is None:
+            packages_to_exclude = [Path(__file__).parent]  # the whole "miniagents" library by default
+        self.packages_to_exclude = packages_to_exclude
+
+    @staticmethod
+    def _get_script_path(line: str) -> Optional[Path]:
+        match: re.Match = re.search(r'^\s*File "(.+?\.py)", line \d+, in ', line)
+        if not match:
+            return None
+
+        return Path(match.group(1))
+
+    def formatException(self, ei) -> str:
+        exception_lines = traceback.format_exception(*ei)
+        # first we will collect script paths in `show_lines`, but later we will replace them with true/false flags
+        # to indicate whether the corresponding traceback lines should be shown or not
+        show_lines: list[Union[Optional[Path], bool]] = [self._get_script_path(line) for line in exception_lines]
+
+        exception_origin_already_shown = False
+        for line_no in range(len(show_lines) - 1, -1, -1):
+            script_path = show_lines[line_no]
+            if not script_path:
+                # this line does not represent any particular script - we show it
+                show_lines[line_no] = True
+                continue
+
+            if not any(script_path.is_relative_to(pkg) for pkg in self.packages_to_exclude):
+                # it's a script, but not from `packages_to_exclude` - we show it
+                show_lines[line_no] = True
+                exception_origin_already_shown = True
+                continue
+
+            if not exception_origin_already_shown:
+                # it's a script from `packages_to_exclude`, but it's the very last script in the traceback -
+                # we show it, because it discloses the origin of the exception
+                show_lines[line_no] = True
+                exception_origin_already_shown = True
+                continue
+
+            # it's a script from `packages_to_exclude` and it's not the very last one in the traceback - we hide it
+            # to reduce the verbosity of the traceback
+            show_lines[line_no] = False
+
+        resulting_lines = [line for line, show in zip(exception_lines, show_lines) if show]
+        resulting_lines.append(
+            "\n"
+            "ATTENTION! Some parts of the traceback above were omitted for readability.\n"
+            "Use `MiniAgents(log_reduced_traceback=False)` to see the full traceback.\n"
+        )
+
+        return "".join(resulting_lines)

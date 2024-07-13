@@ -2,16 +2,16 @@
 `Message` class and other classes related to messages.
 """
 
-from functools import cached_property
-from typing import AsyncIterator, Any, Union, Optional, Iterator, Iterable
+from pprint import pformat
+from typing import AsyncIterator, Any, Union, Optional, Iterator
 
 from miniagents.miniagent_typing import MessageTokenStreamer
 from miniagents.promising.errors import AppenderNotOpenError
-from miniagents.promising.ext.frozen import Frozen
+from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.utils import join_messages
 
-MESSAGE_CONTENT_AND_TEMPLATE = frozenset({"content", "content_template"})
+MESSAGE_CONTENT_FIELD = "content"
 
 
 class Message(Frozen):
@@ -22,7 +22,8 @@ class Message(Frozen):
     content: Optional[str] = None
     content_template: Optional[str] = None
 
-    @cached_property
+    @property
+    @cached_privately
     def as_promise(self) -> "MessagePromise":
         """
         Convert this message into a MessagePromise object.
@@ -78,18 +79,8 @@ class Message(Frozen):
                     yield from message.sub_messages()
                     yield message
 
-    def fields_and_values(
-        self, exclude: Iterable[str] = (), exclude_class_field: bool = True, exclude_content_and_template: bool = False
-    ) -> dict[str, Any]:
-        """
-        TODO Oleksandr: docstring
-        """
-        if exclude_content_and_template:
-            exclude = set(exclude)
-            exclude.update(MESSAGE_CONTENT_AND_TEMPLATE)
-        return super().fields_and_values(exclude=exclude, exclude_class_field=exclude_class_field)
-
-    @cached_property
+    @property
+    @cached_privately
     def _serialization_metadata(
         self,
     ) -> tuple[
@@ -105,7 +96,7 @@ class Message(Frozen):
             node_path: tuple[Union[str, int], ...],
         ) -> None:
             # pylint: disable=protected-access
-            for field, value in node._fields_and_values():
+            for field, value in node:
                 if isinstance(value, Message):
                     sub_messages[(*node_path, field)] = value
 
@@ -139,13 +130,13 @@ class Message(Frozen):
         return include_into_serialization, sub_messages
 
     def _as_string(self) -> str:
+        if self.content_template is not None:
+            return self.content_template.format(**dict(self))
         if self.content is not None:
             return self.content
-        if self.content_template is not None:
-            return self.content_template.format(**self.fields_and_values(exclude_class_field=False))
         return super()._as_string()
 
-    def __init__(self, content: Optional[str] = None, **metadata: Any) -> None:
+    def __init__(self, content: Optional[str] = None, **metadata) -> None:
         super().__init__(content=content, **metadata)
         self._persist_message_event_triggered = False
 
@@ -172,11 +163,14 @@ class MessagePromise(StreamedPromise[str, Message]):
 
             super().__init__(
                 start_asap=start_asap,
+                # TODO Oleksandr: shouldn't the prefilling of pieces be lazy ? the consumer might never need the
+                #  textual representation of the message...
                 prefill_pieces=[str(prefill_message)],
                 prefill_result=prefill_message,
             )
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
+
             if isinstance(message_token_streamer, MessageTokenAppender):
                 if not message_token_streamer.was_open:
                     # this check prevents potential deadlocks
@@ -185,9 +179,9 @@ class MessagePromise(StreamedPromise[str, Message]):
                         "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
                     )
                 self._metadata_so_far = message_token_streamer.metadata_so_far
-                self._metadata_so_far.update(self.preliminary_metadata.fields_and_values())
+                self._metadata_so_far.update(self.preliminary_metadata)
             else:
-                self._metadata_so_far = self.preliminary_metadata.fields_and_values()
+                self._metadata_so_far = dict(self.preliminary_metadata)
 
             self._message_token_streamer = message_token_streamer
             self._message_class = message_class
@@ -197,8 +191,21 @@ class MessagePromise(StreamedPromise[str, Message]):
         return self._message_token_streamer(self._metadata_so_far)
 
     async def _resolver(self) -> Message:
+        content = "".join([token async for token in self])
+        # `self._metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
+
+        if MESSAGE_CONTENT_FIELD in self._metadata_so_far:
+            raise ValueError(
+                f"The `metadata_so_far` dictionary must NOT contain {MESSAGE_CONTENT_FIELD!r} "
+                f"as it is meant to be resolved from the stream.\n"
+                f"\n"
+                f"Dictionary that was received:\n"
+                f"\n"
+                f"{pformat(self._metadata_so_far)}"
+            )
+
         return self._message_class(
-            content="".join([token async for token in self]),
+            content=content,
             **self._metadata_so_far,
         )
 
