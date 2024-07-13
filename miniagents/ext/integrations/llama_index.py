@@ -1,3 +1,4 @@
+# pylint: disable=too-many-ancestors
 """
 Integrations of llama-index with MiniAgents.
 """
@@ -27,7 +28,7 @@ from miniagents.messages import MESSAGE_CONTENT_FIELD
 from miniagents.miniagents import MiniAgent
 
 
-class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
+class LlamaIndexMiniAgentLLM(LLM):
     """
     A proxy from llama-index LLM to a MiniAgent.
     """
@@ -173,7 +174,7 @@ class LlamaIndexMiniAgentLLM(LLM):  # pylint: disable=too-many-ancestors
         return gen()
 
 
-class LlamaIndexMiniAgentEmbedding(BaseEmbedding):  # pylint: disable=too-many-ancestors
+class LlamaIndexMiniAgentEmbedding(BaseEmbedding):
     """
     A proxy from llama-index embedding to a MiniAgent.
     """

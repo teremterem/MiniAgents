@@ -15,10 +15,14 @@ from miniagents.miniagents import (
     miniagent,
     MiniAgents,
 )
-from miniagents.promising.ext.frozen import Frozen
+from miniagents.promising.ext.frozen import (
+    cached_privately,
+    Frozen,
+)
 
 __all__ = [
     "AgentCall",
+    "cached_privately",
     "Frozen",
     "InteractionContext",
     "Message",
