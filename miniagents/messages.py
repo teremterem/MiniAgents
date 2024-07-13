@@ -163,9 +163,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
             super().__init__(
                 start_asap=start_asap,
-                # TODO Oleksandr: shouldn't the prefilling of pieces be lazy ? the consumer might never need the
-                #  textual representation of the message...
-                prefill_pieces=[str(prefill_message)],
+                prefill_pieces=[] if prefill_message.content is None else [prefill_message.content],
                 prefill_result=prefill_message,
             )
         else:
@@ -191,8 +189,8 @@ class MessagePromise(StreamedPromise[str, Message]):
         return self._message_token_streamer(self._metadata_so_far)
 
     async def _resolver(self) -> Message:
-        content = "".join([token async for token in self])
-        # `self._metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
+        tokens = [token async for token in self]
+        # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
 
         if MESSAGE_CONTENT_FIELD in self._metadata_so_far:
             raise ValueError(
@@ -205,7 +203,7 @@ class MessagePromise(StreamedPromise[str, Message]):
             )
 
         return self._message_class(
-            content=content,
+            content="".join(tokens) if len(tokens) > 0 else None,
             **self._metadata_so_far,
         )
 

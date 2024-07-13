@@ -177,28 +177,23 @@ async def openai_embedding_agent(
         texts = [str(await ctx.message_promises.as_single_promise())]
 
     logger_call = None
-    try:
-        if llm_logger_agent:
-            logger_call = llm_logger_agent.initiate_inquiry(
-                metadata={
-                    "agent_alias": ctx.this_agent.alias,
-                    "model": model,
-                    "batch_mode": batch_mode,
-                    **kwargs,
-                },
-            )
-            logger_call.send_message([PromptLogMessage(content=text, role="user") for text in texts])
+    if llm_logger_agent:
+        logger_call = llm_logger_agent.initiate_inquiry(
+            metadata={
+                "agent_alias": ctx.this_agent.alias,
+                "model": model,
+                "batch_mode": batch_mode,
+                **kwargs,
+            },
+        )
+        logger_call.send_message([PromptLogMessage(content=text, role="user") for text in texts])
 
-        data = (await async_client.embeddings.create(input=texts, model=model, **kwargs)).data
+    data = (await async_client.embeddings.create(input=texts, model=model, **kwargs)).data
 
-        response_metadata_dict = dict(response_metadata or Frozen())
+    response_metadata_dict = dict(response_metadata or Frozen())
 
-        embedding_messages = [EmbeddingMessage(embedding=entry.embedding, **response_metadata_dict) for entry in data]
-        ctx.reply(embedding_messages)
-        if logger_call:
-            logger_call.send_message(embedding_messages)
-    finally:
-        if logger_call:
-            # TODO Oleksandr: `finish()` should be called automatically when parent agent exits,
-            #  which should render try-finally unnecessary
-            logger_call.finish()
+    embedding_messages = [EmbeddingMessage(embedding=entry.embedding, **response_metadata_dict) for entry in data]
+    ctx.reply(embedding_messages)
+
+    if logger_call:
+        logger_call.send_message(embedding_messages)
