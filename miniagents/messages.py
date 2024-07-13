@@ -2,13 +2,12 @@
 `Message` class and other classes related to messages.
 """
 
-from functools import cached_property
 from pprint import pformat
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
 from miniagents.miniagent_typing import MessageTokenStreamer
 from miniagents.promising.errors import AppenderNotOpenError
-from miniagents.promising.ext.frozen import Frozen
+from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.utils import join_messages
 
@@ -23,7 +22,8 @@ class Message(Frozen):
     content: Optional[str] = None
     content_template: Optional[str] = None
 
-    @cached_property
+    @property
+    @cached_privately
     def as_promise(self) -> "MessagePromise":
         """
         Convert this message into a MessagePromise object.
@@ -79,7 +79,8 @@ class Message(Frozen):
                     yield from message.sub_messages()
                     yield message
 
-    @cached_property
+    @property
+    @cached_privately
     def _serialization_metadata(
         self,
     ) -> tuple[
