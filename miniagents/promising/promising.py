@@ -131,7 +131,7 @@ class PromisingContext:
         being up).
         """
         if self._previous_ctx_token:
-            raise RuntimeError("PromisingContext is not reentrant")
+            raise RuntimeError(f"{type(self).__name__} is not reentrant")
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
         return self
 

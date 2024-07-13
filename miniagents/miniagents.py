@@ -3,8 +3,10 @@
 """
 
 import asyncio
+import contextvars
 import logging
 import re
+from contextvars import ContextVar
 from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
 
 from pydantic import BaseModel
@@ -276,6 +278,8 @@ class InteractionContext:
     this_agent: MiniAgent
     message_promises: MessageSequencePromise
 
+    _current: ContextVar[Optional["InteractionContext"]] = ContextVar("InteractionContext._current", default=None)
+
     def __init__(
         self,
         this_agent: "MiniAgent",
@@ -286,6 +290,8 @@ class InteractionContext:
         self.message_promises = message_promises
         self._reply_streamer = reply_streamer
         self._tasks_to_wait_for: list[Awaitable[Any]] = []
+
+        self._previous_ctx_token: Optional[contextvars.Token] = None
 
     def reply(self, messages: MessageType) -> None:
         """
@@ -327,6 +333,22 @@ class InteractionContext:
         if await_for_subtasks:
             await self.await_for_subtasks()
         self._reply_streamer.close()
+
+    def _activate(self) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        if self._previous_ctx_token:
+            raise RuntimeError(f"{type(self).__name__} is not reentrant")
+        self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
+
+    async def _afinalize(self) -> None:
+        """
+        TODO Oleksandr: docstring
+        """
+        await self.await_for_subtasks()
+        self._current.reset(self._previous_ctx_token)
+        self._previous_ctx_token = None
 
 
 class AgentCall:
@@ -511,6 +533,7 @@ class AgentReplyMessageSequence(MessageSequence):
             with self.message_appender:
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
                 try:
+                    ctx._activate()
                     if isinstance(self._mini_agent._func_or_class, type):
                         # the miniagent is defined as a class, not as a function -> let's create an instance of this
                         # class and call its `__call__` method
@@ -529,7 +552,7 @@ class AgentReplyMessageSequence(MessageSequence):
                             ctx, **self._mini_agent._static_kwargs, **self._frozen_func_kwargs
                         )
                 finally:
-                    await ctx.await_for_subtasks()
+                    await ctx._afinalize()
 
             return AgentCallNode(  # TODO Oleksandr: why not "persist" this node before the agent function finishes ?
                 messages=await self._input_sequence_promise,
