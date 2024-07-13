@@ -136,8 +136,8 @@ class Message(Frozen):
             return self.content
         return super()._as_string()
 
-    def __init__(self, content: Optional[str] = None, **kwargs) -> None:
-        super().__init__(content=content, **kwargs)
+    def __init__(self, content: Optional[str] = None, **metadata) -> None:
+        super().__init__(content=content, **metadata)
         self._persist_message_event_triggered = False
 
 
