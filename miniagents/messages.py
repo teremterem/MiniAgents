@@ -136,13 +136,8 @@ class Message(Frozen):
             return self.content
         return super()._as_string()
 
-    def __init__(self, *args, **kwargs) -> None:
-        if len(args) > 1:
-            raise ValueError("No more than one positional argument is allowed (no more than two if counting `self`).")
-        if len(args) == 1:
-            kwargs[MESSAGE_CONTENT_FIELD] = args[0]
-
-        super().__init__(**kwargs)
+    def __init__(self, content: Optional[str] = None, **kwargs) -> None:
+        super().__init__(content=content, **kwargs)
         self._persist_message_event_triggered = False
 
 
