@@ -227,6 +227,7 @@ class MiniAgent:
         """
         self.inquire(messages, start_asap=True, **function_kwargs)
 
+    # noinspection PyProtectedMember
     def initiate_inquiry(self, start_asap: Optional[bool] = None, **function_kwargs) -> "AgentCall":
         """
         Start an inquiry with the agent. The agent will be called with the provided function kwargs.
@@ -290,8 +291,18 @@ class InteractionContext:
         self.message_promises = message_promises
         self._reply_streamer = reply_streamer
         self._tasks_to_wait_for: list[Awaitable[Any]] = []
-
+        self._child_agent_calls: set[AgentCall] = set()
         self._previous_ctx_token: Optional[contextvars.Token] = None
+
+    @classmethod
+    def get_current(cls) -> "InteractionContext":
+        """
+        TODO Oleksandr: docstring
+        """
+        current = cls._current.get()
+        if not current:
+            raise RuntimeError(f"No {cls.__name__} is currently active.")
+        return current
 
     def reply(self, messages: MessageType) -> None:
         """
@@ -324,12 +335,17 @@ class InteractionContext:
         in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's reply
         sequence is closed.
         """
+        # TODO Oleksandr: What if one of the subtasks represent an unfinished agent call ? How should we make it
+        #  obvious to the user that the reason they are experiencing a deadlock is because they forgot to finish an
+        #  agent call ?
         await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
 
     async def afinish_early(self, await_for_subtasks: bool = True) -> None:
         """
         TODO Oleksandr: docstring
         """
+        for agent_call in self._child_agent_calls:
+            agent_call.finish()
         if await_for_subtasks:
             await self.await_for_subtasks()
         self._reply_streamer.close()
@@ -346,6 +362,8 @@ class InteractionContext:
         """
         TODO Oleksandr: docstring
         """
+        for agent_call in self._child_agent_calls:
+            agent_call.finish()
         await self.await_for_subtasks()
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
@@ -356,6 +374,7 @@ class AgentCall:
     TODO Oleksandr: docstring
     """
 
+    # noinspection PyProtectedMember
     def __init__(
         self,
         message_streamer: StreamAppender[MessageType],
@@ -365,6 +384,13 @@ class AgentCall:
         self._reply_sequence_promise = reply_sequence_promise
 
         self._message_streamer.open()
+
+        current_ctx = InteractionContext._current.get()
+        if current_ctx:
+            current_ctx._child_agent_calls.add(self)
+        # TODO Oleksandr: If there is no active InteractionContext, the job of finalizing open agent calls should
+        #  be delegated to the MiniAgents context. Should I merge InteractionContext and MiniAgents into a single
+        #  concept to make this possible ?
 
     def send_message(self, message: MessageType) -> "AgentCall":
         """
@@ -379,6 +405,9 @@ class AgentCall:
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
         """
+        # TODO Oleksandr: are we sure we are required to finish the agent call before we can start reading from the
+        #  reply sequence ? I think, the only motivation was to somehow force the user to finish their agent calls,
+        #  which is not a problem anymore, because it can be done automatically.
         self.finish()
         return self._reply_sequence_promise
 
