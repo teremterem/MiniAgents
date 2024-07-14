@@ -73,7 +73,7 @@ def join_messages(
     before it is resolved.
     :param message_class: A class of the resulting message. If None, the default Message class will be used.
     """
-    from miniagents.messages import Message, MESSAGE_CONTENT_FIELD
+    from miniagents.messages import Message, MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD
     from miniagents.miniagents import MessageSequence
 
     if message_class is None:
@@ -86,7 +86,9 @@ def join_messages(
         first_message = True
         async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
             metadata_so_far.update(
-                (key, value) for key, value in message_promise.preliminary_metadata if key != MESSAGE_CONTENT_FIELD
+                (key, value)
+                for key, value in message_promise.preliminary_metadata
+                if key not in (MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
             )
             if delimiter and not first_message:
                 yield delimiter
@@ -105,7 +107,9 @@ def join_messages(
 
             # TODO Oleksandr: should I care about merging values of the same keys instead of just overwriting them ?
             metadata_so_far.update(
-                (key, value) for key, value in await message_promise if key != MESSAGE_CONTENT_FIELD
+                (key, value)
+                for key, value in await message_promise
+                if key not in (MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
             )
 
             first_message = False

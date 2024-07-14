@@ -12,6 +12,7 @@ from miniagents.promising.promising import StreamedPromise, StreamAppender
 from miniagents.utils import join_messages
 
 MESSAGE_CONTENT_FIELD = "content"
+MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 
 
 class Message(Frozen):
@@ -81,9 +82,7 @@ class Message(Frozen):
 
     @property
     @cached_privately
-    def _serialization_metadata(
-        self,
-    ) -> tuple[
+    def _serialization_metadata(self) -> tuple[
         dict[Union[str, int], Any],
         dict[tuple[Union[str, int], ...], Union["Message", tuple["Message", ...]]],
     ]:
@@ -134,7 +133,7 @@ class Message(Frozen):
             return self.content_template.format(**dict(self))
         if self.content is not None:
             return self.content
-        return super()._as_string()
+        return f"```json\n{super()._as_string()}\n```"
 
     def __init__(self, content: Optional[str] = None, **metadata) -> None:
         super().__init__(content=content, **metadata)
@@ -161,13 +160,8 @@ class MessagePromise(StreamedPromise[str, Message]):
         if prefill_message:
             self.preliminary_metadata = prefill_message
 
-            super().__init__(
-                start_asap=start_asap,
-                # TODO Oleksandr: shouldn't the prefilling of pieces be lazy ? the consumer might never need the
-                #  textual representation of the message...
-                prefill_pieces=[str(prefill_message)],
-                prefill_result=prefill_message,
-            )
+            self._metadata_so_far = None
+            super().__init__(prefill_result=prefill_message, start_asap=False)
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
 
@@ -190,24 +184,33 @@ class MessagePromise(StreamedPromise[str, Message]):
     def _streamer(self) -> AsyncIterator[str]:
         return self._message_token_streamer(self._metadata_so_far)
 
-    async def _resolver(self) -> Message:
-        content = "".join([token async for token in self])
-        # `self._metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
+    async def _message_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[str]:  # pylint: disable=method-hidden
+        """
+        The default implementation of the message token streamer that just yields the string representation of the
+        message as a single token. This implementation is only called if the message was pre-filled. In case of real
+        streaming the constructor of the class always overrides this method with an externally supplied streamer.
+        """
+        yield str(self.preliminary_metadata)
 
-        if MESSAGE_CONTENT_FIELD in self._metadata_so_far:
+    async def _resolver(self) -> Message:
+        """
+        Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
+        """
+        tokens = [token async for token in self]
+        # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
+
+        if MESSAGE_CONTENT_FIELD in self._metadata_so_far or MESSAGE_CONTENT_TEMPLATE_FIELD in self._metadata_so_far:
             raise ValueError(
-                f"The `metadata_so_far` dictionary must NOT contain {MESSAGE_CONTENT_FIELD!r} "
-                f"as it is meant to be resolved from the stream.\n"
+                f"The `metadata_so_far` dictionary must NOT contain neither {MESSAGE_CONTENT_FIELD!r} nor "
+                f"{MESSAGE_CONTENT_TEMPLATE_FIELD!r} keys. The value of {MESSAGE_CONTENT_FIELD!r} is meant to be "
+                f"resolved from the stream.\n"
                 f"\n"
                 f"Dictionary that was received:\n"
                 f"\n"
                 f"{pformat(self._metadata_so_far)}"
             )
 
-        return self._message_class(
-            content=content,
-            **self._metadata_so_far,
-        )
+        return self._message_class(content="".join(tokens), **self._metadata_so_far)
 
 
 class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):

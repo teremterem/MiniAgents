@@ -88,7 +88,7 @@ class LLMAgent(ABC, BaseModel):
                         self._prompt_messages_to_log(message_dicts),
                         response_promise,
                     ],
-                    metadata=self._metadata_to_log(),
+                    request_metadata=self._request_metadata_to_log(),
                 )
 
             # here is where the actual request to the LLM is made
@@ -101,7 +101,7 @@ class LLMAgent(ABC, BaseModel):
         """
         return tuple(PromptLogMessage(**message_dict) for message_dict in message_dicts)
 
-    def _metadata_to_log(self) -> dict[str, Any]:
+    def _request_metadata_to_log(self) -> dict[str, Any]:
         """
         TODO Oleksandr: docstring
         """
@@ -109,7 +109,7 @@ class LLMAgent(ABC, BaseModel):
             "agent_alias": self.ctx.this_agent.alias,
             "model": self.model,
             "stream": self.stream,
-            # "system": self.system,  # this field usually automatically becomes part of the prompt messages
+            # "system": self.system,  # this field usually becomes part of the prompt messages automatically
             **self.__pydantic_extra__,
         }
 
