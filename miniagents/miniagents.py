@@ -421,7 +421,7 @@ class AgentInteractionNode(Message):
     TODO Oleksandr: docstring
     """
 
-    agent_alias: str
+    agent: MiniAgent
 
 
 class AgentCallNode(AgentInteractionNode):
@@ -579,7 +579,7 @@ class AgentReplyMessageSequence(MessageSequence):
 
             return AgentCallNode(  # TODO Oleksandr: why not "persist" this node before the agent function finishes ?
                 messages=await self._input_sequence_promise,
-                agent_alias=self._mini_agent.alias,
+                agent=self._mini_agent,
                 **dict(self._mini_agent.interaction_metadata),
                 # NOTE: the next line will override any keys from `self.interaction_metadata` if names collide
                 **self._frozen_func_kwargs,
@@ -596,7 +596,7 @@ class AgentReplyMessageSequence(MessageSequence):
         async def create_agent_reply_node(_) -> AgentReplyNode:
             return AgentReplyNode(
                 replies=await self.sequence_promise,
-                agent_alias=self._mini_agent.alias,
+                agent=self._mini_agent,
                 agent_call=await agent_call_promise,
                 **dict(self._mini_agent.interaction_metadata),
             )
