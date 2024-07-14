@@ -321,8 +321,8 @@ class InteractionContext:
 
     def wait_for(self, awaitable: Awaitable[Any], start_asap_if_coroutine: bool = True) -> None:
         """
-        Wait for the completion of the provided awaitable before exiting the agent (before "closing" the agent's
-        reply sequence).
+        Make sure to wait for the completion of the provided awaitable before exiting the current agent call and
+        closing the reply sequence.
         """
         if asyncio.iscoroutine(awaitable) and start_asap_if_coroutine:
             # let's turn this coroutine into our special kind of task and start it as soon as possible
@@ -335,7 +335,7 @@ class InteractionContext:
         in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's reply
         sequence is closed.
         """
-        # TODO Oleksandr: What if one of the subtasks represent an unfinished agent call ? How should we make it
+        # TODO Oleksandr: What if one of the subtasks represents an unfinished agent call ? How should we make it
         #  obvious to the user that the reason they are experiencing a deadlock is because they forgot to finish an
         #  agent call ?
         await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
@@ -344,8 +344,6 @@ class InteractionContext:
         """
         TODO Oleksandr: docstring
         """
-        for agent_call in self._child_agent_calls:
-            agent_call.finish()
         if await_for_subtasks:
             await self.await_for_subtasks()
         self._reply_streamer.close()
