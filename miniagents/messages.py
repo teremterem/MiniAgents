@@ -193,6 +193,9 @@ class MessagePromise(StreamedPromise[str, Message]):
         yield str(self.preliminary_metadata)
 
     async def _resolver(self) -> Message:
+        """
+        Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
+        """
         tokens = [token async for token in self]
         # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
 
@@ -207,10 +210,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 f"{pformat(self._metadata_so_far)}"
             )
 
-        return self._message_class(
-            content="".join(tokens) if len(tokens) > 0 else None,
-            **self._metadata_so_far,
-        )
+        return self._message_class(content="".join(tokens), **self._metadata_so_far)
 
 
 class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
