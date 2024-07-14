@@ -185,6 +185,7 @@ async def openai_embedding_agent(
                 "batch_mode": batch_mode,
                 **kwargs,
             },
+            show_response_metadata=False,
         )
         logger_call.send_message([PromptLogMessage(content=text, role="user") for text in texts])
 
