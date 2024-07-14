@@ -9,7 +9,7 @@ import re
 from contextvars import ContextVar
 from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from miniagents.messages import MessagePromise, MessageSequencePromise, Message
 from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessageEventHandler
@@ -153,14 +153,14 @@ def miniagent(
     )
 
 
-class MiniAgent:
+class MiniAgent(Frozen):
     """
     A wrapper for an agent function that allows calling the agent.
     """
 
     alias: str
-    description: Optional[str]
-    interaction_metadata: Frozen
+    description: Optional[str] = Field(exclude=True)
+    interaction_metadata: Frozen = Field(exclude=True)
 
     def __init__(
         self,
@@ -169,7 +169,7 @@ class MiniAgent:
         description: Optional[str] = None,
         normalize_func_or_class_name: Optional[bool] = None,
         normalize_spaces_in_docstring: Optional[bool] = None,
-        interaction_metadata: Optional[dict[str, Any]] = None,
+        interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         **static_kwargs,
     ) -> None:
         if normalize_func_or_class_name is None:
@@ -177,38 +177,34 @@ class MiniAgent:
         if normalize_spaces_in_docstring is None:
             normalize_spaces_in_docstring = MiniAgents.get_current().normalize_spaces_in_agent_docstrings
 
+        if alias is None:
+            alias = func_or_class.__name__
+            if normalize_func_or_class_name:
+                # split `alias` by capitalization, assuming it is in camel case
+                # (if it is not, it will not be split)
+                alias = "_".join(part for part in re.findall(r"[A-Z][a-z]+?(?=[A-Z]+$)|.+?(?=[A-Z][a-z]|$)", alias))
+                alias = alias.upper()
+
+        if description is None:
+            description = func_or_class.__doc__
+            if description and normalize_spaces_in_docstring:
+                description = " ".join(description.split())
+        if description:
+            # replace all {AGENT_ALIAS} entries in the description with the actual agent alias
+            description = description.format(AGENT_ALIAS=alias)
+
+        # validate interaction metadata
+        # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
+        interaction_metadata = Frozen(**dict(interaction_metadata or {}))
+
+        super().__init__(alias=alias, description=description, interaction_metadata=interaction_metadata)
+        self.__name__ = alias
+        self.__doc__ = description
+
         self._func_or_class = func_or_class
         # NOTE: we cannot deep-copy `static_kwargs`, because they may contain objects that are not serializable
         # (for ex. AsyncAnthropic and AsyncOpenAI objects in case of anthropic and openai miniagents)
         self._static_kwargs = static_kwargs
-
-        # validate interaction metadata
-        # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
-        self.interaction_metadata = Frozen(**(interaction_metadata or {}))
-        self._interact_metadata_dict = dict(self.interaction_metadata)
-
-        self.alias = alias
-        if self.alias is None:
-            self.alias = func_or_class.__name__
-            if normalize_func_or_class_name:
-                # split `self.alias` by capitalization, assuming it is in camel case
-                # (if it is not, it will not be split)
-                self.alias = "_".join(
-                    part for part in re.findall(r"[A-Z][a-z]+?(?=[A-Z]+$)|.+?(?=[A-Z][a-z]|$)", self.alias)
-                )
-                self.alias = self.alias.upper()
-
-        self.description = description
-        if self.description is None:
-            self.description = func_or_class.__doc__
-            if self.description and normalize_spaces_in_docstring:
-                self.description = " ".join(self.description.split())
-        if self.description:
-            # replace all {AGENT_ALIAS} entries in the description with the actual agent alias
-            self.description = self.description.format(AGENT_ALIAS=self.alias)
-
-        self.__name__ = self.alias
-        self.__doc__ = self.description
 
     def inquire(
         self, messages: Optional[MessageType] = None, start_asap: Optional[bool] = None, **function_kwargs
@@ -253,7 +249,7 @@ class MiniAgent:
         self,
         alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce some "fork identifier" ?
         description: Optional[str] = None,
-        interaction_metadata: Optional[dict[str, Any]] = None,
+        interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         **static_kwargs,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
@@ -265,7 +261,7 @@ class MiniAgent:
             description=description or self.description,
             normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
-            interaction_metadata={**self._interact_metadata_dict, **(interaction_metadata or {})},
+            interaction_metadata={**dict(self.interaction_metadata), **dict(interaction_metadata or {})},
             **self._static_kwargs,
             **static_kwargs,
         )
@@ -584,7 +580,7 @@ class AgentReplyMessageSequence(MessageSequence):
             return AgentCallNode(  # TODO Oleksandr: why not "persist" this node before the agent function finishes ?
                 messages=await self._input_sequence_promise,
                 agent_alias=self._mini_agent.alias,
-                **self._mini_agent._interact_metadata_dict,
+                **dict(self._mini_agent.interaction_metadata),
                 # NOTE: the next line will override any keys from `self.interaction_metadata` if names collide
                 **self._frozen_func_kwargs,
             )
@@ -602,7 +598,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 replies=await self.sequence_promise,
                 agent_alias=self._mini_agent.alias,
                 agent_call=await agent_call_promise,
-                **self._mini_agent._interact_metadata_dict,
+                **dict(self._mini_agent.interaction_metadata),
             )
 
         Promise[AgentReplyNode](
