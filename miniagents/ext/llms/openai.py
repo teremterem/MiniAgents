@@ -179,7 +179,7 @@ async def openai_embedding_agent(
     logger_call = None
     if llm_logger_agent:
         logger_call = llm_logger_agent.initiate_inquiry(
-            metadata={
+            request_metadata={
                 "agent_alias": ctx.this_agent.alias,
                 "model": model,
                 "batch_mode": batch_mode,

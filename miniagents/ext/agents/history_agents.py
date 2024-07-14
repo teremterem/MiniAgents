@@ -163,7 +163,10 @@ class MarkdownHistoryAgent(BaseModel):
 
 @miniagent
 async def markdown_llm_logger_agent(
-    ctx: InteractionContext, log_folder: Union[str, Path] = "llm_logs/", metadata: Optional[Frozen] = None
+    ctx: InteractionContext,
+    log_folder: Union[str, Path] = "llm_logs/",
+    request_metadata: Optional[Frozen] = None,
+    show_response_metadata: bool = True,
 ) -> None:
     """
     TODO Oleksandr: docstring
@@ -172,7 +175,7 @@ async def markdown_llm_logger_agent(
     log_folder.mkdir(parents=True, exist_ok=True)
 
     try:
-        model_suffix = f"__{metadata.model}"
+        model_suffix = f"__{request_metadata.model}"
     except AttributeError:
         model_suffix = ""
 
@@ -185,17 +188,18 @@ async def markdown_llm_logger_agent(
         # range of 0 through 4095 (0 through 0xfff)
         raise FileExistsError(f"Log file already exists: {log_file}")
 
-    if metadata:
-        log_file.write_text(f"```python\n{pformat(metadata.model_dump())}\n```\n", encoding="utf-8")
+    if request_metadata:
+        log_file.write_text(f"```python\n{pformat(request_metadata.model_dump())}\n```\n", encoding="utf-8")
 
     await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file), only_write=True)
+
     messages = await ctx.message_promises
-    if not messages:
+    if not messages or not show_response_metadata:
         return
 
+    response_metadata = messages[-1].model_dump(exclude={MESSAGE_CONTENT_FIELD})
     with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
-        metadata = messages[-1].model_dump(exclude={MESSAGE_CONTENT_FIELD})
-        log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(metadata)}\n```\n")
+        log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(response_metadata)}\n```\n")
 
 
 _md = MarkdownIt()
