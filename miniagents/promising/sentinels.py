@@ -12,9 +12,6 @@ class Sentinel:
         raise RuntimeError("Sentinels should not be used in boolean expressions.")
 
 
-AWAIT = Sentinel()
-CLEAR = Sentinel()
-
 NO_VALUE = Sentinel()
 FAILED = Sentinel()
 END_OF_QUEUE = Sentinel()

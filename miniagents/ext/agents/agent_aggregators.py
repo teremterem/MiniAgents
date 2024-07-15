@@ -8,7 +8,9 @@ from miniagents.ext.agents.history_agents import in_memory_history_agent
 from miniagents.ext.agents.misc_agents import console_output_agent, console_input_agent
 from miniagents.messages import MessageSequencePromise, Message
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
-from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
+
+AWAIT = "AWAIT"
+CLEAR = "CLEAR"
 
 
 @miniagent
@@ -23,7 +25,7 @@ async def user_agent(
     chat history as a reply (so it can be further submitted to an LLM agent, for example).
     TODO Oleksandr: add more details
     """
-    ctx.reply(agent_chain.fork(agents=[output_agent, input_agent, history_agent]).inquire(ctx.message_promises))
+    ctx.reply(agent_chain.inquire(ctx.message_promises, agents=[output_agent, input_agent, history_agent]))
 
 
 console_user_agent = user_agent.fork(output_agent=console_output_agent, input_agent=console_input_agent)
@@ -43,14 +45,14 @@ async def dialog_loop(
     show up in chat history as a result).
     """
     ctx.reply(
-        agent_loop.fork(
+        agent_loop.inquire(
             agents=[
                 user_agent,
                 AWAIT,
                 prompt_agent.fork(target_agent=assistant_agent, prompt_prefix=await ctx.message_promises),
             ],
             raise_keyboard_interrupt=False,
-        ).inquire()
+        )
     )
 
 
@@ -80,16 +82,16 @@ async def prompt_agent(
 @miniagent
 async def agent_loop(
     ctx: InteractionContext,
-    agents: Iterable[Union[Optional[MiniAgent], Sentinel]],
+    agents: Iterable[Union[Optional[MiniAgent], str]],
     raise_keyboard_interrupt: bool = True,
 ) -> None:
     """
     An agent that represents a loop that chains the given agents together in the order they are provided.
     """
     agents = list(agents)
-    if not any(agent is AWAIT for agent in agents) or not any(isinstance(agent, MiniAgent) for agent in agents):
+    if not any(agent == AWAIT for agent in agents) or not any(isinstance(agent, MiniAgent) for agent in agents):
         raise ValueError(
-            "There should be at least one AWAIT sentinel in the list of agents and at least one real agent "
+            f"There should be at least one {AWAIT!r} sentinel in the list of agents and at least one real agent "
             "in order for the loop not to schedule the turns infinitely without actually running them."
         )
 
@@ -103,7 +105,7 @@ async def agent_loop(
 
 
 @miniagent
-async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[Optional[MiniAgent], Sentinel]]) -> None:
+async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[Optional[MiniAgent], str]]) -> None:
     """
     TODO Oleksandr: docstring
     """
@@ -111,7 +113,7 @@ async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[Optional[M
 
 
 async def _achain_agents(
-    agents: Iterable[Union[Optional[MiniAgent], Sentinel]], initial_messages: MessageSequencePromise
+    agents: Iterable[Union[Optional[MiniAgent], str]], initial_messages: MessageSequencePromise
 ) -> MessageSequencePromise:
     messages = initial_messages
     for agent in agents:
@@ -121,11 +123,11 @@ async def _achain_agents(
             # leave them as None)
             continue
 
-        if agent is AWAIT:
+        if agent == AWAIT:
             if isinstance(messages, MessageSequencePromise):
                 # all the interactions happen here (here all the scheduled promises are awaited for)
                 messages = await messages
-        elif agent is CLEAR:
+        elif agent == CLEAR:
             messages = None
         elif isinstance(agent, MiniAgent):
             messages = agent.inquire(messages)

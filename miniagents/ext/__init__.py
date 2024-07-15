@@ -5,6 +5,8 @@ Make all the agents from the `agents` package available at the level of the `ext
 from miniagents.ext.agents.agent_aggregators import (
     agent_chain,
     agent_loop,
+    AWAIT,
+    CLEAR,
     console_user_agent,
     dialog_loop,
     user_agent,
@@ -23,6 +25,8 @@ from miniagents.ext.agents.misc_agents import (
 __all__ = [
     "agent_chain",
     "agent_loop",
+    "AWAIT",
+    "CLEAR",
     "console_input_agent",
     "console_output_agent",
     "console_user_agent",
