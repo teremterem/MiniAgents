@@ -6,12 +6,9 @@ from typing import Union, Iterable, Optional
 
 from miniagents.ext.agents.history_agents import in_memory_history_agent
 from miniagents.ext.agents.misc_agents import console_output_agent, console_input_agent
-from miniagents.messages import MessageSequencePromise
-from miniagents.miniagent_typing import MessageType
+from miniagents.messages import MessageSequencePromise, Message
 from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
 from miniagents.promising.sentinels import Sentinel, AWAIT, CLEAR
-
-_DEFAULT_IN_MEMORY_HISTORY_AGENT = in_memory_history_agent.fork(message_list=[])
 
 
 @miniagent
@@ -19,7 +16,7 @@ async def user_agent(
     ctx: InteractionContext,
     output_agent: Optional[MiniAgent],
     input_agent: Optional[MiniAgent],
-    history_agent: Optional[MiniAgent] = _DEFAULT_IN_MEMORY_HISTORY_AGENT,
+    history_agent: Optional[MiniAgent] = in_memory_history_agent,
 ) -> None:
     """
     A user agent that echoes `messages` from the agent that called it, reads the user input and then returns full
@@ -50,7 +47,7 @@ async def dialog_loop(
             agents=[
                 user_agent,
                 AWAIT,
-                prompt_agent.fork(target_agent=assistant_agent, prompt_prefix=ctx.message_promises),
+                prompt_agent.fork(target_agent=assistant_agent, prompt_prefix=await ctx.message_promises),
             ],
             raise_keyboard_interrupt=False,
         ).inquire()
@@ -61,8 +58,8 @@ async def dialog_loop(
 async def prompt_agent(
     ctx: InteractionContext,
     target_agent: MiniAgent,
-    prompt_prefix: MessageType = (),
-    prompt_suffix: MessageType = (),
+    prompt_prefix: Union[Message, tuple[Message, ...]] = (),
+    prompt_suffix: Union[Message, tuple[Message, ...]] = (),
     **target_kwargs,
 ):
     """

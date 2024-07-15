@@ -121,7 +121,8 @@ def miniagent(
     normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
-    **static_kwargs,
+    mutable_kwargs: Optional[dict[str, Any]] = None,
+    **kwargs_to_freeze,
 ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
@@ -136,7 +137,8 @@ def miniagent(
                 normalize_func_or_class_name=normalize_func_or_class_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
                 interaction_metadata=interaction_metadata,
-                **static_kwargs,
+                mutable_kwargs=mutable_kwargs,
+                **kwargs_to_freeze,
             )
 
         return _decorator
@@ -149,7 +151,8 @@ def miniagent(
         normalize_func_or_class_name=normalize_func_or_class_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
         interaction_metadata=interaction_metadata,
-        **static_kwargs,
+        mutable_kwargs=mutable_kwargs,
+        **kwargs_to_freeze,
     )
 
 
@@ -170,7 +173,8 @@ class MiniAgent(Frozen):
         normalize_func_or_class_name: Optional[bool] = None,
         normalize_spaces_in_docstring: Optional[bool] = None,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
-        **static_kwargs,
+        mutable_kwargs: Optional[dict[str, Any]] = None,
+        **kwargs_to_freeze,
     ) -> None:
         if normalize_func_or_class_name is None:
             normalize_func_or_class_name = MiniAgents.get_current().normalize_agent_func_and_class_names
@@ -202,29 +206,28 @@ class MiniAgent(Frozen):
         self.__doc__ = description
 
         self._func_or_class = func_or_class
-        # NOTE: we cannot deep-copy `static_kwargs`, because they may contain objects that are not serializable
-        # (for ex. AsyncAnthropic and AsyncOpenAI objects in case of anthropic and openai miniagents)
-        self._static_kwargs = static_kwargs
+        self._static_kwargs = dict(mutable_kwargs or {})
+        self._static_kwargs.update(Frozen(**kwargs_to_freeze).as_kwargs())
 
     def inquire(
-        self, messages: Optional[MessageType] = None, start_asap: Optional[bool] = None, **function_kwargs
+        self, messages: Optional[MessageType] = None, start_asap: Optional[bool] = None, **kwargs_to_freeze
     ) -> MessageSequencePromise:
         """
         TODO Oleksandr: docstring
         """
-        agent_call = self.initiate_inquiry(start_asap=start_asap, **function_kwargs)
+        agent_call = self.initiate_inquiry(start_asap=start_asap, **kwargs_to_freeze)
         if messages is not None:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
-    def kick_off(self, messages: Optional[MessageType] = None, **function_kwargs) -> None:
+    def kick_off(self, messages: Optional[MessageType] = None, **kwargs_to_freeze) -> None:
         """
         Make a call to the agent and ignore the response.
         """
-        self.inquire(messages, start_asap=True, **function_kwargs)
+        self.inquire(messages, start_asap=True, **kwargs_to_freeze)
 
     # noinspection PyProtectedMember
-    def initiate_inquiry(self, start_asap: Optional[bool] = None, **function_kwargs) -> "AgentCall":
+    def initiate_inquiry(self, start_asap: Optional[bool] = None, **kwargs_to_freeze) -> "AgentCall":
         """
         Start an inquiry with the agent. The agent will be called with the provided function kwargs.
         TODO Oleksandr: expand this docstring ?
@@ -234,7 +237,7 @@ class MiniAgent(Frozen):
         )
         reply_sequence = AgentReplyMessageSequence(
             mini_agent=self,
-            function_kwargs=function_kwargs,
+            kwargs_to_freeze=kwargs_to_freeze,
             input_sequence_promise=input_sequence.sequence_promise,
             start_asap=start_asap,
         )
@@ -250,7 +253,8 @@ class MiniAgent(Frozen):
         alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce some "fork identifier" ?
         description: Optional[str] = None,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
-        **static_kwargs,
+        mutable_kwargs: Optional[dict[str, Any]] = None,
+        **kwargs_to_freeze,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
         TODO Oleksandr: docstring
@@ -262,8 +266,9 @@ class MiniAgent(Frozen):
             normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
             interaction_metadata={**dict(self.interaction_metadata), **dict(interaction_metadata or {})},
+            mutable_kwargs=mutable_kwargs,
             **self._static_kwargs,
-            **static_kwargs,
+            **kwargs_to_freeze,
         )
 
 
@@ -531,13 +536,10 @@ class AgentReplyMessageSequence(MessageSequence):
         self,
         mini_agent: MiniAgent,
         input_sequence_promise: MessageSequencePromise,
-        function_kwargs: dict[str, Any],
+        kwargs_to_freeze: dict[str, Any],
         **kwargs,
     ) -> None:
-        # TODO Oleksandr: emphasize somewhere in the documentation that passing parameters to `miniagent.inquire()`
-        #  method is different than passing parameters through `miniagent.fork()` because the former will "freeze"
-        #  parameters before sending them to the agent function, while the latter will eventually pass them as-is
-        self._frozen_func_kwargs = Frozen(**function_kwargs).as_kwargs()
+        self._frozen_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
 
         self._mini_agent = mini_agent
         self._input_sequence_promise = input_sequence_promise
@@ -566,13 +568,13 @@ class AgentReplyMessageSequence(MessageSequence):
                             # arguments unless it is overridden)
                             ctx=ctx,
                             **self._mini_agent._static_kwargs,
-                            **self._frozen_func_kwargs,
+                            **self._frozen_kwargs,
                         )
                         await actual_func()
                     else:
                         # the miniagent is a function
                         await self._mini_agent._func_or_class(
-                            ctx, **self._mini_agent._static_kwargs, **self._frozen_func_kwargs
+                            ctx, **self._mini_agent._static_kwargs, **self._frozen_kwargs
                         )
                 finally:
                     await ctx._afinalize()
@@ -581,8 +583,8 @@ class AgentReplyMessageSequence(MessageSequence):
                 messages=await self._input_sequence_promise,
                 agent=self._mini_agent,
                 **dict(self._mini_agent.interaction_metadata),
-                # NOTE: the next line will override any keys from `self.interaction_metadata` if names collide
-                **self._frozen_func_kwargs,
+                # TODO Oleksandr: **self._mini_agent._static_kwargs ?
+                **self._frozen_kwargs,
             )
 
         agent_call_promise = Promise[AgentCallNode](
