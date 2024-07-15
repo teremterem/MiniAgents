@@ -89,7 +89,7 @@ async def console_output_agent(
 
 
 @miniagent
-async def file_output_agent(ctx: InteractionContext, file: Union[str, Path], **kwargs) -> None:
+async def file_output_agent(ctx: InteractionContext, file: str, **kwargs) -> None:
     """
     MiniAgent that writes the content of `messages` to a file.
     """

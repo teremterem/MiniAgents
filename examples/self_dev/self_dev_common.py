@@ -38,7 +38,7 @@ SELF_DEV_OUTPUT = SELF_DEV_ROOT / "output"
 SELF_DEV_PROMPTS = SELF_DEV_ROOT / "self_dev_prompts.py"
 SELF_DEV_LLM_LOGS = SELF_DEV_ROOT / "llm_logs"
 
-mini_agents = MiniAgents(llm_logger_agent=markdown_llm_logger_agent.fork(log_folder=SELF_DEV_LLM_LOGS))
+mini_agents = MiniAgents(llm_logger_agent=markdown_llm_logger_agent.fork(log_folder=str(SELF_DEV_LLM_LOGS)))
 
 
 class RepoFileMessage(Message):

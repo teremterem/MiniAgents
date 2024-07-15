@@ -146,7 +146,12 @@ from miniagents.ext.llms import SystemMessage, AnthropicAgent
 
 
 async def main() -> None:
-    dialog_loop.fork(
+    dialog_loop.kick_off(
+        SystemMessage(
+            "Your job is to improve the styling and grammar of the sentences "
+            "that the user throws at you. Leave the sentences unchanged if "
+            "they seem fine."
+        ),
         user_agent=console_user_agent.fork(
             # Write chat history to a markdown file (`CHAT.md` in the current
             # working directory by default, fork `MarkdownHistoryAgent` if
@@ -157,12 +162,6 @@ async def main() -> None:
             model="claude-3-5-sonnet-20240620",
             max_tokens=1000,
         ),
-    ).kick_off(
-        SystemMessage(
-            "Your job is to improve the styling and grammar of the sentences "
-            "that the user throws at you. Leave the sentences unchanged if "
-            "they seem fine."
-        )
     )
 
 
@@ -205,8 +204,7 @@ to implement your own history agent too):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
-from miniagents.ext import agent_loop
-from miniagents.promising.sentinels import AWAIT
+from miniagents.ext import agent_loop, AWAIT
 
 
 @miniagent
@@ -230,7 +228,7 @@ async def assistant_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).kick_off()
+    agent_loop.kick_off(agents=[user_agent, AWAIT, assistant_agent])
 
 
 if __name__ == "__main__":

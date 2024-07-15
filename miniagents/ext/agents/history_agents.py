@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from pprint import pformat
-from typing import Optional, Union
+from typing import Optional
 
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
@@ -16,8 +16,10 @@ from miniagents.messages import Message, MESSAGE_CONTENT_FIELD
 from miniagents.miniagents import InteractionContext, miniagent
 from miniagents.promising.ext.frozen import Frozen
 
+GLOBAL_MESSAGE_HISTORY: list[Message] = []
 
-@miniagent
+
+@miniagent(mutable_kwargs={"message_list": GLOBAL_MESSAGE_HISTORY})
 async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Message]) -> None:
     """
     An agent that stores incoming messages in the `message_list` and then returns all the messages that this list
@@ -37,7 +39,7 @@ class MarkdownHistoryAgent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     ctx: InteractionContext
-    history_md_file: Union[str, Path] = "CHAT.md"
+    history_md_file: str = "CHAT.md"
     default_role: str = "assistant"
     only_write: bool = False
     append: bool = True
@@ -164,7 +166,7 @@ class MarkdownHistoryAgent(BaseModel):
 @miniagent
 async def markdown_llm_logger_agent(
     ctx: InteractionContext,
-    log_folder: Union[str, Path] = "llm_logs/",
+    log_folder: str = "llm_logs/",
     request_metadata: Optional[Frozen] = None,
     show_response_metadata: bool = True,
 ) -> None:
