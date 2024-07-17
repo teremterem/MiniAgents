@@ -398,16 +398,16 @@ class AgentCall:
         self._message_streamer.append(message)
         return self
 
-    def reply_sequence(self) -> MessageSequencePromise:
+    def reply_sequence(self, close_request_sequence: bool = True) -> MessageSequencePromise:
         """
-        Finish the agent call and return the agent's response(s).
+        Get a promise of a reply sequence by the agent. If `close_request_sequence` is True (the default), then,
+        after this method is called, it is not possible to send any more requests to this AgentCall object.
 
-        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
+        ATTENTION! Set `close_request_sequence` to False only if you know what you are doing. It is easy to create
+        deadlocks when `close_request_sequence` is set to False!
         """
-        # TODO Oleksandr: are we sure we are required to finish the agent call before we can start reading from the
-        #  reply sequence ? I think, the only motivation was to somehow force the user to finish their agent calls,
-        #  which is not a problem anymore, because it can be done automatically.
-        self.finish()
+        if close_request_sequence:
+            self.finish()
         return self._reply_sequence_promise
 
     def finish(self) -> "AgentCall":
