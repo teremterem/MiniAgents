@@ -286,7 +286,7 @@ class InteractionContext:
         self,
         this_agent: "MiniAgent",
         message_promises: MessageSequencePromise,
-        reply_streamer: StreamAppender[MessageType],
+        reply_streamer: "MessageSequenceAppender",
     ) -> None:
         self.this_agent = this_agent
         self.message_promises = message_promises
@@ -308,16 +308,12 @@ class InteractionContext:
     def reply(self, messages: MessageType) -> None:
         """
         Send a reply to the messages that were received by the agent. The messages can be of any allowed MessageType.
-        They will be converted to Message objects when they arrive at the agent that sent the original messages.
+        They will be converted to Message objects when they arrive at the agent that made a call to the current agent.
+
+        ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
+        content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
+        would).
         """
-        # TODO Oleksandr: add a warning that iterators, async iterators and generators, if passed as `messages` will
-        #  not be iterated over immediately, which means that if two agent calls are passed as a generator, those
-        #  agent calls will not be scheduled for parallel execution, unless the generator is wrapped into a list (to
-        #  guarantee that it will be iterated over immediately)
-        # TODO Oleksandr: implement a utility in MiniAgents that deep-copies/freezes mutable data containers
-        #  while keeping objects of other types intact and use it in StreamAppender to freeze the state of those
-        #  objects upon their submission (this way the user will not have to worry about things like `history[:]`
-        #  in the code below)
         self._reply_streamer.append(messages)
 
     def wait_for(self, awaitable: Awaitable[Any], start_asap_if_coroutine: bool = True) -> None:
@@ -376,7 +372,7 @@ class AgentCall:
     # noinspection PyProtectedMember
     def __init__(
         self,
-        message_streamer: StreamAppender[MessageType],
+        message_streamer: "MessageSequenceAppender",
         reply_sequence_promise: MessageSequencePromise,
     ) -> None:
         self._message_streamer = message_streamer
@@ -391,23 +387,27 @@ class AgentCall:
         #  be delegated to the MiniAgents context. Should I merge InteractionContext and MiniAgents into a single
         #  concept to make this possible ?
 
-    def send_message(self, message: MessageType) -> "AgentCall":
+    def send_message(self, messages: MessageType) -> "AgentCall":
         """
-        Send an input message to the agent.
+        Send a zero or more input messages to the agent.
+
+        ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
+        content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
+        would).
         """
-        self._message_streamer.append(message)
+        self._message_streamer.append(messages)
         return self
 
-    def reply_sequence(self) -> MessageSequencePromise:
+    def reply_sequence(self, close_request_sequence: bool = True) -> MessageSequencePromise:
         """
-        Finish the agent call and return the agent's response(s).
+        Get a promise of a reply sequence by the agent. If `close_request_sequence` is True (the default), then,
+        after this method is called, it is not possible to send any more requests to this AgentCall object.
 
-        NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
+        ATTENTION! Set `close_request_sequence` to False only if you know what you are doing. It is easy to create
+        deadlocks when `close_request_sequence` is set to False!
         """
-        # TODO Oleksandr: are we sure we are required to finish the agent call before we can start reading from the
-        #  reply sequence ? I think, the only motivation was to somehow force the user to finish their agent calls,
-        #  which is not a problem anymore, because it can be done automatically.
-        self.finish()
+        if close_request_sequence:
+            self.finish()
         return self._reply_sequence_promise
 
     def finish(self) -> "AgentCall":
@@ -451,7 +451,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     TODO Oleksandr: docstring
     """
 
-    message_appender: Optional[StreamAppender[MessageType]]
+    message_appender: Optional["MessageSequenceAppender"]
     sequence_promise: MessageSequencePromise
 
     def __init__(
@@ -464,7 +464,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             # an external streamer is provided, so we don't create the default StreamAppender
             self.message_appender = None
         else:
-            self.message_appender = StreamAppender(capture_errors=appender_capture_errors)
+            self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
             incoming_streamer = self.message_appender
 
         super().__init__(
@@ -607,3 +607,31 @@ class AgentReplyMessageSequence(MessageSequence):
             start_asap=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
             resolver=create_agent_reply_node,
         )
+
+
+class MessageSequenceAppender(StreamAppender[MessageType]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def append(self, piece: MessageType) -> "MessageSequenceAppender":
+        super().append(self._freeze_if_possible(piece))
+        return self
+
+    @classmethod
+    def _freeze_if_possible(cls, zero_or_more_messages: MessageType) -> MessageType:
+        if isinstance(zero_or_more_messages, (MessagePromise, Message, str, BaseException)):
+            # these types are "frozen enough" as they are
+            return zero_or_more_messages
+        if isinstance(zero_or_more_messages, BaseModel):
+            return Message(**dict(zero_or_more_messages))
+        if isinstance(zero_or_more_messages, dict):
+            return Message(**zero_or_more_messages)
+        if hasattr(zero_or_more_messages, "__iter__"):
+            return tuple(cls._freeze_if_possible(item) for item in zero_or_more_messages)
+        if hasattr(zero_or_more_messages, "__aiter__"):
+            # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
+            # hence we return it as is
+            return zero_or_more_messages
+
+        raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")

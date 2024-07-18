@@ -467,12 +467,12 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
         return error_should_be_squashed
 
-    async def __aenter__(self) -> "StreamAppender":
+    async def __aenter__(self) -> "StreamAppender[PIECE]":
         raise RuntimeError(f"Use `with {type(self).__name__}()` instead of `async with {type(self).__name__}()`.")
 
     async def __aexit__(self, *args, **kwargs) -> bool: ...
 
-    def append(self, piece: PIECE) -> "StreamAppender":
+    def append(self, piece: PIECE) -> "StreamAppender[PIECE]":
         """
         Append a `piece` to the streamer. This method can only be called when the streamer is open for appending (and
         also not closed yet). Consequently, the `piece` is delivered to the `StreamedPromise` that is consuming from
@@ -488,7 +488,7 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         self._queue.put_nowait(piece)
         return self
 
-    def open(self) -> "StreamAppender":
+    def open(self) -> "StreamAppender[PIECE]":
         """
         Open the streamer for appending.
 
