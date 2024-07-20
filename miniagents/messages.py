@@ -5,10 +5,14 @@
 from pprint import pformat
 from typing import AsyncIterator, Any, Union, Optional, Iterator
 
-from miniagents.miniagent_typing import MessageTokenStreamer
+from pydantic import BaseModel
+
+from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen, cached_privately
+from miniagents.promising.promise_typing import PromiseStreamer
 from miniagents.promising.promising import StreamedPromise, StreamAppender
+from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import join_messages
 
 MESSAGE_CONTENT_FIELD = "content"
@@ -243,3 +247,110 @@ class MessageTokenAppender(StreamAppender[str]):
         it, not replace it.
         """
         return self._metadata_so_far
+
+
+class MessageSequence(FlatSequence[MessageType, MessagePromise]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    message_appender: Optional["MessageSequenceAppender"]
+    sequence_promise: MessageSequencePromise
+
+    def __init__(
+        self,
+        appender_capture_errors: Optional[bool] = None,
+        start_asap: Optional[bool] = None,
+        incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
+    ) -> None:
+        if incoming_streamer:
+            # an external streamer is provided, so we don't create the default StreamAppender
+            self.message_appender = None
+        else:
+            self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
+            incoming_streamer = self.message_appender
+
+        super().__init__(
+            incoming_streamer=incoming_streamer,
+            start_asap=start_asap,
+            sequence_promise_class=MessageSequencePromise,
+        )
+
+    @classmethod
+    def turn_into_sequence_promise(cls, messages: MessageType) -> MessageSequencePromise:
+        """
+        Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
+        MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform
+        MessageSequencePromise object.
+        """
+        message_sequence = cls(
+            appender_capture_errors=True,
+            start_asap=False,
+        )
+        with message_sequence.message_appender:
+            message_sequence.message_appender.append(messages)
+        return message_sequence.sequence_promise
+
+    async def _flattener(  # pylint: disable=invalid-overridden-method
+        self, zero_or_more_items: MessageType
+    ) -> AsyncIterator[MessagePromise]:
+        if isinstance(zero_or_more_items, MessagePromise):
+            yield zero_or_more_items
+        elif isinstance(zero_or_more_items, Message):
+            yield zero_or_more_items.as_promise
+        elif isinstance(zero_or_more_items, BaseModel):
+            yield Message(**dict(zero_or_more_items)).as_promise
+        elif isinstance(zero_or_more_items, dict):
+            yield Message(**zero_or_more_items).as_promise
+        elif isinstance(zero_or_more_items, str):
+            yield Message(zero_or_more_items).as_promise
+        elif isinstance(zero_or_more_items, BaseException):
+            raise zero_or_more_items
+        elif hasattr(zero_or_more_items, "__iter__"):
+            for item in zero_or_more_items:
+                async for message_promise in self._flattener(item):
+                    yield message_promise
+        elif hasattr(zero_or_more_items, "__aiter__"):
+            async for item in zero_or_more_items:
+                async for message_promise in self._flattener(item):
+                    yield message_promise
+        else:
+            raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
+
+    async def _resolver(self, seq_promise: MessageSequencePromise) -> tuple[Message, ...]:
+        """
+        Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
+        and return them as a tuple of Message objects.
+        """
+        # first collect all the message promises
+        msg_promises = [msg_promise async for msg_promise in seq_promise]
+        # then resolve them all
+        return tuple([await msg_promise for msg_promise in msg_promises])  # pylint: disable=consider-using-generator
+
+
+class MessageSequenceAppender(StreamAppender[MessageType]):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def append(self, piece: MessageType) -> "MessageSequenceAppender":
+        super().append(self._freeze_if_possible(piece))
+        return self
+
+    @classmethod
+    def _freeze_if_possible(cls, zero_or_more_messages: MessageType) -> MessageType:
+        if isinstance(zero_or_more_messages, (MessagePromise, Message, str, BaseException)):
+            # these types are "frozen enough" as they are
+            return zero_or_more_messages
+        if isinstance(zero_or_more_messages, BaseModel):
+            return Message(**dict(zero_or_more_messages))
+        if isinstance(zero_or_more_messages, dict):
+            return Message(**zero_or_more_messages)
+        if hasattr(zero_or_more_messages, "__iter__"):
+            return tuple(cls._freeze_if_possible(item) for item in zero_or_more_messages)
+        if hasattr(zero_or_more_messages, "__aiter__"):
+            # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
+            # hence we return it as is
+            return zero_or_more_messages
+
+        raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
