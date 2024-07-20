@@ -11,7 +11,12 @@ from functools import partial
 from types import TracebackType
 from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
 
-from miniagents.promising.errors import AppenderClosedError, AppenderNotOpenError, FunctionNotProvidedError
+from miniagents.promising.errors import (
+    AppenderClosedError,
+    AppenderNotOpenError,
+    FunctionNotProvidedError,
+    NoActiveContextError,
+)
 from miniagents.promising.promise_typing import (
     T,
     PIECE,
@@ -72,7 +77,7 @@ class PromisingContext:
         """
         current = cls._current.get()
         if not current:
-            raise RuntimeError(
+            raise NoActiveContextError(
                 f"No {cls.__name__} is currently active. Did you forget to do `async with {cls.__name__}():`?"
             )
         if not isinstance(current, cls):
