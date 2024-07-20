@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from miniagents.messages import MessagePromise, MessageSequencePromise, Message
 from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessageEventHandler
+from miniagents.promising.errors import NoActiveContextError, WrongActiveContextError
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseStreamer, PromiseResolvedEventHandler
 from miniagents.promising.promising import StreamAppender, Promise, PromisingContext
@@ -67,6 +68,8 @@ class MiniAgents(PromisingContext):
             [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
         )
 
+        self._child_agent_calls: set[AgentCall] = set()
+
     def run(self, awaitable: Awaitable[Any]) -> Any:
         """
         Run an awaitable in the MiniAgents context. This method is blocking. It also creates a new event loop.
@@ -82,8 +85,13 @@ class MiniAgents(PromisingContext):
 
     @classmethod
     def get_current(cls) -> "MiniAgents":
-        # noinspection PyTypeChecker
-        return super().get_current()
+        current = super().get_current()
+        if not isinstance(current, MiniAgents):
+            raise WrongActiveContextError(
+                f"The active context was expected to be of type {cls.__name__}, "
+                f"but it is of type {type(current).__name__} instead."
+            )
+        return current
 
     def on_persist_message(self, handler: PersistMessageEventHandler) -> PersistMessageEventHandler:
         """
@@ -91,6 +99,11 @@ class MiniAgents(PromisingContext):
         """
         self.on_persist_message_handlers.append(handler)
         return handler
+
+    async def afinalize(self) -> None:
+        for agent_call in list(self._child_agent_calls):
+            agent_call.finish()
+        await super().afinalize()
 
     # noinspection PyProtectedMember
     async def _trigger_persist_message_event(self, _, obj: Any) -> None:
@@ -302,7 +315,7 @@ class InteractionContext:
         """
         current = cls._current.get()
         if not current:
-            raise RuntimeError(f"No {cls.__name__} is currently active.")
+            raise NoActiveContextError(f"No {cls.__name__} is currently active.")
         return current
 
     def reply(self, messages: MessageType) -> None:
@@ -364,12 +377,12 @@ class InteractionContext:
         self._previous_ctx_token = None
 
 
-class AgentCall:
+# noinspection PyProtectedMember
+class AgentCall:  # pylint: disable=protected-access
     """
     TODO Oleksandr: docstring
     """
 
-    # noinspection PyProtectedMember
     def __init__(
         self,
         message_streamer: "MessageSequenceAppender",
@@ -380,12 +393,10 @@ class AgentCall:
 
         self._message_streamer.open()
 
-        current_ctx = InteractionContext._current.get()
-        if current_ctx:
-            current_ctx._child_agent_calls.add(self)
-        # TODO Oleksandr: If there is no active InteractionContext, the job of finalizing open agent calls should
-        #  be delegated to the MiniAgents context. Should I merge InteractionContext and MiniAgents into a single
-        #  concept to make this possible ?
+        try:
+            InteractionContext.get_current()._child_agent_calls.add(self)
+        except NoActiveContextError:
+            MiniAgents.get_current()._child_agent_calls.add(self)
 
     def send_message(self, messages: MessageType) -> "AgentCall":
         """
@@ -416,8 +427,11 @@ class AgentCall:
 
         NOTE: After this method is called it is not possible to send any more requests to this AgentCall object.
         """
-        # TODO Oleksandr: also make sure to close the streamer when the parent agent call is finished
         self._message_streamer.close()
+        try:
+            InteractionContext.get_current()._child_agent_calls.discard(self)
+        except NoActiveContextError:
+            MiniAgents.get_current()._child_agent_calls.discard(self)
         return self
 
 
