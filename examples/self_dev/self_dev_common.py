@@ -6,7 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from miniagents import MiniAgents, Message
+from miniagents import MiniAgents, Message, cached_privately
 from miniagents.ext import markdown_llm_logger_agent
 from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
@@ -37,6 +37,8 @@ MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent
 SELF_DEV_OUTPUT = SELF_DEV_ROOT / "output"
 SELF_DEV_PROMPTS = SELF_DEV_ROOT / "self_dev_prompts.py"
 SELF_DEV_LLM_LOGS = SELF_DEV_ROOT / "llm_logs"
+LLM_LOGS = MINIAGENTS_ROOT / "llm_logs"
+TRANSIENT = MINIAGENTS_ROOT / "transient"
 
 mini_agents = MiniAgents(llm_logger_agent=markdown_llm_logger_agent.fork(log_folder=str(SELF_DEV_LLM_LOGS)))
 
@@ -47,6 +49,14 @@ class RepoFileMessage(Message):
     """
 
     file_posix_path: str
+
+    @property
+    @cached_privately
+    def num_of_newlines(self):
+        """
+        The number of newlines in the content of the file.
+        """
+        return self.content.count("\n")
 
     def _as_string(self) -> str:
         extra_newline = "" if self.content.endswith("\n") else "\n"
@@ -85,8 +95,10 @@ class FullRepoMessage(Message):
                         "htmlcov/",
                         "images/",
                         # "LICENSE",
+                        relative_posix_path(LLM_LOGS),
                         "venv/",
                         "poetry.lock",
+                        relative_posix_path(TRANSIENT),
                     ]
                 )
                 and not any(file_posix_path.endswith(suffix) for suffix in [".pyc"])
@@ -106,3 +118,13 @@ def relative_posix_path(file: Path) -> str:
     Get the path of a file as a POSIX path relative to the MiniAgents repository root.
     """
     return file.relative_to(MINIAGENTS_ROOT).as_posix()
+
+
+if __name__ == "__main__":
+    # Print the number of newlines in each file in the MiniAgents repository, sort the entries by the number of
+    # newlines in descending order.
+    full_repo = FullRepoMessage()
+    print()
+    for f in sorted(full_repo.repo_files, reverse=True, key=lambda f_: f_.num_of_newlines):
+        print(f.num_of_newlines, "-", f.file_posix_path)
+    print()
