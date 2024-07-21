@@ -50,7 +50,7 @@ Settings.chunk_size = 512
 Settings.chunk_overlap = 64
 Settings.llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
 Settings.embed_model = LlamaIndexMiniAgentEmbedding(
-    underlying_miniagent=openai_embedding_agent.fork(model="text-embedding-3-small")
+    underlying_miniagent=openai_embedding_agent.fork(model="text-embedding-3-large")  # "text-embedding-3-small"
 )
 
 
