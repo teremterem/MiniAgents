@@ -11,16 +11,22 @@ from miniagents import Message, cached_privately, MiniAgents
 from miniagents.ext import markdown_llm_logger_agent
 from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentLLM, LlamaIndexMiniAgentEmbedding
 from miniagents.ext.llms import AnthropicAgent, OpenAIAgent, openai_embedding_agent
+from miniagents.utils import ModelSingleton
 
 load_dotenv()
+
+GPT_4O = "gpt-4o-2024-05-13"
+CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20240620"
+
+FAVOURITE_MODEL = CLAUDE_3_5_SONNET
 
 MAX_OUTPUT_TOKENS = 4096
 
 MODEL_AGENT_FACTORIES = {
-    "gpt-4o-2024-05-13": OpenAIAgent.fork(temperature=0),
+    GPT_4O: OpenAIAgent.fork(temperature=0),
     "gpt-4-turbo-2024-04-09": OpenAIAgent.fork(temperature=0),
     "gpt-3.5-turbo-0125": OpenAIAgent.fork(temperature=0),
-    "claude-3-5-sonnet-20240620": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    CLAUDE_3_5_SONNET: AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-opus-20240229": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-haiku-20240307": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
 }
@@ -28,8 +34,8 @@ MODEL_AGENTS = {
     model: MODEL_AGENT_FACTORIES[model].fork(model=model)
     for model in [
         # let's use only two best models in our self_dev agents
-        "gpt-4o-2024-05-13",
-        "claude-3-5-sonnet-20240620",
+        GPT_4O,
+        CLAUDE_3_5_SONNET,
     ]
 }
 
@@ -80,7 +86,7 @@ class RepoFileMessage(Message):
         return f'<source_file path="{self.file_posix_path}">\n{self.lazy_content}{extra_newline}</source_file>'
 
 
-class FullRepoMessage(Message):
+class FullRepoMessage(Message, ModelSingleton):
     """
     A message that represents the full content of the MiniAgents repository.
     """
