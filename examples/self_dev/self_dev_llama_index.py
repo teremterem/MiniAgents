@@ -1,26 +1,20 @@
-"""
-This script ingests the MiniAgents repository into the Llama Index from the local file system using
-UnstructuredReader.
-"""
-
 import nest_asyncio
 from llama_index.core import VectorStoreIndex, StorageContext
-from llama_index.readers.file import UnstructuredReader
+from llama_index.readers.file import FlatReader
 
 from examples.self_dev.self_dev_common import FullRepoMessage, MINIAGENTS_ROOT, TRANSIENT, mini_agents
 
 
 async def ingest_repo() -> None:
     """
-    Ingest the MiniAgents repository into the Llama Index.
+    Ingest the MiniAgents repository into the Llama Index from the local file system using FlatReader.
     """
     full_repo = FullRepoMessage()
 
-    loader = UnstructuredReader()
+    loader = FlatReader()
     all_docs = []
     for file_msg in full_repo.repo_files:
-        # TODO Oleksandr: try to switch to `split_documents=True`
-        file_docs = loader.load_data(file=MINIAGENTS_ROOT / file_msg.file_posix_path, split_documents=False)
+        file_docs = loader.load_data(file=MINIAGENTS_ROOT / file_msg.file_posix_path)
         for d in file_docs:
             d.metadata = {"file": file_msg.file_posix_path}
         all_docs.extend(file_docs)
@@ -32,7 +26,7 @@ async def ingest_repo() -> None:
         storage_context=storage_context,
         use_async=True,
     )
-    storage_context.persist(persist_dir=TRANSIENT / "llama_index_naive")
+    storage_context.persist(persist_dir=TRANSIENT / "llama_index_repo_flat")
 
     # print the number of newlines in each file in the MiniAgents repository,
     # sort the entries by the number of newlines in descending order
