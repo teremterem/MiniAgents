@@ -10,13 +10,15 @@ from miniagents.ext.llms import OpenAIAgent, openai_embedding_agent
 
 load_dotenv()
 
-Settings.llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
+# Settings.llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
 Settings.embed_model = LlamaIndexMiniAgentEmbedding(
     underlying_miniagent=openai_embedding_agent.fork(model="text-embedding-3-small")
 )
 
 
 async def main() -> None:
+    llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
+
     years = [2022, 2021, 2020, 2019]
 
     index_set = {}
@@ -29,7 +31,7 @@ async def main() -> None:
 
     individual_query_engine_tools = [
         QueryEngineTool(
-            query_engine=index_set[year].as_query_engine(),
+            query_engine=index_set[year].as_query_engine(llm=llm),
             metadata=ToolMetadata(
                 name=f"vector_index_{year}",
                 description=f"useful for when you want to answer queries about the {year} SEC 10-K for Uber",
@@ -40,6 +42,7 @@ async def main() -> None:
 
     query_engine = SubQuestionQueryEngine.from_defaults(
         query_engine_tools=individual_query_engine_tools,
+        llm=llm,
     )
 
     query_engine_tool = QueryEngineTool(
@@ -57,7 +60,7 @@ async def main() -> None:
 
     # TODO Oleksandr: is ReActAgent worse that OpenAIAgent from the original example ? What is Chain-of-Abstraction,
     #  btw, and how it works ?
-    agent = ReActAgent.from_tools(tools, verbose=True)
+    agent = ReActAgent.from_tools(tools, llm=llm, verbose=True)
 
     # response = agent.chat("hi, i am bob")
     # print(str(response))
