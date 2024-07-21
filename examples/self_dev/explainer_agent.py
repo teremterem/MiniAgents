@@ -37,7 +37,10 @@ async def full_repo_agent(ctx: InteractionContext, llm_agent: MiniAgent) -> None
 
 
 LLMS_FOR_EXPLAINER = {}
-for model_, agent_ in MODEL_AGENTS.items():
+for model_ in [
+    FAVOURITE_MODEL,
+]:
+    agent_ = MODEL_AGENTS[model_]
     LLMS_FOR_EXPLAINER[model_] = full_repo_agent.fork(llm_agent=agent_)
     LLMS_FOR_EXPLAINER[f"{model_}-RAG"] = llama_index_rag_agent.fork(llm_agent=agent_)
 
