@@ -11,7 +11,13 @@ from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awai
 
 from pydantic import Field
 
-from miniagents.messages import Message, MessageSequence, MessagePromise, MessageSequencePromise
+from miniagents.messages import (
+    Message,
+    MessageSequence,
+    MessagePromise,
+    MessageSequencePromise,
+    MessageSequenceAppender,
+)
 from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessageEventHandler
 from miniagents.promising.errors import NoActiveContextError, WrongActiveContextError
 from miniagents.promising.ext.frozen import Frozen
@@ -298,7 +304,7 @@ class InteractionContext:
         self,
         this_agent: "MiniAgent",
         message_promises: MessageSequencePromise,
-        reply_streamer: "MessageSequenceAppender",
+        reply_streamer: MessageSequenceAppender,
     ) -> None:
         self.this_agent = this_agent
         self.message_promises = message_promises
@@ -384,7 +390,7 @@ class AgentCall:  # pylint: disable=protected-access
 
     def __init__(
         self,
-        message_streamer: "MessageSequenceAppender",
+        message_streamer: MessageSequenceAppender,
         reply_sequence_promise: MessageSequencePromise,
     ) -> None:
         self._message_streamer = message_streamer
