@@ -37,5 +37,5 @@ async def ingest_repo() -> None:
 
 
 if __name__ == "__main__":
-    nest_asyncio.apply()  # VectorStoreIndex.from_documents() uses asyncio internally
+    nest_asyncio.apply()  # VectorStoreIndex.from_documents() starts another event loop internally
     mini_agents.run(ingest_repo())
