@@ -3,7 +3,7 @@
 Integrations of llama-index with MiniAgents.
 """
 
-from typing import Any, Sequence
+from typing import Any, Sequence, Optional
 
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.llms.types import (
@@ -22,10 +22,49 @@ from llama_index.core.llms.callbacks import (
     llm_completion_callback,
 )
 from llama_index.core.llms.llm import LLM
+from llama_index.core.memory import BaseMemory
 
 from miniagents.ext.llms.llm_utils import LLMMessage
 from miniagents.messages import MESSAGE_CONTENT_FIELD
 from miniagents.miniagents import MiniAgent
+
+
+class NoMemory(BaseMemory):
+    # pylint: disable=redefined-builtin
+    """
+    A dummy memory that does not store anything. This is useful to fake memory in Llama index in order to allow
+    receiving external chat histories from MiniAgents (MiniAgents framework has its own "history agents").
+    """
+
+    @classmethod
+    def class_name(cls) -> str:
+        return "NoMemory"
+
+    @classmethod
+    def from_defaults(
+        cls,
+        chat_history: Optional[list[ChatMessage]] = None,
+        llm: Optional[LLM] = None,
+    ) -> "NoMemory":
+        return NoMemory()
+
+    def get(self, input: Optional[str] = None, **kwargs: Any) -> list[ChatMessage]:
+        return []
+
+    def get_all(self) -> list[ChatMessage]:
+        return []
+
+    def put(self, message: ChatMessage) -> None:
+        """Do nothing."""
+
+    def put_messages(self, messages: list[ChatMessage]) -> None:
+        """Do nothing."""
+
+    def set(self, messages: list[ChatMessage]) -> None:
+        """Do nothing."""
+
+    def reset(self) -> None:
+        """Do nothing."""
 
 
 class LlamaIndexMiniAgentLLM(LLM):
