@@ -123,13 +123,13 @@ files = [
 
 [[package]]
 name = "anthropic"
-version = "0.31.0"
+version = "0.31.2"
 description = "The official Python library for the anthropic API"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "anthropic-0.31.0-py3-none-any.whl", hash = "sha256:77f7a428e1723b79a571c2427ae885d9257c68f700726dff7ce684c3972d6598"},
-    {file = "anthropic-0.31.0.tar.gz", hash = "sha256:14f8f65231859a65ec9aacbbea070e412c8bd41a5d3f36793dac4292c3c78d3a"},
+    {file = "anthropic-0.31.2-py3-none-any.whl", hash = "sha256:28d176b98c72615bfae30f0a9eee6297cc33bf52535d38156fc2805556e2f09b"},
+    {file = "anthropic-0.31.2.tar.gz", hash = "sha256:0134b73df8d1f142fc68675fbadb75e920054e9e3437b99df63f10f0fc6ac26f"},
 ]
 
 [package.dependencies]
@@ -257,13 +257,13 @@ test = ["dateparser (==1.*)", "pre-commit", "pytest", "pytest-cov", "pytest-mock
 
 [[package]]
 name = "astroid"
-version = "3.2.3"
+version = "3.2.4"
 description = "An abstract syntax tree for Python with inference support."
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "astroid-3.2.3-py3-none-any.whl", hash = "sha256:3eae9ea67c11c858cdd2c91337d2e816bd019ac897ca07d7b346ac10105fceb3"},
-    {file = "astroid-3.2.3.tar.gz", hash = "sha256:7099b5a60985529d8d46858befa103b82d0d05a5a5e8b816b5303ed96075e1d9"},
+    {file = "astroid-3.2.4-py3-none-any.whl", hash = "sha256:413658a61eeca6202a59231abb473f932038fbcbf1666587f66d482083413a25"},
+    {file = "astroid-3.2.4.tar.gz", hash = "sha256:0e14202810b30da1b735827f78f5157be2bbd4a7a59b7707ca0bfc2fb4c0063a"},
 ]
 
 [package.dependencies]
@@ -1241,16 +1241,17 @@ files = [
 
 [[package]]
 name = "haystack-ai"
-version = "2.2.4"
+version = "2.3.0"
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "haystack_ai-2.2.4-py3-none-any.whl", hash = "sha256:cd4dce1d71d31b7d8f4875dc17889cc1e031b393d48fa3b23024f3b38b1d84f0"},
-    {file = "haystack_ai-2.2.4.tar.gz", hash = "sha256:b1ad64e3b4f34d99925bf81f191d6893af6c48c7d35b9142df72ca44f291bcce"},
+    {file = "haystack_ai-2.3.0-py3-none-any.whl", hash = "sha256:408fd1dbc4a87e1f16228bbf1ad9bac619df5f709912c1d79caca85fc43b58ff"},
+    {file = "haystack_ai-2.3.0.tar.gz", hash = "sha256:9ac2c480ff81d01b275f21ff0a824aa28368ae7f4004c8ffbbb3184bc2b3ab56"},
 ]
 
 [package.dependencies]
+haystack-experimental = "*"
 jinja2 = "*"
 lazy-imports = "*"
 more-itertools = "*"
@@ -1265,6 +1266,20 @@ requests = "*"
 tenacity = "!=8.4.0"
 tqdm = "*"
 typing-extensions = ">=4.7"
+
+[[package]]
+name = "haystack-experimental"
+version = "0.1.0"
+description = "Experimental components and features for the Haystack LLM framework."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "haystack_experimental-0.1.0-py3-none-any.whl", hash = "sha256:f1eca864088d38bd3a2f38172930935442e2040725cc22c71894d2a1ea3a655f"},
+    {file = "haystack_experimental-0.1.0.tar.gz", hash = "sha256:70e124f5492efc46ab40da2a47c9aabfb94498c073effc02f974012e9dd3e2ef"},
+]
+
+[package.dependencies]
+haystack-ai = "*"
 
 [[package]]
 name = "htmldate"
@@ -1335,13 +1350,13 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "huggingface-hub"
-version = "0.23.4"
+version = "0.24.0"
 description = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "huggingface_hub-0.23.4-py3-none-any.whl", hash = "sha256:3a0b957aa87150addf0cc7bd71b4d954b78e749850e1e7fb29ebbd2db64ca037"},
-    {file = "huggingface_hub-0.23.4.tar.gz", hash = "sha256:35d99016433900e44ae7efe1c209164a5a81dbbcd53a52f99c281dcd7ce22431"},
+    {file = "huggingface_hub-0.24.0-py3-none-any.whl", hash = "sha256:7ad92edefb93d8145c061f6df8d99df2ff85f8379ba5fac8a95aca0642afa5d7"},
+    {file = "huggingface_hub-0.24.0.tar.gz", hash = "sha256:6c7092736b577d89d57b3cdfea026f1b0dc2234ae783fa0d59caf1bf7d52dfa7"},
 ]
 
 [package.dependencies]
@@ -1354,17 +1369,17 @@ tqdm = ">=4.42.1"
 typing-extensions = ">=3.7.4.3"
 
 [package.extras]
-all = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "mypy (==1.5.1)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "ruff (>=0.3.0)", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)", "urllib3 (<2.0)"]
+all = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "mypy (==1.5.1)", "numpy", "pytest (>=8.1.1,<8.2.2)", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-mock", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "ruff (>=0.5.0)", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)", "urllib3 (<2.0)"]
 cli = ["InquirerPy (==0.3.4)"]
-dev = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "mypy (==1.5.1)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "ruff (>=0.3.0)", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)", "urllib3 (<2.0)"]
+dev = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "mypy (==1.5.1)", "numpy", "pytest (>=8.1.1,<8.2.2)", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-mock", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "ruff (>=0.5.0)", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)", "urllib3 (<2.0)"]
 fastai = ["fastai (>=2.4)", "fastcore (>=1.3.27)", "toml"]
 hf-transfer = ["hf-transfer (>=0.1.4)"]
 inference = ["aiohttp", "minijinja (>=1.0)"]
-quality = ["mypy (==1.5.1)", "ruff (>=0.3.0)"]
+quality = ["mypy (==1.5.1)", "ruff (>=0.5.0)"]
 tensorflow = ["graphviz", "pydot", "tensorflow"]
 tensorflow-testing = ["keras (<3.0)", "tensorflow"]
-testing = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "soundfile", "urllib3 (<2.0)"]
-torch = ["safetensors", "torch"]
+testing = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "numpy", "pytest (>=8.1.1,<8.2.2)", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-mock", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "soundfile", "urllib3 (<2.0)"]
+torch = ["safetensors[torch]", "torch"]
 typing = ["types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)"]
 
 [[package]]
@@ -1867,13 +1882,13 @@ test = ["jupyter-server (>=2.0.0)", "pytest (>=7.0)", "pytest-jupyter[server] (>
 
 [[package]]
 name = "jupyterlab"
-version = "4.2.3"
+version = "4.2.4"
 description = "JupyterLab computational environment"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "jupyterlab-4.2.3-py3-none-any.whl", hash = "sha256:0b59d11808e84bb84105c73364edfa867dd475492429ab34ea388a52f2e2e596"},
-    {file = "jupyterlab-4.2.3.tar.gz", hash = "sha256:df6e46969ea51d66815167f23d92f105423b7f1f06fa604d4f44aeb018c82c7b"},
+    {file = "jupyterlab-4.2.4-py3-none-any.whl", hash = "sha256:807a7ec73637744f879e112060d4b9d9ebe028033b7a429b2d1f4fc523d00245"},
+    {file = "jupyterlab-4.2.4.tar.gz", hash = "sha256:343a979fb9582fd08c8511823e320703281cd072a0049bcdafdc7afeda7f2537"},
 ]
 
 [package.dependencies]
@@ -1898,7 +1913,7 @@ dev = ["build", "bump2version", "coverage", "hatch", "pre-commit", "pytest-cov",
 docs = ["jsx-lexer", "myst-parser", "pydata-sphinx-theme (>=0.13.0)", "pytest", "pytest-check-links", "pytest-jupyter", "sphinx (>=1.8,<7.3.0)", "sphinx-copybutton"]
 docs-screenshots = ["altair (==5.3.0)", "ipython (==8.16.1)", "ipywidgets (==8.1.2)", "jupyterlab-geojson (==3.4.0)", "jupyterlab-language-pack-zh-cn (==4.1.post2)", "matplotlib (==3.8.3)", "nbconvert (>=7.0.0)", "pandas (==2.2.1)", "scipy (==1.12.0)", "vega-datasets (==0.9.0)"]
 test = ["coverage", "pytest (>=7.0)", "pytest-check-links (>=0.7)", "pytest-console-scripts", "pytest-cov", "pytest-jupyter (>=0.5.3)", "pytest-timeout", "pytest-tornasync", "requests", "requests-cache", "virtualenv"]
-upgrade-extension = ["copier (>=8,<10)", "jinja2-time (<0.3)", "pydantic (<2.0)", "pyyaml-include (<2.0)", "tomli-w (<2.0)"]
+upgrade-extension = ["copier (>=9,<10)", "jinja2-time (<0.3)", "pydantic (<3.0)", "pyyaml-include (<3.0)", "tomli-w (<2.0)"]
 
 [[package]]
 name = "jupyterlab-pygments"
@@ -1913,13 +1928,13 @@ files = [
 
 [[package]]
 name = "jupyterlab-server"
-version = "2.27.2"
+version = "2.27.3"
 description = "A set of server components for JupyterLab and JupyterLab like applications."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "jupyterlab_server-2.27.2-py3-none-any.whl", hash = "sha256:54aa2d64fd86383b5438d9f0c032f043c4d8c0264b8af9f60bd061157466ea43"},
-    {file = "jupyterlab_server-2.27.2.tar.gz", hash = "sha256:15cbb349dc45e954e09bacf81b9f9bcb10815ff660fb2034ecd7417db3a7ea27"},
+    {file = "jupyterlab_server-2.27.3-py3-none-any.whl", hash = "sha256:e697488f66c3db49df675158a77b3b017520d772c6e1548c7d9bcc5df7944ee4"},
+    {file = "jupyterlab_server-2.27.3.tar.gz", hash = "sha256:eb36caca59e74471988f0ae25c77945610b887f777255aa21f8065def9e51ed4"},
 ]
 
 [package.dependencies]
@@ -1953,19 +1968,19 @@ lxml = {version = ">=4.4.2", extras = ["html-clean"]}
 
 [[package]]
 name = "langchain"
-version = "0.2.7"
+version = "0.2.10"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain-0.2.7-py3-none-any.whl", hash = "sha256:98e79e0b9a60a9c740b44d5b0135c85f649219308f30d373cf5f10d0efe18b87"},
-    {file = "langchain-0.2.7.tar.gz", hash = "sha256:8742f363d2890854501e0075af04fcb470600f201dec251c9bd5841e1990e73d"},
+    {file = "langchain-0.2.10-py3-none-any.whl", hash = "sha256:b4fb58c7faf4f4999cfe3325474979a7121a1737dd101655a723a1d957ef0617"},
+    {file = "langchain-0.2.10.tar.gz", hash = "sha256:1f861c1b59ac9c91b02bb0fa58d3adad1c1d0686636872b5b357bbce3ce41d06"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.8.3,<4.0.0"
 async-timeout = {version = ">=4.0.0,<5.0.0", markers = "python_version < \"3.11\""}
-langchain-core = ">=0.2.12,<0.3.0"
+langchain-core = ">=0.2.22,<0.3.0"
 langchain-text-splitters = ">=0.2.0,<0.3.0"
 langsmith = ">=0.1.17,<0.2.0"
 numpy = [
@@ -1996,13 +2011,13 @@ langchain-core = ">=0.2.17,<0.3"
 
 [[package]]
 name = "langchain-core"
-version = "0.2.17"
+version = "0.2.22"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain_core-0.2.17-py3-none-any.whl", hash = "sha256:f8b4f64c95b381bd3ac4322bafa9ecee3ca3970aa0aa2829ef11175bcad27249"},
-    {file = "langchain_core-0.2.17.tar.gz", hash = "sha256:f9b8d0f7b5f339ac62e11c417181e87f54e9282af82d1a64c8a7427f3d5d9118"},
+    {file = "langchain_core-0.2.22-py3-none-any.whl", hash = "sha256:7731a86440c0958b3186c003fb9b26b2d5a682a6344bda7bfb9174e2898f8b43"},
+    {file = "langchain_core-0.2.22.tar.gz", hash = "sha256:582d6f929a43b830139444e4124123cd415331ad62f25757b1406252958cdcac"},
 ]
 
 [package.dependencies]
@@ -2018,17 +2033,17 @@ tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<9.0.0"
 
 [[package]]
 name = "langchain-openai"
-version = "0.1.16"
+version = "0.1.17"
 description = "An integration package connecting OpenAI and LangChain"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langchain_openai-0.1.16-py3-none-any.whl", hash = "sha256:bff90e9d0be786495920a7851ae4d55247fb084d3a11d1b15bfe91904ce1cb0f"},
-    {file = "langchain_openai-0.1.16.tar.gz", hash = "sha256:3dedcc785a64a488ad6a313cc59b0dccea025d27413b55cec73a20dcf3ded4da"},
+    {file = "langchain_openai-0.1.17-py3-none-any.whl", hash = "sha256:30bef5574ecbbbb91b8025b2dc5a1bd81fd62157d3ad1a35d820141f31c5b443"},
+    {file = "langchain_openai-0.1.17.tar.gz", hash = "sha256:c5d70ddecdcb93e146f376bdbadbb6ec69de9ac0f402cd5b83de50b655ba85ee"},
 ]
 
 [package.dependencies]
-langchain-core = ">=0.2.17,<0.3.0"
+langchain-core = ">=0.2.20,<0.3.0"
 openai = ">=1.32.0,<2.0.0"
 tiktoken = ">=0.7,<1"
 
@@ -2062,27 +2077,27 @@ six = "*"
 
 [[package]]
 name = "langgraph"
-version = "0.1.8"
+version = "0.1.9"
 description = "Building stateful, multi-actor applications with LLMs"
 optional = false
 python-versions = "<4.0,>=3.9.0"
 files = [
-    {file = "langgraph-0.1.8-py3-none-any.whl", hash = "sha256:cc70cc04c5cdfa0d76d2d10421554496e8827b5ad02f16ecd8b2d96ece101b47"},
-    {file = "langgraph-0.1.8.tar.gz", hash = "sha256:2612e39b049ca31f29a9dc16e9cf29351881d6d1afe139b6364f53513a3a51cf"},
+    {file = "langgraph-0.1.9-py3-none-any.whl", hash = "sha256:b3b5698686ae71fbf0cb2439f34d8a840f061c0e5ddc76d618674c3611ed787a"},
+    {file = "langgraph-0.1.9.tar.gz", hash = "sha256:9ab6150d4b46089f8ea484fc68b1b28e0dd3adb7e383f0b8520ec04b7f6d5938"},
 ]
 
 [package.dependencies]
-langchain-core = ">=0.2.15,<0.3"
+langchain-core = ">=0.2.19,<0.3"
 
 [[package]]
 name = "langsmith"
-version = "0.1.85"
+version = "0.1.93"
 description = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langsmith-0.1.85-py3-none-any.whl", hash = "sha256:c1f94384f10cea96f7b4d33fd3db7ec180c03c7468877d50846f881d2017ff94"},
-    {file = "langsmith-0.1.85.tar.gz", hash = "sha256:acff31f9e53efa48586cf8e32f65625a335c74d7c4fa306d1655ac18452296f6"},
+    {file = "langsmith-0.1.93-py3-none-any.whl", hash = "sha256:811210b9d5f108f36431bd7b997eb9476a9ecf5a2abd7ddbb606c1cdcf0f43ce"},
+    {file = "langsmith-0.1.93.tar.gz", hash = "sha256:285b6ad3a54f50fa8eb97b5f600acc57d0e37e139dd8cf2111a117d0435ba9b4"},
 ]
 
 [package.dependencies]
@@ -2126,19 +2141,19 @@ pydantic = ">=1.10"
 
 [[package]]
 name = "llama-index"
-version = "0.10.55"
+version = "0.10.56"
 description = "Interface between LLMs and your data"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index-0.10.55-py3-none-any.whl", hash = "sha256:b07e4708e451c4505df978997c998f10ff2ebdbda12fbf892b7e6df79f5cf4c8"},
-    {file = "llama_index-0.10.55.tar.gz", hash = "sha256:32781185d60d99dc7a02f2efa73bdaca2f0ae96bf5d42cef6f1b9124f9eacf65"},
+    {file = "llama_index-0.10.56-py3-none-any.whl", hash = "sha256:febbbbbf623279911ce5fbeb4975e15a2c399a7bc98779bb4d90887e61830dda"},
+    {file = "llama_index-0.10.56.tar.gz", hash = "sha256:3056b9e188902a1138fc065b3b17d9f8628b52ee14545780b0b1e0fb8b6b9561"},
 ]
 
 [package.dependencies]
 llama-index-agent-openai = ">=0.1.4,<0.3.0"
 llama-index-cli = ">=0.1.2,<0.2.0"
-llama-index-core = "0.10.55"
+llama-index-core = "0.10.56"
 llama-index-embeddings-openai = ">=0.1.5,<0.2.0"
 llama-index-indices-managed-llama-cloud = ">=0.2.0"
 llama-index-legacy = ">=0.9.48,<0.10.0"
@@ -2151,13 +2166,13 @@ llama-index-readers-llama-parse = ">=0.1.2"
 
 [[package]]
 name = "llama-index-agent-openai"
-version = "0.2.8"
+version = "0.2.9"
 description = "llama-index agent openai integration"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index_agent_openai-0.2.8-py3-none-any.whl", hash = "sha256:e3e5c58cb1347d336a41391c60539098655f38fa57c1023063df5cfc5f468ef6"},
-    {file = "llama_index_agent_openai-0.2.8.tar.gz", hash = "sha256:7f123e86992d6c33f310d36331c32989a921cb76abe9d0fd1cf1e40a7eb65d2e"},
+    {file = "llama_index_agent_openai-0.2.9-py3-none-any.whl", hash = "sha256:d7f0fd4c87124781acd783be603871f8808b1a3969e876a9c96e2ed0844d46ac"},
+    {file = "llama_index_agent_openai-0.2.9.tar.gz", hash = "sha256:debe86da6d9d983db32b445ddca7c798ac140fe59573bafded73595b3995f3d5"},
 ]
 
 [package.dependencies]
@@ -2183,13 +2198,13 @@ llama-index-llms-openai = ">=0.1.1,<0.2.0"
 
 [[package]]
 name = "llama-index-core"
-version = "0.10.55"
+version = "0.10.56"
 description = "Interface between LLMs and your data"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index_core-0.10.55-py3-none-any.whl", hash = "sha256:e2f7dbc9c992d4487dabad6a7b0f40ed145cce0ab99e52cc78e9caf0cd4c1c08"},
-    {file = "llama_index_core-0.10.55.tar.gz", hash = "sha256:b02d46595c17805221a8f404c04a97609d1ce22e5be24ad7b7c4ac30e5181561"},
+    {file = "llama_index_core-0.10.56-py3-none-any.whl", hash = "sha256:9f9e217731c94c60c4dc2163c2c3e0c17f9b2445d6d2ba008bb624545d75d924"},
+    {file = "llama_index_core-0.10.56.tar.gz", hash = "sha256:a646ba3f42329c3160fa3535adb6b9a99bb34fc60e027dfd861fa248a93d90c6"},
 ]
 
 [package.dependencies]
@@ -2218,13 +2233,13 @@ wrapt = "*"
 
 [[package]]
 name = "llama-index-embeddings-openai"
-version = "0.1.10"
+version = "0.1.11"
 description = "llama-index embeddings openai integration"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index_embeddings_openai-0.1.10-py3-none-any.whl", hash = "sha256:c3cfa83b537ded34d035fc172a945dd444c87fb58a89b02dfbf785b675f9f681"},
-    {file = "llama_index_embeddings_openai-0.1.10.tar.gz", hash = "sha256:1bc1fc9b46773a12870c5d3097d3735d7ca33805f12462a8e35ae8a6e5ce1cf6"},
+    {file = "llama_index_embeddings_openai-0.1.11-py3-none-any.whl", hash = "sha256:e20806fc4baff6b8f5274decf2c1ca7c5c737648e01865475ffada164e32e173"},
+    {file = "llama_index_embeddings_openai-0.1.11.tar.gz", hash = "sha256:6025e229e375201788a9b14d6ebe470329907576cba5f6b7b832c3d68f39db30"},
 ]
 
 [package.dependencies]
@@ -2286,13 +2301,13 @@ query-tools = ["guidance (>=0.0.64,<0.0.65)", "jsonpath-ng (>=1.6.0,<2.0.0)", "l
 
 [[package]]
 name = "llama-index-llms-openai"
-version = "0.1.25"
+version = "0.1.26"
 description = "llama-index llms openai integration"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index_llms_openai-0.1.25-py3-none-any.whl", hash = "sha256:d1922ad2f2bb4697a6ee2f61793aeb2f5c5606302639559dd9bb0a1d6ab9e73f"},
-    {file = "llama_index_llms_openai-0.1.25.tar.gz", hash = "sha256:49750f71d58e762a597ce639a2ccb119195c47aefa8a48c55c77be8a5cec4bc5"},
+    {file = "llama_index_llms_openai-0.1.26-py3-none-any.whl", hash = "sha256:1ad8e4eb02f9410c2091749d4d9aa9db4452646b595eb5eb937edbc496fb65fe"},
+    {file = "llama_index_llms_openai-0.1.26.tar.gz", hash = "sha256:08a408cd53af4cd4623dd5807be4cbbd5e5b3ca01272128cd678d667343e4d5d"},
 ]
 
 [package.dependencies]
@@ -2300,12 +2315,13 @@ llama-index-core = ">=0.10.24,<0.11.0"
 
 [[package]]
 name = "llama-index-multi-modal-llms-openai"
-version = "0.1.7"
+version = "0.1.8"
 description = "llama-index multi-modal-llms openai integration"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index_multi_modal_llms_openai-0.1.7-py3-none-any.whl", hash = "sha256:a86fa4a8f8372da31b978cc28d14da75ce6a39f42b1eea90cd3ac93017644766"},
+    {file = "llama_index_multi_modal_llms_openai-0.1.8-py3-none-any.whl", hash = "sha256:16ae72ac3c5201ebd1d4b62203930c1768149ec85c3e477e5e51ed2ef8db1067"},
+    {file = "llama_index_multi_modal_llms_openai-0.1.8.tar.gz", hash = "sha256:5e2c94a6415a2509cad035ccea34461959ae327a5900d3e820417e9ebb9a13ec"},
 ]
 
 [package.dependencies]
@@ -2381,13 +2397,13 @@ llama-parse = ">=0.4.0"
 
 [[package]]
 name = "llama-parse"
-version = "0.4.6"
+version = "0.4.9"
 description = "Parse files into RAG-Optimized formats."
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_parse-0.4.6-py3-none-any.whl", hash = "sha256:543450fd2b358b5ea2fcdf388613720da07a503e90ea1c3f4cedd66dae35fa41"},
-    {file = "llama_parse-0.4.6.tar.gz", hash = "sha256:9e6a6f80da1185d8b23a96ff3141a154a833003f8ea9c546601c68b2bbe424e6"},
+    {file = "llama_parse-0.4.9-py3-none-any.whl", hash = "sha256:71974a57a73d642608cc406942bee4e7fc1a713fa410f51df67da509479ba544"},
+    {file = "llama_parse-0.4.9.tar.gz", hash = "sha256:657f8fa5f7d399f14c0454fc05cae6034da0373f191df6cfca17a1b4a704ef87"},
 ]
 
 [package.dependencies]
@@ -2567,6 +2583,24 @@ files = [
 
 [package.dependencies]
 lxml = "*"
+
+[[package]]
+name = "markdown"
+version = "3.6"
+description = "Python implementation of John Gruber's Markdown."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "Markdown-3.6-py3-none-any.whl", hash = "sha256:48f276f4d8cfb8ce6527c8f79e2ee29708508bf4d40aa410fbc3b4ee832c850f"},
+    {file = "Markdown-3.6.tar.gz", hash = "sha256:ed4f41f6daecbeeb96e576ce414c41d2d876daa9a16cb35fa8ed8c2ddfad0224"},
+]
+
+[package.dependencies]
+importlib-metadata = {version = ">=4.4", markers = "python_version < \"3.10\""}
+
+[package.extras]
+docs = ["mdx-gh-links (>=0.2)", "mkdocs (>=1.5)", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-nature (>=0.6)", "mkdocs-section-index", "mkdocstrings[python]"]
+testing = ["coverage", "pyyaml"]
 
 [[package]]
 name = "markdown-it-py"
@@ -3092,13 +3126,13 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.35.13"
+version = "1.36.1"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.7.1"
 files = [
-    {file = "openai-1.35.13-py3-none-any.whl", hash = "sha256:36ec3e93e0d1f243f69be85c89b9221a471c3e450dfd9df16c9829e3cdf63e60"},
-    {file = "openai-1.35.13.tar.gz", hash = "sha256:c684f3945608baf7d2dcc0ef3ee6f3e27e4c66f21076df0b47be45d57e6ae6e4"},
+    {file = "openai-1.36.1-py3-none-any.whl", hash = "sha256:d399b9d476dbbc167aceaac6bc6ed0b2e2bb6c9e189c7f7047f822743ae62e64"},
+    {file = "openai-1.36.1.tar.gz", hash = "sha256:41be9e0302e95dba8a9374b885c5cb1cec2202816a70b98736fee25a2cadd1f2"},
 ]
 
 [package.dependencies]
@@ -3792,13 +3826,13 @@ testutils = ["gitpython (>3)"]
 
 [[package]]
 name = "pypdf"
-version = "4.2.0"
+version = "4.3.0"
 description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "pypdf-4.2.0-py3-none-any.whl", hash = "sha256:dc035581664e0ad717e3492acebc1a5fc23dba759e788e3d4a9fc9b1a32e72c1"},
-    {file = "pypdf-4.2.0.tar.gz", hash = "sha256:fe63f3f7d1dcda1c9374421a94c1bba6c6f8c4a62173a59b64ffd52058f846b1"},
+    {file = "pypdf-4.3.0-py3-none-any.whl", hash = "sha256:eeea4d019b57c099d02a0e1692eaaab23341ae3f255c1dafa3c8566b4636496d"},
+    {file = "pypdf-4.3.0.tar.gz", hash = "sha256:0d7a4c67fd03782f5a09d3f48c11c7a31e0bb9af78861a25229bb49259ed0504"},
 ]
 
 [package.dependencies]
@@ -3813,13 +3847,13 @@ image = ["Pillow (>=8.0.0)"]
 
 [[package]]
 name = "pytest"
-version = "8.2.2"
+version = "8.3.1"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pytest-8.2.2-py3-none-any.whl", hash = "sha256:c434598117762e2bd304e526244f67bf66bbd7b5d6cf22138be51ff661980343"},
-    {file = "pytest-8.2.2.tar.gz", hash = "sha256:de4bb8104e201939ccdc688b27a89a7be2079b22e2bd2b07f806b6ba71117977"},
+    {file = "pytest-8.3.1-py3-none-any.whl", hash = "sha256:e9600ccf4f563976e2c99fa02c7624ab938296551f280835ee6516df8bc4ae8c"},
+    {file = "pytest-8.3.1.tar.gz", hash = "sha256:7e8e5c5abd6e93cb1cc151f23e57adc31fcf8cfd2a3ff2da63e23f732de35db6"},
 ]
 
 [package.dependencies]
@@ -3827,7 +3861,7 @@ colorama = {version = "*", markers = "sys_platform == \"win32\""}
 exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
 iniconfig = "*"
 packaging = "*"
-pluggy = ">=1.5,<2.0"
+pluggy = ">=1.5,<2"
 tomli = {version = ">=1", markers = "python_version < \"3.11\""}
 
 [package.extras]
@@ -3835,13 +3869,13 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.23.7"
+version = "0.23.8"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pytest_asyncio-0.23.7-py3-none-any.whl", hash = "sha256:009b48127fbe44518a547bddd25611551b0e43ccdbf1e67d12479f569832c20b"},
-    {file = "pytest_asyncio-0.23.7.tar.gz", hash = "sha256:5f5c72948f4c49e7db4f29f2521d4031f1c27f86e57b046126654083d4770268"},
+    {file = "pytest_asyncio-0.23.8-py3-none-any.whl", hash = "sha256:50265d892689a5faefb84df80819d1ecef566eb3549cf915dfb33569359d1ce2"},
+    {file = "pytest_asyncio-0.23.8.tar.gz", hash = "sha256:759b10b33a6dc61cce40a8bd5205e302978bbbcc00e279a8b61d9a6a3c82e4d3"},
 ]
 
 [package.dependencies]
@@ -4536,18 +4570,19 @@ win32 = ["pywin32"]
 
 [[package]]
 name = "setuptools"
-version = "70.3.0"
+version = "71.0.4"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "setuptools-70.3.0-py3-none-any.whl", hash = "sha256:fe384da74336c398e0d956d1cae0669bc02eed936cdb1d49b57de1990dc11ffc"},
-    {file = "setuptools-70.3.0.tar.gz", hash = "sha256:f171bab1dfbc86b132997f26a119f6056a57950d058587841a0082e8830f9dc5"},
+    {file = "setuptools-71.0.4-py3-none-any.whl", hash = "sha256:ed2feca703be3bdbd94e6bb17365d91c6935c6b2a8d0bb09b66a2c435ba0b1a5"},
+    {file = "setuptools-71.0.4.tar.gz", hash = "sha256:48297e5d393a62b7cb2a10b8f76c63a73af933bd809c9e0d0d6352a1a0135dd8"},
 ]
 
 [package.extras]
+core = ["importlib-metadata (>=6)", "importlib-resources (>=5.10.2)", "jaraco.text (>=3.7)", "more-itertools (>=8.8)", "ordered-set (>=3.1.1)", "packaging (>=24)", "platformdirs (>=2.6.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
 doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
-test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "importlib-metadata", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "jaraco.test", "mypy (==1.10.0)", "packaging (>=23.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-home (>=0.5)", "pytest-mypy", "pytest-perf", "pytest-ruff (>=0.3.2)", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
+test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "importlib-metadata", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "jaraco.test", "mypy (==1.10.0)", "packaging (>=23.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-home (>=0.5)", "pytest-mypy", "pytest-perf", "pytest-ruff (<0.4)", "pytest-ruff (>=0.2.1)", "pytest-ruff (>=0.3.2)", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
 
 [[package]]
 name = "six"
@@ -5164,6 +5199,7 @@ emoji = "*"
 filetype = "*"
 langdetect = "*"
 lxml = "*"
+markdown = {version = "*", optional = true, markers = "extra == \"md\""}
 nltk = "*"
 numpy = "*"
 python-iso639 = "*"
@@ -5570,4 +5606,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "f1669e0b09c1db27f552b4984bdd52ab911aa7b709152c344b1869d294e54329"
+content-hash = "a5e1ee95001c9e6c151abfff03d76fe7e038a5ef9677267f8c22abcb65564051"

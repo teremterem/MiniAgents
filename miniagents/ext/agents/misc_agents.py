@@ -76,10 +76,11 @@ async def console_output_agent(
 
     async for msg_promise in ctx.message_promises:
         if mention_aliases:
-            try:
-                agent_alias = msg_promise.preliminary_metadata.agent_alias
-            except AttributeError:
-                agent_alias = getattr(msg_promise.preliminary_metadata, "role", default_role)
+            agent_alias = (
+                getattr(msg_promise.preliminary_metadata, "agent_alias", None)
+                or getattr(msg_promise.preliminary_metadata, "role", None)
+                or default_role
+            )
 
             print(f"\033[{assistant_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
 

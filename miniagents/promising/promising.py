@@ -55,7 +55,7 @@ class PromisingContext:
         log_level_for_errors: int = logging.ERROR,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
     ) -> None:
-        self.parent = self._current.get()
+        self.parent_ctx = self._current.get()
 
         self.on_promise_resolved_handlers: list[PromiseResolvedEventHandler] = (
             [on_promise_resolved] if callable(on_promise_resolved) else [*on_promise_resolved]
@@ -242,7 +242,7 @@ class Promise(Generic[T]):
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
                 promising_context.start_asap(handler(self, self._result))
-            promising_context = promising_context.parent
+            promising_context = promising_context.parent_ctx
 
 
 class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):

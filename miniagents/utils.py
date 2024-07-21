@@ -73,8 +73,7 @@ def join_messages(
     before it is resolved.
     :param message_class: A class of the resulting message. If None, the default Message class will be used.
     """
-    from miniagents.messages import Message, MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD
-    from miniagents.miniagents import MessageSequence
+    from miniagents.messages import Message, MessageSequence, MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD
 
     if message_class is None:
         message_class = Message

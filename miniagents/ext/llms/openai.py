@@ -64,6 +64,7 @@ class OpenAIAgent(LLMAgent):
     @field_validator("n")
     @classmethod
     def _validate_n(cls, n: int) -> int:
+        # TODO Oleksandr: stop complaining about n, support batch mode instead
         if n != 1:
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
         return n
