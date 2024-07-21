@@ -32,7 +32,7 @@ async def ingest_repo() -> None:
         storage_context=storage_context,
         use_async=True,
     )
-    storage_context.persist(persist_dir=TRANSIENT / "repo_files_llama_index")
+    storage_context.persist(persist_dir=TRANSIENT / "llama_index_naive")
 
     # print the number of newlines in each file in the MiniAgents repository,
     # sort the entries by the number of newlines in descending order
