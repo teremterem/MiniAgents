@@ -44,8 +44,8 @@ pytest-asyncio = "*"
 pytest-cov = "*"
 python-dotenv = "*"
 trafilatura = "*"
-trio= "*"
-unstructured = "*"
+trio = "*"
+unstructured = {version = "*", extras = ["md"]}
 
 [build-system]
 requires = ["poetry-core"]
