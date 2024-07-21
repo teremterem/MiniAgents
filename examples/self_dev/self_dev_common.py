@@ -4,11 +4,8 @@ This module contains common `self_def` code.
 
 from pathlib import Path
 
-import nest_asyncio
 from dotenv import load_dotenv
 from llama_index.core import Settings
-from llama_index.core import VectorStoreIndex, StorageContext
-from llama_index.readers.file import UnstructuredReader
 
 from miniagents import Message, cached_privately, MiniAgents
 from miniagents.ext import markdown_llm_logger_agent
@@ -46,6 +43,7 @@ TRANSIENT = MINIAGENTS_ROOT / "transient"
 
 mini_agents = MiniAgents(llm_logger_agent=markdown_llm_logger_agent.fork(log_folder=str(LLM_LOGS)))
 
+# for those miniagents that use llama-index under the hood
 Settings.chunk_size = 512
 Settings.chunk_overlap = 64
 Settings.llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
@@ -136,39 +134,3 @@ def relative_posix_path(file: Path) -> str:
     Get the path of a file as a POSIX path relative to the MiniAgents repository root.
     """
     return file.relative_to(MINIAGENTS_ROOT).as_posix()
-
-
-async def ingest_repo() -> None:
-    """
-    Ingest the MiniAgents repository into the Llama Index.
-    """
-    full_repo = FullRepoMessage()
-
-    loader = UnstructuredReader()
-    all_docs = []
-    for file_msg in full_repo.repo_files:
-        file_docs = loader.load_data(file=Path(file_msg.file_posix_path), split_documents=False)
-        for d in file_docs:
-            d.metadata = {"file": file_msg.file_posix_path}
-        all_docs.extend(file_docs)
-        print(f"{file_msg.file_posix_path} - {len(file_docs)} docs")
-
-    storage_context = StorageContext.from_defaults()
-    VectorStoreIndex.from_documents(
-        all_docs,
-        storage_context=storage_context,
-        use_async=True,
-    )
-    storage_context.persist(persist_dir=TRANSIENT / "repo_files_llama_index")
-
-    # Print the number of newlines in each file in the MiniAgents repository, sort the entries by the number of
-    # newlines in descending order.
-    print()
-    for f in sorted(full_repo.repo_files, reverse=True, key=lambda f_: f_.num_of_newlines):
-        print(f.num_of_newlines, "-", f.file_posix_path)
-    print()
-
-
-if __name__ == "__main__":
-    nest_asyncio.apply()  # VectorStoreIndex.from_documents() uses asyncio internally
-    mini_agents.run(ingest_repo())
