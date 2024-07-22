@@ -5,12 +5,10 @@ This module contains common `self_def` code.
 from pathlib import Path
 
 from dotenv import load_dotenv
-from llama_index.core import Settings
 
 from miniagents import Message, cached_privately, MiniAgents
 from miniagents.ext import markdown_llm_logger_agent
-from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentLLM, LlamaIndexMiniAgentEmbedding
-from miniagents.ext.llms import AnthropicAgent, OpenAIAgent, openai_embedding_agent
+from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 from miniagents.utils import ModelSingleton
 
 load_dotenv()
@@ -48,14 +46,6 @@ LLM_LOGS = MINIAGENTS_ROOT / "llm_logs"
 TRANSIENT = MINIAGENTS_ROOT / "transient"
 
 mini_agents = MiniAgents(llm_logger_agent=markdown_llm_logger_agent.fork(log_folder=str(LLM_LOGS)))
-
-# for those miniagents that use llama-index under the hood
-Settings.chunk_size = 512
-Settings.chunk_overlap = 64
-Settings.llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
-Settings.embed_model = LlamaIndexMiniAgentEmbedding(
-    underlying_miniagent=openai_embedding_agent.fork(model="text-embedding-3-large")  # "text-embedding-3-small"
-)
 
 
 class RepoFileMessage(Message):

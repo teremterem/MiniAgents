@@ -8,8 +8,7 @@ from functools import cache
 
 import nest_asyncio
 from dotenv import load_dotenv
-from llama_index.core import VectorStoreIndex
-from llama_index.core import load_index_from_storage, StorageContext
+from llama_index.core import Settings, VectorStoreIndex, load_index_from_storage, StorageContext
 from llama_index.core.agent import ReActAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.chat_engine.types import AgentChatResponse
@@ -20,12 +19,19 @@ from llama_index.readers.file import FlatReader
 
 from examples.self_dev.self_dev_common import FullRepoMessage, MINIAGENTS_ROOT, TRANSIENT, mini_agents
 from miniagents import InteractionContext, MiniAgent, miniagent
-from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentLLM
-from miniagents.ext.llms import AssistantMessage
+from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentEmbedding, LlamaIndexMiniAgentLLM
+from miniagents.ext.llms import AssistantMessage, OpenAIAgent, openai_embedding_agent
 
 load_dotenv()
 
 LLAMA_INDEX_STORAGE_DIR = TRANSIENT / "llama_index_repo_flat"
+
+Settings.chunk_size = 512
+Settings.chunk_overlap = 64
+Settings.llm = LlamaIndexMiniAgentLLM(underlying_miniagent=OpenAIAgent.fork(model="gpt-4o-2024-05-13"))
+Settings.embed_model = LlamaIndexMiniAgentEmbedding(
+    underlying_miniagent=openai_embedding_agent.fork(model="text-embedding-3-large")  # "text-embedding-3-small"
+)
 
 storage_context = StorageContext.from_defaults(persist_dir=LLAMA_INDEX_STORAGE_DIR)
 
