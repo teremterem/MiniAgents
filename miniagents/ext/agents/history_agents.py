@@ -7,16 +7,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from pprint import pformat
-from typing import Optional, Union, Any
+from typing import Optional
 
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
-from miniagents.messages import Message
+from miniagents.messages import Message, MESSAGE_CONTENT_FIELD
 from miniagents.miniagents import InteractionContext, miniagent
+from miniagents.promising.ext.frozen import Frozen
+
+GLOBAL_MESSAGE_HISTORY: list[Message] = []
 
 
-@miniagent
+@miniagent(mutable_kwargs={"message_list": GLOBAL_MESSAGE_HISTORY})
 async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Message]) -> None:
     """
     An agent that stores incoming messages in the `message_list` and then returns all the messages that this list
@@ -36,7 +39,7 @@ class MarkdownHistoryAgent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     ctx: InteractionContext
-    history_md_file: Union[str, Path] = "CHAT.md"
+    history_md_file: str = "CHAT.md"
     default_role: str = "assistant"
     only_write: bool = False
     append: bool = True
@@ -122,7 +125,7 @@ class MarkdownHistoryAgent(BaseModel):
             last_section.content = self._grab_and_clean_up_lines(md_lines, last_section.content_start_line)
             sections.append(last_section)
 
-        return tuple(Message(role=section.role, model=section.model, text=section.content) for section in sections)
+        return tuple(Message(role=section.role, model=section.model, content=section.content) for section in sections)
 
     @staticmethod
     def _grab_and_clean_up_lines(md_lines: list[str], start_line: int, end_line: Optional[int] = None) -> str:
@@ -162,7 +165,10 @@ class MarkdownHistoryAgent(BaseModel):
 
 @miniagent
 async def markdown_llm_logger_agent(
-    ctx: InteractionContext, log_folder: Union[str, Path] = "llm_logs/", metadata: Optional[dict[str, Any]] = None
+    ctx: InteractionContext,
+    log_folder: str = "llm_logs/",
+    request_metadata: Optional[Frozen] = None,
+    show_response_metadata: bool = True,
 ) -> None:
     """
     TODO Oleksandr: docstring
@@ -170,13 +176,13 @@ async def markdown_llm_logger_agent(
     log_folder = Path(log_folder)
     log_folder.mkdir(parents=True, exist_ok=True)
 
-    if metadata and "model" in metadata:
-        model_suffix = f"__{metadata['model']}"
-    else:
+    try:
+        model_suffix = f"__{request_metadata.model}"
+    except AttributeError:
         model_suffix = ""
 
-    log_file = (
-        log_folder / f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
+    log_file = log_folder / (
+        f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
     )
 
     if log_file.exists():
@@ -184,10 +190,18 @@ async def markdown_llm_logger_agent(
         # range of 0 through 4095 (0 through 0xfff)
         raise FileExistsError(f"Log file already exists: {log_file}")
 
-    if metadata:
-        log_file.write_text(f"```python\n{pformat(metadata)}\n```\n", encoding="utf-8")
-    # TODO Oleksandr: separate prompt messages from the completion message visually ?
-    MarkdownHistoryAgent.kick_off(ctx.message_promises, history_md_file=str(log_file), only_write=True)
+    if request_metadata:
+        log_file.write_text(f"```python\n{pformat(request_metadata.model_dump())}\n```\n", encoding="utf-8")
+
+    await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file), only_write=True)
+
+    messages = await ctx.message_promises
+    if not messages or not show_response_metadata:
+        return
+
+    response_metadata = messages[-1].model_dump(exclude={MESSAGE_CONTENT_FIELD})
+    with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
+        log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(response_metadata)}\n```\n")
 
 
 _md = MarkdownIt()

@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import Field
 
 from miniagents import Message
-from miniagents.ext.llm.llm_common import AssistantMessage, LLMAgent
+from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent
 from miniagents.messages import MessageTokenAppender
 from miniagents.miniagents import miniagent
 
@@ -44,6 +44,7 @@ class AnthropicAgent(LLMAgent):
     An agent that represents Large Language Models by Anthropic. Check out the implementation of the async `__call__`
     method in the base class `LLMAgent` to understand how agents like this one work (the two most important methods
     of all class-based miniagents are `__init__` and `__call__`).
+    TODO Oleksandr: explain parameters
     """
 
     fake_first_user_message: str = "/start"
@@ -82,7 +83,7 @@ class AnthropicAgent(LLMAgent):
                     f"exactly one TextBlock was expected from Anthropic, "
                     f"but {len(anthropic_final_message.content)} were returned instead"
                 )
-            # send the complete message text as a single token
+            # send the complete message content as a single token
             token_appender.append(anthropic_final_message.content[0].text)
 
         token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))

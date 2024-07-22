@@ -48,7 +48,7 @@ from miniagents import miniagent, InteractionContext, MiniAgents
 
 
 @miniagent
-async def my_agent(ctx: InteractionContext):
+async def my_agent(ctx: InteractionContext) -> None:
     async for msg_promise in ctx.message_promises:
         ctx.reply(f"You said: {await msg_promise}")
 
@@ -82,7 +82,7 @@ below. ⚠️
 
 ```python
 from miniagents import MiniAgents
-from miniagents.ext.llm import OpenAIAgent
+from miniagents.ext.llms import OpenAIAgent
 
 # NOTE: "Forking" an agent is a convenient way of creating a new agent instance
 # with the specified configuration. Alternatively, you could pass the `model`
@@ -91,7 +91,7 @@ from miniagents.ext.llm import OpenAIAgent
 gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-2024-05-13")
 
 
-async def main():
+async def main() -> None:
     reply_sequence = gpt_4o_agent.inquire(
         "Hello, how are you?",
         system="You are a helpful assistant.",
@@ -119,7 +119,7 @@ support sending and receiving zero or more messages).
 
 You can read agent responses token-by-token as shown above regardless of whether
 the agent is streaming token by token or returning full messages. The complete
-message text will just be returned as a single "token" in the latter case.
+message content will just be returned as a single "token" in the latter case.
 
 ## 🔄 A dialog loop between a user and an AI assistant
 
@@ -142,11 +142,16 @@ from miniagents.ext import (
     console_user_agent,
     MarkdownHistoryAgent,
 )
-from miniagents.ext.llm import SystemMessage, AnthropicAgent
+from miniagents.ext.llms import SystemMessage, AnthropicAgent
 
 
 async def main() -> None:
-    dialog_loop.fork(
+    dialog_loop.kick_off(
+        SystemMessage(
+            "Your job is to improve the styling and grammar of the sentences "
+            "that the user throws at you. Leave the sentences unchanged if "
+            "they seem fine."
+        ),
         user_agent=console_user_agent.fork(
             # Write chat history to a markdown file (`CHAT.md` in the current
             # working directory by default, fork `MarkdownHistoryAgent` if
@@ -157,12 +162,6 @@ async def main() -> None:
             model="claude-3-5-sonnet-20240620",
             max_tokens=1000,
         ),
-    ).kick_off(
-        SystemMessage(
-            "Your job is to improve the styling and grammar of the sentences "
-            "that the user throws at you. Leave the sentences unchanged if "
-            "they seem fine."
-        )
     )
 
 
@@ -205,8 +204,7 @@ to implement your own history agent too):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
-from miniagents.ext import agent_loop
-from miniagents.promising.sentinels import AWAIT
+from miniagents.ext import agent_loop, AWAIT
 
 
 @miniagent
@@ -230,7 +228,7 @@ async def assistant_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    agent_loop.fork(agents=[user_agent, AWAIT, assistant_agent]).kick_off()
+    agent_loop.kick_off(agents=[user_agent, AWAIT, assistant_agent])
 
 
 if __name__ == "__main__":
@@ -405,12 +403,12 @@ from miniagents import miniagent, InteractionContext, MiniAgents
 
 
 @miniagent
-async def output_agent(ctx: InteractionContext):
+async def output_agent(ctx: InteractionContext) -> None:
     async for msg_promise in ctx.message_promises:
         ctx.reply(f"Echo: {await msg_promise}")
 
 
-async def main():
+async def main() -> None:
     agent_call = output_agent.initiate_inquiry()
     agent_call.send_message("Hello")
     agent_call.send_message("World")
@@ -467,11 +465,11 @@ about it.
 ### 💬 Existing `Message` models
 
 ```python
-from miniagents.ext.llm import UserMessage, SystemMessage, AssistantMessage
+from miniagents.ext.llms import UserMessage, SystemMessage, AssistantMessage
 
-user_message = UserMessage(text="Hello!")
-system_message = SystemMessage(text="System message")
-assistant_message = AssistantMessage(text="Assistant message")
+user_message = UserMessage("Hello!")
+system_message = SystemMessage("System message")
+assistant_message = AssistantMessage("Assistant message")
 ```
 
 The difference between these message types is in the default values of
@@ -493,8 +491,8 @@ class CustomMessage(Message):
     custom_field: str
 
 
-message = CustomMessage(text="Hello", custom_field="Custom Value")
-print(message.text)  # Output: Hello
+message = CustomMessage("Hello", custom_field="Custom Value")
+print(message.content)  # Output: Hello
 print(message.custom_field)  # Output: Custom Value
 ```
 
@@ -553,10 +551,12 @@ mini_agents = MiniAgents()
 @mini_agents.on_persist_message
 async def persist_message(_, message: Message) -> None:
     print(f"Persisting message with hash key: {message.hash_key}")
-    # Here you could implement logic to save the message to a database, for example
+    # Here you could save the message to a database or log it to a file
 ```
 
 ## 📂 Modules
+
+**TODO** the structure of this section is outdated - update it
 
 Here's an overview of the module structure and hierarchy in the MiniAgents
 framework:
@@ -597,8 +597,8 @@ Here are some of the core concepts in the MiniAgents framework:
   behavior. Created using the `@miniagent` decorator.
 - **InteractionContext**: Passed to each agent function, provides access to
   incoming messages and allows sending replies.
-- **Message**: Represents a message exchanged between agents. Can contain text,
-  metadata, and nested messages. Immutable once created.
+- **Message**: Represents a message exchanged between agents. Can contain
+  content, metadata, and nested messages. Immutable once created.
 - **MessagePromise**: A promise of a message that can be streamed token by
   token.
 - **MessageSequencePromise**: A promise of a sequence of message promises.

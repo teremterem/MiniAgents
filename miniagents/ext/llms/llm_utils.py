@@ -7,9 +7,10 @@ from typing import Any, Optional, Union
 
 from pydantic import ConfigDict, Field, BaseModel
 
-from miniagents.ext.history_agents import markdown_llm_logger_agent
+from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
 from miniagents.messages import Message, MessageTokenAppender, MessagePromise
 from miniagents.miniagents import InteractionContext, MiniAgents, MiniAgent
+from miniagents.promising.ext.frozen import Frozen
 
 
 class LLMMessage(Message):
@@ -55,6 +56,8 @@ class PromptLogMessage(LLMMessage):
 class LLMAgent(ABC, BaseModel):
     """
     A base class for agents that represents various Large Language Models.
+    TODO Oleksandr: support OpenAI-style function calls
+    TODO Oleksandr: explain parameters
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
@@ -63,7 +66,7 @@ class LLMAgent(ABC, BaseModel):
     model: str
     stream: bool = Field(default_factory=lambda: MiniAgents.get_current().stream_llm_tokens_by_default)
     system: Optional[str] = None
-    response_metadata: Optional[dict[str, Any]] = None
+    response_metadata: Optional[Frozen] = None
     response_message_class: type[Message] = AssistantMessage
     llm_logger_agent: Union[MiniAgent, bool] = Field(default_factory=lambda: MiniAgents.get_current().llm_logger_agent)
 
@@ -85,26 +88,20 @@ class LLMAgent(ABC, BaseModel):
                         self._prompt_messages_to_log(message_dicts),
                         response_promise,
                     ],
-                    metadata=self._metadata_to_log(),
+                    request_metadata=self._request_metadata_to_log(),
                 )
 
             # here is where the actual request to the LLM is made
             await self._produce_tokens(message_dicts, token_appender)
 
     @staticmethod
-    def _prompt_messages_to_log(message_dicts: list[dict[str, Any]]) -> list[PromptLogMessage]:
+    def _prompt_messages_to_log(message_dicts: list[dict[str, Any]]) -> tuple[PromptLogMessage, ...]:
         """
         TODO Oleksandr: docstring
         """
-        return [
-            PromptLogMessage(
-                text=message_dict.get("content"),
-                **{key: value for key, value in message_dict.items() if key != "content"},
-            )
-            for message_dict in message_dicts
-        ]
+        return tuple(PromptLogMessage(**message_dict) for message_dict in message_dicts)
 
-    def _metadata_to_log(self) -> dict[str, Any]:
+    def _request_metadata_to_log(self) -> dict[str, Any]:
         """
         TODO Oleksandr: docstring
         """
@@ -112,7 +109,7 @@ class LLMAgent(ABC, BaseModel):
             "agent_alias": self.ctx.this_agent.alias,
             "model": self.model,
             "stream": self.stream,
-            # "system": self.system,  # this field usually automatically becomes part of the prompt messages
+            # "system": self.system,  # this field usually becomes part of the prompt messages automatically
             **self.__pydantic_extra__,
         }
 
@@ -138,7 +135,7 @@ class LLMAgent(ABC, BaseModel):
             # preliminary metadata:
             model=self.model,
             agent_alias=self.ctx.this_agent.alias,
-            **(self.response_metadata or {}),
+            **dict(self.response_metadata or Frozen()),
         )
         self.ctx.reply(response_promise)
         # we already know that there will be no more response messages, so we close the response sequence

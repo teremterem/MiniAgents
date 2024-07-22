@@ -13,16 +13,16 @@ from miniagents import Message, MiniAgents, MiniAgent
 load_dotenv()
 
 # pylint: disable=wrong-import-position
-from miniagents.ext.llm import AnthropicAgent, OpenAIAgent
+from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
 
 def _check_openai_response(message: Message) -> None:
-    assert message.text.strip() == "I AM ONLINE"
+    assert message.content.strip() == "I AM ONLINE"
     assert message.choices[0].finish_reason == "stop"
 
 
 def _check_anthropic_response(message: Message) -> None:
-    assert message.text.strip() == "I AM ONLINE"
+    assert message.content.strip() == "I AM ONLINE"
     assert message.stop_reason == "end_turn"
 
 
@@ -47,7 +47,7 @@ async def test_llm(
     """
     async with MiniAgents(start_everything_asap_by_default=start_asap):
         reply_sequence = llm_agent.inquire(
-            Message(text="ANSWER:", role="assistant"),
+            Message(content="ANSWER:", role="assistant"),
             system=(
                 "This is a test to verify that you are online. Your response will be validated using a strict "
                 "program that does not tolerate any deviations from the expected output at all. Please respond "

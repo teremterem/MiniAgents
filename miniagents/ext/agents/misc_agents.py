@@ -13,7 +13,7 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
-from miniagents.ext.llm.llm_common import UserMessage
+from miniagents.ext.llms.llm_utils import UserMessage
 from miniagents.miniagents import miniagent, InteractionContext
 
 
@@ -76,10 +76,11 @@ async def console_output_agent(
 
     async for msg_promise in ctx.message_promises:
         if mention_aliases:
-            try:
-                agent_alias = msg_promise.preliminary_metadata.agent_alias
-            except AttributeError:
-                agent_alias = getattr(msg_promise.preliminary_metadata, "role", default_role)
+            agent_alias = (
+                getattr(msg_promise.preliminary_metadata, "agent_alias", None)
+                or getattr(msg_promise.preliminary_metadata, "role", None)
+                or default_role
+            )
 
             print(f"\033[{assistant_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
 
@@ -89,7 +90,7 @@ async def console_output_agent(
 
 
 @miniagent
-async def file_output_agent(ctx: InteractionContext, file: Union[str, Path], **kwargs) -> None:
+async def file_output_agent(ctx: InteractionContext, file: str, **kwargs) -> None:
     """
     MiniAgent that writes the content of `messages` to a file.
     """

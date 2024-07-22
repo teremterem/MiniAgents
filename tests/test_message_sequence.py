@@ -4,8 +4,7 @@ Tests for the `MessageSequence` class.
 
 import pytest
 
-from miniagents import Message
-from miniagents.miniagents import MessageSequence
+from miniagents.messages import Message, MessageSequence
 from miniagents.promising.promising import PromisingContext
 
 
@@ -22,8 +21,8 @@ async def test_message_sequence(start_asap: bool) -> None:
         )
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
-            msg_seq1.message_appender.append({"text": "msg2", "some_attr": 2})
-            msg_seq1.message_appender.append(Message(text="msg3", another_attr=3))
+            msg_seq1.message_appender.append({"content": "msg2", "some_attr": 2})
+            msg_seq1.message_appender.append(Message(content="msg3", another_attr=3))
 
             msg_seq2 = MessageSequence(
                 appender_capture_errors=True,
@@ -39,27 +38,27 @@ async def test_message_sequence(start_asap: bool) -> None:
                 with msg_seq3.message_appender:
                     msg_seq3.message_appender.append("msg5")
                     msg_seq3.message_appender.append(["msg6", "msg7"])
-                    msg_seq3.message_appender.append([[Message(text="msg8", another_attr=8)]])
+                    msg_seq3.message_appender.append([[Message(content="msg8", another_attr=8)]])
 
                 msg_seq2.message_appender.append(msg_seq3.sequence_promise)
                 msg_seq2.message_appender.append("msg9")
 
             msg_seq1.message_appender.append(msg_seq2.sequence_promise)
-            msg_seq1.message_appender.append(Message.promise(text="msg10", yet_another_attr=10))
+            msg_seq1.message_appender.append(Message.promise(content="msg10", yet_another_attr=10))
             # msg_seq1.message_appender.append(ValueError("msg11"))
 
         message_result = [await msg_promise async for msg_promise in msg_seq1.sequence_promise]
         assert message_result == [
-            Message(text="msg1"),
-            Message(text="msg2", some_attr=2),
-            Message(text="msg3", another_attr=3),
-            Message(text="msg4"),
-            Message(text="msg5"),
-            Message(text="msg6"),
-            Message(text="msg7"),
-            Message(text="msg8", another_attr=8),
-            Message(text="msg9"),
-            Message(text="msg10", yet_another_attr=10),
+            Message(content="msg1"),
+            Message(content="msg2", some_attr=2),
+            Message(content="msg3", another_attr=3),
+            Message(content="msg4"),
+            Message(content="msg5"),
+            Message(content="msg6"),
+            Message(content="msg7"),
+            Message(content="msg8", another_attr=8),
+            Message(content="msg9"),
+            Message(content="msg10", yet_another_attr=10),
             # ValueError("msg11"),
         ]
 
@@ -113,8 +112,8 @@ async def test_message_sequence_error(start_asap: bool) -> None:
                 message_result.append(await msg_promise)
 
     assert message_result == [
-        Message(text="msg1"),
-        Message(text="msg2"),
-        Message(text="msg3"),
+        Message(content="msg1"),
+        Message(content="msg2"),
+        Message(content="msg3"),
         # ValueError("msg4"),
     ]
