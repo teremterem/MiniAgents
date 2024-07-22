@@ -169,8 +169,7 @@ if __name__ == "__main__":
     MiniAgents(
         # Log LLM prompts and responses to `llm_logs/` folder in the current
         # working directory. These logs will have a form of time-stamped
-        # markdown files in the aforementioned folder with, one file per one
-        # prompt-response pair.
+        # markdown files - single file per single prompt-response pair.
         llm_logger_agent=True
     ).run(main())
 ```
