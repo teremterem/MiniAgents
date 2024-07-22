@@ -43,6 +43,7 @@ class MarkdownHistoryAgent(BaseModel):
     default_role: str = "assistant"
     only_write: bool = False
     append: bool = True
+    skip_empty: bool = True
 
     async def __call__(self) -> None:
         history_md_file = Path(self.history_md_file)
@@ -79,7 +80,10 @@ class MarkdownHistoryAgent(BaseModel):
 
         if not self.only_write:
             # return the full chat history (including the messages that were already in the file before) as a reply
-            self.ctx.reply(self._load_chat_history_md())
+            chat_history = self._load_chat_history_md()
+            if self.skip_empty:
+                chat_history = tuple(msg for msg in chat_history if msg.content and msg.content.strip())
+            self.ctx.reply(chat_history)
 
     def _load_chat_history_md(self) -> tuple[Message, ...]:
         """
