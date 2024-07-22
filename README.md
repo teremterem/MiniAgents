@@ -166,7 +166,13 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    MiniAgents().run(main())
+    MiniAgents(
+        # Log LLM prompts and responses to `llm_logs/` folder in the current
+        # working directory. These logs will have a form of time-stamped
+        # markdown files in the aforementioned folder with, one file per one
+        # prompt-response pair.
+        llm_logger_agent=True
+    ).run(main())
 ```
 
 Here is what the interaction might look like if you run this script:
