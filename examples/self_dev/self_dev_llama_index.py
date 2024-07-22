@@ -33,11 +33,10 @@ Settings.embed_model = LlamaIndexMiniAgentEmbedding(
     underlying_miniagent=openai_embedding_agent.fork(model="text-embedding-3-large")  # "text-embedding-3-small"
 )
 
-storage_context = StorageContext.from_defaults(persist_dir=LLAMA_INDEX_STORAGE_DIR)
-
 
 @cache
 def _load_doc_index() -> BaseIndex:
+    storage_context = StorageContext.from_defaults(persist_dir=LLAMA_INDEX_STORAGE_DIR)
     return load_index_from_storage(storage_context)
 
 
@@ -109,6 +108,7 @@ async def ingest_repo() -> None:
         all_docs.extend(file_docs)
         print(f"{file_msg.file_posix_path} - {len(file_docs)} docs")
 
+    storage_context = StorageContext.from_defaults()
     VectorStoreIndex.from_documents(
         all_docs,
         storage_context=storage_context,
