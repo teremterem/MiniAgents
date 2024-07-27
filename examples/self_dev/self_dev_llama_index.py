@@ -54,7 +54,7 @@ async def llama_index_rag_agent(ctx: InteractionContext, llm_agent: MiniAgent) -
         QueryEngineTool(
             query_engine=_load_doc_idx(LLAMA_INDEX_SOURCE_IDX).as_query_engine(llm=llm),
             metadata=ToolMetadata(
-                name="repo_source_vector_index",
+                name="repo_src_vector_index",
                 description=(
                     "useful for when you want to answer queries about the MiniAgents repository by looking "
                     "at the source code"
@@ -64,7 +64,7 @@ async def llama_index_rag_agent(ctx: InteractionContext, llm_agent: MiniAgent) -
         QueryEngineTool(
             query_engine=_load_doc_idx(LLAMA_INDEX_DOCS_IDX).as_query_engine(llm=llm),
             metadata=ToolMetadata(
-                name="repo_source_vector_index",
+                name="repo_doc_vector_index",
                 description=(
                     "useful for when you want to answer queries about the MiniAgents repository by looking "
                     "at the documentation"
