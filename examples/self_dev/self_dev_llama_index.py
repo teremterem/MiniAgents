@@ -38,8 +38,8 @@ Settings.embed_model = LlamaIndexMiniAgentEmbedding(
 
 
 @cache
-def _load_doc_index() -> BaseIndex:
-    storage_context = StorageContext.from_defaults(persist_dir=LLAMA_INDEX_STORAGE_DIR)
+def _load_doc_idx(path: Union[str, Path]) -> BaseIndex:
+    storage_context = StorageContext.from_defaults(persist_dir=path)
     return load_index_from_storage(storage_context)
 
 
@@ -52,12 +52,25 @@ async def llama_index_rag_agent(ctx: InteractionContext, llm_agent: MiniAgent) -
 
     individual_query_engine_tools = [
         QueryEngineTool(
-            query_engine=_load_doc_index().as_query_engine(llm=llm),
+            query_engine=_load_doc_idx(LLAMA_INDEX_SOURCE_IDX).as_query_engine(llm=llm),
             metadata=ToolMetadata(
-                name="repo_vector_index",
-                description="useful for when you want to answer queries about the MiniAgents repository",
+                name="repo_source_vector_index",
+                description=(
+                    "useful for when you want to answer queries about the MiniAgents repository by looking "
+                    "at the source code"
+                ),
             ),
-        )
+        ),
+        QueryEngineTool(
+            query_engine=_load_doc_idx(LLAMA_INDEX_DOCS_IDX).as_query_engine(llm=llm),
+            metadata=ToolMetadata(
+                name="repo_source_vector_index",
+                description=(
+                    "useful for when you want to answer queries about the MiniAgents repository by looking "
+                    "at the documentation"
+                ),
+            ),
+        ),
     ]
     query_engine = SubQuestionQueryEngine.from_defaults(
         query_engine_tools=individual_query_engine_tools,
