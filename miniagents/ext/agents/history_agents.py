@@ -19,7 +19,7 @@ from miniagents.promising.ext.frozen import Frozen
 GLOBAL_MESSAGE_HISTORY: list[Message] = []
 
 
-@miniagent(mutable_kwargs={"message_list": GLOBAL_MESSAGE_HISTORY})
+@miniagent(mutable_state={"message_list": GLOBAL_MESSAGE_HISTORY})
 async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Message]) -> None:
     """
     An agent that stores incoming messages in the `message_list` and then returns all the messages that this list
