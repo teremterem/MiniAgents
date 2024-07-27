@@ -5,6 +5,8 @@ from the local file system using FlatReader.
 """
 
 from functools import cache
+from pathlib import Path
+from typing import Union, Callable
 
 import nest_asyncio
 from dotenv import load_dotenv
@@ -17,14 +19,15 @@ from llama_index.core.query_engine import SubQuestionQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.readers.file import FlatReader
 
-from examples.self_dev.self_dev_common import FullRepoMessage, MINIAGENTS_ROOT, TRANSIENT, mini_agents
+from examples.self_dev.self_dev_common import FullRepoMessage, MINIAGENTS_ROOT, TRANSIENT, mini_agents, RepoFileMessage
 from miniagents import InteractionContext, MiniAgent, miniagent
 from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentEmbedding, LlamaIndexMiniAgentLLM
 from miniagents.ext.llms import AssistantMessage, OpenAIAgent, openai_embedding_agent
 
 load_dotenv()
 
-LLAMA_INDEX_STORAGE_DIR = TRANSIENT / "llama_index_repo_flat"
+LLAMA_INDEX_SOURCE_IDX = TRANSIENT / "llama_index_source_idx"
+LLAMA_INDEX_DOCS_IDX = TRANSIENT / "llama_index_docs_idx"
 
 Settings.chunk_size = 512
 Settings.chunk_overlap = 64
@@ -93,15 +96,20 @@ async def llama_index_rag_agent(ctx: InteractionContext, llm_agent: MiniAgent) -
     ctx.reply(AssistantMessage(response.response))
 
 
-async def ingest_repo() -> None:
+async def ingest_repo(
+    storage_dir: Union[str, Path] = LLAMA_INDEX_SOURCE_IDX,
+    file_filter: Callable[[RepoFileMessage], bool] = lambda _: True,
+) -> None:
     """
     Ingest the MiniAgents repository into the Llama Index from the local file system using FlatReader.
     """
-    full_repo = FullRepoMessage()
-
+    print()
     loader = FlatReader()
     all_docs = []
-    for file_msg in full_repo.repo_files:
+    for file_msg in FullRepoMessage().repo_files:
+        if not file_filter(file_msg):
+            continue
+
         file_docs = loader.load_data(file=MINIAGENTS_ROOT / file_msg.file_posix_path)
         for d in file_docs:
             d.metadata = {"file": file_msg.file_posix_path}
@@ -114,16 +122,23 @@ async def ingest_repo() -> None:
         storage_context=storage_context,
         use_async=True,
     )
-    storage_context.persist(persist_dir=LLAMA_INDEX_STORAGE_DIR)
+    storage_context.persist(persist_dir=storage_dir)
 
-    # print the number of newlines in each file in the MiniAgents repository,
-    # sort the entries by the number of newlines in descending order
-    print()
-    for f in sorted(full_repo.repo_files, reverse=True, key=lambda f_: f_.num_of_newlines):
-        print(f.num_of_newlines, "-", f.file_posix_path)
-    print()
+
+def _is_doc(file_msg: RepoFileMessage) -> bool:
+    lower_path = file_msg.file_posix_path.lower()
+    return lower_path.endswith(".md") or lower_path.endswith(".rst") or lower_path.endswith("license")
 
 
 if __name__ == "__main__":
     nest_asyncio.apply()  # VectorStoreIndex.from_documents() starts another event loop internally
-    mini_agents.run(ingest_repo())
+
+    mini_agents.run(ingest_repo(storage_dir=LLAMA_INDEX_SOURCE_IDX, file_filter=lambda f_: not _is_doc(f_)))
+    mini_agents.run(ingest_repo(storage_dir=LLAMA_INDEX_DOCS_IDX, file_filter=_is_doc))
+
+    # print the number of newlines in each file in the MiniAgents repository,
+    # sort the entries by the number of newlines in descending order
+    print()
+    for f in sorted(FullRepoMessage().repo_files, reverse=True, key=lambda f_: f_.num_of_newlines):
+        print(f.num_of_newlines, "-", f.file_posix_path)
+    print()
