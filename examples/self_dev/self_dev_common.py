@@ -23,7 +23,7 @@ MAX_OUTPUT_TOKENS = 4096
 MODEL_AGENT_FACTORIES = {
     GPT_4O: OpenAIAgent.fork(temperature=0),
     "gpt-4-turbo-2024-04-09": OpenAIAgent.fork(temperature=0),
-    "gpt-3.5-turbo-0125": OpenAIAgent.fork(temperature=0),
+    "gpt-4o-mini-2024-07-18": OpenAIAgent.fork(temperature=0),
     CLAUDE_3_5_SONNET: AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-opus-20240229": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-haiku-20240307": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
