@@ -279,6 +279,7 @@ example above
 
 **TODO** also, use this as an opportunity to bring up `mutable_state` dictionary
 that can be passed to either the `@miniagent` decorator or the `fork()` method
+(implement a toy chat history agent to demonstrate that)
 
 ### 📦 Some other pre-packaged agents (`miniagents.ext`)
 
