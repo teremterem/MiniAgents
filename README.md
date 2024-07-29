@@ -21,7 +21,6 @@
         <img alt="Code Style: Black"
             src="https://img.shields.io/badge/code%20style-black-black">
     </a>
-    <!-- TODO: CREATE DISCORD CHAT -->
 </p>
 
 <p align="center">
@@ -32,6 +31,8 @@
 A framework on top of asyncio for building LLM-based multi-agent systems in
 Python, with immutable, Pydantic-based messages and a focus on asynchronous
 token and message streaming between the agents.
+
+**TODO** create a Discord server for the project
 
 ## 💾 Installation
 
