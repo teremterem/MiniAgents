@@ -20,7 +20,7 @@ class AgentFunction(Protocol):
     A protocol for agent functions.
     """
 
-    async def __call__(self, ctx: "InteractionContext", **kwargs) -> None: ...
+    async def __call__(self, ctx: "InteractionContext", *args, **kwargs) -> None: ...
 
 
 class MessageTokenStreamer(Protocol):
