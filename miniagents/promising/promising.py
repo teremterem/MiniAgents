@@ -18,9 +18,9 @@ from miniagents.promising.errors import (
     NoActiveContextError,
 )
 from miniagents.promising.promise_typing import (
-    T,
-    PIECE,
-    WHOLE,
+    T_co,
+    PIECE_co,
+    WHOLE_co,
     PromiseStreamer,
     PromiseResolvedEventHandler,
     PromiseResolver,
@@ -172,7 +172,7 @@ class PromisingContext:
     def __exit__(self, *args, **kwargs) -> None: ...
 
 
-class Promise(Generic[T]):
+class Promise(Generic[T_co]):
     """
     TODO Oleksandr: docstring
     """
@@ -180,8 +180,8 @@ class Promise(Generic[T]):
     def __init__(
         self,
         start_asap: Optional[bool] = None,
-        resolver: Optional[PromiseResolver[T]] = None,
-        prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
+        resolver: Optional[PromiseResolver[T_co]] = None,
+        prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         self._promising_context = PromisingContext.get_current()
@@ -195,7 +195,7 @@ class Promise(Generic[T]):
 
         if prefill_result is NO_VALUE:
             # NO_VALUE is used because `None` is also a legitimate value
-            self._result: Union[T, Sentinel, BaseException] = NO_VALUE
+            self._result: Union[T_co, Sentinel, BaseException] = NO_VALUE
         else:
             self._result = prefill_result
             self._trigger_promise_resolved_event()
@@ -205,13 +205,13 @@ class Promise(Generic[T]):
         if start_asap and prefill_result is NO_VALUE:
             self._promising_context.start_asap(self)
 
-    async def _resolver(self) -> T:  # pylint: disable=method-hidden
+    async def _resolver(self) -> T_co:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
             "The `resolver` function should be provided either via the constructor "
             "or by subclassing the `Promise` class."
         )
 
-    async def aresolve(self) -> T:
+    async def aresolve(self) -> T_co:
         """
         TODO Oleksandr: docstring
         """
@@ -245,7 +245,7 @@ class Promise(Generic[T]):
             promising_context = promising_context.parent_ctx
 
 
-class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
+class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
     """
     A StreamedPromise represents a promise of a whole value that can be streamed piece by piece.
 
@@ -265,10 +265,10 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
 
     def __init__(
         self,
-        streamer: Optional[PromiseStreamer[PIECE]] = None,
-        prefill_pieces: Union[Optional[Iterable[PIECE]], Sentinel] = NO_VALUE,
-        resolver: Optional[PromiseResolver[T]] = None,
-        prefill_result: Union[Optional[T], Sentinel] = NO_VALUE,
+        streamer: Optional[PromiseStreamer[PIECE_co]] = None,
+        prefill_pieces: Union[Optional[Iterable[PIECE_co]], Sentinel] = NO_VALUE,
+        resolver: Optional[PromiseResolver[T_co]] = None,
+        prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
         start_asap: Optional[bool] = None,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
@@ -285,9 +285,9 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
             self._streamer = partial(streamer, self)
 
         if prefill_pieces is NO_VALUE:
-            self._pieces_so_far: list[Union[PIECE, BaseException]] = []
+            self._pieces_so_far: list[Union[PIECE_co, BaseException]] = []
         else:
-            self._pieces_so_far: list[Union[PIECE, BaseException]] = [*prefill_pieces, StopAsyncIteration()]
+            self._pieces_so_far: list[Union[PIECE_co, BaseException]] = [*prefill_pieces, StopAsyncIteration()]
 
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._streamer_lock = asyncio.Lock()
@@ -300,22 +300,22 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
 
-        self._streamer_aiter: Union[Optional[AsyncIterator[PIECE]], Sentinel] = None
+        self._streamer_aiter: Union[Optional[AsyncIterator[PIECE_co]], Sentinel] = None
 
-    def _streamer(self) -> AsyncIterator[PIECE]:  # pylint: disable=method-hidden
+    def _streamer(self) -> AsyncIterator[PIECE_co]:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
             "The `streamer` function should be provided either via the constructor "
             "or by subclassing the `StreamedPromise` class."
         )
 
-    def __aiter__(self) -> AsyncIterator[PIECE]:
+    def __aiter__(self) -> AsyncIterator[PIECE_co]:
         """
         This allows to consume the stream piece by piece. Each new iterator returned by `__aiter__` will replay
         the stream from the beginning.
         """
         return self._StreamReplayIterator(self)
 
-    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE]:
+    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
         """
         This enables the `StreamedPromise` to be used as a piece streamer for another `StreamedPromise`, effectively
         chaining them together.
@@ -329,7 +329,7 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
             if isinstance(piece, StopAsyncIteration):
                 break
 
-    async def _streamer_aiter_anext(self) -> Union[PIECE, BaseException]:
+    async def _streamer_aiter_anext(self) -> Union[PIECE_co, BaseException]:
         # pylint: disable=broad-except
         if self._streamer_aiter is None:
             try:
@@ -364,7 +364,7 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
             # `StopAsyncIteration` at the end.
             return exc
 
-    class _StreamReplayIterator(AsyncIterator[PIECE]):
+    class _StreamReplayIterator(AsyncIterator[PIECE_co]):
         """
         The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
         `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
@@ -376,7 +376,7 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
             self._streamed_promise = streamed_promise
             self._index = 0
 
-        async def __anext__(self) -> PIECE:
+        async def __anext__(self) -> PIECE_co:
             if self._index < len(self._streamed_promise._pieces_so_far):
                 # "replay" a piece that was produced earlier
                 piece = self._streamed_promise._pieces_so_far[self._index]
@@ -396,7 +396,7 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
                 raise piece
             return piece
 
-        async def _real_anext(self) -> Union[PIECE, BaseException]:
+        async def _real_anext(self) -> Union[PIECE_co, BaseException]:
             # pylint: disable=protected-access
             if self._streamed_promise._queue is None:
                 # the stream is being produced on demand, not beforehand (`start_asap` is False)
@@ -413,7 +413,7 @@ class StreamedPromise(Promise[WHOLE], Generic[PIECE, WHOLE]):
             return piece
 
 
-class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
+class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
     """
     This is a special kind of `streamer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
@@ -472,12 +472,12 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
         return error_should_be_squashed
 
-    async def __aenter__(self) -> "StreamAppender[PIECE]":
+    async def __aenter__(self) -> "StreamAppender[PIECE_co]":
         raise RuntimeError(f"Use `with {type(self).__name__}()` instead of `async with {type(self).__name__}()`.")
 
     async def __aexit__(self, *args, **kwargs) -> bool: ...
 
-    def append(self, piece: PIECE) -> "StreamAppender[PIECE]":
+    def append(self, piece: PIECE_co) -> "StreamAppender[PIECE_co]":
         """
         Append a `piece` to the streamer. This method can only be called when the streamer is open for appending (and
         also not closed yet). Consequently, the `piece` is delivered to the `StreamedPromise` that is consuming from
@@ -493,7 +493,7 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         self._queue.put_nowait(piece)
         return self
 
-    def open(self) -> "StreamAppender[PIECE]":
+    def open(self) -> "StreamAppender[PIECE_co]":
         """
         Open the streamer for appending.
 
@@ -523,7 +523,7 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
         self._append_closed = True
         self._queue.put_nowait(END_OF_QUEUE)
 
-    async def __anext__(self) -> PIECE:
+    async def __anext__(self) -> PIECE_co:
         if self._queue is None:
             raise StopAsyncIteration()
 
@@ -534,5 +534,5 @@ class StreamAppender(AsyncIterator[PIECE], Generic[PIECE]):
 
         return piece
 
-    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE]:
+    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
         return self
