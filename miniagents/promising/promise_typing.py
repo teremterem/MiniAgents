@@ -2,7 +2,12 @@
 Types of the Promising part of the library.
 """
 
-from typing import TypeVar, AsyncIterator, Protocol, Union, Any
+import typing
+from typing import Any, AsyncIterator, Protocol, TypeVar, Union
+
+if typing.TYPE_CHECKING:
+    from miniagents.promising.promising import Promise, StreamedPromise
+    from miniagents.promising.sequence import FlatSequence
 
 T = TypeVar("T")
 PIECE = TypeVar("PIECE")
