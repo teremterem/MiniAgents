@@ -5,7 +5,7 @@ The main class in this module is `Frozen`. See its docstring for more informatio
 import hashlib
 import json
 from functools import wraps
-from typing import Any, Optional, Union, Callable
+from typing import Any, Callable, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 

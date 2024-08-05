@@ -3,7 +3,7 @@ Types of the MiniAgents framework.
 """
 
 import typing
-from typing import AsyncIterator, Protocol, Union, Any, Iterable, AsyncIterable
+from typing import Any, AsyncIterable, AsyncIterator, Iterable, Protocol, Union
 
 from pydantic import BaseModel
 

@@ -2,12 +2,12 @@
 This module contains agents that are used to aggregate other agents into chains, loops, dialogs and whatnot.
 """
 
-from typing import Union, Iterable, Optional
+from typing import Iterable, Optional, Union
 
 from miniagents.ext.agents.history_agents import in_memory_history_agent
-from miniagents.ext.agents.misc_agents import console_output_agent, console_input_agent
-from miniagents.messages import MessageSequencePromise, Message
-from miniagents.miniagents import MiniAgent, InteractionContext, miniagent
+from miniagents.ext.agents.misc_agents import console_input_agent, console_output_agent
+from miniagents.messages import Message, MessageSequencePromise
+from miniagents.miniagents import InteractionContext, MiniAgent, miniagent
 
 AWAIT = "AWAIT"
 CLEAR = "CLEAR"

@@ -4,9 +4,9 @@ A conversation example between the user and multiple LLMs using the MiniAgents f
 
 from dotenv import load_dotenv
 
-from examples.self_dev.self_dev_common import MODEL_AGENTS, FAVOURITE_MODEL
-from miniagents import MiniAgents, InteractionContext, miniagent
-from miniagents.ext import dialog_loop, MarkdownHistoryAgent, console_user_agent
+from examples.self_dev.self_dev_common import FAVOURITE_MODEL, MODEL_AGENTS
+from miniagents import InteractionContext, MiniAgents, miniagent
+from miniagents.ext import MarkdownHistoryAgent, console_user_agent, dialog_loop
 
 load_dotenv()
 

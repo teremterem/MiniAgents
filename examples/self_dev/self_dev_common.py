@@ -6,7 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from miniagents import Message, cached_privately, MiniAgents
+from miniagents import Message, MiniAgents, cached_privately
 from miniagents.ext import markdown_llm_logger_agent
 from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 from miniagents.utils import ModelSingleton

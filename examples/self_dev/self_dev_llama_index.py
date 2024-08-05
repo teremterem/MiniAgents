@@ -6,11 +6,11 @@ from the local file system using FlatReader.
 
 from functools import cache
 from pathlib import Path
-from typing import Union, Callable
+from typing import Callable, Union
 
 import nest_asyncio
 from dotenv import load_dotenv
-from llama_index.core import Settings, VectorStoreIndex, load_index_from_storage, StorageContext
+from llama_index.core import Settings, StorageContext, VectorStoreIndex, load_index_from_storage
 from llama_index.core.agent import ReActAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.chat_engine.types import AgentChatResponse
@@ -19,7 +19,7 @@ from llama_index.core.query_engine import SubQuestionQueryEngine
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.readers.file import FlatReader
 
-from examples.self_dev.self_dev_common import FullRepoMessage, MINIAGENTS_ROOT, TRANSIENT, mini_agents, RepoFileMessage
+from examples.self_dev.self_dev_common import MINIAGENTS_ROOT, TRANSIENT, FullRepoMessage, RepoFileMessage, mini_agents
 from miniagents import InteractionContext, MiniAgent, miniagent
 from miniagents.ext.integrations.llama_index import LlamaIndexMiniAgentEmbedding, LlamaIndexMiniAgentLLM
 from miniagents.ext.llms import AssistantMessage, OpenAIAgent, openai_embedding_agent

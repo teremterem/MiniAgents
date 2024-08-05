@@ -7,18 +7,18 @@ import contextvars
 import logging
 import re
 from contextvars import ContextVar
-from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
+from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Union
 
 from pydantic import Field
 
 from miniagents.messages import (
     Message,
-    MessageSequence,
     MessagePromise,
-    MessageSequencePromise,
+    MessageSequence,
     MessageSequenceAppender,
+    MessageSequencePromise,
 )
-from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessageEventHandler
+from miniagents.miniagent_typing import AgentFunction, MessageType, PersistMessageEventHandler
 from miniagents.promising.errors import NoActiveContextError, WrongActiveContextError
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseResolvedEventHandler

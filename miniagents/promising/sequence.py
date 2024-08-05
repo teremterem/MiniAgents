@@ -3,10 +3,10 @@ The main class in this module is `FlatSequence`. See its docstring for more info
 """
 
 from functools import partial
-from typing import Generic, AsyncIterator, Optional
+from typing import AsyncIterator, Generic, Optional
 
 from miniagents.promising.errors import FunctionNotProvidedError
-from miniagents.promising.promise_typing import SequenceFlattener, IN_co, OUT_co, PromiseStreamer
+from miniagents.promising.promise_typing import IN_co, OUT_co, PromiseStreamer, SequenceFlattener
 from miniagents.promising.promising import StreamedPromise
 
 

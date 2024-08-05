@@ -12,7 +12,7 @@ from typing import Optional
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
-from miniagents.messages import Message, MESSAGE_CONTENT_FIELD
+from miniagents.messages import MESSAGE_CONTENT_FIELD, Message
 from miniagents.miniagents import InteractionContext, miniagent
 from miniagents.promising.ext.frozen import Frozen
 

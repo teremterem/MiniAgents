@@ -6,7 +6,7 @@ track of the chat history using the provided ChatHistory object.
 from pathlib import Path
 from typing import Union
 
-from prompt_toolkit import PromptSession, HTML
+from prompt_toolkit import HTML, PromptSession
 from prompt_toolkit.document import Document
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
@@ -14,7 +14,7 @@ from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
 from miniagents.ext.llms.llm_utils import UserMessage
-from miniagents.miniagents import miniagent, InteractionContext
+from miniagents.miniagents import InteractionContext, miniagent
 
 
 @miniagent
