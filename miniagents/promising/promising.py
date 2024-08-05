@@ -9,7 +9,7 @@ from asyncio import Task
 from contextvars import ContextVar
 from functools import partial
 from types import TracebackType
-from typing import Generic, AsyncIterator, Union, Optional, Iterable, Awaitable, Any
+from typing import Any, AsyncIterator, Awaitable, Generic, Iterable, Optional, Union
 
 from miniagents.promising.errors import (
     AppenderClosedError,
@@ -18,14 +18,14 @@ from miniagents.promising.errors import (
     NoActiveContextError,
 )
 from miniagents.promising.promise_typing import (
-    T_co,
     PIECE_co,
-    WHOLE_co,
-    PromiseStreamer,
     PromiseResolvedEventHandler,
     PromiseResolver,
+    PromiseStreamer,
+    T_co,
+    WHOLE_co,
 )
-from miniagents.promising.sentinels import Sentinel, NO_VALUE, FAILED, END_OF_QUEUE
+from miniagents.promising.sentinels import END_OF_QUEUE, FAILED, NO_VALUE, Sentinel
 
 
 class PromisingContext:
