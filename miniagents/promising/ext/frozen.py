@@ -5,7 +5,7 @@ The main class in this module is `Frozen`. See its docstring for more informatio
 import hashlib
 import json
 from functools import wraps
-from typing import Any, Optional, Union, Callable
+from typing import Any, Callable, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -69,9 +69,10 @@ class Frozen(BaseModel):
     @cached_privately
     def full_json(self) -> str:
         """
-        Get the full JSON representation of this Frozen object together with all its nested objects. This is a cached
+        Get the full JSON representation of this `Frozen` object together with all its nested objects. This is a cached
         property, so it is calculated only the first time it is accessed.
-        TODO Oleksandr: explain how it is different from serialized
+        TODO Oleksandr: explain how it is different from `serialized` (the latter can have references to nested objects
+         instead of nested objects themselves - check out nesting mechanism in `Message` class)
         """
         return self.model_dump_json()
 
@@ -79,7 +80,7 @@ class Frozen(BaseModel):
     @cached_privately
     def serialized(self) -> str:
         """
-        The representation of this Frozen object that you would usually get by calling `serialize()`, but as a string
+        The representation of this `Frozen` object that you would usually get by calling `serialize()`, but as a string
         with a JSON. This is a cached property, so it is calculated only the first time it is accessed.
         """
         return json.dumps(self.serialize(), ensure_ascii=False, sort_keys=True)

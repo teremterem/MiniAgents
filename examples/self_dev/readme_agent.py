@@ -7,13 +7,13 @@ from dotenv import load_dotenv
 from examples.self_dev.self_dev_common import (
     MINIAGENTS_ROOT,
     MODEL_AGENTS,
+    SELF_DEV_OUTPUT,
     FullRepoMessage,
     mini_agents,
-    SELF_DEV_OUTPUT,
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
-from miniagents import miniagent, InteractionContext, Message, MessageSequencePromise, MessageTokenAppender
-from miniagents.ext import file_output_agent, dialog_loop, MarkdownHistoryAgent, console_user_agent
+from miniagents import InteractionContext, Message, MessageSequencePromise, MessageTokenAppender, miniagent
+from miniagents.ext import MarkdownHistoryAgent, console_user_agent, dialog_loop, file_output_agent
 from miniagents.ext.llms import SystemMessage
 
 load_dotenv()

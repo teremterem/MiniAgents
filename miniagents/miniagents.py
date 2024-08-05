@@ -7,18 +7,18 @@ import contextvars
 import logging
 import re
 from contextvars import ContextVar
-from typing import AsyncIterator, Any, Union, Optional, Callable, Iterable, Awaitable
+from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Union
 
 from pydantic import Field
 
 from miniagents.messages import (
     Message,
-    MessageSequence,
     MessagePromise,
-    MessageSequencePromise,
+    MessageSequence,
     MessageSequenceAppender,
+    MessageSequencePromise,
 )
-from miniagents.miniagent_typing import MessageType, AgentFunction, PersistMessageEventHandler
+from miniagents.miniagent_typing import AgentFunction, MessageType, PersistMessageEventHandler
 from miniagents.promising.errors import NoActiveContextError, WrongActiveContextError
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseResolvedEventHandler
@@ -139,7 +139,7 @@ def miniagent(
     normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
-    mutable_kwargs: Optional[dict[str, Any]] = None,
+    mutable_state: Optional[dict[str, Any]] = None,
     **kwargs_to_freeze,
 ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
@@ -155,7 +155,7 @@ def miniagent(
                 normalize_func_or_class_name=normalize_func_or_class_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
                 interaction_metadata=interaction_metadata,
-                mutable_kwargs=mutable_kwargs,
+                mutable_state=mutable_state,
                 **kwargs_to_freeze,
             )
 
@@ -169,7 +169,7 @@ def miniagent(
         normalize_func_or_class_name=normalize_func_or_class_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
         interaction_metadata=interaction_metadata,
-        mutable_kwargs=mutable_kwargs,
+        mutable_state=mutable_state,
         **kwargs_to_freeze,
     )
 
@@ -191,7 +191,7 @@ class MiniAgent(Frozen):
         normalize_func_or_class_name: Optional[bool] = None,
         normalize_spaces_in_docstring: Optional[bool] = None,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
-        mutable_kwargs: Optional[dict[str, Any]] = None,
+        mutable_state: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
     ) -> None:
         if normalize_func_or_class_name is None:
@@ -224,7 +224,7 @@ class MiniAgent(Frozen):
         self.__doc__ = description
 
         self._func_or_class = func_or_class
-        self._static_kwargs = dict(mutable_kwargs or {})
+        self._static_kwargs = dict(mutable_state or {})
         self._static_kwargs.update(Frozen(**kwargs_to_freeze).as_kwargs())
 
     def inquire(
@@ -271,7 +271,7 @@ class MiniAgent(Frozen):
         alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce some "fork identifier" ?
         description: Optional[str] = None,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
-        mutable_kwargs: Optional[dict[str, Any]] = None,
+        mutable_state: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
@@ -284,7 +284,7 @@ class MiniAgent(Frozen):
             normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
             interaction_metadata={**dict(self.interaction_metadata), **dict(interaction_metadata or {})},
-            mutable_kwargs=mutable_kwargs,
+            mutable_state=mutable_state,
             **self._static_kwargs,
             **kwargs_to_freeze,
         )
@@ -499,23 +499,22 @@ class AgentReplyMessageSequence(MessageSequence):
                 # errors are not raised above this `with` block, thanks to `appender_capture_errors=True`
                 try:
                     ctx._activate()
+
+                    kwargs = {**self._mini_agent._static_kwargs, **self._frozen_kwargs}
                     if isinstance(self._mini_agent._func_or_class, type):
                         # the miniagent is defined as a class, not as a function -> let's create an instance of this
                         # class and call its `__call__` method
                         actual_func = self._mini_agent._func_or_class(
                             # if we want Pydantic models to also be used as class-based agents, we can't pass
                             # `ctx` as a positional argument (BaseModel's `__init__` doesn't accept positional
-                            # arguments unless it is overridden)
+                            # arguments)
                             ctx=ctx,
-                            **self._mini_agent._static_kwargs,
-                            **self._frozen_kwargs,
+                            **kwargs,
                         )
                         await actual_func()
                     else:
                         # the miniagent is a function
-                        await self._mini_agent._func_or_class(
-                            ctx, **self._mini_agent._static_kwargs, **self._frozen_kwargs
-                        )
+                        await self._mini_agent._func_or_class(ctx, **kwargs)
                 finally:
                     await ctx._afinalize()
 

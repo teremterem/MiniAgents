@@ -3,7 +3,7 @@
 """
 
 from pprint import pformat
-from typing import AsyncIterator, Any, Union, Optional, Iterator
+from typing import Any, AsyncIterator, Iterator, Optional, Union
 
 from pydantic import BaseModel
 
@@ -11,7 +11,7 @@ from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promise_typing import PromiseStreamer
-from miniagents.promising.promising import StreamedPromise, StreamAppender
+from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import join_messages
 

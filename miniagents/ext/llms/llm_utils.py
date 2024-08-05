@@ -5,11 +5,11 @@ Common classes and functions for working with large language models.
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Union
 
-from pydantic import ConfigDict, Field, BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
-from miniagents.messages import Message, MessageTokenAppender, MessagePromise
-from miniagents.miniagents import InteractionContext, MiniAgents, MiniAgent
+from miniagents.messages import Message, MessagePromise, MessageTokenAppender
+from miniagents.miniagents import InteractionContext, MiniAgent, MiniAgents
 from miniagents.promising.ext.frozen import Frozen
 
 

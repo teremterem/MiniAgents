@@ -5,8 +5,8 @@ This example demonstrates how to use an LLM agent to fix the user's sentences.
 from dotenv import load_dotenv
 
 from miniagents import MiniAgents
-from miniagents.ext import dialog_loop, console_user_agent
-from miniagents.ext.llms import SystemMessage, OpenAIAgent
+from miniagents.ext import console_user_agent, dialog_loop
+from miniagents.ext.llms import OpenAIAgent, SystemMessage
 
 load_dotenv()
 
