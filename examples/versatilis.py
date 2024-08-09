@@ -8,7 +8,7 @@ from typing import Union
 
 from dotenv import load_dotenv
 
-from examples.self_dev.self_dev_common import FAVOURITE_MODEL, MODEL_AGENTS
+from examples.self_dev.self_dev_common import ALT_MODEL_AGENTS, FAVOURITE_MODEL_AGENT
 from miniagents import InteractionContext, MiniAgents, miniagent
 from miniagents.ext import MarkdownHistoryAgent, console_user_agent, dialog_loop
 from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
@@ -26,19 +26,19 @@ async def versatilis(
     This agent employs many models to answer to the user. The answers of the "favourite" model are considered part of
     the "official" chat history, while the answers of the other models are just written to separate markdown files.
     """
-    ctx.reply(MODEL_AGENTS[FAVOURITE_MODEL].inquire(ctx.message_promises))
+    ctx.reply(FAVOURITE_MODEL_AGENT.inquire(ctx.message_promises))
 
-    for model, model_agent in MODEL_AGENTS.items():
-        if model == FAVOURITE_MODEL:
-            continue
-
+    for idx, (model, model_agent) in enumerate(ALT_MODEL_AGENTS.items()):
+        console_style = "36;1" if idx % 2 == 0 else None
         ctx.reply(
             MarkdownHistoryAgent.inquire(
                 model_agent.inquire(
                     ctx.message_promises,
                     response_metadata={
-                        # this flag is for the main history agent that writes to CHAT.md
+                        # the "no_history" flag is for the global history agent that writes to CHAT.md
                         "no_history": True,
+                        # the "console_style" flag is for the `console_output_agent`
+                        "console_style": console_style,
                     },
                 ),
                 history_md_file=str(VERSATILIS_FOLDER / f"ALT__{model}.md"),

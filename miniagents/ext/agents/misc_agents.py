@@ -75,6 +75,8 @@ async def console_output_agent(
     #  (to interrupt whoever is producing it) ?
 
     async for msg_promise in ctx.message_promises:
+        resolved_style = getattr(msg_promise.preliminary_metadata, "console_style", None) or assistant_style
+
         if mention_aliases:
             agent_alias = (
                 getattr(msg_promise.preliminary_metadata, "agent_alias", None)
@@ -82,10 +84,10 @@ async def console_output_agent(
                 or default_role
             )
 
-            print(f"\033[{assistant_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
+            print(f"\033[{resolved_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
 
         async for token in msg_promise:
-            print(f"\033[{assistant_style}m{token}\033[0m", end="", flush=True)
+            print(f"\033[{resolved_style}m{token}\033[0m", end="", flush=True)
         print("\n")  # this produces a double newline after a single message
 
 
