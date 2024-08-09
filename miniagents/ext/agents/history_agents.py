@@ -20,13 +20,19 @@ GLOBAL_MESSAGE_HISTORY: list[Message] = []
 
 
 @miniagent(mutable_state={"message_list": GLOBAL_MESSAGE_HISTORY})
-async def in_memory_history_agent(ctx: InteractionContext, message_list: list[Message]) -> None:
+async def in_memory_history_agent(
+    ctx: InteractionContext, message_list: list[Message], return_full_history: bool = False
+) -> None:
     """
     An agent that stores incoming messages in the `message_list` and then returns all the messages that this list
     already contains as a reply (including the ones that existed in the list before the current interaction).
     """
     message_list.extend(await ctx.message_promises)
-    ctx.reply(message_list)
+    if return_full_history:
+        ctx.reply(message_list)
+    else:
+        # just pass the incoming messages through
+        ctx.reply(ctx.message_promises)
 
 
 @miniagent
@@ -41,9 +47,10 @@ class MarkdownHistoryAgent(BaseModel):
     ctx: InteractionContext
     history_md_file: str = "CHAT.md"
     default_role: str = "assistant"
-    only_write: bool = False
+    return_full_history: bool = False
     append: bool = True
     skip_empty: bool = True
+    ignore_no_history: bool = False
 
     async def __call__(self) -> None:
         history_md_file = Path(self.history_md_file)
@@ -56,7 +63,7 @@ class MarkdownHistoryAgent(BaseModel):
             encoding="utf-8",
         ) as chat_md_file:
             async for msg_promise in self.ctx.message_promises:
-                if getattr(msg_promise.preliminary_metadata, "no_history", False):
+                if getattr(msg_promise.preliminary_metadata, "no_history", False) and not self.ignore_no_history:
                     # do not log this message to the chat history
                     continue
 
@@ -78,12 +85,15 @@ class MarkdownHistoryAgent(BaseModel):
                     chat_md_file.write(token)
                 chat_md_file.write("\n")
 
-        if not self.only_write:
+        if self.return_full_history:
             # return the full chat history (including the messages that were already in the file before) as a reply
             chat_history = self._load_chat_history_md()
             if self.skip_empty:
                 chat_history = tuple(msg for msg in chat_history if msg.content and msg.content.strip())
             self.ctx.reply(chat_history)
+        else:
+            # just pass the incoming messages through
+            self.ctx.reply(self.ctx.message_promises)
 
     def _load_chat_history_md(self) -> tuple[Message, ...]:
         """
@@ -197,7 +207,7 @@ async def markdown_llm_logger_agent(
     if request_metadata:
         log_file.write_text(f"```python\n{pformat(request_metadata.model_dump())}\n```\n", encoding="utf-8")
 
-    await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file), only_write=True)
+    await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file))
 
     messages = await ctx.message_promises
     if not messages or not show_response_metadata:

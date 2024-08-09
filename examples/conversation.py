@@ -25,7 +25,6 @@ async def all_models_agent(ctx: InteractionContext) -> None:
                 MarkdownHistoryAgent.inquire(
                     model_agent.inquire(ctx.message_promises),
                     history_md_file=f"ALT__{model}.md",
-                    only_write=True,
                 )
             )
 

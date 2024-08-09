@@ -323,7 +323,7 @@ class InteractionContext:
             raise NoActiveContextError(f"No {cls.__name__} is currently active.")
         return current
 
-    def reply(self, messages: MessageType) -> None:
+    def reply(self, messages: MessageType) -> MessageType:
         """
         Send a reply to the messages that were received by the agent. The messages can be of any allowed MessageType.
         They will be converted to Message objects when they arrive at the agent that made a call to the current agent.
@@ -333,8 +333,9 @@ class InteractionContext:
         would).
         """
         self._reply_streamer.append(messages)
+        return messages
 
-    def wait_for(self, awaitable: Awaitable[Any], start_asap_if_coroutine: bool = True) -> None:
+    def wait_for(self, awaitable: Awaitable[Any], start_asap_if_coroutine: bool = True) -> Awaitable[Any]:
         """
         Make sure to wait for the completion of the provided awaitable before exiting the current agent call and
         closing the reply sequence.
@@ -343,6 +344,7 @@ class InteractionContext:
             # let's turn this coroutine into our special kind of task and start it as soon as possible
             awaitable = MiniAgents.get_current().start_asap(awaitable)
         self._tasks_to_wait_for.append(awaitable)
+        return awaitable
 
     async def await_for_subtasks(self) -> None:
         """

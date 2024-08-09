@@ -25,7 +25,15 @@ async def user_agent(
     chat history as a reply (so it can be further submitted to an LLM agent, for example).
     TODO Oleksandr: add more details
     """
-    ctx.reply(agent_chain.inquire(ctx.message_promises, agents=[output_agent, input_agent, history_agent]))
+    if history_agent:
+        history_agent = history_agent.fork(return_full_history=True)
+        # TODO TODO TODO Oleksandr: fallback to just `history_agent` if `return_full_history` is not supported ?
+    ctx.reply(
+        agent_chain.inquire(
+            ctx.message_promises,
+            agents=[output_agent, input_agent, history_agent],
+        )
+    )
 
 
 console_user_agent = user_agent.fork(output_agent=console_output_agent, input_agent=console_input_agent)
