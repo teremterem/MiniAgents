@@ -2,7 +2,9 @@
 A conversation example between the user and multiple LLMs using the MiniAgents framework.
 """
 
+import sys
 from pathlib import Path
+from typing import Union
 
 from dotenv import load_dotenv
 
@@ -17,7 +19,9 @@ VERSATILIS_FOLDER = Path(".versatilis")
 
 
 @miniagent
-async def versatilis(ctx: InteractionContext) -> None:
+async def versatilis(
+    ctx: InteractionContext,
+) -> None:
     """
     This agent employs many models to answer to the user. The answers of the "favourite" model are considered part of
     the "official" chat history, while the answers of the other models are just written to separate markdown files.
@@ -43,11 +47,20 @@ async def versatilis(ctx: InteractionContext) -> None:
         )
 
 
-async def main() -> None:
+async def main(file_path: Union[str, None] = None) -> None:
     """
     The main conversation loop.
     """
+    if file_path:
+        file_path = Path(file_path)
+        prompt = file_path.read_text(encoding="utf-8")
+        print()
+        print(prompt)
+    else:
+        prompt = None
+
     dialog_loop.kick_off(
+        prompt,
         user_agent=console_user_agent.fork(
             # write chat history to a markdown file
             history_agent=MarkdownHistoryAgent.fork(history_md_file=str(VERSATILIS_FOLDER / "CHAT.md"))
@@ -57,6 +70,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    _file_path = sys.argv[1] if len(sys.argv) > 1 else None
     MiniAgents(llm_logger_agent=markdown_llm_logger_agent.fork(log_folder=str(VERSATILIS_FOLDER / "llm_logs"))).run(
-        main()
+        main(file_path=_file_path)
     )
