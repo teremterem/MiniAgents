@@ -27,12 +27,14 @@ async def in_memory_history_agent(
     An agent that stores incoming messages in the `message_list` and then returns all the messages that this list
     already contains as a reply (including the ones that existed in the list before the current interaction).
     """
-    message_list.extend(await ctx.message_promises)
-    if return_full_history:
-        ctx.reply(message_list)
-    else:
+    if not return_full_history:
         # just pass the incoming messages through
         ctx.reply(ctx.message_promises)
+
+    message_list.extend(await ctx.message_promises)
+
+    if return_full_history:
+        ctx.reply(message_list)
 
 
 @miniagent
@@ -53,6 +55,10 @@ class MarkdownHistoryAgent(BaseModel):
     ignore_no_history: bool = False
 
     async def __call__(self) -> None:
+        if not self.return_full_history:
+            # just pass the incoming messages through
+            self.ctx.reply(self.ctx.message_promises)
+
         history_md_file = Path(self.history_md_file)
         history_md_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -91,9 +97,6 @@ class MarkdownHistoryAgent(BaseModel):
             if self.skip_empty:
                 chat_history = tuple(msg for msg in chat_history if msg.content and msg.content.strip())
             self.ctx.reply(chat_history)
-        else:
-            # just pass the incoming messages through
-            self.ctx.reply(self.ctx.message_promises)
 
     def _load_chat_history_md(self) -> tuple[Message, ...]:
         """
