@@ -207,7 +207,7 @@ async def markdown_llm_logger_agent(
     if request_metadata:
         log_file.write_text(f"```python\n{pformat(request_metadata.model_dump())}\n```\n", encoding="utf-8")
 
-    await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file))
+    await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file), ignore_no_history=True)
 
     messages = await ctx.message_promises
     if not messages or not show_response_metadata:
