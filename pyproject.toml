@@ -16,6 +16,9 @@ homepage = "https://github.com/teremterem/MiniAgents"
 readme = "README.md"
 license = "MIT"
 
+[tool.poetry.scripts]
+versatilis = "miniagents.ext.agents.versatilis:main"
+
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
 markdown-it-py = "*"
