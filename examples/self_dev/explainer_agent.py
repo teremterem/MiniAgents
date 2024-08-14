@@ -50,6 +50,7 @@ async def explainer_agent(ctx: InteractionContext) -> None:
     """
     The job of this agent is to answer questions about the MiniAgents framework.
     """
+    # pylint: disable=duplicate-code
     for model, model_agent in LLMS_FOR_EXPLAINER.items():
         if model == FAVOURITE_MODEL:
             ctx.reply(model_agent.inquire(ctx.message_promises))
@@ -58,7 +59,6 @@ async def explainer_agent(ctx: InteractionContext) -> None:
                 MarkdownHistoryAgent.inquire(
                     model_agent.inquire(ctx.message_promises),
                     history_md_file=str(SELF_DEV_OUTPUT / f"ALT__{ctx.this_agent.alias}__{model}.md"),
-                    only_write=True,
                 )
             )
 

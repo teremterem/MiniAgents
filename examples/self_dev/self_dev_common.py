@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 This module contains common `self_def` code.
 """
@@ -13,7 +14,7 @@ from miniagents.utils import ModelSingleton
 
 load_dotenv()
 
-GPT_4O = "gpt-4o-2024-05-13"
+GPT_4O = "gpt-4o-2024-08-06"
 CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20240620"
 
 FAVOURITE_MODEL = CLAUDE_3_5_SONNET
@@ -36,6 +37,8 @@ MODEL_AGENTS = {
         CLAUDE_3_5_SONNET,
     ]
 }
+FAVOURITE_MODEL_AGENT = MODEL_AGENTS[FAVOURITE_MODEL]
+ALT_MODEL_AGENTS = {model: MODEL_AGENTS[model] for model in MODEL_AGENTS if model != FAVOURITE_MODEL}
 
 SELF_DEV_ROOT = Path(__file__).parent
 MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent
