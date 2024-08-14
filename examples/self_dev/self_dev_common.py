@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 This module contains common `self_def` code.
 """
@@ -6,14 +7,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from miniagents import Message, cached_privately, MiniAgents
+from miniagents import Message, MiniAgents, cached_privately
 from miniagents.ext import markdown_llm_logger_agent
 from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 from miniagents.utils import ModelSingleton
 
 load_dotenv()
 
-GPT_4O = "gpt-4o-2024-05-13"
+GPT_4O = "gpt-4o-2024-08-06"
 CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20240620"
 
 FAVOURITE_MODEL = CLAUDE_3_5_SONNET
@@ -23,7 +24,7 @@ MAX_OUTPUT_TOKENS = 4096
 MODEL_AGENT_FACTORIES = {
     GPT_4O: OpenAIAgent.fork(temperature=0),
     "gpt-4-turbo-2024-04-09": OpenAIAgent.fork(temperature=0),
-    "gpt-3.5-turbo-0125": OpenAIAgent.fork(temperature=0),
+    "gpt-4o-mini-2024-07-18": OpenAIAgent.fork(temperature=0),
     CLAUDE_3_5_SONNET: AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-opus-20240229": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
     "claude-3-haiku-20240307": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
@@ -36,6 +37,8 @@ MODEL_AGENTS = {
         CLAUDE_3_5_SONNET,
     ]
 }
+FAVOURITE_MODEL_AGENT = MODEL_AGENTS[FAVOURITE_MODEL]
+ALT_MODEL_AGENTS = {model: MODEL_AGENTS[model] for model in MODEL_AGENTS if model != FAVOURITE_MODEL}
 
 SELF_DEV_ROOT = Path(__file__).parent
 MINIAGENTS_ROOT = SELF_DEV_ROOT.parent.parent

@@ -5,16 +5,16 @@ This agent is a part of the self-development process. It is designed to explain 
 from dotenv import load_dotenv
 
 from examples.self_dev.self_dev_common import (
+    FAVOURITE_MODEL,
     MODEL_AGENTS,
+    SELF_DEV_OUTPUT,
     FullRepoMessage,
     mini_agents,
-    SELF_DEV_OUTPUT,
-    FAVOURITE_MODEL,
 )
 from examples.self_dev.self_dev_llama_index import llama_index_rag_agent
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES
-from miniagents import miniagent, InteractionContext, MiniAgent
-from miniagents.ext import dialog_loop, MarkdownHistoryAgent, console_user_agent
+from miniagents import InteractionContext, MiniAgent, miniagent
+from miniagents.ext import MarkdownHistoryAgent, console_user_agent, dialog_loop
 from miniagents.ext.llms import SystemMessage
 
 load_dotenv()
@@ -50,6 +50,7 @@ async def explainer_agent(ctx: InteractionContext) -> None:
     """
     The job of this agent is to answer questions about the MiniAgents framework.
     """
+    # pylint: disable=duplicate-code
     for model, model_agent in LLMS_FOR_EXPLAINER.items():
         if model == FAVOURITE_MODEL:
             ctx.reply(model_agent.inquire(ctx.message_promises))
@@ -58,7 +59,6 @@ async def explainer_agent(ctx: InteractionContext) -> None:
                 MarkdownHistoryAgent.inquire(
                     model_agent.inquire(ctx.message_promises),
                     history_md_file=str(SELF_DEV_OUTPUT / f"ALT__{ctx.this_agent.alias}__{model}.md"),
-                    only_write=True,
                 )
             )
 

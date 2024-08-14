@@ -3,26 +3,28 @@ The main class in this module is `FlatSequence`. See its docstring for more info
 """
 
 from functools import partial
-from typing import Generic, AsyncIterator, Optional
+from typing import AsyncIterator, Generic, Optional
 
 from miniagents.promising.errors import FunctionNotProvidedError
-from miniagents.promising.promise_typing import SequenceFlattener, IN, OUT, PromiseStreamer
+from miniagents.promising.promise_typing import IN_co, OUT_co, PromiseStreamer, SequenceFlattener
 from miniagents.promising.promising import StreamedPromise
 
 
-class FlatSequence(Generic[IN, OUT]):
+class FlatSequence(Generic[IN_co, OUT_co]):
     """
     TODO Oleksandr: docstring
     """
 
-    sequence_promise: StreamedPromise[OUT, tuple[OUT, ...]]
+    sequence_promise: StreamedPromise[OUT_co, tuple[OUT_co, ...]]
 
     def __init__(
         self,
-        incoming_streamer: PromiseStreamer[IN],
-        flattener: Optional[SequenceFlattener[IN, OUT]] = None,
+        incoming_streamer: PromiseStreamer[IN_co],
+        flattener: Optional[SequenceFlattener[IN_co, OUT_co]] = None,
         start_asap: Optional[bool] = None,
-        sequence_promise_class: type[StreamedPromise[OUT, tuple[OUT, ...]]] = StreamedPromise[OUT, tuple[OUT, ...]],
+        sequence_promise_class: type[StreamedPromise[OUT_co, tuple[OUT_co, ...]]] = StreamedPromise[
+            OUT_co, tuple[OUT_co, ...]
+        ],
     ) -> None:
         if flattener:
             self._flattener = partial(flattener, self)
@@ -41,18 +43,18 @@ class FlatSequence(Generic[IN, OUT]):
             start_asap=start_asap,
         )
 
-    def _flattener(self, zero_or_more_items: IN) -> AsyncIterator[OUT]:  # pylint: disable=method-hidden
+    def _flattener(self, zero_or_more_items: IN_co) -> AsyncIterator[OUT_co]:  # pylint: disable=method-hidden
         # TODO Oleksandr: come up with a different method name ?
         raise FunctionNotProvidedError(
             "The `flattener` function should be provided either via the constructor "
             "or by subclassing the `FlatSequence` class."
         )
 
-    async def _streamer(self, _) -> AsyncIterator[OUT]:
+    async def _streamer(self, _) -> AsyncIterator[OUT_co]:
         async for zero_or_more_items in self._incoming_streamer_aiter:
             async for item in self._flattener(zero_or_more_items):
                 yield item
 
-    async def _resolver(self, seq_promise: StreamedPromise[OUT, tuple[OUT, ...]]) -> tuple[OUT, ...]:
+    async def _resolver(self, seq_promise: StreamedPromise[OUT_co, tuple[OUT_co, ...]]) -> tuple[OUT_co, ...]:
         # pylint: disable=consider-using-generator
         return tuple([item async for item in seq_promise])

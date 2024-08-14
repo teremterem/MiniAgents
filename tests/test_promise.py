@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from miniagents.promising.promising import StreamedPromise, StreamAppender, PromisingContext
+from miniagents.promising.promising import PromisingContext, StreamAppender, StreamedPromise
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])

@@ -21,7 +21,6 @@
         <img alt="Code Style: Black"
             src="https://img.shields.io/badge/code%20style-black-black">
     </a>
-    <!-- TODO: CREATE DISCORD CHAT -->
 </p>
 
 <p align="center">
@@ -32,6 +31,19 @@
 A framework on top of asyncio for building LLM-based multi-agent systems in
 Python, with immutable, Pydantic-based messages and a focus on asynchronous
 token and message streaming between the agents.
+
+**TODO** mention that the reason for immutable messages is to shift the
+framework to the functional programming paradigm
+
+**TODO** mention the feature of "message sequence flattening" and refer to an
+example that you will provide later in the README
+
+**TODO** mention that exceptions that happen in "callee" agents are propagated
+to the caller agents even though the callee agents were being processed in
+completely detached "asyncio" tasks; refer to an example that you will provide
+later in the README
+
+**TODO** create a Discord server for the project
 
 ## 💾 Installation
 
@@ -69,7 +81,12 @@ You said: Hello
 You said: World
 ```
 
-**TODO** show how (and when) to create class-based agents
+**TODO** show how (and when) to create class-based agents; point out that
+separate instances of such class-based agents are created upon each call to
+those agents - the purpose of turning agents into classes is not for the
+sake of maintaining agent state, but rather for the sake of breaking down
+agent functionality into multiple methods (refer to MarkdownHistoryAgent as an
+example or give an in-place example here in the README ? probably the latter)
 
 ### 🧠 Work with LLMs
 
@@ -127,7 +144,8 @@ The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop
 between a user agent and an assistant agent. Here is how you can use it to set
 up an interaction between a user and your agent (can be bare LLM agent, like
 `OpenAIAgent` or `AnthropicAgent`, can also be a custom agent that you define
-yourself):
+yourself - a more complex agent that uses LLM agents under the hood but also
+introduces more complex behavior, i.e. Retrieval Augmented Generation etc.):
 
 ⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your
 Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
@@ -155,7 +173,7 @@ async def main() -> None:
         user_agent=console_user_agent.fork(
             # Write chat history to a markdown file (`CHAT.md` in the current
             # working directory by default, fork `MarkdownHistoryAgent` if
-            # you want to customize).
+            # you want to customize the filepath to write to).
             history_agent=MarkdownHistoryAgent
         ),
         assistant_agent=AnthropicAgent.fork(
@@ -169,8 +187,7 @@ if __name__ == "__main__":
     MiniAgents(
         # Log LLM prompts and responses to `llm_logs/` folder in the current
         # working directory. These logs will have a form of time-stamped
-        # markdown files in the aforementioned folder with, one file per one
-        # prompt-response pair.
+        # markdown files - single file per single prompt-response pair.
         llm_logger_agent=True
     ).run(main())
 ```
@@ -200,6 +217,9 @@ could say:
 
 "I understand. Thank you!"
 ```
+
+**TODO** replace the output above with a gif showing the interaction in real
+time
 
 ### 🧸 A "toy" implementation of a dialog loop
 
@@ -256,6 +276,10 @@ ASSISTANT: You said "bye"
 example above
 
 **TODO** or even better - show how to implement agent_loop from scratch
+
+**TODO** also, use this as an opportunity to bring up `mutable_state` dictionary
+that can be passed to either the `@miniagent` decorator or the `fork()` method
+(implement a toy chat history agent to demonstrate that)
 
 ### 📦 Some other pre-packaged agents (`miniagents.ext`)
 

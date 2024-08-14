@@ -13,14 +13,11 @@ from llama_index.core.base.llms.types import (
     ChatResponseGen,
     CompletionResponse,
     CompletionResponseAsyncGen,
-    LLMMetadata,
     CompletionResponseGen,
+    LLMMetadata,
     MessageRole,
 )
-from llama_index.core.llms.callbacks import (
-    llm_chat_callback,
-    llm_completion_callback,
-)
+from llama_index.core.llms.callbacks import llm_chat_callback, llm_completion_callback
 from llama_index.core.llms.llm import LLM
 
 from miniagents.ext.llms.llm_utils import LLMMessage

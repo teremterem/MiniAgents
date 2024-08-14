@@ -6,7 +6,7 @@ track of the chat history using the provided ChatHistory object.
 from pathlib import Path
 from typing import Union
 
-from prompt_toolkit import PromptSession, HTML
+from prompt_toolkit import HTML, PromptSession
 from prompt_toolkit.document import Document
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
@@ -14,7 +14,7 @@ from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
 from miniagents.ext.llms.llm_utils import UserMessage
-from miniagents.miniagents import miniagent, InteractionContext
+from miniagents.miniagents import InteractionContext, miniagent
 
 
 @miniagent
@@ -75,6 +75,8 @@ async def console_output_agent(
     #  (to interrupt whoever is producing it) ?
 
     async for msg_promise in ctx.message_promises:
+        resolved_style = getattr(msg_promise.preliminary_metadata, "console_style", None) or assistant_style
+
         if mention_aliases:
             agent_alias = (
                 getattr(msg_promise.preliminary_metadata, "agent_alias", None)
@@ -82,10 +84,10 @@ async def console_output_agent(
                 or default_role
             )
 
-            print(f"\033[{assistant_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
+            print(f"\033[{resolved_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
 
         async for token in msg_promise:
-            print(f"\033[{assistant_style}m{token}\033[0m", end="", flush=True)
+            print(f"\033[{resolved_style}m{token}\033[0m", end="", flush=True)
         print("\n")  # this produces a double newline after a single message
 
 

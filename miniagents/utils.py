@@ -7,7 +7,7 @@ import re
 import traceback
 import typing
 from pathlib import Path
-from typing import AsyncIterator, Any, Optional, Union, Iterable
+from typing import Any, AsyncIterator, Iterable, Optional, Union
 
 # noinspection PyProtectedMember
 from pydantic._internal._model_construction import ModelMetaclass
@@ -73,7 +73,7 @@ def join_messages(
     before it is resolved.
     :param message_class: A class of the resulting message. If None, the default Message class will be used.
     """
-    from miniagents.messages import Message, MessageSequence, MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD
+    from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD, Message, MessageSequence
 
     if message_class is None:
         message_class = Message

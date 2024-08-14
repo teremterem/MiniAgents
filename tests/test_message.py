@@ -9,7 +9,7 @@ import pytest
 
 from miniagents import Message, MiniAgents
 from miniagents.promising.ext.frozen import Frozen
-from miniagents.promising.promising import PromisingContext, Promise
+from miniagents.promising.promising import Promise, PromisingContext
 
 
 @pytest.mark.asyncio
