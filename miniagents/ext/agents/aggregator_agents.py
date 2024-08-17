@@ -1,5 +1,4 @@
 """
-TODO TODO TODO Oleksandr: rename this module to aggregator_agents
 This module contains agents that are used to aggregate other agents into chains, loops, dialogs and whatnot.
 """
 
