@@ -224,8 +224,8 @@ class MiniAgent(Frozen):
         self.__doc__ = description
 
         self._func_or_class = func_or_class
-        self._static_kwargs = dict(mutable_state or {})
-        self._static_kwargs.update(Frozen(**kwargs_to_freeze).as_kwargs())
+        self._static_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
+        self._mutable_state = dict(mutable_state or {})
 
     def inquire(
         self, messages: Optional[MessageType] = None, start_asap: Optional[bool] = None, **kwargs_to_freeze
@@ -284,7 +284,7 @@ class MiniAgent(Frozen):
             normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
             interaction_metadata={**dict(self.interaction_metadata), **dict(interaction_metadata or {})},
-            mutable_state=mutable_state,
+            mutable_state={**self._mutable_state, **(mutable_state or {})},
             **self._static_kwargs,
             **kwargs_to_freeze,
         )
@@ -500,7 +500,11 @@ class AgentReplyMessageSequence(MessageSequence):
                 try:
                     ctx._activate()
 
-                    kwargs = {**self._mini_agent._static_kwargs, **self._frozen_kwargs}
+                    kwargs = {
+                        **self._mini_agent._static_kwargs,
+                        **self._mini_agent._mutable_state,
+                        **self._frozen_kwargs,
+                    }
                     if isinstance(self._mini_agent._func_or_class, type):
                         # the miniagent is defined as a class, not as a function -> let's create an instance of this
                         # class and call its `__call__` method
@@ -523,6 +527,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 agent=self._mini_agent,
                 **dict(self._mini_agent.interaction_metadata),
                 # TODO Oleksandr: **self._mini_agent._static_kwargs ?
+                # TODO Oleksandr: **self._mini_agent._mutable_state ?
                 **self._frozen_kwargs,
             )
 
