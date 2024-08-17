@@ -22,6 +22,8 @@ MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 class Message(Frozen):
     """
     A message that can be sent between agents.
+    TODO TODO TODO Oleksandr: split this class into two: Message and NonStrictMessage
+     (regular messages wouldn't allow extra fields) ?
     """
 
     content: Optional[str] = None
