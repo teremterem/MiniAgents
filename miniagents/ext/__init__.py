@@ -1,5 +1,5 @@
 """
-Make all the agents from the `agents` package available at the level of the `ext` package.
+TODO Oleksandr: docstring
 """
 
 from miniagents.ext.agents.agent_aggregators import (
