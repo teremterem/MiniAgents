@@ -47,6 +47,7 @@ python-dotenv = "*"
 #trafilatura = "*"
 #trio = "*"
 #unstructured = {version = "*", extras = ["md"]}
+xonsh = {version = "*", extras = ["full"]}
 
 [build-system]
 requires = ["poetry-core"]
