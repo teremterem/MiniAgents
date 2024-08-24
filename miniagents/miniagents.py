@@ -495,6 +495,7 @@ class AgentReplyMessageSequence(MessageSequence):
         self._input_sequence_promise = input_sequence_promise
         super().__init__(
             appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
+            sequence_promise_class=MessageSequencePromise,
             **kwargs,
         )
 

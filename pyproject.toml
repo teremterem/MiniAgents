@@ -21,6 +21,7 @@ python = ">=3.9,<4.0"
 markdown-it-py = "*"
 prompt-toolkit = "*"
 pydantic = ">=2.0.0,<3.0.0"
+wrapt = "*"
 
 [tool.poetry.dev-dependencies]
 anthropic = "*"

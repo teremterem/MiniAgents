@@ -264,6 +264,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         appender_capture_errors: Optional[bool] = None,
         start_asap: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
+        sequence_promise_class: type[MessageSequencePromise] = MessageSequencePromise,
     ) -> None:
         if incoming_streamer:
             # an external streamer is provided, so we don't create the default StreamAppender
@@ -275,7 +276,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         super().__init__(
             incoming_streamer=incoming_streamer,
             start_asap=start_asap,
-            sequence_promise_class=MessageSequencePromise,
+            sequence_promise_class=sequence_promise_class,
         )
 
     @classmethod
