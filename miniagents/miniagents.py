@@ -228,12 +228,18 @@ class MiniAgent(Frozen):
         self._mutable_state = dict(mutable_state or {})
 
     def inquire(
-        self, messages: Optional[MessageType] = None, start_asap: Optional[bool] = None, **kwargs_to_freeze
+        self,
+        messages: Optional[MessageType] = None,
+        start_asap: Optional[bool] = None,
+        errors_to_messages: bool = False,
+        **kwargs_to_freeze,
     ) -> MessageSequencePromise:
         """
         TODO Oleksandr: docstring
         """
-        agent_call = self.initiate_inquiry(start_asap=start_asap, **kwargs_to_freeze)
+        agent_call = self.initiate_inquiry(
+            start_asap=start_asap, errors_to_messages=errors_to_messages, **kwargs_to_freeze
+        )
         if messages is not None:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
@@ -245,7 +251,9 @@ class MiniAgent(Frozen):
         self.inquire(messages, start_asap=True, **kwargs_to_freeze)
 
     # noinspection PyProtectedMember
-    def initiate_inquiry(self, start_asap: Optional[bool] = None, **kwargs_to_freeze) -> "AgentCall":
+    def initiate_inquiry(
+        self, start_asap: Optional[bool] = None, errors_to_messages: bool = False, **kwargs_to_freeze
+    ) -> "AgentCall":
         """
         Start an inquiry with the agent. The agent will be called with the provided function kwargs.
         TODO Oleksandr: expand this docstring ?
@@ -258,6 +266,7 @@ class MiniAgent(Frozen):
             kwargs_to_freeze=kwargs_to_freeze,
             input_sequence_promise=input_sequence.sequence_promise,
             start_asap=start_asap,
+            errors_to_messages=errors_to_messages,
         )
 
         agent_call = AgentCall(
@@ -477,6 +486,7 @@ class AgentReplyMessageSequence(MessageSequence):
         mini_agent: MiniAgent,
         input_sequence_promise: MessageSequencePromise,
         kwargs_to_freeze: dict[str, Any],
+        errors_to_messages: bool = False,  # TODO TODO TODO
         **kwargs,
     ) -> None:
         self._frozen_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
