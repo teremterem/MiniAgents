@@ -4,7 +4,7 @@ Tests for the `MessageSequence` class.
 
 import pytest
 
-from miniagents.messages import Message, MessageSequence
+from miniagents.messages import Message, MessageSequence, MessageTokenAppender
 from miniagents.promising.promising import PromisingContext
 
 
@@ -98,7 +98,7 @@ async def test_message_sequence_error(start_asap: bool) -> None:
                 with msg_seq3.message_appender:
                     msg_seq3.message_appender.append("msg3")
                     # msg_seq3.message_appender.append(ValueError("msg4"))
-                    raise ValueError("msg5")
+                    raise ValueError("error1")
 
                 msg_seq2.message_appender.append(msg_seq3.sequence_promise)
                 msg_seq2.message_appender.append("msg6")
@@ -107,7 +107,7 @@ async def test_message_sequence_error(start_asap: bool) -> None:
             msg_seq1.message_appender.append("msg7")
 
         message_result = []
-        with pytest.raises(ValueError, match="msg5"):
+        with pytest.raises(ValueError, match="error1"):
             async for msg_promise in msg_seq1.sequence_promise:
                 message_result.append(await msg_promise)
 
@@ -139,3 +139,42 @@ async def test_message_sequence_error_to_message(start_asap: bool) -> None:
         Message(content="msg1"),
         Message(content="error1", is_error=True),
     ]
+
+
+@pytest.mark.parametrize("start_asap", [False, True, None])
+@pytest.mark.parametrize("assert_separate_tokens", [False, True])
+@pytest.mark.asyncio
+async def test_message_sequence_token_error_to_message(start_asap: bool, assert_separate_tokens: bool) -> None:
+    """
+    Assert that `MessageSequence` puts token level errors into the message if `errors_to_messages` is set to `True`.
+    """
+    async with PromisingContext(appenders_capture_errors_by_default=True):
+        msg_seq = MessageSequence(start_asap=start_asap, errors_to_messages=True)
+        with msg_seq.message_appender:
+            msg_seq.message_appender.append("msg1")
+            with MessageTokenAppender() as token_appender:
+                msg_seq.message_appender.append(Message.promise(message_token_streamer=token_appender))
+                token_appender.append("token1")
+                token_appender.append("token2")
+                raise ValueError("error1")
+
+        result = []
+        async for msg_promise in msg_seq.sequence_promise:
+            if assert_separate_tokens:
+                async for token in msg_promise:
+                    result.append(token)
+            else:
+                result.append(await msg_promise)
+
+    if assert_separate_tokens:
+        assert result == [
+            "msg1",
+            "token1",
+            "token2",
+            "error1",
+        ]
+    else:
+        assert result == [
+            Message(content="msg1"),
+            Message(content="token1token2error1"),
+        ]
