@@ -17,7 +17,6 @@ from miniagents.messages import (
     MessageSequence,
     MessageSequenceAppender,
     MessageSequencePromise,
-    SafeMessageSequencePromise,
 )
 from miniagents.miniagent_typing import AgentFunction, MessageType, PersistMessageEventHandler
 from miniagents.promising.errors import NoActiveContextError, WrongActiveContextError
@@ -487,7 +486,6 @@ class AgentReplyMessageSequence(MessageSequence):
         mini_agent: MiniAgent,
         input_sequence_promise: MessageSequencePromise,
         kwargs_to_freeze: dict[str, Any],
-        errors_to_messages: bool = False,  # TODO TODO TODO
         **kwargs,
     ) -> None:
         self._frozen_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
@@ -496,7 +494,6 @@ class AgentReplyMessageSequence(MessageSequence):
         self._input_sequence_promise = input_sequence_promise
         super().__init__(
             appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
-            sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
             **kwargs,
         )
 

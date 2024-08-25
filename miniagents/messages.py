@@ -225,19 +225,6 @@ class MessagePromise(StreamedPromise[str, Message]):
         return self.message_class(content="".join(tokens), **self._metadata_so_far)
 
 
-class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
-    """
-    A promise of a sequence of messages that can be streamed message by message.
-    """
-
-    def as_single_promise(self, **kwargs) -> MessagePromise:
-        """
-        Convert this sequence promise into a single message promise that will contain all the messages from this
-        sequence (separated by double newlines by default).
-        """
-        return join_messages(self, start_asap=False, **kwargs)
-
-
 class MessageTokenAppender(StreamAppender[str]):
     """
     A stream appender that appends message tokens to the message promise. It also maintains `metadata_so_far`
@@ -263,14 +250,14 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     """
 
     message_appender: Optional["MessageSequenceAppender"]
-    sequence_promise: MessageSequencePromise
+    sequence_promise: "MessageSequencePromise"
 
     def __init__(
         self,
         appender_capture_errors: Optional[bool] = None,
         start_asap: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
-        sequence_promise_class: type[MessageSequencePromise] = MessageSequencePromise,
+        errors_to_messages: bool = False,  # TODO TODO TODO
     ) -> None:
         if incoming_streamer:
             # an external streamer is provided, so we don't create the default StreamAppender
@@ -282,11 +269,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         super().__init__(
             incoming_streamer=incoming_streamer,
             start_asap=start_asap,
-            sequence_promise_class=sequence_promise_class,
+            sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
         )
 
     @classmethod
-    def turn_into_sequence_promise(cls, messages: MessageType) -> MessageSequencePromise:
+    def turn_into_sequence_promise(cls, messages: MessageType) -> "MessageSequencePromise":
         """
         Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
         MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform
@@ -326,7 +313,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         else:
             raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
 
-    async def _resolver(self, seq_promise: MessageSequencePromise) -> tuple[Message, ...]:
+    async def _resolver(self, seq_promise: "MessageSequencePromise") -> tuple[Message, ...]:
         """
         Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
         and return them as a tuple of Message objects.
@@ -363,6 +350,19 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
             return zero_or_more_messages
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
+
+
+class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
+    """
+    A promise of a sequence of messages that can be streamed message by message.
+    """
+
+    def as_single_promise(self, **kwargs) -> MessagePromise:
+        """
+        Convert this sequence promise into a single message promise that will contain all the messages from this
+        sequence (separated by double newlines by default).
+        """
+        return join_messages(self, start_asap=False, **kwargs)
 
 
 class SafeMessageSequencePromise(MessageSequencePromise):

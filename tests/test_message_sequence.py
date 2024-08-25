@@ -117,3 +117,25 @@ async def test_message_sequence_error(start_asap: bool) -> None:
         Message(content="msg3"),
         # ValueError("msg4"),
     ]
+
+
+@pytest.mark.parametrize("start_asap", [False, True, None])
+@pytest.mark.asyncio
+async def test_message_sequence_error_to_message(start_asap: bool) -> None:
+    """
+    Assert that `MessageSequence` converts errors into messages if `errors_to_messages` is set to `True`.
+    """
+    async with PromisingContext(appenders_capture_errors_by_default=True):
+        msg_seq = MessageSequence(start_asap=start_asap, errors_to_messages=True)
+        with msg_seq.message_appender:
+            msg_seq.message_appender.append("msg1")
+            raise ValueError("error1")
+
+        message_result = []
+        async for msg_promise in msg_seq.sequence_promise:
+            message_result.append(await msg_promise)
+
+    assert message_result == [
+        Message(content="msg1"),
+        Message(content="error1", is_error=True),
+    ]
