@@ -5,6 +5,7 @@
 from pprint import pformat
 from typing import Any, AsyncIterator, Iterator, Optional, Union
 
+import wrapt
 from pydantic import BaseModel
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
@@ -362,3 +363,44 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
             return zero_or_more_messages
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
+
+
+class SafeMessageSequencePromise(MessageSequencePromise):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __aiter__(self) -> AsyncIterator[MessagePromise]:
+        return _SafeMessagePromiseIteratorProxy(super().__aiter__())
+
+
+# pylint: disable=abstract-method
+
+
+class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
+    async def __anext__(self) -> MessagePromise:
+        try:
+            message_promise = await self.__wrapped__.__anext__()
+            return _SafeMessagePromiseProxy(message_promise)
+        except StopAsyncIteration:
+            raise
+        except Exception as exc:  # TODO TODO TODO
+            return Message.promise(str(exc), is_error=True)
+
+
+class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
+    def __await__(self):
+        return self.__wrapped__.__await__()
+
+    def __aiter__(self):
+        return _SafeMessageTokenIteratorProxy(self.__wrapped__.__aiter__())
+
+
+class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
+    async def __anext__(self) -> str:
+        try:
+            return await self.__wrapped__.__anext__()
+        except StopAsyncIteration:
+            raise
+        except Exception as exc:  # TODO TODO TODO
+            return str(exc)

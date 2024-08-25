@@ -17,6 +17,7 @@ from miniagents.messages import (
     MessageSequence,
     MessageSequenceAppender,
     MessageSequencePromise,
+    SafeMessageSequencePromise,
 )
 from miniagents.miniagent_typing import AgentFunction, MessageType, PersistMessageEventHandler
 from miniagents.promising.errors import NoActiveContextError, WrongActiveContextError
@@ -472,31 +473,6 @@ class AgentReplyNode(AgentInteractionNode):
 
     agent_call: AgentCallNode
     replies: tuple[Message, ...]
-
-
-class SafeMessageSequencePromise(MessageSequencePromise):
-    """
-    TODO Oleksandr: docstring
-    """
-
-    class _SafeStreamReplayIterator(AsyncIterator[MessagePromise]):
-        """
-        TODO Oleksandr: docstring
-        """
-
-        def __init__(self, original_iterator: AsyncIterator[MessagePromise]) -> None:
-            self._original_iterator = original_iterator
-
-        async def __anext__(self) -> MessagePromise:
-            try:
-                return await self._original_iterator.__anext__()
-            except StopAsyncIteration:
-                raise
-            except Exception as exc:  # TODO TODO TODO
-                return Message.promise(str(exc), is_error=True)
-
-    def __aiter__(self) -> _SafeStreamReplayIterator:
-        return self._SafeStreamReplayIterator(super().__aiter__())
 
 
 # noinspection PyProtectedMember

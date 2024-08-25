@@ -313,7 +313,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         This allows to consume the stream piece by piece. Each new iterator returned by `__aiter__` will replay
         the stream from the beginning.
         """
-        return self._StreamReplayIterator(self)
+        return _StreamReplayIterator(self)
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
         """
@@ -364,53 +364,54 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             # `StopAsyncIteration` at the end.
             return exc
 
-    class _StreamReplayIterator(AsyncIterator[PIECE_co]):
-        """
-        The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
-        `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
-        continues to retrieve new pieces from the original streamer of the parent `StreamedPromise`
-        (`_streamer_aiter` attribute of the parent `StreamedPromise`).
-        """
 
-        def __init__(self, streamed_promise: "StreamedPromise") -> None:
-            self._streamed_promise = streamed_promise
-            self._index = 0
+class _StreamReplayIterator(AsyncIterator[PIECE_co]):
+    """
+    The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
+    `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
+    continues to retrieve new pieces from the original streamer of the parent `StreamedPromise`
+    (`_streamer_aiter` attribute of the parent `StreamedPromise`).
+    """
 
-        async def __anext__(self) -> PIECE_co:
-            if self._index < len(self._streamed_promise._pieces_so_far):
-                # "replay" a piece that was produced earlier
-                piece = self._streamed_promise._pieces_so_far[self._index]
-            elif self._streamed_promise._all_pieces_consumed:
-                # we know that `StopAsyncIteration` was stored as the last piece in the piece list
-                raise self._streamed_promise._pieces_so_far[-1]
-            else:
-                async with self._streamed_promise._streamer_lock:
-                    if self._index < len(self._streamed_promise._pieces_so_far):
-                        piece = self._streamed_promise._pieces_so_far[self._index]
-                    else:
-                        piece = await self._real_anext()
+    def __init__(self, streamed_promise: "StreamedPromise") -> None:
+        self._streamed_promise = streamed_promise
+        self._index = 0
 
-            self._index += 1
+    async def __anext__(self) -> PIECE_co:
+        if self._index < len(self._streamed_promise._pieces_so_far):
+            # "replay" a piece that was produced earlier
+            piece = self._streamed_promise._pieces_so_far[self._index]
+        elif self._streamed_promise._all_pieces_consumed:
+            # we know that `StopAsyncIteration` was stored as the last piece in the piece list
+            raise self._streamed_promise._pieces_so_far[-1]
+        else:
+            async with self._streamed_promise._streamer_lock:
+                if self._index < len(self._streamed_promise._pieces_so_far):
+                    piece = self._streamed_promise._pieces_so_far[self._index]
+                else:
+                    piece = await self._real_anext()
 
-            if isinstance(piece, BaseException):
-                raise piece
-            return piece
+        self._index += 1
 
-        async def _real_anext(self) -> Union[PIECE_co, BaseException]:
-            # pylint: disable=protected-access
-            if self._streamed_promise._queue is None:
-                # the stream is being produced on demand, not beforehand (`start_asap` is False)
-                piece = await self._streamed_promise._streamer_aiter_anext()
-            else:
-                # the stream is being produced beforehand (`start_asap` is True)
-                piece = await self._streamed_promise._queue.get()
+        if isinstance(piece, BaseException):
+            raise piece
+        return piece
 
-            if isinstance(piece, StopAsyncIteration):
-                # `StopAsyncIteration` will be stored as the last piece in the piece list
-                self._streamed_promise._all_pieces_consumed = True
+    async def _real_anext(self) -> Union[PIECE_co, BaseException]:
+        # pylint: disable=protected-access
+        if self._streamed_promise._queue is None:
+            # the stream is being produced on demand, not beforehand (`start_asap` is False)
+            piece = await self._streamed_promise._streamer_aiter_anext()
+        else:
+            # the stream is being produced beforehand (`start_asap` is True)
+            piece = await self._streamed_promise._queue.get()
 
-            self._streamed_promise._pieces_so_far.append(piece)
-            return piece
+        if isinstance(piece, StopAsyncIteration):
+            # `StopAsyncIteration` will be stored as the last piece in the piece list
+            self._streamed_promise._all_pieces_consumed = True
+
+        self._streamed_promise._pieces_so_far.append(piece)
+        return piece
 
 
 class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
