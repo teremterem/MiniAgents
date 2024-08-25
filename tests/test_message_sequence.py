@@ -158,13 +158,10 @@ async def test_message_sequence_token_error_to_message(start_asap: bool, assert_
                 token_appender.append("token2")
                 raise ValueError("error1")
 
-        result = []
-        async for msg_promise in msg_seq.sequence_promise:
-            if assert_separate_tokens:
-                async for token in msg_promise:
-                    result.append(token)
-            else:
-                result.append(await msg_promise)
+        if assert_separate_tokens:
+            result = [token async for msg_promise in msg_seq.sequence_promise async for token in msg_promise]
+        else:
+            result = [await msg_promise async for msg_promise in msg_seq.sequence_promise]
 
     if assert_separate_tokens:
         assert result == [
