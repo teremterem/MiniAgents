@@ -474,6 +474,31 @@ class AgentReplyNode(AgentInteractionNode):
     replies: tuple[Message, ...]
 
 
+class SafeMessageSequencePromise(MessageSequencePromise):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    class _SafeStreamReplayIterator(AsyncIterator[MessagePromise]):
+        """
+        TODO Oleksandr: docstring
+        """
+
+        def __init__(self, original_iterator: AsyncIterator[MessagePromise]) -> None:
+            self._original_iterator = original_iterator
+
+        async def __anext__(self) -> MessagePromise:
+            try:
+                return await self._original_iterator.__anext__()
+            except StopAsyncIteration:
+                raise
+            except Exception as exc:  # TODO TODO TODO
+                return Message.promise(str(exc), is_error=True)
+
+    def __aiter__(self) -> _SafeStreamReplayIterator:
+        return self._SafeStreamReplayIterator(super().__aiter__())
+
+
 # noinspection PyProtectedMember
 class AgentReplyMessageSequence(MessageSequence):
     # pylint: disable=protected-access
@@ -495,7 +520,7 @@ class AgentReplyMessageSequence(MessageSequence):
         self._input_sequence_promise = input_sequence_promise
         super().__init__(
             appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
-            sequence_promise_class=MessageSequencePromise,
+            sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
             **kwargs,
         )
 

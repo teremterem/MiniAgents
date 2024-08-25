@@ -40,6 +40,7 @@ class Message(Frozen):
     @classmethod
     def promise(
         cls,
+        content: Optional[str] = None,
         start_asap: Optional[bool] = None,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **preliminary_metadata,
@@ -49,13 +50,15 @@ class Message(Frozen):
         arguments.
         """
         if message_token_streamer:
+            if content is not None:
+                raise ValueError("The `content` argument must be None if `message_token_streamer` is provided.")
             return MessagePromise(
                 start_asap=start_asap,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **preliminary_metadata,
             )
-        return cls(**preliminary_metadata).as_promise
+        return cls(content=content, **preliminary_metadata).as_promise
 
     def serialize(self) -> dict[str, Any]:
         include_into_serialization, sub_messages = self._serialization_metadata
@@ -152,6 +155,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     """
 
     preliminary_metadata: Frozen
+    message_class: type[Message]
 
     def __init__(
         self,
@@ -165,11 +169,13 @@ class MessagePromise(StreamedPromise[str, Message]):
         #  are not None (or both are None)
         if prefill_message:
             self.preliminary_metadata = prefill_message
+            self.message_class = type(prefill_message)
 
             self._metadata_so_far = None
             super().__init__(prefill_result=prefill_message, start_asap=False)
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
+            self.message_class = message_class
 
             if isinstance(message_token_streamer, MessageTokenAppender):
                 if not message_token_streamer.was_open:
@@ -184,7 +190,6 @@ class MessagePromise(StreamedPromise[str, Message]):
                 self._metadata_so_far = dict(self.preliminary_metadata)
 
             self._message_token_streamer = message_token_streamer
-            self._message_class = message_class
             super().__init__(start_asap=start_asap)
 
     def _streamer(self) -> AsyncIterator[str]:
@@ -216,7 +221,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 f"{pformat(self._metadata_so_far)}"
             )
 
-        return self._message_class(content="".join(tokens), **self._metadata_so_far)
+        return self.message_class(content="".join(tokens), **self._metadata_so_far)
 
 
 class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
