@@ -2,15 +2,18 @@
 Tests for the `MessageSequence` class.
 """
 
+from typing import Optional, Union
+
 import pytest
 
 from miniagents.messages import Message, MessageSequence, MessageTokenAppender
 from miniagents.promising.promising import PromisingContext
 
 
+@pytest.mark.parametrize("errors_to_messages", [False, True])
 @pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
-async def test_message_sequence(start_asap: bool) -> None:
+async def test_message_sequence(start_asap: bool, errors_to_messages: bool) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence.
     """
@@ -18,6 +21,8 @@ async def test_message_sequence(start_asap: bool) -> None:
         msg_seq1 = MessageSequence(
             appender_capture_errors=True,
             start_asap=start_asap,
+            # assert that `errors_to_messages` parameter has no effect on the outcome when there are no errors
+            errors_to_messages=errors_to_messages,
         )
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
@@ -27,6 +32,7 @@ async def test_message_sequence(start_asap: bool) -> None:
             msg_seq2 = MessageSequence(
                 appender_capture_errors=True,
                 start_asap=start_asap,
+                errors_to_messages=errors_to_messages,
             )
             with msg_seq2.message_appender:
                 msg_seq2.message_appender.append("msg4")
@@ -34,6 +40,7 @@ async def test_message_sequence(start_asap: bool) -> None:
                 msg_seq3 = MessageSequence(
                     appender_capture_errors=True,
                     start_asap=start_asap,
+                    errors_to_messages=errors_to_messages,
                 )
                 with msg_seq3.message_appender:
                     msg_seq3.message_appender.append("msg5")
@@ -119,9 +126,10 @@ async def test_message_sequence_error(start_asap: bool) -> None:
     ]
 
 
+@pytest.mark.parametrize("collect_token_by_token", [False, True, None])
 @pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.asyncio
-async def test_message_sequence_error_to_message(start_asap: bool) -> None:
+async def test_message_sequence_error_to_message(start_asap: bool, collect_token_by_token: Optional[bool]) -> None:
     """
     Assert that `MessageSequence` converts errors into messages if `errors_to_messages` is set to `True`.
     """
@@ -131,20 +139,26 @@ async def test_message_sequence_error_to_message(start_asap: bool) -> None:
             msg_seq.message_appender.append("msg1")
             raise ValueError("error1")
 
-        message_result = []
-        async for msg_promise in msg_seq.sequence_promise:
-            message_result.append(await msg_promise)
+        message_result = await _collect_message_sequence_result(msg_seq, collect_token_by_token)
 
-    assert message_result == [
-        Message(content="msg1"),
-        Message(content="error1", is_error=True),
-    ]
+    if collect_token_by_token:
+        assert message_result == [
+            "msg1",
+            "error1",
+        ]
+    else:
+        assert message_result == [
+            Message(content="msg1"),
+            Message(content="error1", is_error=True),
+        ]
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.parametrize("assert_separate_tokens", [False, True, None])
+@pytest.mark.parametrize("collect_token_by_token", [False, True, None])
 @pytest.mark.asyncio
-async def test_message_sequence_token_error_to_message(start_asap: bool, assert_separate_tokens: bool) -> None:
+async def test_message_sequence_token_error_to_message(
+    start_asap: bool, collect_token_by_token: Optional[bool]
+) -> None:
     """
     Assert that `MessageSequence` puts token level errors into the message if `errors_to_messages` is set to `True`.
     """
@@ -158,18 +172,9 @@ async def test_message_sequence_token_error_to_message(start_asap: bool, assert_
                 token_appender.append("token2")
                 raise ValueError("error1")
 
-        if assert_separate_tokens is None:
-            result = list(await msg_seq.sequence_promise)
-        else:
-            result = []
-            async for msg_promise in msg_seq.sequence_promise:
-                if assert_separate_tokens:
-                    async for token in msg_promise:
-                        result.append(token)
-                else:
-                    result.append(await msg_promise)
+        result = await _collect_message_sequence_result(msg_seq, collect_token_by_token)
 
-    if assert_separate_tokens:
+    if collect_token_by_token:
         assert result == [
             "msg1",
             "token1",
@@ -181,3 +186,20 @@ async def test_message_sequence_token_error_to_message(start_asap: bool, assert_
             Message(content="msg1"),
             Message(content="token1token2\nerror1"),
         ]
+
+
+async def _collect_message_sequence_result(
+    msg_seq: MessageSequence, collect_token_by_token: Optional[bool]
+) -> list[Union[str, Message]]:
+    if collect_token_by_token is None:
+        return list(await msg_seq.sequence_promise)
+
+    result = []
+    async for msg_promise in msg_seq.sequence_promise:
+        if collect_token_by_token:
+            async for token in msg_promise:
+                result.append(token)
+        else:
+            result.append(await msg_promise)
+
+    return result
