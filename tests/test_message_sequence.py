@@ -142,7 +142,7 @@ async def test_message_sequence_error_to_message(start_asap: bool) -> None:
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.parametrize("assert_separate_tokens", [False, True])
+@pytest.mark.parametrize("assert_separate_tokens", [False, True, None])
 @pytest.mark.asyncio
 async def test_message_sequence_token_error_to_message(start_asap: bool, assert_separate_tokens: bool) -> None:
     """
@@ -158,23 +158,26 @@ async def test_message_sequence_token_error_to_message(start_asap: bool, assert_
                 token_appender.append("token2")
                 raise ValueError("error1")
 
-        result = []
-        async for msg_promise in msg_seq.sequence_promise:
-            if assert_separate_tokens:
-                async for token in msg_promise:
-                    result.append(token)
-            else:
-                result.append(await msg_promise)
+        if assert_separate_tokens is None:
+            result = list(await msg_seq.sequence_promise)
+        else:
+            result = []
+            async for msg_promise in msg_seq.sequence_promise:
+                if assert_separate_tokens:
+                    async for token in msg_promise:
+                        result.append(token)
+                else:
+                    result.append(await msg_promise)
 
     if assert_separate_tokens:
         assert result == [
             "msg1",
             "token1",
             "token2",
-            "error1",
+            "\nerror1",
         ]
     else:
         assert result == [
             Message(content="msg1"),
-            Message(content="token1token2error1"),
+            Message(content="token1token2\nerror1"),
         ]

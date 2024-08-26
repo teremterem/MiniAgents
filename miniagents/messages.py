@@ -389,8 +389,20 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
 
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
+    async def aresolve(self) -> Message:
+        """
+        TODO Oleksandr: docstring
+        """
+        try:
+            tokens = []
+            async for token in self.__wrapped__:
+                tokens.append(token)
+            return await self.__wrapped__.aresolve()
+        except Exception as exc:  # TODO TODO TODO
+            return Message(f"{''.join(tokens)}\n{exc}")
+
     def __await__(self):
-        return self.__wrapped__.__await__()
+        return self.aresolve().__await__()
 
     def __aiter__(self):
         return _SafeMessageTokenIteratorProxy(self.__wrapped__.__aiter__())
@@ -403,4 +415,4 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
         except StopAsyncIteration:
             raise
         except Exception as exc:  # TODO TODO TODO
-            return str(exc)
+            return f"\n{exc}"
