@@ -30,6 +30,12 @@ class Message(Frozen):
     content: Optional[str] = None
     content_template: Optional[str] = None
 
+    # # TODO Oleksandr: finish "error to message" feature
+    # contains_error: bool = False
+    # error_message: Optional[str] = None
+    # error_class: Optional[str] = None
+    # error_traceback: Optional[str] = None
+
     @property
     @cached_privately
     def as_promise(self) -> "MessagePromise":
@@ -384,7 +390,7 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
             return _SafeMessagePromiseProxy(message_promise)
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # TODO TODO TODO
+        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
             return Message.promise(str(exc), is_error=True)
 
 
@@ -398,7 +404,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             async for token in self.__wrapped__:
                 tokens.append(token)
             return await self.__wrapped__.aresolve()
-        except Exception as exc:  # TODO TODO TODO
+        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
             return Message(f"{''.join(tokens)}\n{exc}")
 
     def __await__(self):
@@ -414,5 +420,5 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             return await self.__wrapped__.__anext__()
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # TODO TODO TODO
+        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
             return f"\n{exc}"
