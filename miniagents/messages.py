@@ -23,8 +23,8 @@ MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 class Message(Frozen):
     """
     A message that can be sent between agents.
-    TODO TODO TODO Oleksandr: split this class into two: Message and NonStrictMessage
-     (regular messages wouldn't allow extra fields) ?
+    TODO Oleksandr: split this class into two: Message and NonStrictMessage
+     (with NonStrictMessage allowing extra fields) ? I don't remember why would we need this, though
     """
 
     content: Optional[str] = None
@@ -263,7 +263,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         appender_capture_errors: Optional[bool] = None,
         start_asap: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
-        errors_to_messages: bool = False,  # TODO TODO TODO
+        errors_to_messages: bool = False,  # TODO Oleksandr: finish "error to message" feature
     ) -> None:
         if incoming_streamer:
             # an external streamer is provided, so we don't create the default StreamAppender
