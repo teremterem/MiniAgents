@@ -2155,13 +2155,13 @@ llama-parse = ">=0.5.0"
 
 [[package]]
 name = "llama-parse"
-version = "0.5.4"
+version = "0.5.5"
 description = "Parse files into RAG-Optimized formats."
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_parse-0.5.4-py3-none-any.whl", hash = "sha256:6dc5fc4f6fd8365bbac42a1034640df5b5f7e773751a1ccb9666a322f0d4f793"},
-    {file = "llama_parse-0.5.4.tar.gz", hash = "sha256:549e66a75bebccf46e9854f902cd1a9b4d1e6bc3d2346c113d048b80f1927a7d"},
+    {file = "llama_parse-0.5.5-py3-none-any.whl", hash = "sha256:03413620ede2130fb4bc3bad6021006f75dffa05137c358ae1ac60a60b143124"},
+    {file = "llama_parse-0.5.5.tar.gz", hash = "sha256:20b00e09b14d1b57a1b040e4bd61436d51f43736b7b51003072a4d05b035ef44"},
 ]
 
 [package.dependencies]
