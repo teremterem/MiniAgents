@@ -26,8 +26,8 @@ async def user_agent(
     TODO Oleksandr: add more details
     """
     if history_agent:
+        # TODO Oleksandr: fallback to just `history_agent` if `return_full_history` is not supported ?
         history_agent = history_agent.fork(return_full_history=True)
-        # TODO TODO TODO Oleksandr: fallback to just `history_agent` if `return_full_history` is not supported ?
     ctx.reply(
         agent_chain.inquire(
             ctx.message_promises,

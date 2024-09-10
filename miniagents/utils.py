@@ -176,7 +176,7 @@ class ReducedTracebackFormatter(logging.Formatter):
         resulting_lines.append(
             "\n"
             "ATTENTION! Some parts of the traceback above were omitted for readability.\n"
-            "Use `MiniAgents(log_reduced_traceback=False)` to see the full traceback.\n"
+            "Use `MiniAgents(log_reduced_tracebacks=False)` to see the full traceback.\n"
         )
 
         return "".join(resulting_lines)

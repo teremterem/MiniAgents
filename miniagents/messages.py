@@ -5,6 +5,7 @@
 from pprint import pformat
 from typing import Any, AsyncIterator, Iterator, Optional, Union
 
+import wrapt
 from pydantic import BaseModel
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
@@ -22,10 +23,18 @@ MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 class Message(Frozen):
     """
     A message that can be sent between agents.
+    TODO Oleksandr: split this class into two: Message and NonStrictMessage
+     (with NonStrictMessage allowing extra fields) ? I don't remember why would we need this, though
     """
 
     content: Optional[str] = None
     content_template: Optional[str] = None
+
+    # # TODO Oleksandr: finish "error to message" feature
+    # contains_error: bool = False
+    # error_message: Optional[str] = None
+    # error_class: Optional[str] = None
+    # error_traceback: Optional[str] = None
 
     @property
     @cached_privately
@@ -38,6 +47,7 @@ class Message(Frozen):
     @classmethod
     def promise(
         cls,
+        content: Optional[str] = None,
         start_asap: Optional[bool] = None,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **preliminary_metadata,
@@ -47,13 +57,15 @@ class Message(Frozen):
         arguments.
         """
         if message_token_streamer:
+            if content is not None:
+                raise ValueError("The `content` argument must be None if `message_token_streamer` is provided.")
             return MessagePromise(
                 start_asap=start_asap,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **preliminary_metadata,
             )
-        return cls(**preliminary_metadata).as_promise
+        return cls(content=content, **preliminary_metadata).as_promise
 
     def serialize(self) -> dict[str, Any]:
         include_into_serialization, sub_messages = self._serialization_metadata
@@ -150,6 +162,7 @@ class MessagePromise(StreamedPromise[str, Message]):
     """
 
     preliminary_metadata: Frozen
+    message_class: type[Message]
 
     def __init__(
         self,
@@ -163,11 +176,13 @@ class MessagePromise(StreamedPromise[str, Message]):
         #  are not None (or both are None)
         if prefill_message:
             self.preliminary_metadata = prefill_message
+            self.message_class = type(prefill_message)
 
             self._metadata_so_far = None
             super().__init__(prefill_result=prefill_message, start_asap=False)
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
+            self.message_class = message_class
 
             if isinstance(message_token_streamer, MessageTokenAppender):
                 if not message_token_streamer.was_open:
@@ -182,7 +197,6 @@ class MessagePromise(StreamedPromise[str, Message]):
                 self._metadata_so_far = dict(self.preliminary_metadata)
 
             self._message_token_streamer = message_token_streamer
-            self._message_class = message_class
             super().__init__(start_asap=start_asap)
 
     def _streamer(self) -> AsyncIterator[str]:
@@ -214,20 +228,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 f"{pformat(self._metadata_so_far)}"
             )
 
-        return self._message_class(content="".join(tokens), **self._metadata_so_far)
-
-
-class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
-    """
-    A promise of a sequence of messages that can be streamed message by message.
-    """
-
-    def as_single_promise(self, **kwargs) -> MessagePromise:
-        """
-        Convert this sequence promise into a single message promise that will contain all the messages from this
-        sequence (separated by double newlines by default).
-        """
-        return join_messages(self, start_asap=False, **kwargs)
+        return self.message_class(content="".join(tokens), **self._metadata_so_far)
 
 
 class MessageTokenAppender(StreamAppender[str]):
@@ -255,13 +256,14 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     """
 
     message_appender: Optional["MessageSequenceAppender"]
-    sequence_promise: MessageSequencePromise
+    sequence_promise: "MessageSequencePromise"
 
     def __init__(
         self,
         appender_capture_errors: Optional[bool] = None,
         start_asap: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
+        errors_to_messages: bool = False,  # TODO Oleksandr: finish "error to message" feature
     ) -> None:
         if incoming_streamer:
             # an external streamer is provided, so we don't create the default StreamAppender
@@ -273,11 +275,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         super().__init__(
             incoming_streamer=incoming_streamer,
             start_asap=start_asap,
-            sequence_promise_class=MessageSequencePromise,
+            sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
         )
 
     @classmethod
-    def turn_into_sequence_promise(cls, messages: MessageType) -> MessageSequencePromise:
+    def turn_into_sequence_promise(cls, messages: MessageType) -> "MessageSequencePromise":
         """
         Convert an arbitrarily nested collection of messages of various types (strings, dicts, Message objects,
         MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform
@@ -317,7 +319,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         else:
             raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
 
-    async def _resolver(self, seq_promise: MessageSequencePromise) -> tuple[Message, ...]:
+    async def _resolver(self, seq_promise: "MessageSequencePromise") -> tuple[Message, ...]:
         """
         Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
         and return them as a tuple of Message objects.
@@ -354,3 +356,69 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
             return zero_or_more_messages
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
+
+
+class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
+    """
+    A promise of a sequence of messages that can be streamed message by message.
+    """
+
+    def as_single_promise(self, **kwargs) -> MessagePromise:
+        """
+        Convert this sequence promise into a single message promise that will contain all the messages from this
+        sequence (separated by double newlines by default).
+        """
+        return join_messages(self, start_asap=False, **kwargs)
+
+
+class SafeMessageSequencePromise(MessageSequencePromise):
+    """
+    TODO Oleksandr: docstring
+    """
+
+    def __aiter__(self) -> AsyncIterator[MessagePromise]:
+        return _SafeMessagePromiseIteratorProxy(super().__aiter__())
+
+
+# pylint: disable=abstract-method
+
+
+class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
+    async def __anext__(self) -> MessagePromise:
+        try:
+            message_promise = await self.__wrapped__.__anext__()
+            return _SafeMessagePromiseProxy(message_promise)
+        except StopAsyncIteration:
+            raise
+        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
+            return Message.promise(str(exc), is_error=True)
+
+
+class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
+    async def aresolve(self) -> Message:
+        """
+        TODO Oleksandr: docstring
+        """
+        try:
+            tokens = []
+            async for token in self.__wrapped__:
+                tokens.append(token)
+            return await self.__wrapped__.aresolve()
+        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
+            return Message(f"{''.join(tokens)}\n{exc}")
+
+    def __await__(self):
+        return self.aresolve().__await__()
+
+    def __aiter__(self):
+        return _SafeMessageTokenIteratorProxy(self.__wrapped__.__aiter__())
+
+
+class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
+    async def __anext__(self) -> str:
+        try:
+            return await self.__wrapped__.__anext__()
+        except StopAsyncIteration:
+            raise
+        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
+            return f"\n{exc}"

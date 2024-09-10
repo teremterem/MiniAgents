@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from pprint import pformat
-from typing import Optional
+from typing import Callable, Optional
 
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
@@ -50,6 +50,7 @@ class MarkdownHistoryAgent(BaseModel):
     history_md_file: str = "CHAT.md"
     default_role: str = "assistant"
     return_full_history: bool = False
+    history_message_factory: Callable[..., Message] = Message
     append: bool = True
     skip_empty: bool = True
     ignore_no_history: bool = False
@@ -95,7 +96,7 @@ class MarkdownHistoryAgent(BaseModel):
             # return the full chat history (including the messages that were already in the file before) as a reply
             chat_history = self._load_chat_history_md()
             if self.skip_empty:
-                chat_history = tuple(msg for msg in chat_history if msg.content and msg.content.strip())
+                chat_history = tuple(msg for msg in chat_history if str(msg).strip())
             self.ctx.reply(chat_history)
 
     def _load_chat_history_md(self) -> tuple[Message, ...]:
@@ -142,7 +143,10 @@ class MarkdownHistoryAgent(BaseModel):
             last_section.content = self._grab_and_clean_up_lines(md_lines, last_section.content_start_line)
             sections.append(last_section)
 
-        return tuple(Message(role=section.role, model=section.model, content=section.content) for section in sections)
+        return tuple(
+            self.history_message_factory(role=section.role, model=section.model, content=section.content)
+            for section in sections
+        )
 
     @staticmethod
     def _grab_and_clean_up_lines(md_lines: list[str], start_line: int, end_line: Optional[int] = None) -> str:
@@ -161,10 +165,6 @@ class MarkdownHistoryAgent(BaseModel):
             content_lines.pop(0)
         while content_lines and not content_lines[-1].strip():
             content_lines.pop()
-
-        if not content_lines:
-            # there is no content in this section
-            return ""
 
         return "\n".join(content_lines)
 

@@ -1,5 +1,5 @@
 """
-Make all the functions and classes in miniagents available at the package level.
+TODO Oleksandr: docstring
 """
 
 from miniagents.messages import Message, MessagePromise, MessageSequencePromise, MessageTokenAppender
