@@ -29,8 +29,8 @@ def _check_anthropic_response(message: Message) -> None:
 @pytest.mark.parametrize(
     "llm_agent, check_response_func",
     [
-        (OpenAIAgent.fork(model="gpt-3.5-turbo-0125"), _check_openai_response),
-        (AnthropicAgent.fork(model="claude-3-haiku-20240307"), _check_anthropic_response),
+        (OpenAIAgent.fork(model="gpt-4o-mini"), _check_openai_response),
+        (AnthropicAgent.fork(model="claude-3-5-haiku-latest"), _check_anthropic_response),
     ],
 )
 @pytest.mark.asyncio

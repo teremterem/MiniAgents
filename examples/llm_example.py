@@ -14,8 +14,8 @@ load_dotenv()
 
 # logging.basicConfig(level=logging.DEBUG)
 
-# llm_agent = AnthropicAgent.fork(model="claude-3-haiku-20240307")  # claude-3-opus-20240229
-llm_agent = OpenAIAgent.fork(model="gpt-4o-2024-05-13")  # gpt-3.5-turbo-0125
+# llm_agent = AnthropicAgent.fork(model="claude-3-7-sonnet-latest")
+llm_agent = OpenAIAgent.fork(model="gpt-4o")
 
 mini_agents = MiniAgents()
 

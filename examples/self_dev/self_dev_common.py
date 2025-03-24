@@ -14,27 +14,23 @@ from miniagents.utils import ModelSingleton
 
 load_dotenv()
 
-GPT_4O = "gpt-4o-2024-08-06"
-CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20240620"
+GPT_4O = "gpt-4o"
+CLAUDE_3_7_SONNET = "claude-3-7-sonnet-latest"
 
-FAVOURITE_MODEL = CLAUDE_3_5_SONNET
+FAVOURITE_MODEL = CLAUDE_3_7_SONNET
 
 MAX_OUTPUT_TOKENS = 4096
 
 MODEL_AGENT_FACTORIES = {
     GPT_4O: OpenAIAgent.fork(temperature=0),
-    "gpt-4-turbo-2024-04-09": OpenAIAgent.fork(temperature=0),
-    "gpt-4o-mini-2024-07-18": OpenAIAgent.fork(temperature=0),
-    CLAUDE_3_5_SONNET: AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
-    "claude-3-opus-20240229": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
-    "claude-3-haiku-20240307": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
+    CLAUDE_3_7_SONNET: AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS, temperature=0),
 }
 MODEL_AGENTS = {
     model: MODEL_AGENT_FACTORIES[model].fork(model=model)
     for model in [
         # let's use only two best models in our self_dev agents
         GPT_4O,
-        CLAUDE_3_5_SONNET,
+        CLAUDE_3_7_SONNET,
     ]
 }
 FAVOURITE_MODEL_AGENT = MODEL_AGENTS[FAVOURITE_MODEL]

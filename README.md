@@ -105,7 +105,7 @@ from miniagents.ext.llms import OpenAIAgent
 # with the specified configuration. Alternatively, you could pass the `model`
 # parameter to `OpenAIAgent.inquire()` directly everytime you talk to the
 # agent.
-gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-2024-05-13")
+gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-mini")
 
 
 async def main() -> None:
@@ -150,8 +150,10 @@ introduces more complex behavior, i.e. Retrieval Augmented Generation etc.):
 ⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your
 Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
 the example below (or just replace `AnthropicAgent` with `OpenAIAgent` and
-`"claude-3-5-sonnet-20240620"` with `"gpt-4o-2024-05-13"` if you already set up
+`"claude-3-5-haiku-latest"` with `"gpt-4o-mini"` if you already set up
 the previous example). ⚠️
+
+TODO don't complicate your examples by using different model providers
 
 ```python
 from miniagents import MiniAgents
@@ -177,7 +179,7 @@ async def main() -> None:
             history_agent=MarkdownHistoryAgent
         ),
         assistant_agent=AnthropicAgent.fork(
-            model="claude-3-5-sonnet-20240620",
+            model="claude-3-5-haiku-latest",
             max_tokens=1000,
         ),
     )
