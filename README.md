@@ -421,6 +421,9 @@ individual agent calls if for some reason you need to:
 setting it to `False` for the whole system globally is not recommended because
 it can lead to deadlocks. ⚠️
 
+TODO get rid of the `start_asap=False` option completely ?
+(but first check how it is done in `trio`/`anyio`/etc.)
+
 ### 📨 An alternative inquiry method
 
 Here's a simple example demonstrating how to use
@@ -458,6 +461,8 @@ This will output:
 Echo: Hello
 Echo: World
 ```
+
+TODO explain when this might be useful
 
 ### 🛠️ Global `MiniAgents()` context
 

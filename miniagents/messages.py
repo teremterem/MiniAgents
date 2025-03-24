@@ -35,6 +35,7 @@ class Message(Frozen):
     # error_message: Optional[str] = None
     # error_class: Optional[str] = None
     # error_traceback: Optional[str] = None
+    # # TODO Oleksandr: attach custom miniagent_call attribute to each exception object and display it with traceback
 
     @property
     @cached_privately
@@ -157,6 +158,7 @@ class Message(Frozen):
 
 
 class MessagePromise(StreamedPromise[str, Message]):
+    # TODO Oleksandr: use Token object instead of str and allow appending empty text tokens too, for simplicity
     """
     A promise of a message that can be streamed token by token.
     """
