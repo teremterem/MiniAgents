@@ -62,7 +62,9 @@ async def main() -> None:
     """
     dialog_loop.kick_off(
         user_agent=console_user_agent.fork(
-            history_agent=MarkdownHistoryAgent.fork(history_md_file=SELF_DEV_OUTPUT / f"CHAT__{readme_agent.alias}.md")
+            history_agent=MarkdownHistoryAgent.fork(
+                history_md_file=str(SELF_DEV_OUTPUT / f"CHAT__{readme_agent.alias}.md")
+            )
         ),
         assistant_agent=readme_agent,
     )
