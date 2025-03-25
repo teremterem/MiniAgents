@@ -20,16 +20,13 @@ FlatSequenceBound = TypeVar("FlatSequenceBound", bound="FlatSequence")
 
 
 class PromiseResolver(Protocol[T_co]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     async def __call__(self, promise: PromiseBound) -> T_co: ...
 
 
 class PromiseStreamer(Protocol[PIECE_co]):
     """
-    TODO Oleksandr: docstring
+    A protocol for Promise streamers. A Promise streamer is a function that takes a StreamedPromise object and returns
+    an async iterator that yields pieces of the promise's content.
     """
 
     def __call__(self, streamed_promise: StreamedPromiseBound) -> AsyncIterator[PIECE_co]: ...

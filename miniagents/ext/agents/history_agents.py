@@ -187,9 +187,6 @@ async def markdown_llm_logger_agent(
     request_metadata: Optional[Frozen] = None,
     show_response_metadata: bool = True,
 ) -> None:
-    """
-    TODO Oleksandr: docstring
-    """
     log_folder = Path(log_folder)
     log_folder.mkdir(parents=True, exist_ok=True)
 

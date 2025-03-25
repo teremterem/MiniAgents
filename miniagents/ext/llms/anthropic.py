@@ -53,9 +53,6 @@ class AnthropicAgent(LLMAgent):
     response_message_class: type[Message] = AnthropicMessage
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
         system_message = await self._cut_off_system_message(message_dicts)
 
         if self.stream:
@@ -89,9 +86,6 @@ class AnthropicAgent(LLMAgent):
         token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 
     async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
-        """
-        TODO Oleksandr: docstring
-        """
         message_dicts = [self._message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
         if not message_dicts:
             return []
@@ -118,9 +112,6 @@ class AnthropicAgent(LLMAgent):
         return fixed_message_dicts
 
     async def _cut_off_system_message(self, message_dicts: list[dict[str, Any]]) -> str:
-        """
-        TODO Oleksandr: docstring
-        """
         if message_dicts and message_dicts[0]["role"] == "system":
             # let's strip away the system message from the beginning (look at the implementation of
             # `_fix_message_dicts()` to see why it's there)

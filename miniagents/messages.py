@@ -389,9 +389,6 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
     async def aresolve(self) -> Message:
-        """
-        TODO Oleksandr: docstring
-        """
         try:
             tokens = []
             async for token in self.__wrapped__:

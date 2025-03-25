@@ -276,9 +276,6 @@ class MiniAgent(Frozen):
         mutable_state: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
-        """
-        TODO Oleksandr: docstring
-        """
         return MiniAgent(
             self._func_or_class,
             alias=alias or self.alias,
@@ -293,10 +290,6 @@ class MiniAgent(Frozen):
 
 
 class InteractionContext:
-    """
-    TODO Oleksandr: docstring
-    """
-
     this_agent: MiniAgent
     message_promises: MessageSequencePromise
 
@@ -317,9 +310,6 @@ class InteractionContext:
 
     @classmethod
     def get_current(cls) -> "InteractionContext":
-        """
-        TODO Oleksandr: docstring
-        """
         current = cls._current.get()
         if not current:
             raise NoActiveContextError(f"No {cls.__name__} is currently active.")
@@ -358,25 +348,16 @@ class InteractionContext:
         await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
 
     async def afinish_early(self, await_for_subtasks: bool = True) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
         if await_for_subtasks:
             await self.await_for_subtasks()
         self._reply_streamer.close()
 
     def _activate(self) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
         if self._previous_ctx_token:
             raise RuntimeError(f"{type(self).__name__} is not reentrant")
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
 
     async def _afinalize(self) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
         for agent_call in self._child_agent_calls:
             agent_call.finish()
         await self.await_for_subtasks()
@@ -386,10 +367,6 @@ class InteractionContext:
 
 # noinspection PyProtectedMember
 class AgentCall:  # pylint: disable=protected-access
-    """
-    TODO Oleksandr: docstring
-    """
-
     def __init__(
         self,
         message_streamer: MessageSequenceAppender,
@@ -443,26 +420,14 @@ class AgentCall:  # pylint: disable=protected-access
 
 
 class AgentInteractionNode(Message):
-    """
-    TODO Oleksandr: docstring
-    """
-
     agent: MiniAgent
 
 
 class AgentCallNode(AgentInteractionNode):
-    """
-    TODO Oleksandr: docstring
-    """
-
     messages: tuple[Message, ...]
 
 
 class AgentReplyNode(AgentInteractionNode):
-    """
-    TODO Oleksandr: docstring
-    """
-
     agent_call: AgentCallNode
     replies: tuple[Message, ...]
 
@@ -470,10 +435,6 @@ class AgentReplyNode(AgentInteractionNode):
 # noinspection PyProtectedMember
 class AgentReplyMessageSequence(MessageSequence):
     # pylint: disable=protected-access
-    """
-    TODO Oleksandr: docstring
-    """
-
     def __init__(
         self,
         mini_agent: MiniAgent,
