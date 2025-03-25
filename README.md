@@ -36,7 +36,8 @@ token and message streaming between the agents.
 framework to the functional programming paradigm
 
 **TODO** mention the feature of "message sequence flattening" and refer to an
-example that you will provide later in the README
+example that you will provide later in the README (it's one of the means to
+high parallelism)
 
 **TODO** mention that exceptions that happen in "callee" agents are propagated
 to the caller agents even though the callee agents were being processed in
@@ -593,7 +594,8 @@ async def persist_message(_, message: Message) -> None:
 
 ## 📂 Modules
 
-**TODO** the structure of this section is outdated - update it
+**TODO** the structure of this section is outdated - update it (or just get rid
+of it?)
 
 Here's an overview of the module structure and hierarchy in the MiniAgents
 framework:
