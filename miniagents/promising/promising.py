@@ -110,12 +110,18 @@ class PromisingContext:
             # noinspection PyBroadException
             try:
                 return await awaitable
-            except Exception:
-                self.logger.log(
-                    log_level_for_errors,
-                    "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK",
-                    exc_info=True,
-                )
+            except Exception as e:
+                print("ERROR ID:", id(e))
+                if not getattr(e, "_promising_already_logged", False):
+                    print("LOGGING LOGGING LOGGING LOGGING LOGGING LOGGING LOGGING LOGGING LOGGING")
+                    self.logger.log(
+                        log_level_for_errors,
+                        "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK",
+                        exc_info=True,
+                    )
+                    e._promising_already_logged = True  # pylint: disable=protected-access
+                    print("LOGGED LOGGED LOGGED LOGGED LOGGED LOGGED LOGGED LOGGED LOGGED")
+
                 if not suppress_errors:
                     raise
             except BaseException:
