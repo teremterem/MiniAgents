@@ -270,7 +270,7 @@ class MiniAgent(Frozen):
 
     def fork(
         self,
-        alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce some "fork identifier" ?
+        alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce a "fork identifier" ?
         description: Optional[str] = None,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         mutable_state: Optional[dict[str, Any]] = None,

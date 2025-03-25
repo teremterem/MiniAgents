@@ -26,7 +26,8 @@ class Message(Frozen):
     """
 
     # TODO Oleksandr: split this class into two: Message and NonStrictMessage
-    #  (with NonStrictMessage allowing extra fields) ? I don't remember why would we need this, though
+    #  (with NonStrictMessage allowing extra fields) ?
+    #  (is it to reduce confusion as to whether to expect extra fields in a message or not ?)
 
     content: Optional[str] = None
     content_template: Optional[str] = None
