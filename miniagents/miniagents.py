@@ -52,7 +52,10 @@ class MiniAgents(PromisingContext):
             else [self._trigger_persist_message_event, *on_promise_resolved]
         )
         if not logger:
-            logger = logging.getLogger("MiniAgents")
+            # TODO Oleksandr: is it ok to create a Logger instance directly instead of using `logging.getLogger` ?
+            #  (otherwise multiple instances of MiniAgents end up reusing the same logger config)
+            #  YEAH, this looks like a bad idea... How will the user control log levels, for example ?
+            logger = logging.Logger("MiniAgents", level=logging.WARNING)
             formatter_class = ReducedTracebackFormatter if log_reduced_tracebacks else logging.Formatter
             formatter = formatter_class(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             handler = logging.StreamHandler()
