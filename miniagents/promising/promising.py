@@ -111,13 +111,13 @@ class PromisingContext:
             try:
                 return await awaitable
             except Exception as e:
-                if not getattr(e, "_promising_already_logged", False):
+                if not getattr(e, "_promising__already_logged", False):
                     self.logger.log(
                         log_level_for_errors,
                         "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK",
                         exc_info=True,
                     )
-                    e._promising_already_logged = True  # pylint: disable=protected-access
+                    e._promising__already_logged = True  # pylint: disable=protected-access
 
                 if not suppress_errors:
                     raise
