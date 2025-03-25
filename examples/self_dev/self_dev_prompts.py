@@ -2,7 +2,7 @@
 This file contains prompts for `self_dev`.
 """
 
-SYSTEM_HERE_ARE_REPO_FILES = (  # TODO Oleksandr: improve this instruction ?
+SYSTEM_HERE_ARE_REPO_FILES = (
     "Here are the source files of a Python framework that I'm building that goes by the name of MiniAgents."
 )
 SYSTEM_IMPROVE_README = (

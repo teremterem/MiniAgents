@@ -114,9 +114,6 @@ async def agent_loop(
 
 @miniagent
 async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[Optional[MiniAgent], str]]) -> None:
-    """
-    TODO Oleksandr: docstring
-    """
     ctx.reply(await _achain_agents(list(agents), ctx.message_promises))
 
 

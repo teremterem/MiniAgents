@@ -11,10 +11,6 @@ from miniagents.promising.promising import StreamedPromise
 
 
 class FlatSequence(Generic[IN_co, OUT_co]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     sequence_promise: StreamedPromise[OUT_co, tuple[OUT_co, ...]]
 
     def __init__(

@@ -70,9 +70,6 @@ class OpenAIAgent(LLMAgent):
         return n
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
         openai_response = await self.async_client.chat.completions.create(
             messages=message_dicts, model=self.model, stream=self.stream, n=self.n, **self.__pydantic_extra__
         )
@@ -111,9 +108,6 @@ class OpenAIAgent(LLMAgent):
             )
 
     async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
-        """
-        TODO Oleksandr: docstring
-        """
         if self.system is None:
             message_dicts = []
         else:

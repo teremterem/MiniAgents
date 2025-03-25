@@ -23,9 +23,11 @@ MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 class Message(Frozen):
     """
     A message that can be sent between agents.
-    TODO Oleksandr: split this class into two: Message and NonStrictMessage
-     (with NonStrictMessage allowing extra fields) ? I don't remember why would we need this, though
     """
+
+    # TODO Oleksandr: split this class into two: Message and NonStrictMessage
+    #  (with NonStrictMessage allowing extra fields) ?
+    #  (is it to reduce confusion as to whether to expect extra fields in a message or not ?)
 
     content: Optional[str] = None
     content_template: Optional[str] = None
@@ -253,10 +255,6 @@ class MessageTokenAppender(StreamAppender[str]):
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     message_appender: Optional["MessageSequenceAppender"]
     sequence_promise: "MessageSequencePromise"
 
@@ -333,10 +331,6 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
 
 class MessageSequenceAppender(StreamAppender[MessageType]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     def append(self, piece: MessageType) -> "MessageSequenceAppender":
         super().append(self._freeze_if_possible(piece))
         return self
@@ -355,6 +349,8 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
         if hasattr(zero_or_more_messages, "__aiter__"):
             # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
             # hence we return it as is
+            # TODO Oleksandr: add a warning in console that an async iterator is not consumed immediately
+            #  (but only when it is passed to an agent, not when it is returned by an agent)
             return zero_or_more_messages
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
@@ -374,10 +370,6 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
 
 
 class SafeMessageSequencePromise(MessageSequencePromise):
-    """
-    TODO Oleksandr: docstring
-    """
-
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
         return _SafeMessagePromiseIteratorProxy(super().__aiter__())
 
@@ -398,9 +390,6 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
     async def aresolve(self) -> Message:
-        """
-        TODO Oleksandr: docstring
-        """
         try:
             tokens = []
             async for token in self.__wrapped__:

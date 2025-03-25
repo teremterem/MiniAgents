@@ -92,8 +92,8 @@ async def test_model_hash_key() -> None:
 def test_nested_object_not_copied() -> None:
     """
     Test that nested objects are not copied when the outer pydantic model is created.
-    TODO Oleksandr: why do you care about this ?
     """
+    # TODO Oleksandr: why do we care about this ?
     sub_model = SampleModel(some_req_field="test")
     sample = SampleModel(some_req_field="test", sub_model=sub_model)
 

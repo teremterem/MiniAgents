@@ -24,6 +24,8 @@ class SingletonMeta(type):
     it thread-safe (people typically don't mix multithreading and asynchronous paradigms together).
     """
 
+    # TODO Oleksandr: make it thread-safe if we're planning to support synchronous agents
+
     def __call__(cls):
         if not hasattr(cls, "_instance"):
             cls._instance = super().__call__()

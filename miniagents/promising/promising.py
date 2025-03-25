@@ -173,10 +173,6 @@ class PromisingContext:
 
 
 class Promise(Generic[T_co]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     def __init__(
         self,
         start_asap: Optional[bool] = None,
@@ -212,9 +208,6 @@ class Promise(Generic[T_co]):
         )
 
     async def aresolve(self) -> T_co:
-        """
-        TODO Oleksandr: docstring
-        """
         # TODO Oleksandr: put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
         #  `aresolve()` from within the `resolver` function
         if self._result is NO_VALUE:

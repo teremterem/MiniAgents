@@ -96,15 +96,9 @@ class LLMAgent(ABC, BaseModel):
 
     @staticmethod
     def _prompt_messages_to_log(message_dicts: list[dict[str, Any]]) -> tuple[PromptLogMessage, ...]:
-        """
-        TODO Oleksandr: docstring
-        """
         return tuple(PromptLogMessage(**message_dict) for message_dict in message_dicts)
 
     def _request_metadata_to_log(self) -> dict[str, Any]:
-        """
-        TODO Oleksandr: docstring
-        """
         return {
             "agent_alias": self.ctx.this_agent.alias,
             "model": self.model,
@@ -114,21 +108,14 @@ class LLMAgent(ABC, BaseModel):
         }
 
     @abstractmethod
-    async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
-        """
-        TODO Oleksandr: docstring
-        """
+    async def _prepare_message_dicts(self) -> list[dict[str, Any]]: ...
 
     @abstractmethod
-    async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
+    async def _produce_tokens(
+        self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender
+    ) -> None: ...
 
     async def _promise_and_close(self, token_appender: MessageTokenAppender) -> MessagePromise:
-        """
-        TODO Oleksandr: docstring
-        """
         response_promise = self.response_message_class.promise(
             start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
             message_token_streamer=token_appender,
