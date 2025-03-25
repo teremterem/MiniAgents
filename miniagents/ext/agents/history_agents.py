@@ -102,8 +102,8 @@ class MarkdownHistoryAgent(BaseModel):
     def _load_chat_history_md(self) -> tuple[Message, ...]:
         """
         Parse a markdown content as a dialog.
-        TODO Oleksandr: implement exhaustive unit tests for this function ?
         """
+        # TODO Oleksandr: implement exhaustive unit tests for this function ?
         md_content = Path(self.history_md_file).read_text(encoding="utf-8")
 
         md_lines = md_content.split("\n")
