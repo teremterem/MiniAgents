@@ -32,10 +32,6 @@ class MessageTokenStreamer(Protocol):
 
 
 class PersistMessageEventHandler(Protocol):
-    """
-    TODO Oleksandr: docstring
-    """
-
     async def __call__(self, promise: PromiseBound, message: "Message") -> None: ...
 
 

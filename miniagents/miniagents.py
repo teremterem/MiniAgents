@@ -27,10 +27,6 @@ from miniagents.utils import ReducedTracebackFormatter
 
 
 class MiniAgents(PromisingContext):
-    """
-    TODO Oleksandr: docstring
-    """
-
     stream_llm_tokens_by_default: bool
     llm_logger_agent: Union["MiniAgent", bool]
     normalize_agent_func_and_class_names: bool
@@ -234,9 +230,6 @@ class MiniAgent(Frozen):
         errors_to_messages: bool = False,
         **kwargs_to_freeze,
     ) -> MessageSequencePromise:
-        """
-        TODO Oleksandr: docstring
-        """
         agent_call = self.initiate_inquiry(
             start_asap=start_asap, errors_to_messages=errors_to_messages, **kwargs_to_freeze
         )

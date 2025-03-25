@@ -23,9 +23,10 @@ MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 class Message(Frozen):
     """
     A message that can be sent between agents.
-    TODO Oleksandr: split this class into two: Message and NonStrictMessage
-     (with NonStrictMessage allowing extra fields) ? I don't remember why would we need this, though
     """
+
+    # TODO Oleksandr: split this class into two: Message and NonStrictMessage
+    #  (with NonStrictMessage allowing extra fields) ? I don't remember why would we need this, though
 
     content: Optional[str] = None
     content_template: Optional[str] = None
@@ -253,10 +254,6 @@ class MessageTokenAppender(StreamAppender[str]):
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     message_appender: Optional["MessageSequenceAppender"]
     sequence_promise: "MessageSequencePromise"
 
@@ -333,10 +330,6 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
 
 class MessageSequenceAppender(StreamAppender[MessageType]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     def append(self, piece: MessageType) -> "MessageSequenceAppender":
         super().append(self._freeze_if_possible(piece))
         return self
@@ -376,10 +369,6 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
 
 
 class SafeMessageSequencePromise(MessageSequencePromise):
-    """
-    TODO Oleksandr: docstring
-    """
-
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
         return _SafeMessagePromiseIteratorProxy(super().__aiter__())
 

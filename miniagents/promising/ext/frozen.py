@@ -29,6 +29,8 @@ def cached_privately(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     source code).
     """
 
+    # TODO Oleksandr: make it thread-safe if we're planning to support synchronous agents
+
     @wraps(func)
     def wrapper(self: Any) -> Any:
         attr_name = f"__{type(self).__name__}__{func.__name__}__cache"
