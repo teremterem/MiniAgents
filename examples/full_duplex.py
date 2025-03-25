@@ -1,9 +1,6 @@
-"""
-TODO Oleksandr: is the name of this script adequate ?
-TODO Oleksandr: docstring
-"""
-
 from miniagents import InteractionContext, MiniAgents, miniagent
+
+# TODO Oleksandr: is the name of this script adequate ?
 
 
 @miniagent
