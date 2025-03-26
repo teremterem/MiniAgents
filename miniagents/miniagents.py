@@ -403,15 +403,15 @@ class AgentCall:  # pylint: disable=protected-access
         self._message_streamer.append(messages)
         return self
 
-    def reply_sequence(self, close_request_sequence: bool = True) -> MessageSequencePromise:
+    def reply_sequence(self, finish_call: bool = True) -> MessageSequencePromise:
         """
-        Get a promise of a reply sequence by the agent. If `close_request_sequence` is True (the default), then,
+        Get a promise of a reply sequence by the agent. If `finish_call` is True (the default), then,
         after this method is called, it is not possible to send any more requests to this AgentCall object.
 
-        ATTENTION! Set `close_request_sequence` to False only if you know what you are doing. It is easy to create
-        deadlocks when `close_request_sequence` is set to False!
+        ATTENTION! Set `finish_call` to False only if you know what you are doing. It is easy to create
+        deadlocks when `finish_call` is set to False!
         """
-        if close_request_sequence:
+        if finish_call:
             self.finish()
         return self._reply_sequence_promise
 
