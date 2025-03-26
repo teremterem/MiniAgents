@@ -23,7 +23,14 @@ from miniagents.promising.errors import NoActiveContextError, WrongActiveContext
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseResolvedEventHandler
 from miniagents.promising.promising import Promise, PromisingContext
-from miniagents.utils import ReducedTracebackFormatter
+from miniagents.utils import MiniAgentsLogFormatter
+
+
+_default_logger = logging.Logger("MiniAgents", level=logging.WARNING)
+_log_formatter = MiniAgentsLogFormatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+_log_handler = logging.StreamHandler()
+_log_handler.setFormatter(_log_formatter)
+_default_logger.addHandler(_log_handler)
 
 
 class MiniAgents(PromisingContext):
@@ -33,6 +40,8 @@ class MiniAgents(PromisingContext):
     normalize_spaces_in_agent_docstrings: bool
     on_persist_message_handlers: list[PersistMessageEventHandler]
     log_reduced_tracebacks: bool
+
+    logger: logging.Logger = _default_logger
 
     def __init__(
         self,
@@ -51,16 +60,9 @@ class MiniAgents(PromisingContext):
             if callable(on_promise_resolved)
             else [self._trigger_persist_message_event, *on_promise_resolved]
         )
-        if not logger:
-            logger = logging.getLogger("MiniAgents")
-            formatter_class = ReducedTracebackFormatter if log_reduced_tracebacks else logging.Formatter
-            formatter = formatter_class(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            handler = logging.StreamHandler()
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
+        self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
         self.normalize_agent_func_and_class_names = normalize_agent_func_and_class_names
@@ -303,10 +305,20 @@ class InteractionContext:
     ) -> None:
         self.this_agent = this_agent
         self.message_promises = message_promises
+
+        self._parent: Optional["InteractionContext"] = None
         self._reply_streamer = reply_streamer
         self._tasks_to_wait_for: list[Awaitable[Any]] = []
         self._child_agent_calls: set[AgentCall] = set()
         self._previous_ctx_token: Optional[contextvars.Token] = None
+
+    def get_agent_trace(self) -> list["MiniAgent"]:
+        trace = []
+        ctx = self
+        while ctx:
+            trace.append(ctx.this_agent)
+            ctx = ctx._parent  # pylint: disable=protected-access
+        return trace
 
     @classmethod
     def get_current(cls) -> "InteractionContext":
@@ -353,6 +365,7 @@ class InteractionContext:
         self._reply_streamer.close()
 
     def _activate(self) -> None:
+        self._parent = self._current.get()
         if self._previous_ctx_token:
             raise RuntimeError(f"{type(self).__name__} is not reentrant")
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
@@ -482,6 +495,9 @@ class AgentReplyMessageSequence(MessageSequence):
                     else:
                         # the miniagent is a function
                         await self._mini_agent._func_or_class(ctx, **kwargs)
+                except Exception as e:
+                    PromisingContext.get_current()._log_background_error_once(e)
+                    raise
                 finally:
                     await ctx._afinalize()
 

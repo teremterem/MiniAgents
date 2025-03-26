@@ -38,11 +38,12 @@ class PromisingContext:
     start_everything_asap_by_default: bool
     appenders_capture_errors_by_default: bool
     longer_hash_keys: bool
-    logger: logging.Logger
     log_level_for_errors: int
     on_promise_resolved_handlers: list[PromiseResolvedEventHandler]
     parent: Optional["PromisingContext"]
     child_tasks: set[Task]
+
+    logger: logging.Logger = logging.getLogger("Promising")
 
     _current: ContextVar[Optional["PromisingContext"]] = ContextVar("PromisingContext._current", default=None)
 
@@ -65,8 +66,11 @@ class PromisingContext:
         self.start_everything_asap_by_default = start_everything_asap_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_hash_keys = longer_hash_keys
-        self.logger = logger or logging.getLogger("Promising")
         self.log_level_for_errors = log_level_for_errors
+
+        if logger:
+            # override the class-level logger for this instance
+            self.logger = logger
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
@@ -94,28 +98,21 @@ class PromisingContext:
         self.on_promise_resolved_handlers.append(handler)
         return handler
 
-    def start_asap(
-        self, awaitable: Awaitable, suppress_errors: bool = True, log_level_for_errors: Optional[int] = None
-    ) -> Task:
+    def start_asap(self, awaitable: Awaitable, suppress_errors: bool = True) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
         before finalizing the context.
         """
-        if log_level_for_errors is None:
-            log_level_for_errors = self.log_level_for_errors
 
         async def awaitable_wrapper() -> Any:
             # pylint: disable=broad-except
             # noinspection PyBroadException
             try:
                 return await awaitable
-            except Exception:
-                self.logger.log(
-                    log_level_for_errors,
-                    "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK",
-                    exc_info=True,
-                )
+            except Exception as e:
+                self._log_background_error_once(e)
+
                 if not suppress_errors:
                     raise
             except BaseException:
@@ -170,6 +167,23 @@ class PromisingContext:
         raise RuntimeError(f"Use `async with {type(self).__name__}()` instead of `with {type(self).__name__}`.")
 
     def __exit__(self, *args, **kwargs) -> None: ...
+
+    def _log_background_error_once(self, error: Exception) -> None:
+        log_level = logging.DEBUG
+
+        if not getattr(error, "_promising__already_logged", False):
+            try:
+                error._promising__already_logged = True  # pylint: disable=protected-access
+            except AttributeError as ae:
+                # this problem will not have a significant impact => just ignore it
+                self.logger.debug(
+                    "Failed to set _promising__already_logged for an exception of type %s",
+                    type(error).__name__,
+                    exc_info=ae,
+                )
+            log_level = self.log_level_for_errors
+
+        self.logger.log(log_level, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=error)
 
 
 class Promise(Generic[T_co]):
