@@ -122,7 +122,7 @@ class PromisingContext:
                             exc_info=ae,
                         )
 
-                    # if _promising_context is not set on the exception yet, that also means that the exception
+                    # if _promising_context has not been set on the exception yet, that also means that the exception
                     # has not been logged yet
                     self.logger.log(log_level_for_errors, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=e)
 
