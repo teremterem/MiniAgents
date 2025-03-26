@@ -17,7 +17,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         self,
         incoming_streamer: PromiseStreamer[IN_co],
         flattener: Optional[SequenceFlattener[IN_co, OUT_co]] = None,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         sequence_promise_class: type[StreamedPromise[OUT_co, tuple[OUT_co, ...]]] = StreamedPromise[
             OUT_co, tuple[OUT_co, ...]
         ],
@@ -28,7 +28,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         self._input_promise = StreamedPromise(
             streamer=self._streamer,
             resolver=lambda _: None,
-            start_asap=False,
+            start_soon=False,
         )
         # TODO Oleksandr: should I really pass `self` here ? it is not of type `StreamedPromiseBound`
         self._incoming_streamer_aiter = incoming_streamer(self)
@@ -36,7 +36,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         self.sequence_promise = sequence_promise_class(
             streamer=self._input_promise,
             resolver=self._resolver,
-            start_asap=start_asap,
+            start_soon=start_soon,
         )
 
     def _flattener(self, zero_or_more_items: IN_co) -> AsyncIterator[OUT_co]:  # pylint: disable=method-hidden

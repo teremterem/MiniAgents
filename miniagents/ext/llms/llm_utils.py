@@ -117,7 +117,7 @@ class LLMAgent(ABC, BaseModel):
 
     async def _promise_and_close(self, token_appender: MessageTokenAppender) -> MessagePromise:
         response_promise = self.response_message_class.promise(
-            start_asap=False,  # the agent is already running and will collect tokens anyway (see below)
+            start_soon=False,  # the agent is already running and will collect tokens anyway (see below)
             message_token_streamer=token_appender,
             # preliminary metadata:
             model=self.model,

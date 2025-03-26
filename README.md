@@ -404,7 +404,7 @@ returns with **promises** to "talk to the agent(s)" (**promises** of sequences
 of **promises** of response messages, to be super precise - see
 `MessageSequencePromise` and `MessagePromise` classes for details).
 
-As long as the global `start_asap` setting is set to `True` (which is the
+As long as the global `start_soon` setting is set to `True` (which is the
 default - see the source code of `Promising`, the parent class of `MiniAgents`
 context manager for details), the actual agent functions will start processing
 at the earliest task switch (the behaviour of `asyncio.create_task()`, which is
@@ -418,13 +418,13 @@ place where a task switch happens.
 to predict how the output will change. After that, run the modified script and
 check if your prediction was correct.
 
-⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for
+⚠️ **ATTENTION!** You can play around with setting `start_soon` to `False` for
 individual agent calls if for some reason you need to:
-`some_agent.inquire(request_messages_if_any, start_asap=False)`. However,
+`some_agent.inquire(request_messages_if_any, start_soon=False)`. However,
 setting it to `False` for the whole system globally is not recommended because
 it can lead to deadlocks. ⚠️
 
-**TODO** get rid of the `start_asap=False` option completely ?
+**TODO** get rid of the `start_soon=False` option completely ?
 (but first check how it is done in `trio`/`anyio`/etc.)
 
 ### 📨 An alternative inquiry method
@@ -551,14 +551,14 @@ creation of this framework:
    `MessageType`). This entire hierarchical structure will be asynchronously
    resolved in the background into a flat and uniform sequence of message
    promises (it will be automatically "flattened" in the background).
-3. By default, agents work in so called `start_asap` mode, which is different
+3. By default, agents work in so called `start_soon` mode, which is different
    from the usual way coroutines work where you need to actively await on them
    and/or iterate over them (in case of asynchronous generators). In
-   `start_asap` mode, every agent, after it was invoked, actively seeks every
+   `start_soon` mode, every agent, after it was invoked, actively seeks every
    opportunity to proceed its processing in the background when async tasks
    switch.
 
-The third feature combines this `start_asap` approach with regular async/await
+The third feature combines this `start_soon` approach with regular async/await
 and async generators by using so called streamed promises (see `StreamedPromise`
 and `Promise` classes) which were designed to be "replayable" by nature.
 

@@ -52,10 +52,11 @@ class ModelSingleton(metaclass=ModelSingletonMeta):
 
 def join_messages(
     messages: "MessageType",
+    *,
     delimiter: Optional[str] = "\n\n",
     strip_leading_newlines: bool = False,
     reference_original_messages: bool = True,
-    start_asap: Optional[bool] = False,
+    start_soon: Optional[bool] = False,
     message_class: Optional[type["Message"]] = None,
     **preliminary_metadata,
 ) -> "MessagePromise":
@@ -69,7 +70,7 @@ def join_messages(
     remove them.
     :param reference_original_messages: If True, the resulting message will contain the list of original messages
     in the `original_messages` field.
-    :param start_asap: If True, the resulting message will be scheduled for background resolution regardless
+    :param start_soon: If True, the resulting message will be scheduled for background resolution regardless
     of when it is going to be consumed.
     :param preliminary_metadata: Metadata that will be available as a field of the resulting MessagePromise even
     before it is resolved.
@@ -117,7 +118,7 @@ def join_messages(
 
     return message_class.promise(
         message_token_streamer=token_streamer,
-        start_asap=start_asap,
+        start_soon=start_soon,
         **preliminary_metadata,
     )
 

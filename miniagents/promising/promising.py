@@ -49,6 +49,7 @@ class PromisingContext:
 
     def __init__(
         self,
+        *,
         start_everything_asap_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
         longer_hash_keys: bool = False,
@@ -98,7 +99,7 @@ class PromisingContext:
         self.on_promise_resolved_handlers.append(handler)
         return handler
 
-    def start_asap(self, awaitable: Awaitable, suppress_errors: bool = True) -> Task:
+    def start_soon(self, awaitable: Awaitable, suppress_errors: bool = True) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
@@ -189,16 +190,16 @@ class PromisingContext:
 class Promise(Generic[T_co]):
     def __init__(
         self,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
         self._promising_context = PromisingContext.get_current()
 
-        if start_asap is None:
-            start_asap = self._promising_context.start_everything_asap_by_default
-        self._start_asap = start_asap
+        if start_soon is None:
+            start_soon = self._promising_context.start_everything_asap_by_default
+        self._start_soon = start_soon
 
         if resolver:
             self._resolver = partial(resolver, self)
@@ -212,8 +213,8 @@ class Promise(Generic[T_co]):
 
         self._resolver_lock = asyncio.Lock()
 
-        if start_asap and prefill_result is NO_VALUE:
-            self._promising_context.start_asap(self)
+        if start_soon and prefill_result is NO_VALUE:
+            self._promising_context.start_soon(self)
 
     async def _resolver(self) -> T_co:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -248,7 +249,7 @@ class Promise(Generic[T_co]):
         promising_context = PromisingContext.get_current()
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
-                promising_context.start_asap(handler(self, self._result))
+                promising_context.start_soon(handler(self, self._result))
             promising_context = promising_context.parent_ctx
 
 
@@ -265,28 +266,29 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
     :param streamer: A callable that returns an async iterator yielding the pieces of the whole value.
     :param resolver: A callable that takes an async iterable of pieces and returns the whole value
                      ("packages" the pieces).
-    TODO Oleksandr: explain the `start_asap` parameter
+    TODO Oleksandr: explain the `start_soon` parameter
     TODO Oleksandr: this is one of the central classes of the framework, hence the docstring should be
      much more detailed
     """
 
     def __init__(
         self,
+        *,
         streamer: Optional[PromiseStreamer[PIECE_co]] = None,
         prefill_pieces: Union[Optional[Iterable[PIECE_co]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
     ) -> None:
         # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
         super().__init__(
-            start_asap=start_asap,
+            start_soon=start_soon,
             resolver=resolver,
             prefill_result=prefill_result,
         )
-        # ATTENTION !!! DO NOT use `start_asap` directly, USE `self._start_asap` instead !!!
+        # ATTENTION !!! DO NOT use `start_soon` directly, USE `self._start_soon` instead !!!
         # Unlike the former, the parent class initializes the latter with the default value if it is None.
-        del start_asap
+        del start_soon
 
         if streamer:
             self._streamer = partial(streamer, self)
@@ -299,10 +301,10 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         self._all_pieces_consumed = prefill_pieces is not NO_VALUE
         self._streamer_lock = asyncio.Lock()
 
-        if self._start_asap and prefill_pieces is NO_VALUE:
+        if self._start_soon and prefill_pieces is NO_VALUE:
             # start producing pieces at the earliest task switch (put them in a queue for further consumption)
             self._queue = asyncio.Queue()
-            self._promising_context.start_asap(self._aconsume_the_stream())
+            self._promising_context.start_soon(self._aconsume_the_stream())
         else:
             # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
             self._queue = None
@@ -407,10 +409,10 @@ class _StreamReplayIterator(AsyncIterator[PIECE_co]):
     async def _real_anext(self) -> Union[PIECE_co, BaseException]:
         # pylint: disable=protected-access
         if self._streamed_promise._queue is None:
-            # the stream is being produced on demand, not beforehand (`start_asap` is False)
+            # the stream is being produced on demand, not beforehand (`start_soon` is False)
             piece = await self._streamed_promise._streamer_aiter_anext()
         else:
-            # the stream is being produced beforehand (`start_asap` is True)
+            # the stream is being produced beforehand (`start_soon` is True)
             piece = await self._streamed_promise._queue.get()
 
         if isinstance(piece, StopAsyncIteration):
