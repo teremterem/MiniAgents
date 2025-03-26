@@ -191,6 +191,7 @@ class MiniAgentsLogFormatter(logging.Formatter):
                 "Use `MiniAgents(log_reduced_tracebacks=False)` to see the full traceback.\n"
             )
 
+        # TODO Oleksandr: introduce an option to turn off the agent trace
         try:
             agent_trace_str = " <- ".join(agent.alias for agent in InteractionContext.get_current().get_agent_trace())
             lines.append(f"\nAgent trace:\n{agent_trace_str}\n---\n")
