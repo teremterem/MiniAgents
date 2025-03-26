@@ -33,7 +33,6 @@ def _check_anthropic_response(message: Message) -> None:
         (AnthropicAgent.fork(model="claude-3-5-haiku-latest"), _check_anthropic_response),
     ],
 )
-@pytest.mark.asyncio
 @pytest.mark.parametrize("stream", [False, True])
 @pytest.mark.parametrize("start_asap", [False, True])
 async def test_llm(

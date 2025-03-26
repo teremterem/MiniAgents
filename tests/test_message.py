@@ -12,7 +12,6 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import Promise, PromisingContext
 
 
-@pytest.mark.asyncio
 async def test_message_nesting_vs_hash_key() -> None:
     """
     Test that the hash key of a message is calculated correctly when it contains nested messages (nested messages
@@ -71,7 +70,6 @@ async def test_message_nesting_vs_hash_key() -> None:
 
 # noinspection PyAsyncCall
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_on_persist_message_event_called_once(start_asap: bool) -> None:
     """
     Assert that the `on_persist_message` event is called only once if the same Message is resolved multiple times.
@@ -101,7 +99,6 @@ async def test_on_persist_message_event_called_once(start_asap: bool) -> None:
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_on_persist_message_event_called_twice(start_asap: bool) -> None:
     """
     Assert that the `on_persist_message` event is called twice if two different Messages are resolved.
@@ -132,7 +129,6 @@ async def test_on_persist_message_event_called_twice(start_asap: bool) -> None:
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_on_persist_message_event_not_called(start_asap: bool) -> None:
     """
     Assert that the `on_persist_message` event is not called if the resolved value is not a Message.

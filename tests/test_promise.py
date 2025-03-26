@@ -10,7 +10,6 @@ from miniagents.promising.promising import PromisingContext, StreamAppender, Str
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_stream_replay_iterator(start_asap: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times, the `streamer` is only called once.
@@ -42,7 +41,6 @@ async def test_stream_replay_iterator(start_asap: bool) -> None:
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_stream_replay_iterator_exception(start_asap: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times and an exception is raised in the middle of
@@ -93,7 +91,6 @@ async def _async_streamer_but_not_generator(_):
     ],
 )
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_broken_streamer(broken_streamer, start_asap: bool) -> None:
     """
     Assert that when a `StreamedPromise` tries to iterate over a broken `streamer` it does not hang indefinitely, just
@@ -133,7 +130,6 @@ async def test_broken_streamer(broken_streamer, start_asap: bool) -> None:
     ],
 )
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_broken_stream_resolver(broken_resolver, start_asap: bool) -> None:
     """
     Assert that if `resolver` is broken, `StreamedPromise` still yields the stream and only fails upon `aresolve()`
@@ -176,7 +172,6 @@ async def test_broken_stream_resolver(broken_resolver, start_asap: bool) -> None
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_streamed_promise_aresolve(start_asap: bool) -> None:
     """
     Assert that:
@@ -213,7 +208,6 @@ async def test_streamed_promise_aresolve(start_asap: bool) -> None:
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_stream_appender_dont_capture_errors(start_asap: bool) -> None:
     """
     Assert that when `StreamAppender` is not capturing errors, then:
@@ -241,7 +235,6 @@ async def test_stream_appender_dont_capture_errors(start_asap: bool) -> None:
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_streamed_promise_same_instance(start_asap: bool) -> None:
     """
     Assert that `streamer` and `resolver` receive the exact same instance of `StreamedPromise`.
