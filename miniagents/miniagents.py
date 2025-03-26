@@ -497,7 +497,7 @@ class AgentReplyMessageSequence(MessageSequence):
                         # the miniagent is a function
                         await self._mini_agent._func_or_class(ctx, **kwargs)
                 except Exception as e:
-                    PromisingContext.get_current().on_background_error(e)
+                    PromisingContext.get_current()._log_background_error_once(e)
                     raise
                 finally:
                     await ctx._afinalize()

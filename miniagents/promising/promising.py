@@ -98,23 +98,6 @@ class PromisingContext:
         self.on_promise_resolved_handlers.append(handler)
         return handler
 
-    def on_background_error(self, error: Exception) -> None:
-        log_level = logging.DEBUG
-
-        if not getattr(error, "_promising__already_logged", False):
-            try:
-                error._promising__already_logged = True  # pylint: disable=protected-access
-            except AttributeError as ae:
-                # this problem will not have a significant impact => just ignore it
-                self.logger.debug(
-                    "Failed to set _promising__already_logged for an exception of type %s",
-                    type(error).__name__,
-                    exc_info=ae,
-                )
-            log_level = self.log_level_for_errors
-
-        self.logger.log(log_level, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=error)
-
     def start_asap(self, awaitable: Awaitable, suppress_errors: bool = True) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
@@ -128,7 +111,7 @@ class PromisingContext:
             try:
                 return await awaitable
             except Exception as e:
-                self.on_background_error(e)
+                self._log_background_error_once(e)
 
                 if not suppress_errors:
                     raise
@@ -184,6 +167,23 @@ class PromisingContext:
         raise RuntimeError(f"Use `async with {type(self).__name__}()` instead of `with {type(self).__name__}`.")
 
     def __exit__(self, *args, **kwargs) -> None: ...
+
+    def _log_background_error_once(self, error: Exception) -> None:
+        log_level = logging.DEBUG
+
+        if not getattr(error, "_promising__already_logged", False):
+            try:
+                error._promising__already_logged = True  # pylint: disable=protected-access
+            except AttributeError as ae:
+                # this problem will not have a significant impact => just ignore it
+                self.logger.debug(
+                    "Failed to set _promising__already_logged for an exception of type %s",
+                    type(error).__name__,
+                    exc_info=ae,
+                )
+            log_level = self.log_level_for_errors
+
+        self.logger.log(log_level, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=error)
 
 
 class Promise(Generic[T_co]):
