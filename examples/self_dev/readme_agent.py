@@ -49,11 +49,11 @@ async def readme_agent(ctx: InteractionContext) -> None:
                 model_agent.trigger(prompt),
                 file=str(MINIAGENTS_ROOT / md_file_name),
             )
-            ctx.wait_for(_report_that_file_was_written(md_file_name, model_response))
+            ctx.make_sure_to_wait(_report_that_file_was_written(md_file_name, model_response))
 
         # let's explicitly wait for subtasks because we want to make sure that the "ALL DONE" message is sent at the
         # very end (otherwise the waiting would have happened automatically, but already after the "ALL DONE" message)
-        await ctx.await_for_subtasks()
+        await ctx.await_now()
 
         token_appender.append("\nALL DONE")
 

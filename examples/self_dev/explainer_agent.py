@@ -55,7 +55,7 @@ async def explainer_agent(ctx: InteractionContext) -> None:
         if model == FAVOURITE_MODEL:
             ctx.reply(model_agent.trigger(ctx.message_promises))
         else:
-            ctx.wait_for(  # let's not "close" the agent's reply sequence until the agent call below finishes too
+            ctx.make_sure_to_wait(  # let's not "close" the agent's reply sequence until the call below finishes too
                 MarkdownHistoryAgent.trigger(
                     model_agent.trigger(ctx.message_promises),
                     history_md_file=str(SELF_DEV_OUTPUT / f"ALT__{ctx.this_agent.alias}__{model}.md"),

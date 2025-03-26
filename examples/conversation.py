@@ -21,7 +21,7 @@ async def all_models_agent(ctx: InteractionContext) -> None:
         if model == FAVOURITE_MODEL:
             ctx.reply(model_agent.trigger(ctx.message_promises))
         else:
-            ctx.wait_for(  # let's not "close" the agent's reply sequence until the (sub)agent below finishes too
+            ctx.make_sure_to_wait(  # let's not "close" the agent's reply sequence until the call below finishes too
                 MarkdownHistoryAgent.trigger(
                     model_agent.trigger(ctx.message_promises),
                     history_md_file=f"ALT__{model}.md",

@@ -335,7 +335,7 @@ class InteractionContext:
         """
         self._reply_streamer.append(messages)
 
-    def wait_for(self, awaitable: Awaitable[Any], start_soon_if_coroutine: bool = True) -> None:
+    def make_sure_to_wait(self, awaitable: Awaitable[Any], start_soon_if_coroutine: bool = True) -> None:
         """
         Make sure to wait for the completion of the provided awaitable before exiting the current agent call and
         closing the reply sequence.
@@ -345,20 +345,20 @@ class InteractionContext:
             awaitable = MiniAgents.get_current().start_soon(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
-    async def await_for_subtasks(self) -> None:
+    async def await_now(self) -> None:
         """
-        Wait for all the awaitables that were fed into the `wait_for` method to finish. If this method is not called
-        in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's reply
-        sequence is closed.
+        Wait for all the awaitables that were fed into the `make_sure_to_wait` method to finish. If this method is not
+        called in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's
+        reply sequence is closed.
         """
         # TODO Oleksandr: What if one of the subtasks represents an unfinished agent call ? How should we make it
         #  obvious to the user that the reason they are experiencing a deadlock is because they forgot to finish an
         #  agent call ?
         await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
 
-    async def afinish_early(self, await_for_subtasks: bool = True) -> None:
-        if await_for_subtasks:
-            await self.await_for_subtasks()
+    async def afinish_early(self, make_sure_to_wait: bool = True) -> None:
+        if make_sure_to_wait:
+            await self.await_now()
         self._reply_streamer.close()
 
     def _activate(self) -> None:
@@ -370,7 +370,7 @@ class InteractionContext:
     async def _afinalize(self) -> None:
         for agent_call in self._child_agent_calls:
             agent_call.finish()
-        await self.await_for_subtasks()
+        await self.await_now()
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
 
