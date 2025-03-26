@@ -110,6 +110,8 @@ class PromisingContext:
             log_level_for_errors = self.log_level_for_errors
 
         async def awaitable_wrapper() -> Any:
+            nonlocal log_level_for_errors
+
             # pylint: disable=broad-except
             # noinspection PyBroadException
             try:
@@ -125,10 +127,12 @@ class PromisingContext:
                             type(e).__name__,
                             exc_info=ae,
                         )
+                else:
+                    # _promising_context is already set on the exception, which means that the exception
+                    # has already been logged - reduce the log level to DEBUG
+                    log_level_for_errors = logging.DEBUG
 
-                    # if _promising_context has not been set on the exception yet, that also means that the exception
-                    # has not been logged yet
-                    self.logger.log(log_level_for_errors, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=e)
+                self.logger.log(log_level_for_errors, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=e)
 
                 if not suppress_errors:
                     raise
