@@ -144,6 +144,17 @@ class ReducedTracebackFormatter(logging.Formatter):
         return Path(match.group(1))
 
     def formatException(self, ei) -> str:
+        from miniagents.miniagents import MiniAgents
+
+        exception = ei[1]
+        promising_context = getattr(exception, "_promising_context", None)
+        if (
+            promising_context
+            and isinstance(promising_context, MiniAgents)
+            and not promising_context.log_reduced_tracebacks
+        ):
+            return super().formatException(ei)
+
         exception_lines = traceback.format_exception(*ei)
         # first we will collect script paths in `show_lines`, but later we will replace them with true/false flags
         # to indicate whether the corresponding traceback lines should be shown or not

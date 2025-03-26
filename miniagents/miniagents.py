@@ -56,14 +56,14 @@ class MiniAgents(PromisingContext):
             #  (otherwise multiple instances of MiniAgents end up reusing the same logger config)
             #  YEAH, this looks like a bad idea... How will the user control log levels, for example ?
             logger = logging.Logger("MiniAgents", level=logging.WARNING)
-            formatter_class = ReducedTracebackFormatter if log_reduced_tracebacks else logging.Formatter
-            formatter = formatter_class(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            formatter = ReducedTracebackFormatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             handler = logging.StreamHandler()
             handler.setFormatter(formatter)
             logger.addHandler(handler)
 
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
+        self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
         self.normalize_agent_func_and_class_names = normalize_agent_func_and_class_names
