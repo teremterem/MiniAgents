@@ -193,7 +193,7 @@ class MiniAgentsLogFormatter(logging.Formatter):
 
         try:
             agent_trace_str = " <- ".join(agent.alias for agent in InteractionContext.get_current().get_agent_trace())
-            lines.append(f"\nAgent trace:\n{agent_trace_str}\n")
+            lines.append(f"\nAgent trace:\n{agent_trace_str}\n---\n")
         except PromisingContextError:
             pass
 
