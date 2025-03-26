@@ -67,7 +67,7 @@ async def my_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    async for msg_promise in my_agent.inquire(["Hello", "World"]):
+    async for msg_promise in my_agent.trigger(["Hello", "World"]):
         print(await msg_promise)
 
 
@@ -104,13 +104,13 @@ from miniagents.ext.llms import OpenAIAgent
 
 # NOTE: "Forking" an agent is a convenient way of creating a new agent instance
 # with the specified configuration. Alternatively, you could pass the `model`
-# parameter to `OpenAIAgent.inquire()` directly everytime you talk to the
+# parameter to `OpenAIAgent.trigger()` directly everytime you talk to the
 # agent.
 gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-mini")
 
 
 async def main() -> None:
-    reply_sequence = gpt_4o_agent.inquire(
+    reply_sequence = gpt_4o_agent.trigger(
         "Hello, how are you?",
         system="You are a helpful assistant.",
         max_tokens=50,
@@ -130,7 +130,7 @@ if __name__ == "__main__":
 ```
 
 Even though OpenAI models return a single assistant response, the
-`OpenAIAgent.inquire()` method is still designed to return a sequence of
+`OpenAIAgent.trigger()` method is still designed to return a sequence of
 multiple message promises. This generalizes to arbitrary agents, making agents
 in the MiniAgents framework easily interchangeable (agents in this framework
 support sending and receiving zero or more messages).
@@ -167,7 +167,7 @@ from miniagents.ext.llms import SystemMessage, AnthropicAgent
 
 
 async def main() -> None:
-    dialog_loop.kick_off(
+    dialog_loop.trigger(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences "
             "that the user throws at you. Leave the sentences unchanged if "
@@ -257,7 +257,7 @@ async def assistant_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    agent_loop.kick_off(agents=[user_agent, AWAIT, assistant_agent])
+    agent_loop.trigger(agents=[user_agent, AWAIT, assistant_agent])
 
 
 if __name__ == "__main__":
@@ -335,8 +335,8 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     ctx.reply(
         [
             "*** AGGREGATOR MESSAGE #1 ***",
-            agent1.inquire(),
-            agent2.inquire(),
+            agent1.trigger(),
+            agent2.trigger(),
         ]
     )
     print("Aggregator still working")
@@ -345,9 +345,9 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    print("INQUIRING ON AGGREGATOR")
-    msg_promises = aggregator_agent.inquire()
-    print("INQUIRING DONE\n")
+    print("TRIGGERING AGGREGATOR")
+    msg_promises = aggregator_agent.trigger()
+    print("TRIGGERING AGGREGATOR DONE\n")
 
     print("SLEEPING FOR ONE SECOND")
     # This is when the agents will actually start processing (in fact, any
@@ -375,8 +375,8 @@ if __name__ == "__main__":
 This script will print the following lines to the console:
 
 ```
-INQUIRING ON AGGREGATOR
-INQUIRING DONE
+TRIGGERING AGGREGATOR
+TRIGGERING AGGREGATOR DONE
 
 SLEEPING FOR ONE SECOND
 Aggregator started
@@ -399,7 +399,7 @@ TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 5
 ```
 
 None of the agent functions start executing upon any of the calls to the
-`inquire()` method. Instead, in all cases the `inquire()` method immediately
+`trigger()` method. Instead, in all cases the `trigger()` method immediately
 returns with **promises** to "talk to the agent(s)" (**promises** of sequences
 of **promises** of response messages, to be super precise - see
 `MessageSequencePromise` and `MessagePromise` classes for details).
@@ -420,19 +420,19 @@ check if your prediction was correct.
 
 ⚠️ **ATTENTION!** You can play around with setting `start_soon` to `False` for
 individual agent calls if for some reason you need to:
-`some_agent.inquire(request_messages_if_any, start_soon=False)`. However,
+`some_agent.trigger(request_messages_if_any, start_soon=False)`. However,
 setting it to `False` for the whole system globally is not recommended because
 it can lead to deadlocks. ⚠️
 
 **TODO** get rid of the `start_soon=False` option completely ?
 (but first check how it is done in `trio`/`anyio`/etc.)
 
-### 📨 An alternative inquiry method
+### 📨 An alternative way to trigger agents
 
 Here's a simple example demonstrating how to use
-`agent_call = some_agent.initiate_inquiry()` and then do
+`agent_call = some_agent.initiate_call()` and then do
 `agent_call.send_message()` two times before calling
-`agent_call.reply_sequence()` (instead of all-in-one `some_agent.inquire()`):
+`agent_call.reply_sequence()` (instead of all-in-one `some_agent.trigger()`):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
@@ -445,7 +445,7 @@ async def output_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    agent_call = output_agent.initiate_inquiry()
+    agent_call = output_agent.initiate_call()
     agent_call.send_message("Hello")
     agent_call.send_message("World")
     reply_sequence = agent_call.reply_sequence()

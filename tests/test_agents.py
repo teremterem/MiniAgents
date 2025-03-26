@@ -31,8 +31,8 @@ async def test_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None
         event_sequence.append("agent2 - end")
 
     async with MiniAgents():
-        replies1 = agent1.inquire(start_soon=start_soon)
-        replies2 = agent2.inquire(start_soon=start_soon)
+        replies1 = agent1.trigger(start_soon=start_soon)
+        replies2 = agent2.trigger(start_soon=start_soon)
         if start_soon is False:
             # when agents are not scheduled to start ASAP, their result needs to be awaited for explicitly in order
             # for their respective functions to be called
@@ -80,10 +80,10 @@ async def test_sub_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> 
     async def aggregation_agent(ctx: InteractionContext) -> None:
         # wrapping this generator into a list comprehension is necessary to make sure that the agents are called
         # immediately (and are executed in parallel as a result)
-        ctx.reply([agent.inquire(start_soon=start_soon) for agent in [agent1, agent2]])
+        ctx.reply([agent.trigger(start_soon=start_soon) for agent in [agent1, agent2]])
 
     async with MiniAgents():
-        replies = aggregation_agent.inquire(start_soon=start_soon)
+        replies = aggregation_agent.trigger(start_soon=start_soon)
         if start_soon is False:
             # when agents are not scheduled to start ASAP, their result needs to be awaited for explicitly in order
             # for their respective functions to be called

@@ -45,7 +45,7 @@ async def test_llm(
     Assert that all the LLM agents can respond to a simple prompt.
     """
     async with MiniAgents(start_everything_asap_by_default=start_soon):
-        reply_sequence = llm_agent.inquire(
+        reply_sequence = llm_agent.trigger(
             Message(content="ANSWER:", role="assistant"),
             system=(
                 "This is a test to verify that you are online. Your response will be validated using a strict "

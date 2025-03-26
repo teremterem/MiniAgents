@@ -8,7 +8,7 @@ async def some_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    call = some_agent.initiate_inquiry()
+    call = some_agent.initiate_call()
     reply_aiter = call.reply_sequence(close_request_sequence=False).__aiter__()
 
     print("sending hello")

@@ -228,32 +228,26 @@ class MiniAgent(Frozen):
         self._static_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
         self._mutable_state = dict(mutable_state or {})
 
-    def inquire(
+    def trigger(
         self,
         messages: Optional[MessageType] = None,
         start_soon: Optional[bool] = None,
         errors_to_messages: bool = False,
         **kwargs_to_freeze,
     ) -> MessageSequencePromise:
-        agent_call = self.initiate_inquiry(
+        agent_call = self.initiate_call(
             start_soon=start_soon, errors_to_messages=errors_to_messages, **kwargs_to_freeze
         )
         if messages is not None:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
-    def kick_off(self, messages: Optional[MessageType] = None, **kwargs_to_freeze) -> None:
-        """
-        Make a call to the agent and ignore the response.
-        """
-        self.inquire(messages, start_soon=True, **kwargs_to_freeze)
-
     # noinspection PyProtectedMember
-    def initiate_inquiry(
+    def initiate_call(
         self, start_soon: Optional[bool] = None, errors_to_messages: bool = False, **kwargs_to_freeze
     ) -> "AgentCall":
         """
-        Start an inquiry with the agent. The agent will be called with the provided function kwargs.
+        Start a call with the agent. The agent will be called with the provided function kwargs.
         TODO Oleksandr: expand this docstring ?
         """
         input_sequence = MessageSequence(

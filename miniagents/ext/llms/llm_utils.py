@@ -83,7 +83,7 @@ class LLMAgent(ABC, BaseModel):
                 else:
                     logger_agent = self.llm_logger_agent
 
-                logger_agent.kick_off(
+                logger_agent.trigger(
                     [
                         self._prompt_messages_to_log(message_dicts),
                         response_promise,
