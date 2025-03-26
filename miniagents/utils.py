@@ -122,7 +122,7 @@ def join_messages(
     )
 
 
-class ReducedTracebackFormatter(logging.Formatter):
+class MiniAgentsLogFormatter(logging.Formatter):
     """
     A custom log formatter that hides traceback lines that reference scripts which reside in `packages_to_exclude`.
     """
@@ -144,7 +144,14 @@ class ReducedTracebackFormatter(logging.Formatter):
         return Path(match.group(1))
 
     def formatException(self, ei) -> str:
-        from miniagents.miniagents import MiniAgents
+        from miniagents.miniagents import MiniAgents, InteractionContext
+        from miniagents.promising.errors import NoActiveContextError
+
+        try:
+            agent_trace_str = " <- ".join(agent.alias for agent in InteractionContext.get_current().get_agent_trace())
+            print("IN FORMATTER:", agent_trace_str)
+        except NoActiveContextError:
+            pass
 
         exception = ei[1]
         promising_context = getattr(exception, "_promising_context", None)

@@ -98,41 +98,39 @@ class PromisingContext:
         self.on_promise_resolved_handlers.append(handler)
         return handler
 
-    def start_asap(
-        self, awaitable: Awaitable, suppress_errors: bool = True, log_level_for_errors: Optional[int] = None
-    ) -> Task:
+    def on_background_error(self, error: Exception) -> None:
+        log_level = logging.DEBUG
+
+        if not getattr(error, "_promising_context", None):
+            try:
+                error._promising_context = self  # pylint: disable=protected-access
+            except AttributeError as ae:
+                # this problem is not going to have a significant impact, so we just ignore it
+                self.logger.debug(
+                    "Failed to set _promising_context for an exception of type %s",
+                    type(error).__name__,
+                    exc_info=ae,
+                )
+            # _promising_context has not been set on this exception yet, which means that it wasn't logged with a
+            # log level higher than DEBUG yet => let's use the (potentially) higher log level
+            log_level = self.log_level_for_errors
+
+        self.logger.log(log_level, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=error)
+
+    def start_asap(self, awaitable: Awaitable, suppress_errors: bool = True) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
         before finalizing the context.
         """
-        if log_level_for_errors is None:
-            log_level_for_errors = self.log_level_for_errors
 
         async def awaitable_wrapper() -> Any:
-            nonlocal log_level_for_errors
-
             # pylint: disable=broad-except
             # noinspection PyBroadException
             try:
                 return await awaitable
             except Exception as e:
-                if not getattr(e, "_promising_context", None):
-                    try:
-                        e._promising_context = self  # pylint: disable=protected-access
-                    except AttributeError as ae:
-                        # this problem is not going to have a significant impact, so we just ignore it
-                        self.logger.debug(
-                            "Failed to set _promising_context for an exception of type %s",
-                            type(e).__name__,
-                            exc_info=ae,
-                        )
-                else:
-                    # _promising_context is already set on the exception, which means that the exception
-                    # has already been logged - reduce the log level to DEBUG
-                    log_level_for_errors = logging.DEBUG
-
-                self.logger.log(log_level_for_errors, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=e)
+                self.on_background_error(e)
 
                 if not suppress_errors:
                     raise
