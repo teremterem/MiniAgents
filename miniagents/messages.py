@@ -390,8 +390,8 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
     async def aresolve(self) -> Message:
+        tokens = []
         try:
-            tokens = []
             async for token in self.__wrapped__:
                 tokens.append(token)
             return await self.__wrapped__.aresolve()
