@@ -38,11 +38,12 @@ class PromisingContext:
     start_everything_asap_by_default: bool
     appenders_capture_errors_by_default: bool
     longer_hash_keys: bool
-    logger: logging.Logger
     log_level_for_errors: int
     on_promise_resolved_handlers: list[PromiseResolvedEventHandler]
     parent: Optional["PromisingContext"]
     child_tasks: set[Task]
+
+    logger: logging.Logger = logging.getLogger("Promising")
 
     _current: ContextVar[Optional["PromisingContext"]] = ContextVar("PromisingContext._current", default=None)
 
@@ -65,8 +66,11 @@ class PromisingContext:
         self.start_everything_asap_by_default = start_everything_asap_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_hash_keys = longer_hash_keys
-        self.logger = logger or logging.getLogger("Promising")
         self.log_level_for_errors = log_level_for_errors
+
+        if logger:
+            # override the class-level logger for this instance
+            self.logger = logger
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 

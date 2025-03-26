@@ -26,6 +26,13 @@ from miniagents.promising.promising import Promise, PromisingContext
 from miniagents.utils import ReducedTracebackFormatter
 
 
+_default_logger = logging.Logger("MiniAgents", level=logging.WARNING)
+_log_formatter = ReducedTracebackFormatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+_log_handler = logging.StreamHandler()
+_log_handler.setFormatter(_log_formatter)
+_default_logger.addHandler(_log_handler)
+
+
 class MiniAgents(PromisingContext):
     stream_llm_tokens_by_default: bool
     llm_logger_agent: Union["MiniAgent", bool]
@@ -33,6 +40,8 @@ class MiniAgents(PromisingContext):
     normalize_spaces_in_agent_docstrings: bool
     on_persist_message_handlers: list[PersistMessageEventHandler]
     log_reduced_tracebacks: bool
+
+    logger: logging.Logger = _default_logger
 
     def __init__(
         self,
@@ -51,16 +60,6 @@ class MiniAgents(PromisingContext):
             if callable(on_promise_resolved)
             else [self._trigger_persist_message_event, *on_promise_resolved]
         )
-        if not logger:
-            # TODO Oleksandr: is it ok to create a Logger instance directly instead of using `logging.getLogger` ?
-            #  (otherwise multiple instances of MiniAgents end up reusing the same logger config)
-            #  YEAH, this looks like a bad idea... How will the user control log levels, for example ?
-            logger = logging.Logger("MiniAgents", level=logging.WARNING)
-            formatter = ReducedTracebackFormatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            handler = logging.StreamHandler()
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
         self.log_reduced_tracebacks = log_reduced_tracebacks

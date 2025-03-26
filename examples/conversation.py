@@ -17,7 +17,6 @@ async def all_models_agent(ctx: InteractionContext) -> None:
     This agent employs many models to answer to the user. The answers of the "favourite" model are considered part of
     the "official" chat history, while the answers of the other models are just written to separate markdown files.
     """
-    raise ValueError("some error")  # TODO Oleksandr: don't forget to remove this
     for model, model_agent in MODEL_AGENTS.items():
         if model == FAVOURITE_MODEL:
             ctx.reply(model_agent.inquire(ctx.message_promises))
