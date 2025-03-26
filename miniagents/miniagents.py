@@ -374,7 +374,6 @@ class InteractionContext:
         for agent_call in self._child_agent_calls:
             agent_call.finish()
         await self.await_for_subtasks()
-        self._parent = None
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
 
