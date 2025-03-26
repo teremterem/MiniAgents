@@ -12,7 +12,6 @@ from miniagents.promising.promising import PromisingContext
 
 @pytest.mark.parametrize("errors_to_messages", [False, True])
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_message_sequence(start_asap: bool, errors_to_messages: bool) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence.
@@ -86,7 +85,6 @@ async def test_message_sequence(start_asap: bool, errors_to_messages: bool) -> N
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_message_sequence_error(start_asap: bool) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
@@ -128,7 +126,6 @@ async def test_message_sequence_error(start_asap: bool) -> None:
 
 @pytest.mark.parametrize("collect_token_by_token", [False, True, None])
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_message_sequence_error_to_message(start_asap: bool, collect_token_by_token: Optional[bool]) -> None:
     """
     Assert that `MessageSequence` converts errors into messages if `errors_to_messages` is set to `True`.
@@ -155,7 +152,6 @@ async def test_message_sequence_error_to_message(start_asap: bool, collect_token
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
 @pytest.mark.parametrize("collect_token_by_token", [False, True, None])
-@pytest.mark.asyncio
 async def test_message_sequence_token_error_to_message(
     start_asap: bool, collect_token_by_token: Optional[bool]
 ) -> None:

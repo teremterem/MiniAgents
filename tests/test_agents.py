@@ -12,7 +12,6 @@ from miniagents.promising.sentinels import Sentinel
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None:
     """
     Test that agents can run in parallel.
@@ -59,7 +58,6 @@ async def test_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_sub_agents_run_in_parallel(start_asap: Union[bool, Sentinel]) -> None:
     """
     Test that two agents that were called by the third agent can run in parallel.

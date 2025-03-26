@@ -11,7 +11,6 @@ from miniagents.promising.sequence import FlatSequence
 
 
 @pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
 async def test_flat_sequence(start_asap: bool) -> None:
     """
     Assert that `FlatSequence` "flattens" the input sequence of (0, 1, 2, 3) into the output sequence of
