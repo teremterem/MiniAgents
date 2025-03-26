@@ -145,58 +145,56 @@ class MiniAgentsLogFormatter(logging.Formatter):
 
     def formatException(self, ei) -> str:
         from miniagents.miniagents import MiniAgents, InteractionContext
-        from miniagents.promising.errors import NoActiveContextError
+        from miniagents.promising.errors import PromisingContextError
+
+        try:
+            log_reduced_tracebacks = MiniAgents.get_current().log_reduced_tracebacks
+        except PromisingContextError:
+            log_reduced_tracebacks = False
+
+        lines = traceback.format_exception(*ei)
+
+        if log_reduced_tracebacks:
+            # first we will collect script paths in `show_line`, but later we will replace them with true/false flags
+            # to indicate whether the corresponding traceback lines should be shown or not
+            show_line: list[Union[Optional[Path], bool]] = [self._get_script_path(line) for line in lines]
+
+            exception_origin_already_shown = False
+            for line_no in range(len(show_line) - 1, -1, -1):
+                script_path = show_line[line_no]
+                if not script_path:
+                    # this line does not represent any particular script - we show it
+                    show_line[line_no] = True
+                    continue
+
+                if not any(script_path.is_relative_to(pkg) for pkg in self.packages_to_exclude):
+                    # it's a script, but not from `packages_to_exclude` - we show it
+                    show_line[line_no] = True
+                    exception_origin_already_shown = True
+                    continue
+
+                if not exception_origin_already_shown:
+                    # it's a script from `packages_to_exclude`, but it's the very last script in the traceback -
+                    # we show it, because it discloses the origin of the exception
+                    show_line[line_no] = True
+                    exception_origin_already_shown = True
+                    continue
+
+                # it's a script from `packages_to_exclude` and it's not the very last one in the traceback - we hide it
+                # to reduce the verbosity of the traceback
+                show_line[line_no] = False
+
+            lines = [line for line, show in zip(lines, show_line) if show]
+            lines.append(
+                "\n"
+                "ATTENTION! Some parts of the traceback above were omitted for readability.\n"
+                "Use `MiniAgents(log_reduced_tracebacks=False)` to see the full traceback.\n"
+            )
 
         try:
             agent_trace_str = " <- ".join(agent.alias for agent in InteractionContext.get_current().get_agent_trace())
-            print("IN FORMATTER:", agent_trace_str)
-        except NoActiveContextError:
+            lines.append(f"\nAgent trace:\n{agent_trace_str}\n")
+        except PromisingContextError:
             pass
 
-        exception = ei[1]
-        promising_context = getattr(exception, "_promising_context", None)
-        if (
-            promising_context
-            and isinstance(promising_context, MiniAgents)
-            and not promising_context.log_reduced_tracebacks
-        ):
-            return super().formatException(ei)
-
-        exception_lines = traceback.format_exception(*ei)
-        # first we will collect script paths in `show_lines`, but later we will replace them with true/false flags
-        # to indicate whether the corresponding traceback lines should be shown or not
-        show_lines: list[Union[Optional[Path], bool]] = [self._get_script_path(line) for line in exception_lines]
-
-        exception_origin_already_shown = False
-        for line_no in range(len(show_lines) - 1, -1, -1):
-            script_path = show_lines[line_no]
-            if not script_path:
-                # this line does not represent any particular script - we show it
-                show_lines[line_no] = True
-                continue
-
-            if not any(script_path.is_relative_to(pkg) for pkg in self.packages_to_exclude):
-                # it's a script, but not from `packages_to_exclude` - we show it
-                show_lines[line_no] = True
-                exception_origin_already_shown = True
-                continue
-
-            if not exception_origin_already_shown:
-                # it's a script from `packages_to_exclude`, but it's the very last script in the traceback -
-                # we show it, because it discloses the origin of the exception
-                show_lines[line_no] = True
-                exception_origin_already_shown = True
-                continue
-
-            # it's a script from `packages_to_exclude` and it's not the very last one in the traceback - we hide it
-            # to reduce the verbosity of the traceback
-            show_lines[line_no] = False
-
-        resulting_lines = [line for line, show in zip(exception_lines, show_lines) if show]
-        resulting_lines.append(
-            "\n"
-            "ATTENTION! Some parts of the traceback above were omitted for readability.\n"
-            "Use `MiniAgents(log_reduced_tracebacks=False)` to see the full traceback.\n"
-        )
-
-        return "".join(resulting_lines)
+        return "".join(lines)

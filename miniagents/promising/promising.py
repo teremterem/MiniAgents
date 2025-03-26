@@ -101,18 +101,16 @@ class PromisingContext:
     def on_background_error(self, error: Exception) -> None:
         log_level = logging.DEBUG
 
-        if not getattr(error, "_promising_context", None):
+        if not getattr(error, "_promising__already_logged", False):
             try:
-                error._promising_context = self  # pylint: disable=protected-access
+                error._promising__already_logged = True  # pylint: disable=protected-access
             except AttributeError as ae:
-                # this problem is not going to have a significant impact, so we just ignore it
+                # this problem will not have a significant impact => just ignore it
                 self.logger.debug(
-                    "Failed to set _promising_context for an exception of type %s",
+                    "Failed to set _promising__already_logged for an exception of type %s",
                     type(error).__name__,
                     exc_info=ae,
                 )
-            # _promising_context has not been set on this exception yet, which means that it wasn't logged with a
-            # log level higher than DEBUG yet => let's use the (potentially) higher log level
             log_level = self.log_level_for_errors
 
         self.logger.log(log_level, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=error)
