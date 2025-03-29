@@ -6,7 +6,7 @@ import typing
 from functools import cache
 from typing import Any, Optional, Union
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
 from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent, PromptLogMessage
@@ -58,7 +58,7 @@ class OpenAIAgent(LLMAgent):
 
     n: int = 1
     async_client: Any = Field(default_factory=_default_openai_client)
-    response_message_class: type[Message] = OpenAIMessage
+    response_message_class: type[BaseModel] = OpenAIMessage
 
     # noinspection PyNestedDecorators
     @field_validator("n")
@@ -66,12 +66,12 @@ class OpenAIAgent(LLMAgent):
     def _validate_n(cls, n: int) -> int:
         # TODO Oleksandr: stop complaining about n, support batch mode instead
         if n != 1:
-            raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
+            raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().beta.chat.completions.parse()")
         return n
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
-        openai_response = await self.async_client.chat.completions.create(
-            messages=message_dicts, model=self.model, stream=self.stream, n=self.n, **self.__pydantic_extra__
+        openai_response = await self.async_client.beta.chat.completions.parse(
+            messages=message_dicts, model=self.model, n=self.n, **self.__pydantic_extra__
         )
         if self.stream:
             async for chunk in openai_response:
