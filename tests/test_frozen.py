@@ -50,7 +50,6 @@ def test_model_frozen() -> None:
     assert model.some_field == "some value"
 
 
-@pytest.mark.asyncio
 async def test_sample_model_hash_key() -> None:
     """
     Test `SampleModel.hash_key` property.
@@ -74,7 +73,6 @@ async def test_sample_model_hash_key() -> None:
         assert sample.hash_key == expected_hash_key
 
 
-@pytest.mark.asyncio
 async def test_model_hash_key() -> None:
     """
     Test the original `Frozen.hash_key` property.
@@ -92,15 +90,14 @@ async def test_model_hash_key() -> None:
 def test_nested_object_not_copied() -> None:
     """
     Test that nested objects are not copied when the outer pydantic model is created.
-    TODO Oleksandr: why do you care about this ?
     """
+    # TODO Oleksandr: why do we care about this ?
     sub_model = SampleModel(some_req_field="test")
     sample = SampleModel(some_req_field="test", sub_model=sub_model)
 
     assert sample.sub_model is sub_model
 
 
-@pytest.mark.asyncio
 async def test_hash_key_calculated_once() -> None:
     """
     Test that `SampleModel.hash_key` property is calculated only once and all subsequent calls return the same
@@ -120,7 +117,6 @@ async def test_hash_key_calculated_once() -> None:
             mock_sha256.assert_called_once()  # check that it wasn't calculated again
 
 
-@pytest.mark.asyncio
 async def test_model_hash_key_vs_key_ordering() -> None:
     """
     Test that `hash_key` of `Frozen` is not affected by the ordering of its fields.

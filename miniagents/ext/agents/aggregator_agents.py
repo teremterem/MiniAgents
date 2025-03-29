@@ -29,7 +29,7 @@ async def user_agent(
         # TODO Oleksandr: fallback to just `history_agent` if `return_full_history` is not supported ?
         history_agent = history_agent.fork(return_full_history=True)
     ctx.reply(
-        agent_chain.inquire(
+        agent_chain.trigger(
             ctx.message_promises,
             agents=[output_agent, input_agent, history_agent],
         )
@@ -53,7 +53,7 @@ async def dialog_loop(
     show up in chat history as a result).
     """
     ctx.reply(
-        agent_loop.inquire(
+        agent_loop.trigger(
             agents=[
                 user_agent,
                 AWAIT,
@@ -76,7 +76,7 @@ async def prompt_agent(
     An agent that prompts the target agent with the given messages and then replies with the target agent's response.
     """
     ctx.reply(
-        target_agent.inquire(
+        target_agent.trigger(
             [
                 prompt_prefix,
                 ctx.message_promises,
@@ -114,9 +114,6 @@ async def agent_loop(
 
 @miniagent
 async def agent_chain(ctx: InteractionContext, agents: Iterable[Union[Optional[MiniAgent], str]]) -> None:
-    """
-    TODO Oleksandr: docstring
-    """
     ctx.reply(await _achain_agents(list(agents), ctx.message_promises))
 
 
@@ -138,7 +135,7 @@ async def _achain_agents(
         elif agent == CLEAR:
             messages = None
         elif isinstance(agent, MiniAgent):
-            messages = agent.inquire(messages)
+            messages = agent.trigger(messages)
         else:
             raise ValueError(f"Invalid agent: {agent}")
     return messages

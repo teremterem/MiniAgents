@@ -22,9 +22,6 @@ async def console_input_agent(
     ctx: InteractionContext,
     greeting: str = "YOU ARE NOW IN A CHAT WITH AN AI ASSISTANT",
 ) -> None:
-    """
-    TODO Oleksandr: docstring
-    """
     # this is a "transparent" agent - pass the same messages forward (if any)
     ctx.reply(ctx.message_promises)
 

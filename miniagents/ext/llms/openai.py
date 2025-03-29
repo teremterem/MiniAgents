@@ -70,9 +70,6 @@ class OpenAIAgent(LLMAgent):
         return n
 
     async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
-        """
-        TODO Oleksandr: docstring
-        """
         openai_response = await self.async_client.chat.completions.create(
             messages=message_dicts, model=self.model, stream=self.stream, n=self.n, **self.__pydantic_extra__
         )
@@ -111,9 +108,6 @@ class OpenAIAgent(LLMAgent):
             )
 
     async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
-        """
-        TODO Oleksandr: docstring
-        """
         if self.system is None:
             message_dicts = []
         else:
@@ -151,6 +145,7 @@ class OpenAIAgent(LLMAgent):
 async def openai_embedding_agent(
     ctx: InteractionContext,
     model: str,
+    *,
     async_client: Any = None,
     batch_mode: bool = False,  # TODO Oleksandr: which default value is better ? Put it into MiniAgents ?
     response_metadata: Optional[Frozen] = None,
@@ -185,7 +180,7 @@ async def openai_embedding_agent(
     ctx.reply(embedding_messages)
 
     if llm_logger_agent:
-        llm_logger_agent.kick_off(
+        llm_logger_agent.trigger(
             list(zip([PromptLogMessage(content=text, role="user") for text in texts], embedding_messages)),
             request_metadata={
                 "agent_alias": ctx.this_agent.alias,

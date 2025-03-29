@@ -23,9 +23,11 @@ MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 class Message(Frozen):
     """
     A message that can be sent between agents.
-    TODO Oleksandr: split this class into two: Message and NonStrictMessage
-     (with NonStrictMessage allowing extra fields) ? I don't remember why would we need this, though
     """
+
+    # TODO Oleksandr: split this class into two: Message and NonStrictMessage
+    #  (with NonStrictMessage allowing extra fields) ?
+    #  (is it to reduce confusion as to whether to expect extra fields in a message or not ?)
 
     content: Optional[str] = None
     content_template: Optional[str] = None
@@ -35,6 +37,7 @@ class Message(Frozen):
     # error_message: Optional[str] = None
     # error_class: Optional[str] = None
     # error_traceback: Optional[str] = None
+    # # TODO Oleksandr: attach custom miniagent_call attribute to each exception object and display it with traceback
 
     @property
     @cached_privately
@@ -48,7 +51,7 @@ class Message(Frozen):
     def promise(
         cls,
         content: Optional[str] = None,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **preliminary_metadata,
     ) -> "MessagePromise":
@@ -60,7 +63,7 @@ class Message(Frozen):
             if content is not None:
                 raise ValueError("The `content` argument must be None if `message_token_streamer` is provided.")
             return MessagePromise(
-                start_asap=start_asap,
+                start_soon=start_soon,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **preliminary_metadata,
@@ -157,6 +160,7 @@ class Message(Frozen):
 
 
 class MessagePromise(StreamedPromise[str, Message]):
+    # TODO Oleksandr: use Token object instead of str and allow appending empty text tokens too, for simplicity
     """
     A promise of a message that can be streamed token by token.
     """
@@ -166,7 +170,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     def __init__(
         self,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
@@ -179,7 +183,7 @@ class MessagePromise(StreamedPromise[str, Message]):
             self.message_class = type(prefill_message)
 
             self._metadata_so_far = None
-            super().__init__(prefill_result=prefill_message, start_asap=False)
+            super().__init__(prefill_result=prefill_message, start_soon=False)
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
             self.message_class = message_class
@@ -197,7 +201,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 self._metadata_so_far = dict(self.preliminary_metadata)
 
             self._message_token_streamer = message_token_streamer
-            super().__init__(start_asap=start_asap)
+            super().__init__(start_soon=start_soon)
 
     def _streamer(self) -> AsyncIterator[str]:
         return self._message_token_streamer(self._metadata_so_far)
@@ -251,17 +255,13 @@ class MessageTokenAppender(StreamAppender[str]):
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     message_appender: Optional["MessageSequenceAppender"]
     sequence_promise: "MessageSequencePromise"
 
     def __init__(
         self,
         appender_capture_errors: Optional[bool] = None,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
         errors_to_messages: bool = False,  # TODO Oleksandr: finish "error to message" feature
     ) -> None:
@@ -274,7 +274,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
         super().__init__(
             incoming_streamer=incoming_streamer,
-            start_asap=start_asap,
+            start_soon=start_soon,
             sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
         )
 
@@ -287,7 +287,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         """
         message_sequence = cls(
             appender_capture_errors=True,
-            start_asap=False,
+            start_soon=False,
         )
         with message_sequence.message_appender:
             message_sequence.message_appender.append(messages)
@@ -331,10 +331,6 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
 
 class MessageSequenceAppender(StreamAppender[MessageType]):
-    """
-    TODO Oleksandr: docstring
-    """
-
     def append(self, piece: MessageType) -> "MessageSequenceAppender":
         super().append(self._freeze_if_possible(piece))
         return self
@@ -353,6 +349,8 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
         if hasattr(zero_or_more_messages, "__aiter__"):
             # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
             # hence we return it as is
+            # TODO Oleksandr: add a warning in console that an async iterator is not consumed immediately
+            #  (but only when it is passed to an agent, not when it is returned by an agent)
             return zero_or_more_messages
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
@@ -368,14 +366,10 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
         Convert this sequence promise into a single message promise that will contain all the messages from this
         sequence (separated by double newlines by default).
         """
-        return join_messages(self, start_asap=False, **kwargs)
+        return join_messages(self, start_soon=False, **kwargs)
 
 
 class SafeMessageSequencePromise(MessageSequencePromise):
-    """
-    TODO Oleksandr: docstring
-    """
-
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
         return _SafeMessagePromiseIteratorProxy(super().__aiter__())
 
@@ -396,11 +390,8 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
     async def aresolve(self) -> Message:
-        """
-        TODO Oleksandr: docstring
-        """
+        tokens = []
         try:
-            tokens = []
             async for token in self.__wrapped__:
                 tokens.append(token)
             return await self.__wrapped__.aresolve()

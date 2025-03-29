@@ -22,12 +22,13 @@ def cached_privately(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     instead of replacing the original method with the calculated value. This approach prevents the cached value from
     being registered as a field value in the Pydantic model upon evaluation.
 
-    Another difference is that this decorator does not automatically turn the method into a property - you need to
-    additionally decorate your method with `@property` on top of this decorator. This decision was made because IDEs
-    like PyCharm don't seem to realize that the method became a property if it wasn't explicitly decorated with known
-    decorators like `@property` or `@functools.cached_property` (they might have hardcoded these names in PyCharm
-    source code).
+    NOTE: This decorator does not automatically turn the method into a property - you need to additionally decorate
+    your method with `@property` on top of this decorator. This decision was made because IDEs like PyCharm don't seem
+    to realize that the method became a property if it wasn't explicitly decorated with known decorators like
+    `@property` or `@functools.cached_property` (they might have hardcoded this behaviour).
     """
+
+    # TODO Oleksandr: make it thread-safe if we're planning to support synchronous agents
 
     @wraps(func)
     def wrapper(self: Any) -> Any:

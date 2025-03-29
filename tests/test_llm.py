@@ -29,15 +29,14 @@ def _check_anthropic_response(message: Message) -> None:
 @pytest.mark.parametrize(
     "llm_agent, check_response_func",
     [
-        (OpenAIAgent.fork(model="gpt-3.5-turbo-0125"), _check_openai_response),
-        (AnthropicAgent.fork(model="claude-3-haiku-20240307"), _check_anthropic_response),
+        (OpenAIAgent.fork(model="gpt-4o-mini"), _check_openai_response),
+        (AnthropicAgent.fork(model="claude-3-5-haiku-latest"), _check_anthropic_response),
     ],
 )
-@pytest.mark.asyncio
 @pytest.mark.parametrize("stream", [False, True])
-@pytest.mark.parametrize("start_asap", [False, True])
+@pytest.mark.parametrize("start_soon", [False, True])
 async def test_llm(
-    start_asap: bool,
+    start_soon: bool,
     stream: bool,
     llm_agent: MiniAgent,
     check_response_func: Callable[[Message], None],
@@ -45,8 +44,8 @@ async def test_llm(
     """
     Assert that all the LLM agents can respond to a simple prompt.
     """
-    async with MiniAgents(start_everything_asap_by_default=start_asap):
-        reply_sequence = llm_agent.inquire(
+    async with MiniAgents(start_everything_asap_by_default=start_soon):
+        reply_sequence = llm_agent.trigger(
             Message(content="ANSWER:", role="assistant"),
             system=(
                 "This is a test to verify that you are online. Your response will be validated using a strict "

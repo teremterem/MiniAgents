@@ -102,8 +102,8 @@ class MarkdownHistoryAgent(BaseModel):
     def _load_chat_history_md(self) -> tuple[Message, ...]:
         """
         Parse a markdown content as a dialog.
-        TODO Oleksandr: implement exhaustive unit tests for this function ?
         """
+        # TODO Oleksandr: implement exhaustive unit tests for this function ?
         md_content = Path(self.history_md_file).read_text(encoding="utf-8")
 
         md_lines = md_content.split("\n")
@@ -187,9 +187,6 @@ async def markdown_llm_logger_agent(
     request_metadata: Optional[Frozen] = None,
     show_response_metadata: bool = True,
 ) -> None:
-    """
-    TODO Oleksandr: docstring
-    """
     log_folder = Path(log_folder)
     log_folder.mkdir(parents=True, exist_ok=True)
 
@@ -210,7 +207,7 @@ async def markdown_llm_logger_agent(
     if request_metadata:
         log_file.write_text(f"```python\n{pformat(request_metadata.model_dump())}\n```\n", encoding="utf-8")
 
-    await MarkdownHistoryAgent.inquire(ctx.message_promises, history_md_file=str(log_file), ignore_no_history=True)
+    await MarkdownHistoryAgent.trigger(ctx.message_promises, history_md_file=str(log_file), ignore_no_history=True)
 
     messages = await ctx.message_promises
     if not messages or not show_response_metadata:

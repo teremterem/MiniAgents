@@ -12,7 +12,6 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import Promise, PromisingContext
 
 
-@pytest.mark.asyncio
 async def test_message_nesting_vs_hash_key() -> None:
     """
     Test that the hash key of a message is calculated correctly when it contains nested messages (nested messages
@@ -70,9 +69,8 @@ async def test_message_nesting_vs_hash_key() -> None:
 
 
 # noinspection PyAsyncCall
-@pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
-async def test_on_persist_message_event_called_once(start_asap: bool) -> None:
+@pytest.mark.parametrize("start_soon", [False, True, None])
+async def test_on_persist_message_event_called_once(start_soon: bool) -> None:
     """
     Assert that the `on_persist_message` event is called only once if the same Message is resolved multiple times.
     """
@@ -93,16 +91,15 @@ async def test_on_persist_message_event_called_once(start_asap: bool) -> None:
         on_promise_resolved=on_promise_resolved,
         on_persist_message=on_persist_message,
     ):
-        Promise(prefill_result=some_message, start_asap=start_asap)
-        Promise(prefill_result=some_message, start_asap=start_asap)
+        Promise(prefill_result=some_message, start_soon=start_soon)
+        Promise(prefill_result=some_message, start_soon=start_soon)
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
     assert persist_message_calls == 1
 
 
-@pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
-async def test_on_persist_message_event_called_twice(start_asap: bool) -> None:
+@pytest.mark.parametrize("start_soon", [False, True, None])
+async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
     """
     Assert that the `on_persist_message` event is called twice if two different Messages are resolved.
     """
@@ -124,16 +121,15 @@ async def test_on_persist_message_event_called_twice(start_asap: bool) -> None:
         on_promise_resolved=on_promise_resolved,
         on_persist_message=on_persist_message,
     ):
-        Promise(prefill_result=message1, start_asap=start_asap)
-        Promise(prefill_result=message2, start_asap=start_asap)
+        Promise(prefill_result=message1, start_soon=start_soon)
+        Promise(prefill_result=message2, start_soon=start_soon)
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
     assert persist_message_calls == 2
 
 
-@pytest.mark.parametrize("start_asap", [False, True, None])
-@pytest.mark.asyncio
-async def test_on_persist_message_event_not_called(start_asap: bool) -> None:
+@pytest.mark.parametrize("start_soon", [False, True, None])
+async def test_on_persist_message_event_not_called(start_soon: bool) -> None:
     """
     Assert that the `on_persist_message` event is not called if the resolved value is not a Message.
     """
@@ -154,8 +150,8 @@ async def test_on_persist_message_event_not_called(start_asap: bool) -> None:
         on_promise_resolved=on_promise_resolved,
         on_persist_message=on_persist_message,
     ):
-        Promise(prefill_result=not_a_message, start_asap=start_asap)
-        Promise(prefill_result=not_a_message, start_asap=start_asap)
+        Promise(prefill_result=not_a_message, start_soon=start_soon)
+        Promise(prefill_result=not_a_message, start_soon=start_soon)
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
     assert persist_message_calls == 0

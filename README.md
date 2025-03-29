@@ -36,7 +36,8 @@ token and message streaming between the agents.
 framework to the functional programming paradigm
 
 **TODO** mention the feature of "message sequence flattening" and refer to an
-example that you will provide later in the README
+example that you will provide later in the README (it's one of the means to
+high parallelism)
 
 **TODO** mention that exceptions that happen in "callee" agents are propagated
 to the caller agents even though the callee agents were being processed in
@@ -66,7 +67,7 @@ async def my_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    async for msg_promise in my_agent.inquire(["Hello", "World"]):
+    async for msg_promise in my_agent.trigger(["Hello", "World"]):
         print(await msg_promise)
 
 
@@ -103,13 +104,13 @@ from miniagents.ext.llms import OpenAIAgent
 
 # NOTE: "Forking" an agent is a convenient way of creating a new agent instance
 # with the specified configuration. Alternatively, you could pass the `model`
-# parameter to `OpenAIAgent.inquire()` directly everytime you talk to the
+# parameter to `OpenAIAgent.trigger()` directly everytime you talk to the
 # agent.
-gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-2024-05-13")
+gpt_4o_agent = OpenAIAgent.fork(model="gpt-4o-mini")
 
 
 async def main() -> None:
-    reply_sequence = gpt_4o_agent.inquire(
+    reply_sequence = gpt_4o_agent.trigger(
         "Hello, how are you?",
         system="You are a helpful assistant.",
         max_tokens=50,
@@ -129,7 +130,7 @@ if __name__ == "__main__":
 ```
 
 Even though OpenAI models return a single assistant response, the
-`OpenAIAgent.inquire()` method is still designed to return a sequence of
+`OpenAIAgent.trigger()` method is still designed to return a sequence of
 multiple message promises. This generalizes to arbitrary agents, making agents
 in the MiniAgents framework easily interchangeable (agents in this framework
 support sending and receiving zero or more messages).
@@ -150,8 +151,10 @@ introduces more complex behavior, i.e. Retrieval Augmented Generation etc.):
 ⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your
 Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
 the example below (or just replace `AnthropicAgent` with `OpenAIAgent` and
-`"claude-3-5-sonnet-20240620"` with `"gpt-4o-2024-05-13"` if you already set up
+`"claude-3-5-haiku-latest"` with `"gpt-4o-mini"` if you already set up
 the previous example). ⚠️
+
+TODO don't complicate your examples by using different model providers
 
 ```python
 from miniagents import MiniAgents
@@ -164,7 +167,7 @@ from miniagents.ext.llms import SystemMessage, AnthropicAgent
 
 
 async def main() -> None:
-    dialog_loop.kick_off(
+    dialog_loop.trigger(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences "
             "that the user throws at you. Leave the sentences unchanged if "
@@ -177,7 +180,7 @@ async def main() -> None:
             history_agent=MarkdownHistoryAgent
         ),
         assistant_agent=AnthropicAgent.fork(
-            model="claude-3-5-sonnet-20240620",
+            model="claude-3-5-haiku-latest",
             max_tokens=1000,
         ),
     )
@@ -254,7 +257,7 @@ async def assistant_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    agent_loop.kick_off(agents=[user_agent, AWAIT, assistant_agent])
+    agent_loop.trigger(agents=[user_agent, AWAIT, assistant_agent])
 
 
 if __name__ == "__main__":
@@ -332,8 +335,8 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     ctx.reply(
         [
             "*** AGGREGATOR MESSAGE #1 ***",
-            agent1.inquire(),
-            agent2.inquire(),
+            agent1.trigger(),
+            agent2.trigger(),
         ]
     )
     print("Aggregator still working")
@@ -342,9 +345,9 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    print("INQUIRING ON AGGREGATOR")
-    msg_promises = aggregator_agent.inquire()
-    print("INQUIRING DONE\n")
+    print("TRIGGERING AGGREGATOR")
+    msg_promises = aggregator_agent.trigger()
+    print("TRIGGERING AGGREGATOR DONE\n")
 
     print("SLEEPING FOR ONE SECOND")
     # This is when the agents will actually start processing (in fact, any
@@ -372,8 +375,8 @@ if __name__ == "__main__":
 This script will print the following lines to the console:
 
 ```
-INQUIRING ON AGGREGATOR
-INQUIRING DONE
+TRIGGERING AGGREGATOR
+TRIGGERING AGGREGATOR DONE
 
 SLEEPING FOR ONE SECOND
 Aggregator started
@@ -396,12 +399,12 @@ TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 5
 ```
 
 None of the agent functions start executing upon any of the calls to the
-`inquire()` method. Instead, in all cases the `inquire()` method immediately
+`trigger()` method. Instead, in all cases the `trigger()` method immediately
 returns with **promises** to "talk to the agent(s)" (**promises** of sequences
 of **promises** of response messages, to be super precise - see
 `MessageSequencePromise` and `MessagePromise` classes for details).
 
-As long as the global `start_asap` setting is set to `True` (which is the
+As long as the global `start_soon` setting is set to `True` (which is the
 default - see the source code of `Promising`, the parent class of `MiniAgents`
 context manager for details), the actual agent functions will start processing
 at the earliest task switch (the behaviour of `asyncio.create_task()`, which is
@@ -415,18 +418,21 @@ place where a task switch happens.
 to predict how the output will change. After that, run the modified script and
 check if your prediction was correct.
 
-⚠️ **ATTENTION!** You can play around with setting `start_asap` to `False` for
+⚠️ **ATTENTION!** You can play around with setting `start_soon` to `False` for
 individual agent calls if for some reason you need to:
-`some_agent.inquire(request_messages_if_any, start_asap=False)`. However,
+`some_agent.trigger(request_messages_if_any, start_soon=False)`. However,
 setting it to `False` for the whole system globally is not recommended because
 it can lead to deadlocks. ⚠️
 
-### 📨 An alternative inquiry method
+**TODO** get rid of the `start_soon=False` option completely ?
+(but first check how it is done in `trio`/`anyio`/etc.)
+
+### 📨 An alternative way to trigger agents
 
 Here's a simple example demonstrating how to use
-`agent_call = some_agent.initiate_inquiry()` and then do
+`agent_call = some_agent.initiate_call()` and then do
 `agent_call.send_message()` two times before calling
-`agent_call.reply_sequence()` (instead of all-in-one `some_agent.inquire()`):
+`agent_call.reply_sequence()` (instead of all-in-one `some_agent.trigger()`):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
@@ -439,7 +445,7 @@ async def output_agent(ctx: InteractionContext) -> None:
 
 
 async def main() -> None:
-    agent_call = output_agent.initiate_inquiry()
+    agent_call = output_agent.initiate_call()
     agent_call.send_message("Hello")
     agent_call.send_message("World")
     reply_sequence = agent_call.reply_sequence()
@@ -458,6 +464,8 @@ This will output:
 Echo: Hello
 Echo: World
 ```
+
+**TODO** explain when this might be useful
 
 ### 🛠️ Global `MiniAgents()` context
 
@@ -543,14 +551,14 @@ creation of this framework:
    `MessageType`). This entire hierarchical structure will be asynchronously
    resolved in the background into a flat and uniform sequence of message
    promises (it will be automatically "flattened" in the background).
-3. By default, agents work in so called `start_asap` mode, which is different
+3. By default, agents work in so called `start_soon` mode, which is different
    from the usual way coroutines work where you need to actively await on them
    and/or iterate over them (in case of asynchronous generators). In
-   `start_asap` mode, every agent, after it was invoked, actively seeks every
+   `start_soon` mode, every agent, after it was invoked, actively seeks every
    opportunity to proceed its processing in the background when async tasks
    switch.
 
-The third feature combines this `start_asap` approach with regular async/await
+The third feature combines this `start_soon` approach with regular async/await
 and async generators by using so called streamed promises (see `StreamedPromise`
 and `Promise` classes) which were designed to be "replayable" by nature.
 
@@ -586,7 +594,8 @@ async def persist_message(_, message: Message) -> None:
 
 ## 📂 Modules
 
-**TODO** the structure of this section is outdated - update it
+**TODO** the structure of this section is outdated - update it (or just get rid
+of it?)
 
 Here's an overview of the module structure and hierarchy in the MiniAgents
 framework:

@@ -1,7 +1,3 @@
-"""
-TODO Oleksandr: docstring
-"""
-
 from miniagents.ext.agents.aggregator_agents import (
     AWAIT,
     CLEAR,
