@@ -51,7 +51,7 @@ class Message(Frozen):
     def promise(
         cls,
         content: Optional[str] = None,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **preliminary_metadata,
     ) -> "MessagePromise":
@@ -63,7 +63,7 @@ class Message(Frozen):
             if content is not None:
                 raise ValueError("The `content` argument must be None if `message_token_streamer` is provided.")
             return MessagePromise(
-                start_asap=start_asap,
+                start_soon=start_soon,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **preliminary_metadata,
@@ -170,7 +170,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     def __init__(
         self,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
@@ -183,7 +183,7 @@ class MessagePromise(StreamedPromise[str, Message]):
             self.message_class = type(prefill_message)
 
             self._metadata_so_far = None
-            super().__init__(prefill_result=prefill_message, start_asap=False)
+            super().__init__(prefill_result=prefill_message, start_soon=False)
         else:
             self.preliminary_metadata = Frozen(**preliminary_metadata)
             self.message_class = message_class
@@ -201,7 +201,7 @@ class MessagePromise(StreamedPromise[str, Message]):
                 self._metadata_so_far = dict(self.preliminary_metadata)
 
             self._message_token_streamer = message_token_streamer
-            super().__init__(start_asap=start_asap)
+            super().__init__(start_soon=start_soon)
 
     def _streamer(self) -> AsyncIterator[str]:
         return self._message_token_streamer(self._metadata_so_far)
@@ -261,7 +261,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
     def __init__(
         self,
         appender_capture_errors: Optional[bool] = None,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
         errors_to_messages: bool = False,  # TODO Oleksandr: finish "error to message" feature
     ) -> None:
@@ -274,7 +274,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
         super().__init__(
             incoming_streamer=incoming_streamer,
-            start_asap=start_asap,
+            start_soon=start_soon,
             sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
         )
 
@@ -287,7 +287,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         """
         message_sequence = cls(
             appender_capture_errors=True,
-            start_asap=False,
+            start_soon=False,
         )
         with message_sequence.message_appender:
             message_sequence.message_appender.append(messages)
@@ -366,7 +366,7 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
         Convert this sequence promise into a single message promise that will contain all the messages from this
         sequence (separated by double newlines by default).
         """
-        return join_messages(self, start_asap=False, **kwargs)
+        return join_messages(self, start_soon=False, **kwargs)
 
 
 class SafeMessageSequencePromise(MessageSequencePromise):

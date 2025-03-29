@@ -19,11 +19,11 @@ async def all_models_agent(ctx: InteractionContext) -> None:
     """
     for model, model_agent in MODEL_AGENTS.items():
         if model == FAVOURITE_MODEL:
-            ctx.reply(model_agent.inquire(ctx.message_promises))
+            ctx.reply(model_agent.trigger(ctx.message_promises))
         else:
-            ctx.wait_for(  # let's not "close" the agent's reply sequence until the (sub)agent below finishes too
-                MarkdownHistoryAgent.inquire(
-                    model_agent.inquire(ctx.message_promises),
+            ctx.make_sure_to_wait(  # let's not "close" the agent's reply sequence until the call below finishes too
+                MarkdownHistoryAgent.trigger(
+                    model_agent.trigger(ctx.message_promises),
                     history_md_file=f"ALT__{model}.md",
                 )
             )
@@ -33,7 +33,7 @@ async def main() -> None:
     """
     The main conversation loop.
     """
-    dialog_loop.kick_off(
+    dialog_loop.trigger(
         user_agent=console_user_agent.fork(
             # write chat history to a markdown file
             history_agent=MarkdownHistoryAgent

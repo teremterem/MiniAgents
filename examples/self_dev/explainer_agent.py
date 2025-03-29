@@ -26,7 +26,7 @@ async def full_repo_agent(ctx: InteractionContext, llm_agent: MiniAgent) -> None
     This agent uses ALL the files in the repository to answer the user's question.
     """
     ctx.reply(
-        llm_agent.inquire(
+        llm_agent.trigger(
             [
                 SystemMessage(SYSTEM_HERE_ARE_REPO_FILES),
                 FullRepoMessage(),
@@ -53,11 +53,11 @@ async def explainer_agent(ctx: InteractionContext) -> None:
     # pylint: disable=duplicate-code
     for model, model_agent in LLMS_FOR_EXPLAINER.items():
         if model == FAVOURITE_MODEL:
-            ctx.reply(model_agent.inquire(ctx.message_promises))
+            ctx.reply(model_agent.trigger(ctx.message_promises))
         else:
-            ctx.wait_for(  # let's not "close" the agent's reply sequence until the agent call below finishes too
-                MarkdownHistoryAgent.inquire(
-                    model_agent.inquire(ctx.message_promises),
+            ctx.make_sure_to_wait(  # let's not "close" the agent's reply sequence until the call below finishes too
+                MarkdownHistoryAgent.trigger(
+                    model_agent.trigger(ctx.message_promises),
                     history_md_file=str(SELF_DEV_OUTPUT / f"ALT__{ctx.this_agent.alias}__{model}.md"),
                 )
             )
@@ -67,7 +67,7 @@ async def main() -> None:
     """
     The main conversation loop.
     """
-    dialog_loop.kick_off(
+    dialog_loop.trigger(
         user_agent=console_user_agent.fork(
             history_agent=MarkdownHistoryAgent.fork(
                 history_md_file=str(SELF_DEV_OUTPUT / f"CHAT__{explainer_agent.alias}.md")

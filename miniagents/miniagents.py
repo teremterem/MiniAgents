@@ -45,6 +45,7 @@ class MiniAgents(PromisingContext):
 
     def __init__(
         self,
+        *,
         stream_llm_tokens_by_default: bool = True,
         llm_logger_agent: Union["MiniAgent", bool] = False,
         normalize_agent_func_and_class_names: bool = True,
@@ -119,19 +120,20 @@ class MiniAgents(PromisingContext):
                 continue
 
             for handler in self.on_persist_message_handlers:
-                self.start_asap(handler(_, sub_message))
+                self.start_soon(handler(_, sub_message))
             sub_message._persist_message_event_triggered = True
 
         if obj._persist_message_event_triggered:
             return
 
         for handler in self.on_persist_message_handlers:
-            self.start_asap(handler(_, obj))
+            self.start_soon(handler(_, obj))
         obj._persist_message_event_triggered = True
 
 
 def miniagent(
     func_or_class: Optional[Union[AgentFunction, type]] = None,
+    *,
     alias: Optional[str] = None,
     description: Optional[str] = None,
     normalize_func_or_class_name: bool = True,
@@ -184,6 +186,7 @@ class MiniAgent(Frozen):
     def __init__(
         self,
         func_or_class: Union[AgentFunction, type],
+        *,
         alias: Optional[str] = None,
         description: Optional[str] = None,
         normalize_func_or_class_name: Optional[bool] = None,
@@ -225,42 +228,36 @@ class MiniAgent(Frozen):
         self._static_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
         self._mutable_state = dict(mutable_state or {})
 
-    def inquire(
+    def trigger(
         self,
         messages: Optional[MessageType] = None,
-        start_asap: Optional[bool] = None,
+        start_soon: Optional[bool] = None,
         errors_to_messages: bool = False,
         **kwargs_to_freeze,
     ) -> MessageSequencePromise:
-        agent_call = self.initiate_inquiry(
-            start_asap=start_asap, errors_to_messages=errors_to_messages, **kwargs_to_freeze
+        agent_call = self.initiate_call(
+            start_soon=start_soon, errors_to_messages=errors_to_messages, **kwargs_to_freeze
         )
         if messages is not None:
             agent_call.send_message(messages)
         return agent_call.reply_sequence()
 
-    def kick_off(self, messages: Optional[MessageType] = None, **kwargs_to_freeze) -> None:
-        """
-        Make a call to the agent and ignore the response.
-        """
-        self.inquire(messages, start_asap=True, **kwargs_to_freeze)
-
     # noinspection PyProtectedMember
-    def initiate_inquiry(
-        self, start_asap: Optional[bool] = None, errors_to_messages: bool = False, **kwargs_to_freeze
+    def initiate_call(
+        self, start_soon: Optional[bool] = None, errors_to_messages: bool = False, **kwargs_to_freeze
     ) -> "AgentCall":
         """
-        Start an inquiry with the agent. The agent will be called with the provided function kwargs.
+        Start a call with the agent. The agent will be called with the provided function kwargs.
         TODO Oleksandr: expand this docstring ?
         """
         input_sequence = MessageSequence(
-            start_asap=False,
+            start_soon=False,
         )
         reply_sequence = AgentReplyMessageSequence(
             mini_agent=self,
             kwargs_to_freeze=kwargs_to_freeze,
             input_sequence_promise=input_sequence.sequence_promise,
-            start_asap=start_asap,
+            start_soon=start_soon,
             errors_to_messages=errors_to_messages,
         )
 
@@ -338,30 +335,30 @@ class InteractionContext:
         """
         self._reply_streamer.append(messages)
 
-    def wait_for(self, awaitable: Awaitable[Any], start_asap_if_coroutine: bool = True) -> None:
+    def make_sure_to_wait(self, awaitable: Awaitable[Any], start_soon_if_coroutine: bool = True) -> None:
         """
         Make sure to wait for the completion of the provided awaitable before exiting the current agent call and
         closing the reply sequence.
         """
-        if asyncio.iscoroutine(awaitable) and start_asap_if_coroutine:
+        if asyncio.iscoroutine(awaitable) and start_soon_if_coroutine:
             # let's turn this coroutine into our special kind of task and start it as soon as possible
-            awaitable = MiniAgents.get_current().start_asap(awaitable)
+            awaitable = MiniAgents.get_current().start_soon(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
-    async def await_for_subtasks(self) -> None:
+    async def await_now(self) -> None:
         """
-        Wait for all the awaitables that were fed into the `wait_for` method to finish. If this method is not called
-        in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's reply
-        sequence is closed.
+        Wait for all the awaitables that were fed into the `make_sure_to_wait` method to finish. If this method is not
+        called in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's
+        reply sequence is closed.
         """
         # TODO Oleksandr: What if one of the subtasks represents an unfinished agent call ? How should we make it
         #  obvious to the user that the reason they are experiencing a deadlock is because they forgot to finish an
         #  agent call ?
         await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
 
-    async def afinish_early(self, await_for_subtasks: bool = True) -> None:
-        if await_for_subtasks:
-            await self.await_for_subtasks()
+    async def afinish_early(self, make_sure_to_wait: bool = True) -> None:
+        if make_sure_to_wait:
+            await self.await_now()
         self._reply_streamer.close()
 
     def _activate(self) -> None:
@@ -373,7 +370,7 @@ class InteractionContext:
     async def _afinalize(self) -> None:
         for agent_call in self._child_agent_calls:
             agent_call.finish()
-        await self.await_for_subtasks()
+        await self.await_now()
         self._current.reset(self._previous_ctx_token)
         self._previous_ctx_token = None
 
@@ -406,15 +403,15 @@ class AgentCall:  # pylint: disable=protected-access
         self._message_streamer.append(messages)
         return self
 
-    def reply_sequence(self, close_request_sequence: bool = True) -> MessageSequencePromise:
+    def reply_sequence(self, finish_call: bool = True) -> MessageSequencePromise:
         """
-        Get a promise of a reply sequence by the agent. If `close_request_sequence` is True (the default), then,
+        Get a promise of a reply sequence by the agent. If `finish_call` is True (the default), then,
         after this method is called, it is not possible to send any more requests to this AgentCall object.
 
-        ATTENTION! Set `close_request_sequence` to False only if you know what you are doing. It is easy to create
-        deadlocks when `close_request_sequence` is set to False!
+        ATTENTION! Set `finish_call` to False only if you know what you are doing. It is easy to create
+        deadlocks when `finish_call` is set to False!
         """
-        if close_request_sequence:
+        if finish_call:
             self.finish()
         return self._reply_sequence_promise
 
@@ -511,7 +508,7 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         agent_call_promise = Promise[AgentCallNode](
-            start_asap=True,
+            start_soon=True,
             resolver=run_the_agent,
         )
 
@@ -527,6 +524,6 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         Promise[AgentReplyNode](
-            start_asap=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
+            start_soon=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
             resolver=create_agent_reply_node,
         )
