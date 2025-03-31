@@ -53,6 +53,14 @@ class AnthropicAgent(LLMAgent):
     async_client: Any = Field(default_factory=_default_anthropic_client)
     response_message_class: type[Message] = AnthropicMessage
 
+    async def _aprepare_message_dicts(self) -> list[dict[str, Any]]:
+        return await aprepare_dicts_for_anthropic(
+            self.ctx.message_promises,
+            system=self.system,
+            message_delimiter_for_same_role=self.message_delimiter_for_same_role,
+            fake_first_user_message=self.fake_first_user_message,
+        )
+
     async def _aproduce_tokens(
         self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender
     ) -> None:
@@ -87,14 +95,6 @@ class AnthropicAgent(LLMAgent):
             token_appender.append(anthropic_final_message.content[0].text)
 
         token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
-
-    async def _aprepare_message_dicts(self) -> list[dict[str, Any]]:
-        return await aprepare_dicts_for_anthropic(
-            self.ctx.message_promises,
-            system=self.system,
-            message_delimiter_for_same_role=self.message_delimiter_for_same_role,
-            fake_first_user_message=self.fake_first_user_message,
-        )
 
     async def _cut_off_system_message(self, message_dicts: list[dict[str, Any]]) -> str:
         if message_dicts and message_dicts[-1]["role"] == "system":

@@ -70,6 +70,9 @@ class OpenAIAgent(LLMAgent):
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
         return n
 
+    async def _aprepare_message_dicts(self) -> list[dict[str, Any]]:
+        return await aprepare_dicts_for_openai(self.ctx.message_promises, system=self.system)
+
     async def _aproduce_tokens(
         self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender
     ) -> None:
@@ -109,9 +112,6 @@ class OpenAIAgent(LLMAgent):
                     exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
                 )
             )
-
-    async def _aprepare_message_dicts(self) -> list[dict[str, Any]]:
-        return await aprepare_dicts_for_openai(self.ctx.message_promises, system=self.system)
 
     @classmethod
     def _merge_openai_dicts(cls, destination_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
