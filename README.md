@@ -286,7 +286,7 @@ For this reason, the presence of `AWAIT` sentinel in the agent chain in the exam
   - `MarkdownHistoryAgent`: Keeps track of conversation history in a markdown file, allowing to resume a conversation from the same point even if the app is restarted.
   - `markdown_llm_logger_agent`: Logs LLM interactions (prompts and responses) in markdown format, useful for debugging and auditing purposes (look for `llm_logger_agent=True` of the `MiniAgents()` context manager in one of the code examples above).
 
-***Feel free to explore the source code in the `miniagents.ext` package to see how various agents are implemented and get inspiration for building your own agents!***
+***Feel free to explore the source code in the `miniagents.ext` package to see how various agents are implemented and get inspiration for building your own!***
 
 ### 🔀 Agent parallelism explained
 
