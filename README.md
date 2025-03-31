@@ -28,23 +28,9 @@
         src="https://github.com/teremterem/MiniAgents/raw/main/images/miniagents-5-by-4-fixed.jpeg">
 </p>
 
-A framework on top of asyncio for building LLM-based multi-agent systems in
-Python, with immutable, Pydantic-based messages and a focus on asynchronous
-token and message streaming between the agents.
+MiniAgents is an open-source Python framework that takes the complexity out of building multi-agent AI systems. With its innovative approach to parallelism and async-first design, you can focus on creating intelligent agents in an easy to follow procedural fashion while the framework handles the concurrency challenges for you.
 
-**TODO** mention that the reason for immutable messages is to shift the
-framework to the functional programming paradigm
-
-**TODO** mention the feature of "message sequence flattening" and refer to an
-example that you will provide later in the README (it's one of the means to
-high parallelism)
-
-**TODO** mention that exceptions that happen in "callee" agents are propagated
-to the caller agents even though the callee agents were being processed in
-completely detached "asyncio" tasks; refer to an example that you will provide
-later in the README
-
-**TODO** create a Discord server for the project
+Built on top of asyncio, MiniAgents provides a robust foundation for LLM-based applications with immutable, Pydantic-based messages and seamless asynchronous token and message streaming between agents.
 
 ## 💾 Installation
 
@@ -82,21 +68,49 @@ You said: Hello
 You said: World
 ```
 
-**TODO** show how (and when) to create class-based agents; point out that
-separate instances of such class-based agents are created upon each call to
-those agents - the purpose of turning agents into classes is not for the
-sake of maintaining agent state, but rather for the sake of breaking down
-agent functionality into multiple methods (refer to MarkdownHistoryAgent as an
-example or give an in-place example here in the README ? probably the latter)
+### 🧨 Exception handling
+
+Despite agents running in completely detached asyncio tasks, MiniAgents ensures proper exception propagation from callee agents to caller agents. When an exception occurs in a callee agent, it's captured and propagated through the promises of response message sequences. These exceptions are re-raised when those sequences are iterated over or awaited in any of the caller agents, ensuring that errors are not silently swallowed and can be properly handled.
+
+Here's a simple example showing exception propagation:
+
+```python
+from miniagents import miniagent, InteractionContext, MiniAgents
+
+@miniagent
+async def faulty_agent(ctx: InteractionContext) -> None:
+    # This agent will raise an exception
+    raise ValueError("Something went wrong in callee agent")
+
+@miniagent
+async def caller_agent(ctx: InteractionContext) -> None:
+    # The exception from faulty_agent WILL NOT propagate here
+    faulty_response_promises = faulty_agent.trigger("Hello")
+    try:
+        # The exception from faulty_agent WILL propagate here
+        async for msg_promise in faulty_response_promises:
+            await msg_promise
+    except ValueError as e:
+        ctx.reply(f"Exception while iterating over response: {e}")
+
+async def main() -> None:
+    async for msg_promise in caller_agent.trigger("Start"):
+        print(await msg_promise)
+
+if __name__ == "__main__":
+    MiniAgents().run(main())
+```
+
+Output:
+```
+Exception while iterating over response: Something went wrong in callee agent
+```
 
 ### 🧠 Work with LLMs
 
-MiniAgents provides built-in support for OpenAI and Anthropic language models
-with possibility to add other integrations.
+MiniAgents provides built-in support for OpenAI and Anthropic language models with possibility to add other integrations.
 
-⚠️ **ATTENTION!** Make sure to run `pip install -U openai` and set your OpenAI
-API key in the `OPENAI_API_KEY` environment variable before running the example
-below. ⚠️
+⚠️ **ATTENTION!** Make sure to run `pip install -U openai` and set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the example below. ⚠️
 
 ```python
 from miniagents import MiniAgents
@@ -129,32 +143,15 @@ if __name__ == "__main__":
     MiniAgents().run(main())
 ```
 
-Even though OpenAI models return a single assistant response, the
-`OpenAIAgent.trigger()` method is still designed to return a sequence of
-multiple message promises. This generalizes to arbitrary agents, making agents
-in the MiniAgents framework easily interchangeable (agents in this framework
-support sending and receiving zero or more messages).
+Even though OpenAI models return a single assistant response, the `OpenAIAgent.trigger()` method is still designed to return a sequence of multiple message promises. This generalizes to arbitrary agents, making agents in the MiniAgents framework easily interchangeable (agents in this framework support sending and receiving zero or more messages).
 
-You can read agent responses token-by-token as shown above regardless of whether
-the agent is streaming token by token or returning full messages. The complete
-message content will just be returned as a single "token" in the latter case.
+You can read agent responses token-by-token as shown above regardless of whether the agent is streaming token by token or returning full messages. The complete message content will just be returned as a single "token" in the latter case.
 
 ## 🔄 A dialog loop between a user and an AI assistant
 
-The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop
-between a user agent and an assistant agent. Here is how you can use it to set
-up an interaction between a user and your agent (can be bare LLM agent, like
-`OpenAIAgent` or `AnthropicAgent`, can also be a custom agent that you define
-yourself - a more complex agent that uses LLM agents under the hood but also
-introduces more complex behavior, i.e. Retrieval Augmented Generation etc.):
+The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop between a user agent and an assistant agent. Here is how you can use it to set up an interaction between a user and your agent (can be bare LLM agent, like `OpenAIAgent` or `AnthropicAgent`, can also be a custom agent that you define yourself - a more complex agent that uses LLM agents under the hood but also introduces more complex behavior, i.e. Retrieval Augmented Generation etc.):
 
-⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your
-Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running
-the example below (or just replace `AnthropicAgent` with `OpenAIAgent` and
-`"claude-3-5-haiku-latest"` with `"gpt-4o-mini"` if you already set up
-the previous example). ⚠️
-
-TODO don't complicate your examples by using different model providers
+⚠️ **ATTENTION!** Make sure to run `pip install -U openai` and set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the example below. ⚠️
 
 ```python
 from miniagents import MiniAgents
@@ -163,7 +160,7 @@ from miniagents.ext import (
     console_user_agent,
     MarkdownHistoryAgent,
 )
-from miniagents.ext.llms import SystemMessage, AnthropicAgent
+from miniagents.ext.llms import SystemMessage, OpenAIAgent
 
 
 async def main() -> None:
@@ -179,8 +176,8 @@ async def main() -> None:
             # you want to customize the filepath to write to).
             history_agent=MarkdownHistoryAgent
         ),
-        assistant_agent=AnthropicAgent.fork(
-            model="claude-3-5-haiku-latest",
+        assistant_agent=OpenAIAgent.fork(
+            model="gpt-4o-mini",
             max_tokens=1000,
         ),
     )
@@ -206,30 +203,21 @@ Press Ctrl+C (or type "exit") to quit the conversation.
 
 USER: hi
 
-ANTHROPIC_AGENT: Hello! The greeting "hi" is a casual and commonly used informal
-salutation. It's grammatically correct and doesn't require any changes. If you'd
-like to provide a more formal or elaborate greeting, you could consider
-alternatives such as "Hello," "Good morning/afternoon/evening," or "Greetings."
+OPENAI_AGENT: Hello! The greeting "hi" is casual and perfectly acceptable.
+It's grammatically correct and doesn't require any changes. If you wanted
+to use a more formal greeting, you could consider "Hello," "Good morning/afternoon/evening,"
+or "Greetings."
 
 USER: got it, thanks!
 
-ANTHROPIC_AGENT: You're welcome! The phrase "Got it, thanks!" is a concise and
-informal way to express understanding and appreciation. It's perfectly fine as
-is for casual communication. If you wanted a slightly more formal version, you
-could say:
-
-"I understand. Thank you!"
+OPENAI_AGENT: You're welcome! "Got it, thanks!" is a concise and clear expression
+of understanding and gratitude. It's perfectly fine for casual communication.
+A slightly more formal alternative could be "I understand. Thank you!"
 ```
-
-**TODO** replace the output above with a gif showing the interaction in real
-time
 
 ### 🧸 A "toy" implementation of a dialog loop
 
-Here is how you can implement a dialog loop between an agent and a user from
-ground up yourself (for simplicity there is no history agent in this example -
-check out `in_memory_history_agent` and how it is used if you want to know how
-to implement your own history agent too):
+Here is how you can implement a dialog loop between an agent and a user from ground up yourself (for simplicity there is no history agent in this example - check out `in_memory_history_agent` and how it is used if you want to know how to implement your own history agent too):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
@@ -275,33 +263,34 @@ USER: bye
 ASSISTANT: You said "bye"
 ```
 
-**TODO** explain why the presence of `AWAIT` sentinel is important in the
-example above
+***Remember, with this framework the agents pass promises of message sequences between each other, not the already-resolved message sequences themselves! Even when you pass concrete messages in your code, they are still wrapped into promises of message sequences behind the scenes (while your async agent code is just sent to be processed in the background).***
 
-**TODO** or even better - show how to implement agent_loop from scratch
+For this reason, the presence of `AWAIT` sentinel in the agent chain in the example above is important. Without it the `agent_loop` would have kept scheduling more and more interactions between the agents of the chain without ever taking a break to catch up with their processing.
 
-**TODO** also, use this as an opportunity to bring up `mutable_state` dictionary
-that can be passed to either the `@miniagent` decorator or the `fork()` method
-(implement a toy chat history agent to demonstrate that)
+`AWAIT` forces the `agent_loop` to stop and `await` for the complete sequence of replies from the agent right before `AWAIT` prior to scheduling (triggering) the execution of the agent right after `AWAIT`, thus allowing it to catch up with the asynchronous processing of agents and their responses in the background.
 
-### 📦 Some other pre-packaged agents (`miniagents.ext`)
+### 📦 Some of the pre-packaged agents
 
-- `console_input_agent`: Prompts the user for input via the console.
-- `console_output_agent`: Echoes messages to the console token by token.
-- `user_agent`: A user agent that echoes messages from the agent that called it,
-  then reads the user input and returns the user input as its response. This
-  agent is an aggregation of the previous two.
-- `agent_loop`: **TODO** explain
-- `agent_chain`: **TODO** explain
+- `miniagents.ext.llms`
+  - `OpenAIAgent`: Connects to OpenAI models like GPT-4o, GPT-4o-mini, etc. Supports all OpenAI API parameters and handles token streaming seamlessly.
+  - `AnthropicAgent`: Similar to OpenAIAgent but for Anthropic's Claude models.
+- `miniagents.ext`
+  - `console_input_agent`: Prompts the user for input via the console with support for multi-line input.
+  - `console_output_agent`: Echoes messages to the console token by token, which is useful when the response is streamed from an LLM (if response messages are delivered all at once instead, this agent will also just print them all at once).
+  - `file_output_agent`: Writes messages to a specified file, useful for saving responses from other agents.
+  - `user_agent`: A user agent that echoes messages from the agent that called it, then reads the user input and returns the user input as its response. This agent is an aggregation of the `console_output_agent` and `console_input_agent` (these two agents can be substituted with other agents of similar functionality, however).
+  - `agent_loop`: Creates an infinite loop of interactions between the specified agents. It's designed for ongoing conversations or continuous processing, particularly useful for chat interfaces where agents need to take turns indefinitely (or unless stopped with `KeyboardInterrupt`).
+  - `dialog_loop`: A special case of `agent_loop` designed for conversation between a user and an assistant, with optional chat history tracking.
+  - `agent_chain`: Executes a sequence of agents in order, where each agent processes the output of the previous agent. This creates a pipeline of processing steps, with messages flowing from one agent to the next in a specified sequence.
+  - `in_memory_history_agent`: Keeps track of conversation history in memory, enabling context-aware interactions without external storage.
+  - `MarkdownHistoryAgent`: Keeps track of conversation history in a markdown file, allowing to resume a conversation from the same point even if the app is restarted.
+  - `markdown_llm_logger_agent`: Logs LLM interactions (prompts and responses) in markdown format, useful for debugging and auditing purposes (look for `llm_logger_agent=True` of the `MiniAgents()` context manager in one of the code examples above).
 
-Feel free to explore the source code in the `miniagents.ext` package to see how
-various agents are implemented and get inspiration for building your own agents!
+***Feel free to explore the source code in the `miniagents.ext` package to see how various agents are implemented and get inspiration for building your own agents!***
 
 ### 🔀 Agent parallelism explained
 
-Let's consider an example that consists of two dummy agents and an aggregator
-agent that aggregates the responses from the two dummy agents (and also adds
-some messages of its own):
+Let's consider an example that consists of two dummy agents and an aggregator agent that aggregates the responses from the two dummy agents (and also adds some messages of its own):
 
 ```python
 import asyncio
@@ -398,41 +387,17 @@ PREPARING TO GET MESSAGES FROM AGGREGATOR
 TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 5
 ```
 
-None of the agent functions start executing upon any of the calls to the
-`trigger()` method. Instead, in all cases the `trigger()` method immediately
-returns with **promises** to "talk to the agent(s)" (**promises** of sequences
-of **promises** of response messages, to be super precise - see
-`MessageSequencePromise` and `MessagePromise` classes for details).
+None of the agent functions start executing upon any of the calls to the `trigger()` method. Instead, in all cases the `trigger()` method immediately returns with **promises** to "talk to the agent(s)" (**promises** of sequences of **promises** of response messages, to be very precise - see `MessageSequencePromise` and `MessagePromise` classes for details).
 
-As long as the global `start_soon` setting is set to `True` (which is the
-default - see the source code of `Promising`, the parent class of `MiniAgents`
-context manager for details), the actual agent functions will start processing
-at the earliest task switch (the behaviour of `asyncio.create_task()`, which is
-used under the hood). In this example it is going to be `await asyncio.sleep(1)`
-inside the `main()` function, but if this `sleep()` wasn't there, it would have
-happened upon the first iteration of the `async for` loop which is the next
-place where a task switch happens.
+As long as the global `start_soon` setting is set to `True` (which is the default - see the source code of `PromisingContext`, the parent class of `MiniAgents` context manager for details), the actual agent functions will start processing at the earliest task switch (the behaviour of `asyncio.create_task()`, which is used under the hood). In this example it is going to be `await asyncio.sleep(1)` inside the `main()` function, but if this `sleep()` wasn't there, it would have happened upon the first iteration of the `async for` loop which is the next place where a task switch happens.
 
-**💪 EXERCISE FOR READER:** Add another `await asyncio.sleep(1)` right before
-`print("Aggregator finished")` in the `aggregator_agent` function and then try
-to predict how the output will change. After that, run the modified script and
-check if your prediction was correct.
+**💪 EXERCISE FOR READER:** Add another `await asyncio.sleep(1)` right before `print("Aggregator finished")` in the `aggregator_agent` function and then try to predict how the output will change. After that, run the modified script and check if your prediction was correct.
 
-⚠️ **ATTENTION!** You can play around with setting `start_soon` to `False` for
-individual agent calls if for some reason you need to:
-`some_agent.trigger(request_messages_if_any, start_soon=False)`. However,
-setting it to `False` for the whole system globally is not recommended because
-it can lead to deadlocks. ⚠️
-
-**TODO** get rid of the `start_soon=False` option completely ?
-(but first check how it is done in `trio`/`anyio`/etc.)
+⚠️ **ATTENTION!** You can set `start_soon` to `False` for individual agent calls if you need to prevent them from starting any earlier than the first time their response sequence promise is awaited for: `some_agent.trigger(request_messages_if_any, start_soon=False)`. However, setting it to `False` for the whole system globally is not recommended because it can lead to deadlocks. ⚠️
 
 ### 📨 An alternative way to trigger agents
 
-Here's a simple example demonstrating how to use
-`agent_call = some_agent.initiate_call()` and then do
-`agent_call.send_message()` two times before calling
-`agent_call.reply_sequence()` (instead of all-in-one `some_agent.trigger()`):
+Here's a simple example demonstrating how to use `agent_call = some_agent.initiate_call()` and then do `agent_call.send_message()` two times before calling `agent_call.reply_sequence()` (instead of all-in-one `some_agent.trigger()`):
 
 ```python
 from miniagents import miniagent, InteractionContext, MiniAgents
@@ -465,14 +430,11 @@ Echo: Hello
 Echo: World
 ```
 
-**TODO** explain when this might be useful
-
 ### 🛠️ Global `MiniAgents()` context
 
 There are three ways to use the `MiniAgents()` context:
 
-1. Calling its `run()` method with your main function as a parameter (the
-   `main()` function in this example should be defined as `async`):
+1. Calling its `run()` method with your main function as a parameter (the `main()` function in this example should be defined as `async`):
    ```python
    MiniAgents().run(main())
    ```
@@ -483,8 +445,7 @@ There are three ways to use the `MiniAgents()` context:
        ...  # your async code that works with agents goes here
    ```
 
-3. Directly calling its `activate()` (and, potentially, `afinalize()` at the
-   end) methods:
+3. Directly calling its `activate()` (and, potentially, `afinalize()` at the end) methods:
    ```python
    mini_agents = MiniAgents()
    mini_agents.activate()
@@ -494,11 +455,7 @@ There are three ways to use the `MiniAgents()` context:
        await mini_agents.afinalize()
    ```
 
-The third way might be ideal for web applications and other cases when there is
-no single function that you can encapsulate with the `MiniAgents()` context
-manager (or it is unclear what such function would be). You just do
-`mini_agents.activate()` somewhere upon the init of the server and forget
-about it.
+The third way might be ideal for web applications and other cases when there is no single function that you can encapsulate with the `MiniAgents()` context manager (or it is unclear what such function would be). You just do `mini_agents.activate()` somewhere upon the init of the server and forget about it.
 
 ### 💬 Existing `Message` models
 
@@ -510,8 +467,7 @@ system_message = SystemMessage("System message")
 assistant_message = AssistantMessage("Assistant message")
 ```
 
-The difference between these message types is in the default values of
-the `role` field of the message:
+The difference between these message types is in the default values of the `role` field of the message:
 
 - `UserMessage` has `role="user"` by default
 - `SystemMessage` has `role="system"` by default
@@ -540,43 +496,20 @@ For more advanced usage, check out the [examples](examples) directory.
 
 ## 💡 Motivation behind this project
 
-There are three main features of MiniAgents the idea of which motivated the
-creation of this framework:
+There are two main features of MiniAgents the idea of which motivated the creation of this framework:
 
-1. It is built around supporting asynchronous token streaming across chains of
-   interconnected agents, making this the core feature of the framework.
-2. It is very easy to throw bare strings, messages, message promises,
-   collections, and sequences of messages and message promises (as well as the
-   promises of the sequences themselves) all together into an agent reply (see
-   `MessageType`). This entire hierarchical structure will be asynchronously
-   resolved in the background into a flat and uniform sequence of message
-   promises (it will be automatically "flattened" in the background).
-3. By default, agents work in so called `start_soon` mode, which is different
-   from the usual way coroutines work where you need to actively await on them
-   and/or iterate over them (in case of asynchronous generators). In
-   `start_soon` mode, every agent, after it was invoked, actively seeks every
-   opportunity to proceed its processing in the background when async tasks
-   switch.
+1. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`). This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence of message promises (it will be automatically "flattened" in the background).
+2. By default, agents work in so called `start_soon` mode, which is different from the usual way coroutines work where you need to actively await on them or iterate over them (in case of asynchronous generators). In `start_soon` mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background when async tasks switch.
 
-The third feature combines this `start_soon` approach with regular async/await
-and async generators by using so called streamed promises (see `StreamedPromise`
-and `Promise` classes) which were designed to be "replayable" by nature.
+The second feature combines this `start_soon` approach with regular async/await and async generators by using so called streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable".
 
-It was chosen for messages to be immutable once they are created (see `Message`
-and `Frozen` classes) in order to make all of the above possible (because this
-way there are no concerns about the state of the message being changed in the
-background).
+The design choice for immutable messages was made specifically to enable this kind of highly parallelized agent execution. Since Generative AI applications are inherently IO-bound (with models typically hosted externally), immutable messages eliminate concerns about concurrent state mutations. This approach allows multiple agents to process messages simultaneously without risk of race conditions or data corruption, maximizing throughput in distributed LLM workflows.
 
 ## 🔒 Message persistence and identification
 
-MiniAgents provides a way to persist messages as they are resolved from promises
-using the `@MiniAgents().on_persist_message` decorator. This allows you to
-implement custom logic for storing or logging messages.
+MiniAgents provides a way to persist messages as they are resolved from promises using the `@MiniAgents().on_persist_message` decorator. This allows you to implement custom logic for storing or logging messages.
 
-Additionally, messages (as well as any other Pydantic models derived from
-`Frozen`) have a `hash_key` property. This property calculates the sha256 hash
-of the content of the message and is used as the id of the `Messages` (or any
-other `Frozen` model), much like there are commit hashes in git.
+Additionally, messages (as well as any other Pydantic models derived from `Frozen`) have a `hash_key` property. This property calculates the sha256 hash of the content of the message and is used as the id of the `Messages` (or any other `Frozen` model), much like there are commit hashes in git.
 
 Here's a simple example of how to use the `on_persist_message` decorator:
 
@@ -592,76 +525,25 @@ async def persist_message(_, message: Message) -> None:
     # Here you could save the message to a database or log it to a file
 ```
 
-## 📂 Modules
-
-**TODO** the structure of this section is outdated - update it (or just get rid
-of it?)
-
-Here's an overview of the module structure and hierarchy in the MiniAgents
-framework:
-
-- `miniagents`: The core package containing the main classes and functions
-    - `miniagents.py`: Defines the `MiniAgents` context manager, `MiniAgent`
-      class, and `miniagent` decorator
-    - `messages.py`: Defines the `Message` class and related message types
-    - `miniagent_typing.py`: Defines type aliases and protocols used in the
-      framework
-    - `utils.py`: Utility functions used throughout the framework
-    - `promising`: Subpackage for the "promising" functionality (promises,
-      streaming, etc.)
-        - `promising.py`: Defines the `Promise` and `StreamedPromise` classes
-        - `promise_typing.py`: Defines type aliases and protocols for promises
-        - `sequence.py`: Defines the `FlatSequence` class for flattening
-          sequences
-        - `sentinels.py`: Defines sentinel objects used in the framework
-        - `errors.py`: Defines custom exception classes
-        - `ext`: Subpackage for extensions to the promising functionality
-            - `frozen.py`: Defines the `Frozen` class for immutable Pydantic
-              models
-- `miniagents.ext`: Subpackage for pre-packaged agents and extensions
-    - `agent_aggregators.py`: Agents for aggregating other agents (chains,
-      loops, etc.)
-    - `history_agents.py`: Agents for managing conversation history
-    - `misc_agents.py`: Miscellaneous utility agents
-    - `llm`: Subpackage for LLM integrations
-        - `llm_common.py`: Common classes and functions for LLM agents
-        - `openai.py`: OpenAI LLM agent
-        - `anthropic.py`: Anthropic LLM agent
-
 ## 📚 Core concepts
 
 Here are some of the core concepts in the MiniAgents framework:
 
-- **MiniAgent**: A wrapper around an async function that defines an agent's
-  behavior. Created using the `@miniagent` decorator.
-- **InteractionContext**: Passed to each agent function, provides access to
-  incoming messages and allows sending replies.
-- **Message**: Represents a message exchanged between agents. Can contain
-  content, metadata, and nested messages. Immutable once created.
-- **MessagePromise**: A promise of a message that can be streamed token by
-  token.
-- **MessageSequencePromise**: A promise of a sequence of message promises.
-- **Promise**: Represents a value that may not be available yet, but will be
-  resolved in the future.
-- **StreamedPromise**: A promise that can be resolved piece by piece, allowing
-  for streaming.
-- **Frozen**: An immutable Pydantic model with a git-style hash key calculated
-  from its JSON representation.
+- `MiniAgent`: A wrapper around an async function (or a whole class with `async def __call__()` method) that defines an agent's behavior. Created using the `@miniagent` decorator.
+- `InteractionContext`: Passed to each agent function, provides access to incoming messages and allows sending replies.
+- `Message`: Represents a message exchanged between agents. Can contain content, metadata, and nested messages. Immutable once created.
+- `MessagePromise`: A promise of a message that can be streamed token by token.
+- `MessageSequencePromise`: A promise of a sequence of message promises.
+- `Frozen`: An immutable Pydantic model with a git-style hash key calculated from its JSON representation. The base class for `Message`.
+
+More underlying concepts (you will rarely need to use them directly, if at all):
+
+- `StreamedPromise`: A promise that can be resolved piece by piece, allowing for streaming. The base class for `MessagePromise` and `MessageSequencePromise`.
+- `Promise`: Represents a value that may not be available yet, but will be resolved in the future. The base class for `StreamedPromise`.
 
 ## 📜 License
 
 MiniAgents is released under the [MIT License](LICENSE).
-
-## 📝 Note to contributors
-
-- **Different Promise and StreamedPromise resolvers, piece-by-piece streamers,
-  appenders, and other Promising components should always catch BaseExceptions
-  and not just Exceptions**. This is because many of these components involve
-  communications between async tasks via `asyncio.Queue` objects. Interrupting
-  these promises with `KeyboardInterrupt` (which extends from `BaseException`)
-  instead of letting it go through the queue can lead to hanging promises (a
-  queue waiting for `END_OF_QUEUE` sentinel forever while the task that should
-  send it is dead).
 
 ---
 

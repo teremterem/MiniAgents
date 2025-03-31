@@ -75,6 +75,20 @@ class PromisingContext:
 
         self._previous_ctx_token: Optional[contextvars.Token] = None
 
+    def run(self, awaitable: Awaitable[Any]) -> Any:
+        """
+        Run an awaitable in the context of this PromisingContext instance. This method is blocking. It also creates a
+        new event loop.
+        """
+        return asyncio.run(self.arun(awaitable))
+
+    async def arun(self, awaitable: Awaitable[Any]) -> Any:
+        """
+        Run an awaitable in the context of this PromisingContext instance.
+        """
+        async with self:
+            return await awaitable
+
     @classmethod
     def get_current(cls) -> "PromisingContext":
         """

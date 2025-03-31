@@ -74,19 +74,6 @@ class MiniAgents(PromisingContext):
 
         self._child_agent_calls: set[AgentCall] = set()
 
-    def run(self, awaitable: Awaitable[Any]) -> Any:
-        """
-        Run an awaitable in the MiniAgents context. This method is blocking. It also creates a new event loop.
-        """
-        return asyncio.run(self.arun(awaitable))
-
-    async def arun(self, awaitable: Awaitable[Any]) -> Any:
-        """
-        Run an awaitable in the MiniAgents context.
-        """
-        async with self:
-            return await awaitable
-
     @classmethod
     def get_current(cls) -> "MiniAgents":
         current = super().get_current()

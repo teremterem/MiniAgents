@@ -6,10 +6,10 @@ branch = true
 
 [tool.poetry]
 name = "miniagents"
-version = "0.0.25"
+version = "0.0.26"
 description = """\
-An asynchronous framework for building LLM-based multi-agent systems in Python, with a focus on token and message \
-streaming between the agents.\
+An async-first framework for building multi-agent AI systems with an innovative approach to parallelism, so you can \
+focus on creating intelligent agents, not on managing the concurrency of your flows.\
 """
 authors = ["Oleksandr Tereshchenko <toporok@gmail.com>"]
 homepage = "https://github.com/teremterem/MiniAgents"

@@ -188,7 +188,7 @@ class MiniAgentsLogFormatter(logging.Formatter):
             lines = [line for line, show in zip(lines, show_line) if show]
             lines.append(
                 "\n"
-                "ATTENTION! Some parts of the traceback above were omitted for readability.\n"
+                "ATTENTION! Some parts of the traceback above are omitted for readability.\n"
                 "Use `MiniAgents(log_reduced_tracebacks=False)` to see the full traceback.\n"
             )
 
