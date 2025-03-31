@@ -263,27 +263,30 @@ USER: bye
 ASSISTANT: You said "bye"
 ```
 
-**TODO** Explain that the presence of `AWAIT` sentinel is important because without it the `agent_loop` would keep scheduling more and more interactions between the agents in the chain without ever taking a break to catch up with the processing of the previous interaction (`AWAIT` forces the `agent_loop` to await for the full sequence of replies from the agent right before `AWAIT` prior to scheduling the execution of the agent right after `AWAIT`).
+***Remember, with this framework the agents pass promises of message sequences between each other, not the already-resolved message sequences themselves! Even when you pass concrete messages in your code, they are still wrapped into promises of message sequences behind the scenes (while your async agent code is just sent to be processed in the background).***
+
+For this reason, the presence of `AWAIT` sentinel in the agent chain in the example above is important. Without it the `agent_loop` would have kept scheduling more and more interactions between the agents of the chain without ever taking a break to catch up with their processing.
+
+`AWAIT` forces the `agent_loop` to stop and `await` for the complete sequence of replies from the agent right before `AWAIT` prior to scheduling (triggering) the execution of the agent right after `AWAIT`, thus allowing it to catch up with the asynchronous processing of agents and their responses in the background.
 
 ### 📦 Some of the pre-packaged agents
 
 - `miniagents.ext.llms`
-  - `OpenAIAgent`: **TODO** explain.
-  - `AnthropicAgent`: **TODO** explain.
+  - `OpenAIAgent`: Connects to OpenAI models like GPT-4o, GPT-4o-mini, etc. Supports all OpenAI API parameters and handles token streaming seamlessly.
+  - `AnthropicAgent`: Similar to OpenAIAgent but for Anthropic's Claude models.
 - `miniagents.ext`
-  - `console_input_agent`: **TODO** explain (in short, it prompts the user for input via the consol).
-  - `console_output_agent`: **TODO** explain (in short, it echoes messages to the console token by token).
-  - `file_output_agent`: **TODO** explain.
-  - `user_agent`: A user agent that echoes messages from the agent that called it, then reads the user input and returns the user input as its response. This agent is an aggregation of the previous two.
-  - `agent_loop`: Creates an infinite loop of interactions between the specified agents. It's designed for ongoing conversations or continuous processing, particularly useful for chat interfaces where agents need to take turns indefinitely.
-  - `dialog_loop`: **TODO** explain (its a special case of `agent_loop`).
+  - `console_input_agent`: Prompts the user for input via the console with support for multi-line input.
+  - `console_output_agent`: Echoes messages to the console token by token, which is useful when the response is streamed from an LLM (if response messages are delivered all at once instead, this agent will also just print them all at once).
+  - `file_output_agent`: Writes messages to a specified file, useful for saving responses from other agents.
+  - `user_agent`: A user agent that echoes messages from the agent that called it, then reads the user input and returns the user input as its response. This agent is an aggregation of the `console_input_agent` and `console_output_agent` (these two agents can be substituted with other agents of similar functionality, however).
+  - `agent_loop`: Creates an infinite loop of interactions between the specified agents. It's designed for ongoing conversations or continuous processing, particularly useful for chat interfaces where agents need to take turns indefinitely (or unless stopped with `KeyboardInterrupt`).
+  - `dialog_loop`: A special case of `agent_loop` designed for conversation between a user and an assistant, with optional chat history tracking.
   - `agent_chain`: Executes a sequence of agents in order, where each agent processes the output of the previous agent. This creates a pipeline of processing steps, with messages flowing from one agent to the next in a specified sequence.
-  - `prompt_agent`: **TODO** explain.
-  - `in_memory_history_agent`: **TODO** explain.
-  - `MarkdownHistoryAgent`: **TODO** explain.
-  - `markdown_llm_logger_agent`: **TODO** explain.
+  - `in_memory_history_agent`: Keeps track of conversation history in memory, enabling context-aware interactions without external storage.
+  - `MarkdownHistoryAgent`: Keeps track of conversation history in a markdown file, allowing to resume a conversation from the same point even if the app is restarted.
+  - `markdown_llm_logger_agent`: Logs LLM interactions (prompts and responses) in markdown format, useful for debugging and auditing purposes (look for `llm_logger_agent=True` of the `MiniAgents()` context manager in one of the code examples above).
 
-Feel free to explore the source code in the `miniagents.ext` package to see how various agents are implemented and get inspiration for building your own agents!
+***Feel free to explore the source code in the `miniagents.ext` package to see how various agents are implemented and get inspiration for building your own agents!***
 
 ### 🔀 Agent parallelism explained
 
@@ -498,8 +501,6 @@ There are three main features of MiniAgents the idea of which motivated the crea
 1. It is built around supporting asynchronous token streaming across chains of interconnected agents, making this the core feature of the framework.
 2. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`). This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence of message promises (it will be automatically "flattened" in the background).
 3. By default, agents work in so called `start_soon` mode, which is different from the usual way coroutines work where you need to actively await on them and/or iterate over them (in case of asynchronous generators). In `start_soon` mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background when async tasks switch.
-
-**TODO** Is the explaination above of the "message sequence flattening" feature (which is one of the means to high parallelism in this framework) clear enough? Does it need to be improved?
 
 The third feature combines this `start_soon` approach with regular async/await and async generators by using so called streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable" by nature.
 
