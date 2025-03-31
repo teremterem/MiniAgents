@@ -499,7 +499,7 @@ There are three main features of MiniAgents the idea of which motivated the crea
 2. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`). This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence of message promises (it will be automatically "flattened" in the background).
 3. By default, agents work in so called `start_soon` mode, which is different from the usual way coroutines work where you need to actively await on them and/or iterate over them (in case of asynchronous generators). In `start_soon` mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background when async tasks switch.
 
-**TODO** is the explaination above of the "message sequence flattening" feature (which is one of the means to high parallelism in this framework) clear enough? does it need to be improved?
+**TODO** Is the explaination above of the "message sequence flattening" feature (which is one of the means to high parallelism in this framework) clear enough? Does it need to be improved?
 
 The third feature combines this `start_soon` approach with regular async/await and async generators by using so called streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable" by nature.
 
