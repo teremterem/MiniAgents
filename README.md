@@ -263,7 +263,7 @@ USER: bye
 ASSISTANT: You said "bye"
 ```
 
-**TODO** explain why the presence of `AWAIT` sentinel is important in the example above
+**TODO** Explain that the presence of `AWAIT` sentinel is important because without it the `agent_loop` would keep scheduling more and more interactions between the agents in the chain without ever taking a break to catch up with the processing of the previous interaction (`AWAIT` forces the `agent_loop` to await for the full sequence of replies from the agent right before `AWAIT` prior to scheduling the execution of the agent right after `AWAIT`).
 
 ### 📦 Some of the pre-packaged agents
 
