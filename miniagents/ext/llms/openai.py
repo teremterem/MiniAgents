@@ -135,20 +135,14 @@ class OpenAIAgent(LLMAgent):
 
 
 async def aprepare_dicts_for_openai(messages: MessageType, *, system: Optional[str] = None) -> list[dict[str, Any]]:
-    if system is None:
-        message_dicts = []
-    else:
-        message_dicts = [
-            # TODO Oleksandr: are we sure it is not better to put the system message at the end ?
-            #  think about it in terms of prompt caching by OpenAI.
+    message_dicts = [message_to_llm_dict(msg) for msg in await MessageSequence.turn_into_sequence_promise(messages)]
+    if system:
+        message_dicts.append(
             {
                 "role": "system",
                 "content": system,
             },
-        ]
-    message_dicts.extend(
-        message_to_llm_dict(msg) for msg in await MessageSequence.turn_into_sequence_promise(messages)
-    )
+        )
     return message_dicts
 
 

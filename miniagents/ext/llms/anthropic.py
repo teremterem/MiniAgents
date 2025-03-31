@@ -4,7 +4,7 @@ This module integrates Anthropic language models with MiniAgents.
 
 import typing
 from functools import cache
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import Field
 
@@ -91,24 +91,23 @@ class AnthropicAgent(LLMAgent):
     async def _aprepare_message_dicts(self) -> list[dict[str, Any]]:
         return await aprepare_dicts_for_anthropic(
             self.ctx.message_promises,
+            system=self.system,
             message_delimiter_for_same_role=self.message_delimiter_for_same_role,
             fake_first_user_message=self.fake_first_user_message,
         )
 
     async def _cut_off_system_message(self, message_dicts: list[dict[str, Any]]) -> str:
-        if message_dicts and message_dicts[0]["role"] == "system":
-            # let's strip away the system message from the beginning (look at the implementation of
-            # `_fix_message_dicts()` to see why it's there)
-            system_message_dict = message_dicts.pop(0)
-            resulting_system_message = (
-                system_message_dict["content"]
-                if self.system is None
-                else f"{self.system}{self.message_delimiter_for_same_role}{system_message_dict['content']}"
-            )
+        if message_dicts and message_dicts[-1]["role"] == "system":
+            # let's strip away the system message from the end (look at the implementation of
+            # `aprepare_dicts_for_anthropic()` to see why it might be there)
+            system_message_dict = message_dicts.pop()
+            resulting_system_message = system_message_dict["content"]
         else:
+            # if `self.system` was provided then it was already added by `aprepare_dicts_for_anthropic()`,
+            # so this `else` branch is simply a "just in case" branch, it should never execute
             resulting_system_message = self.system
 
-        if resulting_system_message is None:
+        if not resulting_system_message:
             # pylint: disable=import-outside-toplevel
             # noinspection PyShadowingNames
             import anthropic as anthropic_original
@@ -121,6 +120,7 @@ class AnthropicAgent(LLMAgent):
 async def aprepare_dicts_for_anthropic(
     messages: MessageType,
     *,
+    system: Optional[str] = None,
     message_delimiter_for_same_role: str = "\n\n",
     fake_first_user_message: str = "/start",
 ) -> list[dict[str, Any]]:
@@ -137,9 +137,11 @@ async def aprepare_dicts_for_anthropic(
     system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
     # let's put all the system messages in the beginning (they will later be combined into a single message
     # and stripped away)
-    message_dicts = system_message_dicts + non_system_message_dicts
+    message_dicts = non_system_message_dicts + system_message_dicts
+    if system:
+        message_dicts.append({"role": "system", "content": system})
 
-    # if multiple messages with the same role are sent in a row, they should be concatenated
+    # if multiple messages with the same role are sent in a row, they should be concatenated (required by Anthropic)
     fixed_message_dicts = []
     for message_dict in message_dicts:
         if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
