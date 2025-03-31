@@ -70,7 +70,7 @@ You said: Hello
 You said: World
 ```
 
-**TODO** Mention that exceptions that happen in "callee" agents are propagated to the caller agents even though the callee agents are being processed in completely detached "asyncio" tasks; refer to an example that you will provide later in the README. Explain that those exceptions are propagated via promises of response message sequences (raised when those sequences are iterated over or awaited for in any of the caller agents).
+**TODO** Mention that exceptions that happen in "callee" agents are propagated to the caller agents even though the callee agents are being processed in completely detached "asyncio" tasks; refer to an example that you will provide later in the README. Explain that those exceptions are propagated via promises of response message sequences (reraised when those sequences are iterated over or awaited for in any of the caller agents).
 
 ### 🧠 Work with LLMs
 
@@ -119,7 +119,7 @@ The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop be
 
 ⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running the example below (or just replace `AnthropicAgent` with `OpenAIAgent` and `"claude-3-5-haiku-latest"` with `"gpt-4o-mini"` if you already set up the previous example). ⚠️
 
-**TODO** don't complicate your examples by using different model providers
+**TODO** Don't complicate your examples by using different model providers, switch this example to use `OpenAIAgent` too.
 
 ```python
 from miniagents import MiniAgents
