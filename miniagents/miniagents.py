@@ -274,6 +274,16 @@ class MiniAgent(Frozen):
             **kwargs_to_freeze,
         )
 
+    def original_def(self) -> Union[AgentFunction, type]:
+        """
+        Get the original definition of the agent, which is either a function or a class. The `@miniagent` decorator
+        hides the original function or class from the client code behind a `MiniAgent` object, but in certain scenarios
+        access to the original function or class might be needed. This method provides exactly that.
+        """
+        # TODO Oleksandr: do it the other way around ? return the original definition from the decorator and just
+        # attach the key methods (trigger, initiate_call, fork etc.) as well as an instance of `MiniAgent` to it ?
+        return self._func_or_class
+
 
 class InteractionContext:
     this_agent: MiniAgent

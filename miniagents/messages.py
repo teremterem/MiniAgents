@@ -285,6 +285,9 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         MessagePromise objects etc. - see `MessageType` definition for details) into a flat and uniform
         MessageSequencePromise object.
         """
+        if isinstance(messages, MessageSequencePromise):
+            return messages
+
         message_sequence = cls(
             appender_capture_errors=True,
             start_soon=False,

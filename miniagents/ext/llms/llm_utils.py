@@ -71,10 +71,10 @@ class LLMAgent(ABC, BaseModel):
     llm_logger_agent: Union[MiniAgent, bool] = Field(default_factory=lambda: MiniAgents.get_current().llm_logger_agent)
 
     async def __call__(self) -> None:
-        message_dicts = await self._prepare_message_dicts()
+        message_dicts = await self._aprepare_message_dicts()
 
         with MessageTokenAppender(capture_errors=True) as token_appender:
-            response_promise = await self._promise_and_close(token_appender)
+            response_promise = await self._apromise_and_close(token_appender)
 
             if self.llm_logger_agent:
                 if self.llm_logger_agent is True:
@@ -92,7 +92,7 @@ class LLMAgent(ABC, BaseModel):
                 )
 
             # here is where the actual request to the LLM is made
-            await self._produce_tokens(message_dicts, token_appender)
+            await self._aproduce_tokens(message_dicts, token_appender)
 
     @staticmethod
     def _prompt_messages_to_log(message_dicts: list[dict[str, Any]]) -> tuple[PromptLogMessage, ...]:
@@ -108,14 +108,14 @@ class LLMAgent(ABC, BaseModel):
         }
 
     @abstractmethod
-    async def _prepare_message_dicts(self) -> list[dict[str, Any]]: ...
+    async def _aprepare_message_dicts(self) -> list[dict[str, Any]]: ...
 
     @abstractmethod
-    async def _produce_tokens(
+    async def _aproduce_tokens(
         self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender
     ) -> None: ...
 
-    async def _promise_and_close(self, token_appender: MessageTokenAppender) -> MessagePromise:
+    async def _apromise_and_close(self, token_appender: MessageTokenAppender) -> MessagePromise:
         response_promise = self.response_message_class.promise(
             start_soon=False,  # the agent is already running and will collect tokens anyway (see below)
             message_token_streamer=token_appender,
@@ -131,17 +131,17 @@ class LLMAgent(ABC, BaseModel):
 
         return response_promise
 
-    @staticmethod
-    def _message_to_llm_dict(message: Message) -> dict[str, Any]:
-        """
-        Convert a message to a dictionary that can be sent to a large language model.
-        """
-        try:
-            role = message.role
-        except AttributeError:
-            role = "user"
 
-        return {
-            "role": role,
-            "content": str(message),
-        }
+def message_to_llm_dict(message: Message) -> dict[str, Any]:
+    """
+    Convert a message to a dictionary that can be sent to a large language model.
+    """
+    try:
+        role = message.role
+    except AttributeError:
+        role = "user"
+
+    return {
+        "role": role,
+        "content": str(message),
+    }

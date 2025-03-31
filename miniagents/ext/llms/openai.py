@@ -9,8 +9,9 @@ from typing import Any, Optional, Union
 from pydantic import Field, field_validator
 
 from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
-from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent, PromptLogMessage
-from miniagents.messages import Message, MessageTokenAppender
+from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent, PromptLogMessage, message_to_llm_dict
+from miniagents.messages import Message, MessageSequence, MessageTokenAppender
+from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import InteractionContext, MiniAgent, MiniAgents, miniagent
 from miniagents.promising.ext.frozen import Frozen
 
@@ -69,7 +70,9 @@ class OpenAIAgent(LLMAgent):
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
         return n
 
-    async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
+    async def _aproduce_tokens(
+        self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender
+    ) -> None:
         openai_response = await self.async_client.chat.completions.create(
             messages=message_dicts, model=self.model, stream=self.stream, n=self.n, **self.__pydantic_extra__
         )
@@ -107,18 +110,8 @@ class OpenAIAgent(LLMAgent):
                 )
             )
 
-    async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
-        if self.system is None:
-            message_dicts = []
-        else:
-            message_dicts = [
-                {
-                    "role": "system",
-                    "content": self.system,
-                },
-            ]
-        message_dicts.extend(self._message_to_llm_dict(msg) for msg in await self.ctx.message_promises)
-        return message_dicts
+    async def _aprepare_message_dicts(self) -> list[dict[str, Any]]:
+        return await aprepare_dicts_for_openai(self.ctx.message_promises, system=self.system)
 
     @classmethod
     def _merge_openai_dicts(cls, destination_dict: dict[str, Any], dict_to_merge: dict[str, Any]) -> None:
@@ -139,6 +132,24 @@ class OpenAIAgent(LLMAgent):
                         destination_dict[key].extend(value)
                 else:
                     destination_dict[key] = value
+
+
+async def aprepare_dicts_for_openai(messages: MessageType, *, system: Optional[str] = None) -> list[dict[str, Any]]:
+    if system is None:
+        message_dicts = []
+    else:
+        message_dicts = [
+            # TODO Oleksandr: are we sure it is not better to put the system message at the end ?
+            #  think about it in terms of prompt caching by OpenAI.
+            {
+                "role": "system",
+                "content": system,
+            },
+        ]
+    message_dicts.extend(
+        message_to_llm_dict(msg) for msg in await MessageSequence.turn_into_sequence_promise(messages)
+    )
+    return message_dicts
 
 
 @miniagent
