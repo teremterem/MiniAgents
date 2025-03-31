@@ -28,6 +28,8 @@
         src="https://github.com/teremterem/MiniAgents/raw/main/images/miniagents-5-by-4-fixed.jpeg">
 </p>
 
+**TODO** incorporate your "catchy" description here
+
 A framework on top of asyncio for building LLM-based multi-agent systems in Python, with immutable, Pydantic-based messages and a focus on asynchronous token and message streaming between the agents.
 
 **TODO** mention that the reason for immutable messages is to shift the framework to the functional programming paradigm
@@ -35,8 +37,6 @@ A framework on top of asyncio for building LLM-based multi-agent systems in Pyth
 **TODO** mention the feature of "message sequence flattening" and refer to an example that you will provide later in the README (it's one of the means to high parallelism)
 
 **TODO** mention that exceptions that happen in "callee" agents are propagated to the caller agents even though the callee agents were being processed in completely detached "asyncio" tasks; refer to an example that you will provide later in the README
-
-**TODO** create a Discord server for the project
 
 ## 💾 Installation
 
@@ -123,7 +123,7 @@ The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop be
 
 ⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running the example below (or just replace `AnthropicAgent` with `OpenAIAgent` and `"claude-3-5-haiku-latest"` with `"gpt-4o-mini"` if you already set up the previous example). ⚠️
 
-TODO don't complicate your examples by using different model providers
+**TODO** don't complicate your examples by using different model providers
 
 ```python
 from miniagents import MiniAgents
@@ -190,8 +190,6 @@ could say:
 "I understand. Thank you!"
 ```
 
-**TODO** replace the output above with a gif showing the interaction in real time
-
 ### 🧸 A "toy" implementation of a dialog loop
 
 Here is how you can implement a dialog loop between an agent and a user from ground up yourself (for simplicity there is no history agent in this example - check out `in_memory_history_agent` and how it is used if you want to know how to implement your own history agent too):
@@ -241,10 +239,6 @@ ASSISTANT: You said "bye"
 ```
 
 **TODO** explain why the presence of `AWAIT` sentinel is important in the example above
-
-**TODO** or even better - show how to implement agent_loop from scratch
-
-**TODO** also, use this as an opportunity to bring up `mutable_state` dictionary that can be passed to either the `@miniagent` decorator or the `fork()` method (implement a toy chat history agent to demonstrate that)
 
 ### 📦 Some other pre-packaged agents (`miniagents.ext`)
 
@@ -362,8 +356,6 @@ As long as the global `start_soon` setting is set to `True` (which is the defaul
 **💪 EXERCISE FOR READER:** Add another `await asyncio.sleep(1)` right before `print("Aggregator finished")` in the `aggregator_agent` function and then try to predict how the output will change. After that, run the modified script and check if your prediction was correct.
 
 ⚠️ **ATTENTION!** You can play around with setting `start_soon` to `False` for individual agent calls if for some reason you need to: `some_agent.trigger(request_messages_if_any, start_soon=False)`. However, setting it to `False` for the whole system globally is not recommended because it can lead to deadlocks. ⚠️
-
-**TODO** get rid of the `start_soon=False` option completely ? (but first check how it is done in `trio`/`anyio`/etc.)
 
 ### 📨 An alternative way to trigger agents
 
@@ -498,34 +490,6 @@ async def persist_message(_, message: Message) -> None:
     # Here you could save the message to a database or log it to a file
 ```
 
-## 📂 Modules
-
-**TODO** the structure of this section is outdated - update it (or just get rid of it?)
-
-Here's an overview of the module structure and hierarchy in the MiniAgents framework:
-
-- `miniagents`: The core package containing the main classes and functions
-    - `miniagents.py`: Defines the `MiniAgents` context manager, `MiniAgent` class, and `miniagent` decorator
-    - `messages.py`: Defines the `Message` class and related message types
-    - `miniagent_typing.py`: Defines type aliases and protocols used in the framework
-    - `utils.py`: Utility functions used throughout the framework
-    - `promising`: Subpackage for the "promising" functionality (promises, streaming, etc.)
-        - `promising.py`: Defines the `Promise` and `StreamedPromise` classes
-        - `promise_typing.py`: Defines type aliases and protocols for promises
-        - `sequence.py`: Defines the `FlatSequence` class for flattening sequences
-        - `sentinels.py`: Defines sentinel objects used in the framework
-        - `errors.py`: Defines custom exception classes
-        - `ext`: Subpackage for extensions to the promising functionality
-            - `frozen.py`: Defines the `Frozen` class for immutable Pydantic models
-- `miniagents.ext`: Subpackage for pre-packaged agents and extensions
-    - `agent_aggregators.py`: Agents for aggregating other agents (chains, loops, etc.)
-    - `history_agents.py`: Agents for managing conversation history
-    - `misc_agents.py`: Miscellaneous utility agents
-    - `llm`: Subpackage for LLM integrations
-        - `llm_common.py`: Common classes and functions for LLM agents
-        - `openai.py`: OpenAI LLM agent
-        - `anthropic.py`: Anthropic LLM agent
-
 ## 📚 Core concepts
 
 Here are some of the core concepts in the MiniAgents framework:
@@ -542,10 +506,6 @@ Here are some of the core concepts in the MiniAgents framework:
 ## 📜 License
 
 MiniAgents is released under the [MIT License](LICENSE).
-
-## 📝 Note to contributors
-
-- **Different Promise and StreamedPromise resolvers, piece-by-piece streamers, appenders, and other Promising components should always catch BaseExceptions and not just Exceptions**. This is because many of these components involve communications between async tasks via `asyncio.Queue` objects. Interrupting these promises with `KeyboardInterrupt` (which extends from `BaseException`) instead of letting it go through the queue can lead to hanging promises (a queue waiting for `END_OF_QUEUE` sentinel forever while the task that should send it is dead).
 
 ---
 
