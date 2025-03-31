@@ -28,11 +28,11 @@
         src="https://github.com/teremterem/MiniAgents/raw/main/images/miniagents-5-by-4-fixed.jpeg">
 </p>
 
-**TODO** incorporate your "catchy" description with the paragraph below:
+MiniAgents is an open-source Python framework that takes the complexity out of building multi-agent AI systems. With its innovative approach to parallelism and async-first design, you can focus on creating intelligent agents in an easy to follow procedural fashion while the framework handles the concurrency challenges for you.
 
-A framework on top of asyncio for building LLM-based multi-agent systems in Python, with immutable, Pydantic-based messages and a focus on asynchronous token and message streaming between the agents.
+Built on top of asyncio, MiniAgents provides a robust foundation for LLM-based applications with immutable, Pydantic-based messages and seamless asynchronous token and message streaming between agents.
 
-**TODO** mention that the messages are immutable in this framework once their creation is complete and that the reason for immutable messages is to open doors to implementation of highly parallelized agents mechanism (Generative AI based apps are inherently IO-bound, because the models are usually hosted externally to the app)
+**TODO** Explain that the reason for immutable messages was exactly to open doors to implementation of highly parallelized agents mechanism (Generative AI based apps are inherently IO-bound, because the models are usually hosted externally to the app).
 
 ## 💾 Installation
 
