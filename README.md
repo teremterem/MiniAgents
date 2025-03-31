@@ -28,15 +28,11 @@
         src="https://github.com/teremterem/MiniAgents/raw/main/images/miniagents-5-by-4-fixed.jpeg">
 </p>
 
-**TODO** incorporate your "catchy" description here
+**TODO** incorporate your "catchy" description with the paragraph below:
 
 A framework on top of asyncio for building LLM-based multi-agent systems in Python, with immutable, Pydantic-based messages and a focus on asynchronous token and message streaming between the agents.
 
-**TODO** mention that the reason for immutable messages is to shift the framework to the functional programming paradigm
-
-**TODO** mention the feature of "message sequence flattening" and refer to an example that you will provide later in the README (it's one of the means to high parallelism)
-
-**TODO** mention that exceptions that happen in "callee" agents are propagated to the caller agents even though the callee agents were being processed in completely detached "asyncio" tasks; refer to an example that you will provide later in the README
+**TODO** mention that the messages are immutable in this framework once their creation is complete and that the reason for immutable messages is to open doors to implementation of highly parallelized agents mechanism (Generative AI based apps are inherently IO-bound, because the models are usually hosted externally to the app)
 
 ## 💾 Installation
 
@@ -74,7 +70,7 @@ You said: Hello
 You said: World
 ```
 
-**TODO** show how (and when) to create class-based agents; point out that separate instances of such class-based agents are created upon each call to those agents - the purpose of turning agents into classes is not for the sake of maintaining agent state, but rather for the sake of breaking down agent functionality into multiple methods (refer to MarkdownHistoryAgent as an example or give an in-place example here in the README ? probably the latter)
+**TODO** Mention that exceptions that happen in "callee" agents are propagated to the caller agents even though the callee agents are being processed in completely detached "asyncio" tasks; refer to an example that you will provide later in the README. Explain that those exceptions are propagated via promises of response message sequences (raised when those sequences are iterated over or awaited for in any of the caller agents).
 
 ### 🧠 Work with LLMs
 
@@ -465,6 +461,8 @@ There are three main features of MiniAgents the idea of which motivated the crea
 1. It is built around supporting asynchronous token streaming across chains of interconnected agents, making this the core feature of the framework.
 2. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`). This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence of message promises (it will be automatically "flattened" in the background).
 3. By default, agents work in so called `start_soon` mode, which is different from the usual way coroutines work where you need to actively await on them and/or iterate over them (in case of asynchronous generators). In `start_soon` mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background when async tasks switch.
+
+**TODO** is the explaination above of the "message sequence flattening" feature (which is one of the means to high parallelism in this framework) clear enough? does it need to be improved?
 
 The third feature combines this `start_soon` approach with regular async/await and async generators by using so called streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable" by nature.
 
