@@ -32,7 +32,7 @@ MiniAgents is an open-source Python framework that takes the complexity out of b
 
 Built on top of asyncio, MiniAgents provides a robust foundation for LLM-based applications with immutable, Pydantic-based messages and seamless asynchronous token and message streaming between agents.
 
-**TODO** Explain that the reason for immutable messages was exactly to open doors to implementation of highly parallelized agents mechanism (Generative AI based apps are inherently IO-bound, because the models are usually hosted externally to the app).
+The design choice for immutable messages was made specifically to enable highly parallelized agent execution. Since Generative AI applications are inherently IO-bound (with models typically hosted externally), immutable messages eliminate concerns about concurrent state mutations. This approach allows multiple agents to process messages simultaneously without risk of race conditions or data corruption, maximizing throughput in distributed LLM workflows.
 
 ## 💾 Installation
 
@@ -70,7 +70,41 @@ You said: Hello
 You said: World
 ```
 
-**TODO** Mention that exceptions that happen in "callee" agents are propagated to the caller agents even though the callee agents are being processed in completely detached "asyncio" tasks; refer to an example that you will provide later in the README. Explain that those exceptions are propagated via promises of response message sequences (reraised when those sequences are iterated over or awaited for in any of the caller agents).
+Despite agents running in completely detached asyncio tasks, MiniAgents ensures proper exception propagation from callee agents to caller agents. When an exception occurs in a callee agent, it's captured and propagated through the promises of response message sequences. These exceptions are re-raised when those sequences are iterated over or awaited in any of the caller agents, ensuring that errors are not silently swallowed and can be properly handled.
+
+Here's a simple example showing exception propagation:
+
+```python
+from miniagents import miniagent, InteractionContext, MiniAgents
+
+@miniagent
+async def faulty_agent(ctx: InteractionContext) -> None:
+    # This agent will raise an exception
+    raise ValueError("Something went wrong in callee agent")
+
+@miniagent
+async def caller_agent(ctx: InteractionContext) -> None:
+    # The exception from faulty_agent WILL NOT propagate here
+    faulty_response_promises = faulty_agent.trigger("Hello")
+    try:
+        # The exception from faulty_agent WILL propagate here
+        async for msg_promise in faulty_response_promises:
+            await msg_promise
+    except ValueError as e:
+        ctx.reply(f"Exception while iterating over response: {e}")
+
+async def main() -> None:
+    async for msg_promise in caller_agent.trigger("Start"):
+        print(await msg_promise)
+
+if __name__ == "__main__":
+    MiniAgents().run(main())
+```
+
+Output:
+```
+Exception while iterating over response: Something went wrong in callee agent
+```
 
 ### 🧠 Work with LLMs
 
@@ -117,9 +151,7 @@ You can read agent responses token-by-token as shown above regardless of whether
 
 The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop between a user agent and an assistant agent. Here is how you can use it to set up an interaction between a user and your agent (can be bare LLM agent, like `OpenAIAgent` or `AnthropicAgent`, can also be a custom agent that you define yourself - a more complex agent that uses LLM agents under the hood but also introduces more complex behavior, i.e. Retrieval Augmented Generation etc.):
 
-⚠️ **ATTENTION!** Make sure to run `pip install -U anthropic` and set your Anthropic API key in the `ANTHROPIC_API_KEY` environment variable before running the example below (or just replace `AnthropicAgent` with `OpenAIAgent` and `"claude-3-5-haiku-latest"` with `"gpt-4o-mini"` if you already set up the previous example). ⚠️
-
-**TODO** Don't complicate your examples by using different model providers, switch this example to use `OpenAIAgent` too.
+⚠️ **ATTENTION!** Make sure to run `pip install -U openai` and set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the example below. ⚠️
 
 ```python
 from miniagents import MiniAgents
@@ -128,7 +160,7 @@ from miniagents.ext import (
     console_user_agent,
     MarkdownHistoryAgent,
 )
-from miniagents.ext.llms import SystemMessage, AnthropicAgent
+from miniagents.ext.llms import SystemMessage, OpenAIAgent
 
 
 async def main() -> None:
@@ -144,8 +176,8 @@ async def main() -> None:
             # you want to customize the filepath to write to).
             history_agent=MarkdownHistoryAgent
         ),
-        assistant_agent=AnthropicAgent.fork(
-            model="claude-3-5-haiku-latest",
+        assistant_agent=OpenAIAgent.fork(
+            model="gpt-4o-mini",
             max_tokens=1000,
         ),
     )
@@ -171,19 +203,16 @@ Press Ctrl+C (or type "exit") to quit the conversation.
 
 USER: hi
 
-ANTHROPIC_AGENT: Hello! The greeting "hi" is a casual and commonly used informal
-salutation. It's grammatically correct and doesn't require any changes. If you'd
-like to provide a more formal or elaborate greeting, you could consider
-alternatives such as "Hello," "Good morning/afternoon/evening," or "Greetings."
+OPENAI_AGENT: Hello! The greeting "hi" is casual and perfectly acceptable.
+It's grammatically correct and doesn't require any changes. If you wanted
+to use a more formal greeting, you could consider "Hello," "Good morning/afternoon/evening,"
+or "Greetings."
 
 USER: got it, thanks!
 
-ANTHROPIC_AGENT: You're welcome! The phrase "Got it, thanks!" is a concise and
-informal way to express understanding and appreciation. It's perfectly fine as
-is for casual communication. If you wanted a slightly more formal version, you
-could say:
-
-"I understand. Thank you!"
+OPENAI_AGENT: You're welcome! "Got it, thanks!" is a concise and clear expression
+of understanding and gratitude. It's perfectly fine for casual communication.
+A slightly more formal alternative could be "I understand. Thank you!"
 ```
 
 ### 🧸 A "toy" implementation of a dialog loop
@@ -236,13 +265,23 @@ ASSISTANT: You said "bye"
 
 **TODO** explain why the presence of `AWAIT` sentinel is important in the example above
 
-### 📦 Some other pre-packaged agents (`miniagents.ext`)
+### 📦 Some of the pre-packaged agents
 
-- `console_input_agent`: Prompts the user for input via the console.
-- `console_output_agent`: Echoes messages to the console token by token.
-- `user_agent`: A user agent that echoes messages from the agent that called it, then reads the user input and returns the user input as its response. This agent is an aggregation of the previous two.
-- `agent_loop`: **TODO** explain
-- `agent_chain`: **TODO** explain
+- `miniagents.ext.llms`
+  - `OpenAIAgent`: **TODO** explain.
+  - `AnthropicAgent`: **TODO** explain.
+- `miniagents.ext`
+  - `console_input_agent`: **TODO** explain (in short, it prompts the user for input via the consol).
+  - `console_output_agent`: **TODO** explain (in short, it echoes messages to the console token by token).
+  - `file_output_agent`: **TODO** explain.
+  - `user_agent`: A user agent that echoes messages from the agent that called it, then reads the user input and returns the user input as its response. This agent is an aggregation of the previous two.
+  - `agent_loop`: Creates an infinite loop of interactions between the specified agents. It's designed for ongoing conversations or continuous processing, particularly useful for chat interfaces where agents need to take turns indefinitely.
+  - `dialog_loop`: **TODO** explain (its a special case of `agent_loop`).
+  - `agent_chain`: Executes a sequence of agents in order, where each agent processes the output of the previous agent. This creates a pipeline of processing steps, with messages flowing from one agent to the next in a specified sequence.
+  - `prompt_agent`: **TODO** explain.
+  - `in_memory_history_agent`: **TODO** explain.
+  - `MarkdownHistoryAgent`: **TODO** explain.
+  - `markdown_llm_logger_agent`: **TODO** explain.
 
 Feel free to explore the source code in the `miniagents.ext` package to see how various agents are implemented and get inspiration for building your own agents!
 
@@ -388,8 +427,6 @@ Echo: Hello
 Echo: World
 ```
 
-**TODO** explain when this might be useful
-
 ### 🛠️ Global `MiniAgents()` context
 
 There are three ways to use the `MiniAgents()` context:
@@ -497,9 +534,12 @@ Here are some of the core concepts in the MiniAgents framework:
 - **Message**: Represents a message exchanged between agents. Can contain content, metadata, and nested messages. Immutable once created.
 - **MessagePromise**: A promise of a message that can be streamed token by token.
 - **MessageSequencePromise**: A promise of a sequence of message promises.
-- **Promise**: Represents a value that may not be available yet, but will be resolved in the future.
-- **StreamedPromise**: A promise that can be resolved piece by piece, allowing for streaming.
-- **Frozen**: An immutable Pydantic model with a git-style hash key calculated from its JSON representation.
+- **Frozen**: An immutable Pydantic model with a git-style hash key calculated from its JSON representation. The base class for `Message`.
+
+More underlying concepts (you will rarely need to use them directly, if at all):
+
+- **StreamedPromise**: A promise that can be resolved piece by piece, allowing for streaming. The base class for `MessagePromise` and `MessageSequencePromise`.
+- **Promise**: Represents a value that may not be available yet, but will be resolved in the future. The base class for `StreamedPromise`.
 
 ## 📜 License
 
