@@ -4,13 +4,14 @@ This module integrates Anthropic language models with MiniAgents.
 
 import typing
 from functools import cache
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import Field
 
 from miniagents import Message
-from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent
-from miniagents.messages import MessageTokenAppender
+from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent, message_to_llm_dict
+from miniagents.messages import MessageSequence, MessageTokenAppender
+from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import miniagent
 
 if typing.TYPE_CHECKING:
@@ -52,7 +53,17 @@ class AnthropicAgent(LLMAgent):
     async_client: Any = Field(default_factory=_default_anthropic_client)
     response_message_class: type[Message] = AnthropicMessage
 
-    async def _produce_tokens(self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender) -> None:
+    async def _aprepare_message_dicts(self) -> list[dict[str, Any]]:
+        return await aprepare_dicts_for_anthropic(
+            self.ctx.message_promises,
+            system=self.system,
+            message_delimiter_for_same_role=self.message_delimiter_for_same_role,
+            fake_first_user_message=self.fake_first_user_message,
+        )
+
+    async def _aproduce_tokens(
+        self, message_dicts: list[dict[str, Any]], token_appender: MessageTokenAppender
+    ) -> None:
         system_message = await self._cut_off_system_message(message_dicts)
 
         if self.stream:
@@ -85,46 +96,18 @@ class AnthropicAgent(LLMAgent):
 
         token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 
-    async def _prepare_message_dicts(self) -> list[dict[str, Any]]:
-        message_dicts = [self._message_to_llm_dict(msg) for msg in await self.ctx.message_promises]
-        if not message_dicts:
-            return []
-
-        non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
-        if non_system_message_dicts and non_system_message_dicts[0]["role"] != "user":
-            # Anthropic requires the first message to come from the user (system messages don't count -
-            # their content will go into a separate, `system` parameter of the API call)
-            non_system_message_dicts.insert(0, {"role": "user", "content": self.fake_first_user_message})
-
-        system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
-        # let's put all the system messages in the beginning (they will later be combined into a single message
-        # and stripped away)
-        message_dicts = system_message_dicts + non_system_message_dicts
-
-        # if multiple messages with the same role are sent in a row, they should be concatenated
-        fixed_message_dicts = []
-        for message_dict in message_dicts:
-            if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
-                fixed_message_dicts[-1]["content"] += self.message_delimiter_for_same_role + message_dict["content"]
-            else:
-                fixed_message_dicts.append(message_dict)
-
-        return fixed_message_dicts
-
     async def _cut_off_system_message(self, message_dicts: list[dict[str, Any]]) -> str:
-        if message_dicts and message_dicts[0]["role"] == "system":
-            # let's strip away the system message from the beginning (look at the implementation of
-            # `_fix_message_dicts()` to see why it's there)
-            system_message_dict = message_dicts.pop(0)
-            resulting_system_message = (
-                system_message_dict["content"]
-                if self.system is None
-                else f"{self.system}{self.message_delimiter_for_same_role}{system_message_dict['content']}"
-            )
+        if message_dicts and message_dicts[-1]["role"] == "system":
+            # let's strip away the system message from the end (look at the implementation of
+            # `aprepare_dicts_for_anthropic()` to see why it might be there)
+            system_message_dict = message_dicts.pop()
+            resulting_system_message = system_message_dict["content"]
         else:
+            # if `self.system` was provided then it was already added by `aprepare_dicts_for_anthropic()`,
+            # so this `else` branch is simply a "just in case" branch, it should never execute
             resulting_system_message = self.system
 
-        if resulting_system_message is None:
+        if not resulting_system_message:
             # pylint: disable=import-outside-toplevel
             # noinspection PyShadowingNames
             import anthropic as anthropic_original
@@ -132,3 +115,38 @@ class AnthropicAgent(LLMAgent):
             resulting_system_message = anthropic_original.NOT_GIVEN
 
         return resulting_system_message
+
+
+async def aprepare_dicts_for_anthropic(
+    messages: MessageType,
+    *,
+    system: Optional[str] = None,
+    message_delimiter_for_same_role: str = "\n\n",
+    fake_first_user_message: str = "/start",
+) -> list[dict[str, Any]]:
+    message_dicts = [message_to_llm_dict(msg) for msg in await MessageSequence.turn_into_sequence_promise(messages)]
+    if not message_dicts:
+        return []
+
+    non_system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] != "system"]
+    if non_system_message_dicts and non_system_message_dicts[0]["role"] != "user":
+        # Anthropic requires the first message to come from the user (system messages don't count -
+        # their content will go into a separate, `system` parameter of the API call)
+        non_system_message_dicts.insert(0, {"role": "user", "content": fake_first_user_message})
+
+    system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
+    # let's put all the system messages in the beginning (they will later be combined into a single message
+    # and stripped away)
+    message_dicts = non_system_message_dicts + system_message_dicts
+    if system:
+        message_dicts.append({"role": "system", "content": system})
+
+    # if multiple messages with the same role are sent in a row, they should be concatenated (required by Anthropic)
+    fixed_message_dicts = []
+    for message_dict in message_dicts:
+        if fixed_message_dicts and message_dict["role"] == fixed_message_dicts[-1]["role"]:
+            fixed_message_dicts[-1]["content"] += message_delimiter_for_same_role + message_dict["content"]
+        else:
+            fixed_message_dicts.append(message_dict)
+
+    return fixed_message_dicts
