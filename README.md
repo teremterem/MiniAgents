@@ -1,13 +1,17 @@
 <h1 align="center">🛰 MiniAgents 🌘</h1>
 
 <p align="center">
+    <a href="https://discord.gg/ptSvVnbwKt">
+        <img alt="Discord"
+            src="https://img.shields.io/discord/1356683647926796398?logo=discord&color=darkviolet">
+    </a>
     <a href="https://github.com/teremterem/MiniAgents/blob/main/LICENSE">
         <img alt="License: MIT"
-            src="https://img.shields.io/badge/License-MIT-purple">
+            src="https://img.shields.io/badge/license-MIT-blue">
     </a>
     <a href="https://www.python.org/downloads/">
         <img alt="Python: 3.9+"
-            src="https://img.shields.io/badge/python-3.9+-blue">
+            src="https://img.shields.io/badge/python-3.9+-olive">
     </a>
     <a href="https://pypi.org/project/miniagents/">
         <img alt="PyPI: Latest"
@@ -15,7 +19,7 @@
     </a>
     <a href="https://github.com/pylint-dev/pylint">
         <img alt="Linting: Pylint"
-            src="https://img.shields.io/badge/linting-pylint-olive">
+            src="https://img.shields.io/badge/linting-pylint-lightgray">
     </a>
     <a href="https://github.com/psf/black">
         <img alt="Code Style: Black"
@@ -38,7 +42,11 @@ Built on top of asyncio, MiniAgents provides a robust foundation for LLM-based a
 pip install -U miniagents
 ```
 
-## 🚀 Usage
+## 🚀 Real-world example
+
+[Building a Web Research Multi-Agent System](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp) - A comprehensive tutorial on building a web research system with MiniAgents that can search the web, scrape content, and synthesize information in parallel.
+
+## 🌱 Basic usage
 
 Here's a simple example of how to define an agent:
 
@@ -492,7 +500,7 @@ print(message.custom_field)  # Output: Custom Value
 
 ---
 
-For more advanced usage, check out the [examples](examples) directory.
+For some more examples, check out the [examples](examples) directory.
 
 ## 💡 Motivation behind this project
 
@@ -540,6 +548,10 @@ More underlying concepts (you will rarely need to use them directly, if at all):
 
 - `StreamedPromise`: A promise that can be resolved piece by piece, allowing for streaming. The base class for `MessagePromise` and `MessageSequencePromise`.
 - `Promise`: Represents a value that may not be available yet, but will be resolved in the future. The base class for `StreamedPromise`.
+
+## 👥 Community
+
+Join our [Discord community](https://discord.gg/ptSvVnbwKt) to get help with your projects. We welcome questions, feature suggestions, and contributions!
 
 ## 📜 License
 
