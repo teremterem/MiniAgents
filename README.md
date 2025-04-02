@@ -44,7 +44,8 @@ pip install -U miniagents
 
 ## 🚀 Real-world example
 
-[Building a Web Research Multi-Agent System](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp) - A comprehensive tutorial on building a web research system with MiniAgents that can search the web, scrape content, and synthesize information in parallel.
+[Building a Web Research Multi-Agent System](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp) - A hands-on **tutorial** for building a multi-agent web research system with MiniAgents that can break down complex user questions, run parallel web searches, analyze results, extract content from pages, and synthesize comprehensive answers.
+
 
 ## 🌱 Basic usage
 
