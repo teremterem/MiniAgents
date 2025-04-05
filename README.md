@@ -50,7 +50,7 @@ pip install -U miniagents
 
 The above step-by-step tutorial teaches you how to build a practical multi-agent web research system that can break down complex questions, run parallel searches, and synthesize comprehensive answers.
 
-*Following this tutorial first will make the rest of this README easier to understand!*
+*Following that tutorial first will make the rest of this README easier to understand!*
 
 ## 🚀 Basic usage
 
