@@ -42,10 +42,18 @@ Built on top of asyncio, MiniAgents provides a robust foundation for LLM-based a
 pip install -U miniagents
 ```
 
-## 🚀 Real-world example
+## ⚠️ IMPORTANT: START HERE FIRST! ⚠️
 
-[Building a Web Research Multi-Agent System](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp) - A hands-on **tutorial** for building a multi-agent web research system with MiniAgents that can break down complex user questions, run parallel web searches, analyze results, extract content from pages, and synthesize comprehensive answers.
+### 🔥 Complete Hands-on Tutorial 🔥
 
+**Before diving into the documentation below, we STRONGLY RECOMMEND checking out our comprehensive tutorial:**
+
+### [📚 Building a Web Research Multi-Agent System 🌐](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp)
+
+This step-by-step tutorial teaches you how to build a practical multi-agent web research system
+that can break down complex questions, run parallel searches, and synthesize comprehensive answers.
+
+*Following this tutorial first will make the rest of this README much easier to understand!*
 
 ## 🌱 Basic usage
 
