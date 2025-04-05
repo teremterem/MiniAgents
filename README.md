@@ -52,8 +52,6 @@ The above step-by-step tutorial teaches you how to build a practical multi-agent
 
 *Following that tutorial first will make the rest of this README easier to understand!*
 
----
-
 ## 🚀 Basic usage
 
 Here's a simple example of how to define an agent:
