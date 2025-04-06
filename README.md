@@ -510,12 +510,11 @@ For some more examples, check out the [examples](examples) directory.
 
 ## 💡 Motivation behind this project
 
-There are two main features of MiniAgents the idea of which motivated the creation of this framework:
+There are three main features of MiniAgents the idea of which motivated the creation of this framework:
 
 1. It is very easy to throw bare strings, messages, message promises, collections, and sequences of messages and message promises (as well as the promises of the sequences themselves) all together into an agent reply (see `MessageType`). This entire hierarchical structure will be asynchronously resolved in the background into a flat and uniform sequence of message promises (it will be automatically "flattened" in the background).
-2. By default, agents work in so called `start_soon` mode, which is different from the usual way coroutines work where you need to actively await on them or iterate over them (in case of asynchronous generators). In `start_soon` mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background when async tasks switch.
-
-The second feature combines this `start_soon` approach with regular async/await and async generators by using so called streamed promises (see `StreamedPromise` and `Promise` classes) which were designed to be "replayable".
+2. By default, agents work in so called `start_soon` mode, which is different from the usual way async generators work where you need to actively iterate over the async generator for it to continue processing. In `start_soon` mode, every agent, after it was invoked, actively seeks every opportunity to proceed its processing in the background whenever async tasks switch.
+3. All the StreamedPromise objects (async streams of message promises aka MessageSequencePromise, async streams of tokens aka MessagePromise, etc.) are "replayable". You can iterate over them multiple times, and they will always produce the same sequence of values.
 
 The design choice for immutable messages was made specifically to enable this kind of highly parallelized agent execution. Since Generative AI applications are inherently IO-bound (with models typically hosted externally), immutable messages eliminate concerns about concurrent state mutations. This approach allows multiple agents to process messages simultaneously without risk of race conditions or data corruption, maximizing throughput in distributed LLM workflows.
 
