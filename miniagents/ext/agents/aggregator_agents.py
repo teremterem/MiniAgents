@@ -23,10 +23,10 @@ async def user_agent(
     """
     A user agent that echoes `messages` from the agent that called it, reads the user input and then returns full
     chat history as a reply (so it can be further submitted to an LLM agent, for example).
-    TODO Oleksandr: add more details
+    TODO add more details
     """
     if history_agent:
-        # TODO Oleksandr: fallback to just `history_agent` if `return_full_history` is not supported ?
+        # TODO fallback to just `history_agent` if `return_full_history` is not supported ?
         history_agent = history_agent.fork(return_full_history=True)
     ctx.reply(
         agent_chain.trigger(

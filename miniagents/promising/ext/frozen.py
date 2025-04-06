@@ -28,7 +28,7 @@ def cached_privately(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     `@property` or `@functools.cached_property` (they might have hardcoded this behaviour).
     """
 
-    # TODO Oleksandr: make it thread-safe if we're planning to support synchronous agents
+    # TODO make it thread-safe if we're planning to support synchronous agents ?
 
     @wraps(func)
     def wrapper(self: Any) -> Any:
@@ -72,8 +72,12 @@ class Frozen(BaseModel):
         """
         Get the full JSON representation of this `Frozen` object together with all its nested objects. This is a cached
         property, so it is calculated only the first time it is accessed.
-        TODO Oleksandr: explain how it is different from `serialized` (the latter can have references to nested objects
-         instead of nested objects themselves - check out nesting mechanism in `Message` class)
+
+        Unlike the `serialized` property, `full_json` always returns the complete representation of the object
+        with all nested objects included directly in the JSON. The `serialized` property, on the other hand,
+        may externalize certain nested objects and only include references to them (as implemented by subclasses
+        like `Message`). This makes `full_json` suitable for debugging and complete object representation,
+        while `serialized` is better for efficient serialization schemes.
         """
         return self.model_dump_json()
 
@@ -128,7 +132,7 @@ class Frozen(BaseModel):
         Preprocess the values before validation and freezing.
         """
         if values.get(FROZEN_CLASS_FIELD) != cls.__name__:
-            # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
+            # TODO what about saving fully qualified model name, and not just the short name ?
             values = {**values, FROZEN_CLASS_FIELD: cls.__name__}
         return values
 

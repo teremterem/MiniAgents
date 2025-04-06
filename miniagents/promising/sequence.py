@@ -30,7 +30,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
             resolver=lambda _: None,
             start_soon=False,
         )
-        # TODO Oleksandr: should I really pass `self` here ? it is not of type `StreamedPromiseBound`
+        # TODO should I really pass `self` here ? it is not of type `StreamedPromiseBound`
         self._incoming_streamer_aiter = incoming_streamer(self)
 
         self.sequence_promise = sequence_promise_class(
@@ -40,7 +40,6 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         )
 
     def _flattener(self, zero_or_more_items: IN_co) -> AsyncIterator[OUT_co]:  # pylint: disable=method-hidden
-        # TODO Oleksandr: come up with a different method name ?
         raise FunctionNotProvidedError(
             "The `flattener` function should be provided either via the constructor "
             "or by subclassing the `FlatSequence` class."

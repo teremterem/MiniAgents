@@ -24,7 +24,7 @@ class SingletonMeta(type):
     it thread-safe (people typically don't mix multithreading and asynchronous paradigms together).
     """
 
-    # TODO Oleksandr: make it thread-safe if we're planning to support synchronous agents
+    # TODO make it thread-safe if we're planning to support synchronous agents ?
 
     def __call__(cls):
         if not hasattr(cls, "_instance"):
@@ -107,7 +107,7 @@ def join_messages(
             if reference_original_messages:
                 metadata_so_far["original_messages"].append(await message_promise)
 
-            # TODO Oleksandr: should I care about merging values of the same keys instead of just overwriting them ?
+            # TODO should I care about merging values of the same keys instead of just overwriting them ?
             metadata_so_far.update(
                 (key, value)
                 for key, value in await message_promise
@@ -125,16 +125,21 @@ def join_messages(
 
 class MiniAgentsLogFormatter(logging.Formatter):
     """
-    A custom log formatter that hides traceback lines that reference scripts which reside in `packages_to_exclude`.
+    A custom log formatter that hides traceback lines that reference scripts which reside in `packages_to_exclude` and
+    shows the agent trace if `include_agent_trace` is True.
     """
 
     packages_to_exclude: list[Path]
+    include_agent_trace: bool
 
-    def __init__(self, *args, packages_to_exclude: Optional[Iterable[Path]] = None, **kwargs):
+    def __init__(
+        self, *args, packages_to_exclude: Optional[Iterable[Path]] = None, include_agent_trace: bool = True, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         if packages_to_exclude is None:
             packages_to_exclude = [Path(__file__).parent]  # the whole "miniagents" library by default
         self.packages_to_exclude = packages_to_exclude
+        self.include_agent_trace = include_agent_trace
 
     @staticmethod
     def _get_script_path(line: str) -> Optional[Path]:
@@ -192,11 +197,14 @@ class MiniAgentsLogFormatter(logging.Formatter):
                 "Use `MiniAgents(log_reduced_tracebacks=False)` to see the full traceback.\n"
             )
 
-        # TODO Oleksandr: introduce an option to turn off the agent trace
-        try:
-            agent_trace_str = " <- ".join(agent.alias for agent in InteractionContext.get_current().get_agent_trace())
-            lines.append(f"\nAgent trace:\n{agent_trace_str}\n---\n")
-        except PromisingContextError:
-            pass
+        # Add the agent trace if enabled
+        if self.include_agent_trace:
+            try:
+                agent_trace_str = " <- ".join(
+                    agent.alias for agent in InteractionContext.get_current().get_agent_trace()
+                )
+                lines.append(f"\nAgent trace:\n{agent_trace_str}\n---\n")
+            except PromisingContextError:
+                pass
 
         return "".join(lines)

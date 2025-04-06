@@ -68,7 +68,7 @@ async def console_output_agent(
     """
     ctx.reply(ctx.message_promises)  # this is a "transparent" agent - pass the same messages forward
 
-    # TODO Oleksandr: should MessageSequencePromise support `cancel()` operation
+    # TODO should MessageSequencePromise support `cancel()` operation
     #  (to interrupt whoever is producing it) ?
 
     async for msg_promise in ctx.message_promises:

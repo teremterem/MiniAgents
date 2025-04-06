@@ -6,6 +6,7 @@ import asyncio
 import contextvars
 import logging
 import re
+import warnings
 from contextvars import ContextVar
 from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Union
 
@@ -204,7 +205,7 @@ class MiniAgent(Frozen):
             description = description.format(AGENT_ALIAS=alias)
 
         # validate interaction metadata
-        # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
+        # TODO is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         interaction_metadata = Frozen(**dict(interaction_metadata or {}))
 
         super().__init__(alias=alias, description=description, interaction_metadata=interaction_metadata)
@@ -235,7 +236,7 @@ class MiniAgent(Frozen):
     ) -> "AgentCall":
         """
         Start a call with the agent. The agent will be called with the provided function kwargs.
-        TODO Oleksandr: expand this docstring ?
+        TODO expand this docstring ?
         """
         input_sequence = MessageSequence(
             start_soon=False,
@@ -256,12 +257,26 @@ class MiniAgent(Frozen):
 
     def fork(
         self,
-        alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce a "fork identifier" ?
+        alias: Optional[str] = None,  # TODO enforce unique aliases ? introduce a "fork identifier" ?
         description: Optional[str] = None,
+        *,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         mutable_state: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
+        """
+        Create a forked version of this agent with modified parameters.
+
+        Args:
+            alias: New alias for the forked agent. If not provided, uses the original alias.
+            description: New description for the forked agent. If not provided, uses the original description.
+            interaction_metadata: TODO explain this parameter
+            mutable_state: Additional mutable state to merge with the original mutable state.
+            **kwargs_to_freeze: Additional static parameters for the forked agent.
+
+        Returns:
+            A new MiniAgent instance with the modified parameters.
+        """
         return MiniAgent(
             self._func_or_class,
             alias=alias or self.alias,
@@ -280,7 +295,7 @@ class MiniAgent(Frozen):
         hides the original function or class from the client code behind a `MiniAgent` object, but in certain scenarios
         access to the original function or class might be needed. This method provides exactly that.
         """
-        # TODO Oleksandr: do it the other way around ? return the original definition from the decorator and just
+        # TODO do it the other way around ? return the original definition from the decorator and just
         # attach the key methods (trigger, initiate_call, fork etc.) as well as an instance of `MiniAgent` to it ?
         return self._func_or_class
 
@@ -348,9 +363,15 @@ class InteractionContext:
         called in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's
         reply sequence is closed.
         """
-        # TODO Oleksandr: What if one of the subtasks represents an unfinished agent call ? How should we make it
-        #  obvious to the user that the reason they are experiencing a deadlock is because they forgot to finish an
-        #  agent call ?
+        if any(not call.is_finished for call in self._child_agent_calls):
+            warnings.warn(
+                "Potential deadlock detected: unfinished agent call(s) encountered. "
+                "Make sure to call .finish() on all AgentCall objects or use reply_sequence() "
+                "with finish_call=True (default) to avoid deadlocks.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
         await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
 
     async def afinish_early(self, make_sure_to_wait: bool = True) -> None:
@@ -425,6 +446,17 @@ class AgentCall:  # pylint: disable=protected-access
             MiniAgents.get_current()._child_agent_calls.discard(self)
         return self
 
+    @property
+    def is_finished(self) -> bool:
+        """
+        Return True if the agent call is finished, which means that no more messages can be sent to it.
+
+        NOTE: It doesn't matter whether the agent has finished replying or not. The agent that was called can still
+        produce replies, even after the call was "finished". The replies will be delivered via the promise of a reply
+        sequence, which is a separate object (see `reply_sequence()`).
+        """
+        return not self._message_streamer.is_open
+
 
 class AgentInteractionNode(Message):
     agent: MiniAgent
@@ -495,12 +527,12 @@ class AgentReplyMessageSequence(MessageSequence):
                 finally:
                     await ctx._afinalize()
 
-            return AgentCallNode(  # TODO Oleksandr: why not "persist" this node before the agent function finishes ?
+            return AgentCallNode(  # TODO why not "persist" this node before the agent function finishes ?
                 messages=await self._input_sequence_promise,
                 agent=self._mini_agent,
                 **dict(self._mini_agent.interaction_metadata),
-                # TODO Oleksandr: **self._mini_agent._static_kwargs ?
-                # TODO Oleksandr: **self._mini_agent._mutable_state ?
+                # TODO **self._mini_agent._static_kwargs ?
+                # TODO **self._mini_agent._mutable_state ?
                 **self._frozen_kwargs,
             )
 

@@ -2,6 +2,7 @@
 `Message` class and other classes related to messages.
 """
 
+import warnings
 from pprint import pformat
 from typing import Any, AsyncIterator, Iterator, Optional, Union
 
@@ -25,19 +26,19 @@ class Message(Frozen):
     A message that can be sent between agents.
     """
 
-    # TODO Oleksandr: split this class into two: Message and NonStrictMessage
+    # TODO split this class into two: Message and NonStrictMessage
     #  (with NonStrictMessage allowing extra fields) ?
     #  (is it to reduce confusion as to whether to expect extra fields in a message or not ?)
 
     content: Optional[str] = None
     content_template: Optional[str] = None
 
-    # # TODO Oleksandr: finish "error to message" feature
+    # # TODO finish "error to message" feature
     # contains_error: bool = False
     # error_message: Optional[str] = None
     # error_class: Optional[str] = None
     # error_traceback: Optional[str] = None
-    # # TODO Oleksandr: attach custom miniagent_call attribute to each exception object and display it with traceback
+    # # TODO attach custom miniagent_call attribute to each exception object and display it with traceback
 
     @property
     @cached_privately
@@ -125,7 +126,7 @@ class Message(Frozen):
 
                 elif isinstance(value, tuple):
                     if value and isinstance(value[0], Message):
-                        # TODO Oleksandr: introduce a concept of MessageRef to also support "mixed" tuples (with
+                        # TODO introduce a concept of MessageRef to also support "mixed" tuples (with
                         #  both Messages and other types of values mixed together)
                         sub_messages[(*node_path, field)] = value
 
@@ -160,7 +161,7 @@ class Message(Frozen):
 
 
 class MessagePromise(StreamedPromise[str, Message]):
-    # TODO Oleksandr: use Token object instead of str and allow appending empty text tokens too, for simplicity
+    # TODO use Token object instead of str and allow appending empty text tokens too, for simplicity
     """
     A promise of a message that can be streamed token by token.
     """
@@ -176,8 +177,14 @@ class MessagePromise(StreamedPromise[str, Message]):
         message_class: type[Message] = Message,
         **preliminary_metadata,
     ) -> None:
-        # TODO Oleksandr: raise an error if both ready_message and message_token_streamer/preliminary_metadata
-        #  are not None (or both are None)
+        # Validate initialization parameters
+        if prefill_message is not None and (message_token_streamer is not None or preliminary_metadata):
+            raise ValueError(
+                "Cannot provide both 'prefill_message' and 'message_token_streamer'/'preliminary_metadata' parameters"
+            )
+        if prefill_message is None and message_token_streamer is None:
+            raise ValueError("Either 'prefill_message' or 'message_token_streamer' parameter must be provided")
+
         if prefill_message:
             self.preliminary_metadata = prefill_message
             self.message_class = type(prefill_message)
@@ -263,7 +270,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         appender_capture_errors: Optional[bool] = None,
         start_soon: Optional[bool] = None,
         incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
-        errors_to_messages: bool = False,  # TODO Oleksandr: finish "error to message" feature
+        errors_to_messages: bool = False,  # TODO finish "error to message" feature
     ) -> None:
         if incoming_streamer:
             # an external streamer is provided, so we don't create the default StreamAppender
@@ -352,8 +359,13 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
         if hasattr(zero_or_more_messages, "__aiter__"):
             # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
             # hence we return it as is
-            # TODO Oleksandr: add a warning in console that an async iterator is not consumed immediately
-            #  (but only when it is passed to an agent, not when it is returned by an agent)
+            if not isinstance(zero_or_more_messages, StreamedPromise):
+                warnings.warn(
+                    "An async iterator is being passed to a message sequence and will not be consumed immediately.",
+                    # TODO explain in the message why this might be a problem ?
+                    UserWarning,
+                    stacklevel=3,
+                )
             return zero_or_more_messages
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
@@ -387,7 +399,7 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
             return _SafeMessagePromiseProxy(message_promise)
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
+        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
             return Message.promise(str(exc), is_error=True)
 
 
@@ -398,7 +410,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             async for token in self.__wrapped__:
                 tokens.append(token)
             return await self.__wrapped__.aresolve()
-        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
+        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
             return Message(f"{''.join(tokens)}\n{exc}")
 
     def __await__(self):
@@ -414,5 +426,5 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             return await self.__wrapped__.__anext__()
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except  # TODO Oleksandr: finish "error to message" feature
+        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
             return f"\n{exc}"
