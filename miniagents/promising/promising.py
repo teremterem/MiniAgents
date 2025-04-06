@@ -316,11 +316,13 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         self._streamer_lock = asyncio.Lock()
 
         if self._start_soon and prefill_pieces is NO_VALUE:
-            # start producing pieces at the earliest task switch (put them in a queue for further consumption)
+            # start producing pieces at the earliest task switch and put them in a queue for further consumption
             self._queue = asyncio.Queue()
             self._promising_context.start_soon(self._aconsume_the_stream())
         else:
-            # each piece will be produced on demand (when the first consumer iterates over it and not earlier)
+            # each piece will be produced on demand, when the first consumer iterates over it and not earlier
+            # (another scenario for the queue to be None is when all the pieces have been prefilled upon the creation
+            # of the StreamedPromise)
             self._queue = None
 
         self._streamer_aiter: Union[Optional[AsyncIterator[PIECE_co]], Sentinel] = None
@@ -410,7 +412,11 @@ class _StreamReplayIterator(AsyncIterator[PIECE_co]):
         else:
             async with self._streamed_promise._streamer_lock:
                 if self._index < len(self._streamed_promise._pieces_so_far):
+                    # "replay" a piece that was produced earlier
                     piece = self._streamed_promise._pieces_so_far[self._index]
+                elif self._streamed_promise._all_pieces_consumed:
+                    # we know that `StopAsyncIteration` was stored as the last piece in the piece list
+                    raise self._streamed_promise._pieces_so_far[-1]
                 else:
                     piece = await self._real_anext()
 
