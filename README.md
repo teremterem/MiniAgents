@@ -401,9 +401,9 @@ PREPARING TO GET MESSAGES FROM AGGREGATOR
 TOTAL NUMBER OF MESSAGES FROM AGGREGATOR: 5
 ```
 
-None of the agent functions start executing upon any of the calls to the `trigger()` method. Instead, in all cases the `trigger()` method immediately returns with **promises** to "talk to the agent(s)" (**promises** of sequences of **promises** of response messages, to be very precise - see `MessageSequencePromise` and `MessagePromise` classes for details).
+None of the agent functions start executing upon any of the calls to the `trigger()` method. Instead, in all cases the `trigger()` method immediately returns with a **promise** to "talk to an agent" (a **promise** of a sequence of **promises** of response messages, to be precise - see `MessageSequencePromise` and `MessagePromise` classes for details).
 
-As long as the global `start_everything_soon_by_default` parameter is set to `True` (which is the default - see the source code of `PromisingContext`, the parent class of the global `MiniAgents` context), the actual agent functions will eagerly try to run in the background whenever async task switchings happen (which is how `asyncio.create_task()` works). In the example above the nearest task switch is going happen upon `await asyncio.sleep(1)` inside the `main()` function, but if this `sleep()` wasn't there, it would have happened upon the first iteration of the `async for` loop which is the next place where a task switch happens.
+As long as the global `start_everything_soon_by_default` parameter is set to `True` (which is the default - see the source code of `PromisingContext`, a parent class of the global `MiniAgents` context), the actual agent functions will eagerly try to run in the background whenever async task switching happens (which is how `asyncio.create_task()` works). In the example above the nearest task switching is going happen upon `await asyncio.sleep(1)` inside the `main()` function, but if this `sleep()` wasn't there, it would have happened upon the first iteration of the `async for` loop which is the next place where task switching happens.
 
 **💪 EXERCISE FOR READER:** Add another `await asyncio.sleep(1)` right before `print("Aggregator finished")` in the `aggregator_agent` function and then try to predict how the output will change. After that, run the modified script and check if your prediction was correct.
 
