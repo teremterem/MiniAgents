@@ -35,7 +35,7 @@ class PromisingContext:
     ensure that all the async tasks finish before this context manager exits).
     """
 
-    start_everything_asap_by_default: bool
+    start_everything_soon_by_default: bool
     appenders_capture_errors_by_default: bool
     longer_hash_keys: bool
     log_level_for_errors: int
@@ -50,7 +50,7 @@ class PromisingContext:
     def __init__(
         self,
         *,
-        start_everything_asap_by_default: bool = True,
+        start_everything_soon_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
         longer_hash_keys: bool = False,
         logger: Optional[logging.Logger] = None,
@@ -64,7 +64,7 @@ class PromisingContext:
         )
         self.child_tasks: set[Task] = set()
 
-        self.start_everything_asap_by_default = start_everything_asap_by_default
+        self.start_everything_soon_by_default = start_everything_soon_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_hash_keys = longer_hash_keys
         self.log_level_for_errors = log_level_for_errors
@@ -179,7 +179,7 @@ class PromisingContext:
         await self.afinalize()
 
     def __enter__(self) -> "PromisingContext":
-        raise RuntimeError(f"Use `async with {type(self).__name__}()` instead of `with {type(self).__name__}`.")
+        raise RuntimeError(f"Use `async with {type(self).__name__}()` instead of `with {type(self).__name__}()`.")
 
     def __exit__(self, *args, **kwargs) -> None: ...
 
@@ -208,11 +208,13 @@ class Promise(Generic[T_co]):
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefill_result and resolver are set (or both are not set)
+        if resolver is not None and prefill_result is not NO_VALUE:
+            raise ValueError("Cannot provide both 'resolver' and 'prefill_result' parameters")
+
         self._promising_context = PromisingContext.get_current()
 
         if start_soon is None:
-            start_soon = self._promising_context.start_everything_asap_by_default
+            start_soon = self._promising_context.start_everything_soon_by_default
         self._start_soon = start_soon
 
         if resolver:
@@ -277,12 +279,24 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
     beginning, even if some pieces were produced before the consumer started iterating over the
     promise.
 
-    :param streamer: A callable that returns an async iterator yielding the pieces of the whole value.
-    :param resolver: A callable that takes an async iterable of pieces and returns the whole value
-                     ("packages" the pieces).
-    TODO Oleksandr: explain the `start_soon` parameter
-    TODO Oleksandr: this is one of the central classes of the framework, hence the docstring should be
-     much more detailed
+    Parameters:
+        streamer: A callable that returns an async iterator yielding the pieces of the whole value.
+        prefill_pieces: Optional iterable of pieces to pre-populate the promise with. Cannot be used with streamer.
+        resolver: A callable that takes an async iterable of pieces and returns the whole value
+                 ("packages" the pieces).
+        prefill_result: Optional pre-computed result for the promise. Cannot be used with resolver.
+        start_soon: If True, the promise will start producing pieces immediately when created, regardless of
+                   when consumers start iterating over the promise. If False, pieces will be produced on demand
+                   only when the first consumer starts iterating. Defaults to the parent context's
+                   start_everything_soon_by_default value.
+
+    This is one of the central classes of the framework, providing the foundation for streaming data processing.
+    # TODO explain how it is used by the outer layer of the framework
+
+    The StreamedPromise supports three main operations:
+    1. Streaming pieces through asynchronous iteration (using __aiter__)
+    2. Resolving the final complete value (using aresolve() or await)
+    3. Chaining with other StreamedPromises (using __call__)  # TODO elaborate what this means
     """
 
     def __init__(
@@ -294,7 +308,9 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
         start_soon: Optional[bool] = None,
     ) -> None:
-        # TODO Oleksandr: raise an error if both prefill_pieces and streamer are set (or both are not set)
+        if streamer is not None and prefill_pieces is not NO_VALUE:
+            raise ValueError("Cannot provide both 'streamer' and 'prefill_pieces' parameters")
+
         super().__init__(
             start_soon=start_soon,
             resolver=resolver,
@@ -449,7 +465,26 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
     `StreamedPromise` constructor while also keeping a reference to it in the outside code in order to `feed` the
     pieces into it (and, consequently, into the `StreamedPromise`) later using `append()`.
-    TODO Oleksandr: explain the `capture_errors` parameter
+
+    Parameters:
+        capture_errors: If True, exceptions raised within the context block are caught and appended as pieces
+                        to the stream instead of being propagated. If False, exceptions propagate normally.
+                        Default is determined by the PromisingContext.appenders_capture_errors_by_default setting.
+
+    Example usage:
+    ```python
+    appender = StreamAppender()
+    promise = StreamedPromise(streamer=appender)
+
+    with appender:
+        appender.append("piece 1")
+        appender.append("piece 2")
+        # If an exception occurs here and capture_errors=True,
+        # the exception will be appended to the stream,
+        # otherwise it will propagate outside of the `with` block
+
+    # After the context block, the stream is closed automatically
+    ```
     """
 
     def __init__(self, capture_errors: Optional[bool] = None) -> None:
@@ -468,6 +503,13 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         as long as it was open ever at all).
         """
         return self._append_was_open
+
+    @property
+    def is_open(self) -> bool:
+        """
+        Return True if the appender is open for appending (and not closed yet).
+        """
+        return self._append_was_open and not self._append_closed
 
     def __enter__(self) -> "StreamAppender":
         return self.open()

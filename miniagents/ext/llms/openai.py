@@ -152,14 +152,25 @@ async def openai_embedding_agent(
     model: str,
     *,
     async_client: Any = None,
-    batch_mode: bool = False,  # TODO Oleksandr: which default value is better ? Put it into MiniAgents ?
+    batch_mode: bool = False,
     response_metadata: Optional[Frozen] = None,
     llm_logger_agent: Optional[Union[MiniAgent, bool]] = None,
     **kwargs,
 ) -> None:
     """
     An agent that produces embedding(s) for text(s) of the provided message(s) using OpenAI embedding models.
-    TODO Oleksandr: explain parameters (especially `batch_mode`)
+
+    Args:
+        ctx: The interaction context provided by the MiniAgents framework.
+        model: The OpenAI embedding model to use.
+        async_client: An optional AsyncOpenAI client to use. If None, a default client will be created.
+        batch_mode: When True, produces separate embeddings for each input message.
+                    When False (default), concatenates all input messages into a single text before embedding.
+        response_metadata: Optional metadata to include in the embedding response messages.
+        llm_logger_agent: An agent for logging LLM interactions,
+                          True to use `markdown_llm_logger_agent`,
+                          None (default) to inherit this setting from the global MiniAgents context.
+        **kwargs: Additional keyword arguments to pass to the OpenAI embeddings API.
     """
     if not async_client:
         async_client = _default_openai_client()

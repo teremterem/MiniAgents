@@ -2,6 +2,7 @@
 `Message` class and other classes related to messages.
 """
 
+import warnings
 from pprint import pformat
 from typing import Any, AsyncIterator, Iterator, Optional, Union
 
@@ -176,8 +177,14 @@ class MessagePromise(StreamedPromise[str, Message]):
         message_class: type[Message] = Message,
         **preliminary_metadata,
     ) -> None:
-        # TODO Oleksandr: raise an error if both ready_message and message_token_streamer/preliminary_metadata
-        #  are not None (or both are None)
+        # Validate initialization parameters
+        if prefill_message is not None and (message_token_streamer is not None or preliminary_metadata):
+            raise ValueError(
+                "Cannot provide both 'prefill_message' and 'message_token_streamer'/'preliminary_metadata' parameters"
+            )
+        if prefill_message is None and message_token_streamer is None:
+            raise ValueError("Either 'prefill_message' or 'message_token_streamer' parameter must be provided")
+
         if prefill_message:
             self.preliminary_metadata = prefill_message
             self.message_class = type(prefill_message)
@@ -352,8 +359,13 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
         if hasattr(zero_or_more_messages, "__aiter__"):
             # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
             # hence we return it as is
-            # TODO Oleksandr: add a warning in console that an async iterator is not consumed immediately
-            #  (but only when it is passed to an agent, not when it is returned by an agent)
+            if not isinstance(zero_or_more_messages, StreamedPromise):
+                warnings.warn(
+                    "An async iterator is being passed to a message sequence and will not be consumed immediately.",
+                    # TODO explain in the message why this might be a problem ?
+                    UserWarning,
+                    stacklevel=3,
+                )
             return zero_or_more_messages
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
