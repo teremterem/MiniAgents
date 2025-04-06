@@ -64,6 +64,8 @@ class PromisingContext:
         )
         self.child_tasks: set[Task] = set()
 
+        # TODO warn about the danger of deadlocks if `start_everything_soon_by_default` is set to False ?
+        #  something like "do it at your own risk..."
         self.start_everything_soon_by_default = start_everything_soon_by_default
         self.appenders_capture_errors_by_default = appenders_capture_errors_by_default
         self.longer_hash_keys = longer_hash_keys
