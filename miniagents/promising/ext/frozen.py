@@ -28,7 +28,7 @@ def cached_privately(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     `@property` or `@functools.cached_property` (they might have hardcoded this behaviour).
     """
 
-    # TODO Oleksandr: make it thread-safe if we're planning to support synchronous agents ?
+    # TODO make it thread-safe if we're planning to support synchronous agents ?
 
     @wraps(func)
     def wrapper(self: Any) -> Any:
@@ -132,7 +132,7 @@ class Frozen(BaseModel):
         Preprocess the values before validation and freezing.
         """
         if values.get(FROZEN_CLASS_FIELD) != cls.__name__:
-            # TODO Oleksandr: what about saving fully qualified model name, and not just the short name ?
+            # TODO what about saving fully qualified model name, and not just the short name ?
             values = {**values, FROZEN_CLASS_FIELD: cls.__name__}
         return values
 

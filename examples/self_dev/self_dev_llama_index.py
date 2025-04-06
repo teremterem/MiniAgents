@@ -90,7 +90,7 @@ async def llama_index_rag_agent(ctx: InteractionContext, llm_agent: MiniAgent) -
 
     tools = individual_query_engine_tools + [query_engine_tool]
 
-    # TODO Oleksandr: is ReActAgent worse that OpenAIAgent from the original example ? What is Chain-of-Abstraction,
+    # TODO is ReActAgent worse that OpenAIAgent from the original example ? What is Chain-of-Abstraction,
     #  btw, and how it works ?
     agent = ReActAgent.from_tools(tools, llm=llm)
 
@@ -100,7 +100,7 @@ async def llama_index_rag_agent(ctx: InteractionContext, llm_agent: MiniAgent) -
 
     query = input_messages[-1].content
     chat_history = [
-        # TODO Oleksandr: the differentiation between user and assistant messages should be standardised somehow
+        # TODO the differentiation between user and assistant messages should be standardised somehow
         ChatMessage(content=msg.content, role=getattr(msg, "role", None) or "assistant")
         for msg in input_messages[:-1]
     ]

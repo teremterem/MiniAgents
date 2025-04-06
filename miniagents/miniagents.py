@@ -205,7 +205,7 @@ class MiniAgent(Frozen):
             description = description.format(AGENT_ALIAS=alias)
 
         # validate interaction metadata
-        # TODO Oleksandr: is `interaction_metadata` a good name ? see how it is used in Recensia to decide
+        # TODO is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         interaction_metadata = Frozen(**dict(interaction_metadata or {}))
 
         super().__init__(alias=alias, description=description, interaction_metadata=interaction_metadata)
@@ -236,7 +236,7 @@ class MiniAgent(Frozen):
     ) -> "AgentCall":
         """
         Start a call with the agent. The agent will be called with the provided function kwargs.
-        TODO Oleksandr: expand this docstring ?
+        TODO expand this docstring ?
         """
         input_sequence = MessageSequence(
             start_soon=False,
@@ -257,7 +257,7 @@ class MiniAgent(Frozen):
 
     def fork(
         self,
-        alias: Optional[str] = None,  # TODO Oleksandr: enforce unique aliases ? introduce a "fork identifier" ?
+        alias: Optional[str] = None,  # TODO enforce unique aliases ? introduce a "fork identifier" ?
         description: Optional[str] = None,
         *,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
@@ -295,7 +295,7 @@ class MiniAgent(Frozen):
         hides the original function or class from the client code behind a `MiniAgent` object, but in certain scenarios
         access to the original function or class might be needed. This method provides exactly that.
         """
-        # TODO Oleksandr: do it the other way around ? return the original definition from the decorator and just
+        # TODO do it the other way around ? return the original definition from the decorator and just
         # attach the key methods (trigger, initiate_call, fork etc.) as well as an instance of `MiniAgent` to it ?
         return self._func_or_class
 
@@ -527,12 +527,12 @@ class AgentReplyMessageSequence(MessageSequence):
                 finally:
                     await ctx._afinalize()
 
-            return AgentCallNode(  # TODO Oleksandr: why not "persist" this node before the agent function finishes ?
+            return AgentCallNode(  # TODO why not "persist" this node before the agent function finishes ?
                 messages=await self._input_sequence_promise,
                 agent=self._mini_agent,
                 **dict(self._mini_agent.interaction_metadata),
-                # TODO Oleksandr: **self._mini_agent._static_kwargs ?
-                # TODO Oleksandr: **self._mini_agent._mutable_state ?
+                # TODO **self._mini_agent._static_kwargs ?
+                # TODO **self._mini_agent._mutable_state ?
                 **self._frozen_kwargs,
             )
 

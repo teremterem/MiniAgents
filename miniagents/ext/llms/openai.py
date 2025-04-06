@@ -54,7 +54,7 @@ class OpenAIAgent(LLMAgent):
     An agent that represents Large Language Models by OpenAI. Check out the implementation of the async `__call__`
     method in the base class `LLMAgent` to understand how agents like this one work (the two most important methods
     of all class-based miniagents are `__init__` and `__call__`).
-    TODO Oleksandr: explain parameters
+    TODO explain parameters
     """
 
     n: int = 1
@@ -65,7 +65,7 @@ class OpenAIAgent(LLMAgent):
     @field_validator("n")
     @classmethod
     def _validate_n(cls, n: int) -> int:
-        # TODO Oleksandr: stop complaining about n, support batch mode instead
+        # TODO stop complaining about n, support batch mode instead
         if n != 1:
             raise ValueError("Only n=1 is supported by MiniAgents for AsyncOpenAI().chat.completions.create()")
         return n
@@ -81,7 +81,7 @@ class OpenAIAgent(LLMAgent):
         )
         if self.stream:
             async for chunk in openai_response:
-                if len(chunk.choices) != 1:  # TODO Oleksandr: do I really need to check it for every token ?
+                if len(chunk.choices) != 1:  # TODO do I really need to check it for every token ?
                     raise RuntimeError(
                         f"exactly one Choice was expected from OpenAI, "
                         f"but {len(openai_response.choices)} were returned instead"
