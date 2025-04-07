@@ -342,11 +342,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
 class MessageSequenceAppender(StreamAppender[MessageType]):
     def append(self, piece: MessageType) -> "MessageSequenceAppender":
-        super().append(self._freeze_if_possible(piece))
+        super().append(self._freeze_if_needed(piece))
         return self
 
     @classmethod
-    def _freeze_if_possible(cls, zero_or_more_messages: MessageType) -> MessageType:
+    def _freeze_if_needed(cls, zero_or_more_messages: MessageType) -> MessageType:
         if isinstance(zero_or_more_messages, (MessagePromise, Message, str, BaseException)):
             # these types are "frozen enough" as they are
             return zero_or_more_messages
@@ -355,7 +355,7 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
         if isinstance(zero_or_more_messages, dict):
             return Message(**zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__iter__"):
-            return tuple(cls._freeze_if_possible(item) for item in zero_or_more_messages)
+            return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__aiter__"):
             # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
             # hence we return it as is

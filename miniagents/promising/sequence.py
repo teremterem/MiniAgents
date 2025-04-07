@@ -42,11 +42,12 @@ class FlatSequence(Generic[IN_co, OUT_co]):
     def _flattener(self, zero_or_more_items: IN_co) -> AsyncIterator[OUT_co]:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
             "The `flattener` function should be provided either via the constructor "
-            "or by subclassing the `FlatSequence` class."
+            "or by subclassing the `FlatSequence` class and overriding the `_flattener` method."
         )
 
     async def _streamer(self, _) -> AsyncIterator[OUT_co]:
         async for zero_or_more_items in self._incoming_streamer_aiter:
+            # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence
             async for item in self._flattener(zero_or_more_items):
                 yield item
 

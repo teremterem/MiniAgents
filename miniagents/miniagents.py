@@ -238,9 +238,7 @@ class MiniAgent(Frozen):
         Start a call with the agent. The agent will be called with the provided function kwargs.
         TODO expand this docstring ?
         """
-        input_sequence = MessageSequence(
-            start_soon=False,
-        )
+        input_sequence = MessageSequence(start_soon=False)
         reply_sequence = AgentReplyMessageSequence(
             mini_agent=self,
             kwargs_to_freeze=kwargs_to_freeze,
