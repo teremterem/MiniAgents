@@ -533,29 +533,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         exc_value: Optional[BaseException],
         exc_traceback: Optional[TracebackType],
     ) -> bool:
-        is_append_closed_error = isinstance(exc_value, AppenderClosedError)
-        error_should_be_squashed = self._capture_errors and not is_append_closed_error
-
-        if exc_value and error_should_be_squashed:
-            if self._append_closed:
-                self._promising_context.logger.log(
-                    PromisingContext.get_current().log_level_for_errors,
-                    "A STREAM APPENDER WAS NOT ABLE TO CAPTURE THE FOLLOWING ERROR "
-                    "BECAUSE APPEND WAS ALREADY CLOSED:",
-                    exc_info=True,
-                )
-            else:
-                self._promising_context.logger.debug(
-                    "An error occurred while appending pieces to a %s",
-                    type(self).__name__,
-                    exc_info=exc_value,
-                )
-                self.append(exc_value)
-        self.close()
-
-        # if `capture_errors` is True, then we also return True, so that the exception is not propagated outside
-        # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
-        return error_should_be_squashed
+        return self.close(exc_value)
 
     async def __aenter__(self) -> "StreamAppender[PIECE_co]":
         raise RuntimeError(f"Use `with {type(self).__name__}()` instead of `async with {type(self).__name__}()`.")
@@ -593,7 +571,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         self._append_was_open = True
         return self
 
-    def close(self) -> None:
+    def close(self, exc_value: Optional[BaseException] = None) -> bool:
         """
         Close the streamer after all the pieces have been appended.
 
@@ -603,10 +581,32 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         Forgetting to call `close()` or not calling it due to an exception will result in `StreamedPromise`
         (and the code that is consuming from it) waiting for more `pieces` forever.
         """
-        if self._append_closed:
-            return
-        self._append_closed = True
-        self._queue.put_nowait(END_OF_QUEUE)
+        is_append_closed_error = isinstance(exc_value, AppenderClosedError)
+        error_should_be_squashed = self._capture_errors and not is_append_closed_error
+
+        if exc_value and error_should_be_squashed:
+            if self._append_closed:
+                self._promising_context.logger.log(
+                    PromisingContext.get_current().log_level_for_errors,
+                    "A STREAM APPENDER WAS NOT ABLE TO CAPTURE THE FOLLOWING ERROR "
+                    "BECAUSE APPEND WAS ALREADY CLOSED:",
+                    exc_info=True,
+                )
+            else:
+                self._promising_context.logger.debug(
+                    "An error occurred while appending pieces to a %s",
+                    type(self).__name__,
+                    exc_info=exc_value,
+                )
+                self.append(exc_value)
+
+        if not self._append_closed:
+            self._append_closed = True
+            self._queue.put_nowait(END_OF_QUEUE)
+
+        # if `capture_errors` is True, then we also return True, so that the exception is not propagated outside
+        # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
+        return error_should_be_squashed
 
     async def __anext__(self) -> PIECE_co:
         if self._queue is None:

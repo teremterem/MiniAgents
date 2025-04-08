@@ -4,6 +4,7 @@
 
 import warnings
 from pprint import pformat
+from types import TracebackType
 from typing import Any, AsyncIterator, Iterator, Optional, Union
 
 import wrapt
@@ -12,7 +13,6 @@ from pydantic import BaseModel
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen, cached_privately
-from miniagents.promising.promise_typing import PromiseStreamer
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import join_messages
@@ -269,18 +269,13 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         self,
         appender_capture_errors: Optional[bool] = None,
         start_soon: Optional[bool] = None,
-        incoming_streamer: Optional[PromiseStreamer[MessageType]] = None,
         errors_to_messages: bool = False,  # TODO finish "error to message" feature
     ) -> None:
-        if incoming_streamer:
-            # an external streamer is provided, so we don't create the default StreamAppender
-            self.message_appender = None
-        else:
-            self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
-            incoming_streamer = self.message_appender
+        self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
 
         super().__init__(
-            incoming_streamer=incoming_streamer,
+            incoming_streamer=self.message_appender.ordered_appender,
+            unordered_streamer=self.message_appender.unordered_appender,
             start_soon=start_soon,
             sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
         )
@@ -340,9 +335,20 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         return tuple([await msg_promise for msg_promise in msg_promises])  # pylint: disable=consider-using-generator
 
 
-class MessageSequenceAppender(StreamAppender[MessageType]):
+class MessageSequenceAppender:
+    ordered_appender: StreamAppender[MessageType]
+    unordered_appender: StreamAppender[MessageType]
+
+    def __init__(self, capture_errors: Optional[bool] = None) -> None:
+        self.ordered_appender = StreamAppender(capture_errors=capture_errors)
+        self.unordered_appender = StreamAppender(capture_errors=capture_errors)
+
     def append(self, piece: MessageType) -> "MessageSequenceAppender":
-        super().append(self._freeze_if_needed(piece))
+        self.ordered_appender.append(self._freeze_if_needed(piece))
+        return self
+
+    def append_unordered(self, piece: MessageType) -> "MessageSequenceAppender":
+        self.unordered_appender.append(self._freeze_if_needed(piece))
         return self
 
     @classmethod
@@ -369,6 +375,41 @@ class MessageSequenceAppender(StreamAppender[MessageType]):
             return zero_or_more_messages
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
+
+    @property
+    def was_open(self) -> bool:
+        return self.ordered_appender.was_open and self.unordered_appender.was_open
+
+    @property
+    def is_open(self) -> bool:
+        return self.ordered_appender.is_open and self.unordered_appender.is_open
+
+    def __enter__(self) -> "MessageSequenceAppender":
+        return self.open()
+
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        exc_traceback: Optional[TracebackType],
+    ) -> bool:
+        return self.close(exc_value)
+
+    async def __aenter__(self) -> "MessageSequenceAppender":
+        raise RuntimeError(f"Use `with {type(self).__name__}()` instead of `async with {type(self).__name__}()`.")
+
+    async def __aexit__(self, *args, **kwargs) -> bool: ...
+
+    def open(self) -> "MessageSequenceAppender":
+        self.ordered_appender.open()
+        self.unordered_appender.open()
+        return self
+
+    def close(self, exc_value: Optional[BaseException] = None) -> bool:
+        try:
+            return self.ordered_appender.close(exc_value)
+        finally:
+            self.unordered_appender.close()
 
 
 class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):
