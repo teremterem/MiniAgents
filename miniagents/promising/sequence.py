@@ -17,7 +17,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
 
     def __init__(
         self,
-        incoming_streamer: PromiseStreamer[IN_co],
+        ordered_streamer: PromiseStreamer[IN_co],
         *,
         unordered_streamer: Optional[PromiseStreamer[IN_co]] = None,  # TODO explain what this is for in the docstring
         flattener: Optional[SequenceFlattener[IN_co, OUT_co]] = None,
@@ -43,7 +43,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         #     start_soon=False,
         # )
         # TODO should I really pass `self` here ? it is not of type `StreamedPromiseBound` ? why pass anything at all ?
-        self._incoming_streamer_aiter = incoming_streamer(self)
+        self._ordered_streamer_aiter = ordered_streamer(self)
         self._unordered_streamer_aiter = unordered_streamer(self) if unordered_streamer else None
 
         self.sequence_promise = sequence_promise_class(
@@ -88,7 +88,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
             if self._unordered_streamer_aiter is not None:
                 self._promising_context.start_soon(_go_over_unordered_stream())
 
-            async for zero_or_more_items in self._incoming_streamer_aiter:
+            async for zero_or_more_items in self._ordered_streamer_aiter:
                 async for item in self._flattener(zero_or_more_items):
                     self._queue.put_nowait(item)
         except BaseException as exc:  # pylint: disable=broad-except
@@ -98,8 +98,8 @@ class FlatSequence(Generic[IN_co, OUT_co]):
 
     async def _astreamer(self, _) -> AsyncIterator[OUT_co]:
         if self._start_soon:
+            ordered_stream_finished = self._ordered_streamer_aiter is None  # will always be `False`, though
             unordered_stream_finished = self._unordered_streamer_aiter is None
-            incoming_stream_finished = self._incoming_streamer_aiter is None  # this one will always be `False`, though
 
             self._promising_context.start_soon(self._amerge_streams())
             while True:
@@ -107,11 +107,11 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 if item is END_OF_UNORDERED_STREAM:
                     unordered_stream_finished = True
                 elif item is END_OF_QUEUE:
-                    incoming_stream_finished = True
+                    ordered_stream_finished = True
                 else:
                     yield item
 
-                if unordered_stream_finished and incoming_stream_finished:
+                if ordered_stream_finished and unordered_stream_finished:
                     return
         else:
             # since we are not in `start_soon` mode, we will just yield all the "unordered" items first
@@ -121,7 +121,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                     # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence
                     async for item in self._flattener(zero_or_more_items):
                         yield item
-            async for zero_or_more_items in self._incoming_streamer_aiter:
+            async for zero_or_more_items in self._ordered_streamer_aiter:
                 # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence
                 async for item in self._flattener(zero_or_more_items):
                     yield item

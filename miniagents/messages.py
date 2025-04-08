@@ -274,7 +274,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
 
         super().__init__(
-            incoming_streamer=self.message_appender.ordered_appender,
+            ordered_streamer=self.message_appender.ordered_appender,
             unordered_streamer=self.message_appender.unordered_appender,
             start_soon=start_soon,
             sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
