@@ -484,12 +484,12 @@ class AgentReplyMessageSequence(MessageSequence):
         self._mini_agent = mini_agent
         self._input_sequence_promise = input_sequence_promise
         super().__init__(
-            appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
+            appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `_arun_agent`
             **kwargs,
         )
 
-    async def _streamer(self, _) -> AsyncIterator[MessagePromise]:
-        async def run_the_agent(_) -> AgentCallNode:
+    async def _astreamer(self, _) -> AsyncIterator[MessagePromise]:
+        async def _arun_agent(_) -> AgentCallNode:
             ctx = InteractionContext(
                 this_agent=self._mini_agent,
                 message_promises=self._input_sequence_promise,
@@ -536,13 +536,13 @@ class AgentReplyMessageSequence(MessageSequence):
 
         agent_call_promise = Promise[AgentCallNode](
             start_soon=True,
-            resolver=run_the_agent,
+            resolver=_arun_agent,
         )
 
-        async for reply_promise in super()._streamer(_):
+        async for reply_promise in super()._astreamer(_):
             yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
 
-        async def create_agent_reply_node(_) -> AgentReplyNode:
+        async def _acreate_agent_reply_node(_) -> AgentReplyNode:
             return AgentReplyNode(
                 replies=await self.sequence_promise,
                 agent=self._mini_agent,
@@ -552,5 +552,5 @@ class AgentReplyMessageSequence(MessageSequence):
 
         Promise[AgentReplyNode](
             start_soon=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
-            resolver=create_agent_reply_node,
+            resolver=_acreate_agent_reply_node,
         )

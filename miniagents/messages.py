@@ -207,13 +207,13 @@ class MessagePromise(StreamedPromise[str, Message]):
             else:
                 self._metadata_so_far = dict(self.preliminary_metadata)
 
-            self._message_token_streamer = message_token_streamer
+            self._amessage_token_streamer = message_token_streamer
             super().__init__(start_soon=start_soon)
 
-    def _streamer(self) -> AsyncIterator[str]:
-        return self._message_token_streamer(self._metadata_so_far)
+    def _astreamer(self) -> AsyncIterator[str]:
+        return self._amessage_token_streamer(self._metadata_so_far)
 
-    async def _message_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[str]:  # pylint: disable=method-hidden
+    async def _amessage_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[str]:  # pylint: disable=method-hidden
         """
         The default implementation of the message token streamer that just yields the string representation of the
         message as a single token. This implementation is only called if the message was pre-filled. In case of real
@@ -221,7 +221,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         """
         yield str(self.preliminary_metadata)
 
-    async def _resolver(self) -> Message:
+    async def _aresolver(self) -> Message:
         """
         Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
         """
@@ -329,7 +329,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         else:
             raise TypeError(f"Unexpected message type: {type(zero_or_more_items)}")
 
-    async def _resolver(self, seq_promise: "MessageSequencePromise") -> tuple[Message, ...]:
+    async def _aresolver(self, seq_promise: "MessageSequencePromise") -> tuple[Message, ...]:
         """
         Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
         and return them as a tuple of Message objects.
