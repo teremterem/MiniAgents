@@ -9,6 +9,7 @@ from typing import AsyncIterator, Generic, Optional
 from miniagents.promising.errors import FunctionNotProvidedError
 from miniagents.promising.promise_typing import IN_co, OUT_co, PromiseStreamer, SequenceFlattener
 from miniagents.promising.promising import PromisingContext, StreamedPromise
+from miniagents.promising.sentinels import END_OF_QUEUE, END_OF_UNORDERED_STREAM
 
 
 class FlatSequence(Generic[IN_co, OUT_co]):
@@ -58,28 +59,61 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         )
 
     async def _amerge_streams(self) -> None:
+        # TODO a detailed docstring is crucial for this private method
+        # TODO we might want to stop processing any more items if an exception is raised and we are not in
+        #  "exceptions as messages" mode (a not yet implemented feature)
         async def _process_unordered_piece(zero_or_more_items: OUT_co) -> None:
-            async for item in self._flattener(zero_or_more_items):
-                self._queue.put_nowait(item)
+            try:
+                async for item in self._flattener(zero_or_more_items):
+                    self._queue.put_nowait(item)
+            except BaseException as exc:  # pylint: disable=broad-except
+                self._queue.put_nowait(exc)
 
-        async def _go_over_unordered_stream() -> AsyncIterator[OUT_co]:
-            async for zero_or_more_items in self._unordered_streamer_aiter:  # pylint: disable=not-an-iterable
-                self._promising_context.start_soon(_process_unordered_piece(zero_or_more_items))
+        async def _go_over_unordered_stream() -> None:
+            try:
+                subtasks = []
+                async for zero_or_more_items in self._unordered_streamer_aiter:  # pylint: disable=not-an-iterable
+                    subtask = self._promising_context.start_soon(_process_unordered_piece(zero_or_more_items))
+                    subtasks.append(subtask)
 
-        if self._unordered_streamer_aiter is not None:
-            self._promising_context.start_soon(_go_over_unordered_stream())
+                # let's wait for all the parallel "flattening" of unordered items before we signal that the unordered
+                # stream is finished
+                await self._promising_context.agather(*subtasks)
+            except BaseException as exc:  # pylint: disable=broad-except
+                self._queue.put_nowait(exc)
+            finally:
+                self._queue.put_nowait(END_OF_UNORDERED_STREAM)
 
-        async for zero_or_more_items in self._incoming_streamer_aiter:
-            async for item in self._flattener(zero_or_more_items):
-                self._queue.put_nowait(item)
+        try:
+            if self._unordered_streamer_aiter is not None:
+                self._promising_context.start_soon(_go_over_unordered_stream())
+
+            async for zero_or_more_items in self._incoming_streamer_aiter:
+                async for item in self._flattener(zero_or_more_items):
+                    self._queue.put_nowait(item)
+        except BaseException as exc:  # pylint: disable=broad-except
+            self._queue.put_nowait(exc)
+        finally:
+            self._queue.put_nowait(END_OF_QUEUE)
 
     async def _astreamer(self, _) -> AsyncIterator[OUT_co]:
-        # if self._start_soon:
-        #     self._promising_context.start_soon(self._amerge_streams())
-        #     async for item in self._queue.get():
-        #         # TODO TODO TODO finish properly (separate finish sentinels for both streams)
-        #         yield item
-        # else:
+        if self._start_soon:
+            unordered_stream_finished = self._unordered_streamer_aiter is None
+            incoming_stream_finished = self._incoming_streamer_aiter is None  # this one will always be `False`, though
+
+            self._promising_context.start_soon(self._amerge_streams())
+            while True:
+                item = await self._queue.get()
+                if item is END_OF_UNORDERED_STREAM:
+                    unordered_stream_finished = True
+                elif item is END_OF_QUEUE:
+                    incoming_stream_finished = True
+                else:
+                    yield item
+
+                if unordered_stream_finished and incoming_stream_finished:
+                    return
+        else:
             # since we are not in `start_soon` mode, we will just yield all the "unordered" items first
             # and the ordered items after that
             if self._unordered_streamer_aiter is not None:

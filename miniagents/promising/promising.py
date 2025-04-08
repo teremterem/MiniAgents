@@ -154,16 +154,24 @@ class PromisingContext:
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
         return self
 
+    async def agather(self, *awaitables: Awaitable[Any], return_exceptions=True) -> list[Any]:
+        """
+        Gather the results of the given `awaitables`. This method works exactly as `asyncio.gather` does, except we
+        encourage `return_exceptions` to be True by choosing it to be the default. This way all the given `awaitables`
+        will be awaited for, regardless of how many of them fail (as opposed to giving up the whole gathering operation
+        should just one of them fail). Correspondent exceptions will be put into the result list in place of the
+        results of those `awaitables` that failed when `return_exceptions` is True (see the `asyncio.gather`
+        documentation for more details).
+        """
+        return await asyncio.gather(*awaitables, return_exceptions=return_exceptions)
+
     async def aflush_tasks(self) -> None:
         """
         Wait for all the child tasks to finish. This is useful when you want to wait for all the child tasks to finish
         before proceeding with the rest of the code.
         """
         while self.child_tasks:
-            await asyncio.gather(
-                *self.child_tasks,
-                return_exceptions=True,  # this prevents waiting until the first exception and then giving up
-            )
+            await self.agather(*self.child_tasks)
 
     async def afinalize(self) -> None:
         """

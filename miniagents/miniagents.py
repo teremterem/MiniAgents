@@ -37,8 +37,6 @@ _default_logger.addHandler(_log_handler)
 class MiniAgents(PromisingContext):
     stream_llm_tokens_by_default: bool
     llm_logger_agent: Union["MiniAgent", bool]
-    normalize_agent_func_and_class_names: bool
-    normalize_spaces_in_agent_docstrings: bool
     on_persist_message_handlers: list[PersistMessageEventHandler]
     log_reduced_tracebacks: bool
 
@@ -49,8 +47,6 @@ class MiniAgents(PromisingContext):
         *,
         stream_llm_tokens_by_default: bool = True,
         llm_logger_agent: Union["MiniAgent", bool] = False,
-        normalize_agent_func_and_class_names: bool = True,
-        normalize_spaces_in_agent_docstrings: bool = True,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         log_reduced_tracebacks: bool = True,
@@ -67,8 +63,6 @@ class MiniAgents(PromisingContext):
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
-        self.normalize_agent_func_and_class_names = normalize_agent_func_and_class_names
-        self.normalize_spaces_in_agent_docstrings = normalize_spaces_in_agent_docstrings
         self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
             [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
         )
@@ -177,17 +171,12 @@ class MiniAgent(Frozen):
         *,
         alias: Optional[str] = None,
         description: Optional[str] = None,
-        normalize_func_or_class_name: Optional[bool] = None,
-        normalize_spaces_in_docstring: Optional[bool] = None,
+        normalize_func_or_class_name: Optional[bool] = True,
+        normalize_spaces_in_docstring: Optional[bool] = True,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         mutable_state: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
     ) -> None:
-        if normalize_func_or_class_name is None:
-            normalize_func_or_class_name = MiniAgents.get_current().normalize_agent_func_and_class_names
-        if normalize_spaces_in_docstring is None:
-            normalize_spaces_in_docstring = MiniAgents.get_current().normalize_spaces_in_agent_docstrings
-
         if alias is None:
             alias = func_or_class.__name__
             if normalize_func_or_class_name:
@@ -313,6 +302,7 @@ class InteractionContext:
         self.this_agent = this_agent
         self.message_promises = message_promises
 
+        self._mini_agents = MiniAgents.get_current()
         self._parent: Optional["InteractionContext"] = None
         self._reply_streamer = reply_streamer
         self._tasks_to_wait_for: list[Awaitable[Any]] = []
@@ -352,7 +342,7 @@ class InteractionContext:
         """
         if asyncio.iscoroutine(awaitable) and start_soon_if_coroutine:
             # let's turn this coroutine into our special kind of task and start it as soon as possible
-            awaitable = MiniAgents.get_current().start_soon(awaitable)
+            awaitable = self._mini_agents.start_soon(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
     async def await_now(self) -> None:
@@ -370,7 +360,7 @@ class InteractionContext:
                 stacklevel=2,
             )
 
-        await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
+        await self._mini_agents.agather(*self._tasks_to_wait_for)
 
     async def afinish_early(self, make_sure_to_wait: bool = True) -> None:
         if make_sure_to_wait:
@@ -403,10 +393,11 @@ class AgentCall:  # pylint: disable=protected-access
 
         self._message_streamer.open()
 
+        self._mini_agents = MiniAgents.get_current()
         try:
             InteractionContext.get_current()._child_agent_calls.add(self)
         except NoActiveContextError:
-            MiniAgents.get_current()._child_agent_calls.add(self)
+            self._mini_agents._child_agent_calls.add(self)
 
     def send_message(self, messages: MessageType) -> "AgentCall":
         """
@@ -441,7 +432,7 @@ class AgentCall:  # pylint: disable=protected-access
         try:
             InteractionContext.get_current()._child_agent_calls.discard(self)
         except NoActiveContextError:
-            MiniAgents.get_current()._child_agent_calls.discard(self)
+            self._mini_agents._child_agent_calls.discard(self)
         return self
 
     @property
@@ -520,7 +511,7 @@ class AgentReplyMessageSequence(MessageSequence):
                         # the miniagent is a function
                         await self._mini_agent._func_or_class(ctx, **kwargs)
                 except Exception as e:
-                    PromisingContext.get_current()._log_background_error_once(e)
+                    MiniAgents.get_current()._log_background_error_once(e)
                     raise
                 finally:
                     await ctx._afinalize()

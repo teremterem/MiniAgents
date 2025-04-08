@@ -15,3 +15,4 @@ class Sentinel:
 NO_VALUE = Sentinel()
 FAILED = Sentinel()
 END_OF_QUEUE = Sentinel()
+END_OF_UNORDERED_STREAM = Sentinel()
