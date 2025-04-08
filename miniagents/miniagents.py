@@ -324,7 +324,7 @@ class InteractionContext:
             raise NoActiveContextError(f"No {cls.__name__} is currently active.")
         return current
 
-    def reply(self, messages: MessageType) -> None:
+    def reply(self, messages: MessageType) -> "InteractionContext":
         """
         Send a reply to the messages that were received by the agent. The messages can be of any allowed MessageType.
         They will be converted to Message objects when they arrive at the agent that made a call to the current agent.
@@ -334,6 +334,11 @@ class InteractionContext:
         would).
         """
         self._reply_streamer.append(messages)
+        return self
+
+    def reply_unordered(self, messages: MessageType) -> "InteractionContext":
+        self._reply_streamer.append_unordered(messages)
+        return self
 
     def make_sure_to_wait(self, awaitable: Awaitable[Any], start_soon_if_coroutine: bool = True) -> None:
         """
@@ -408,6 +413,10 @@ class AgentCall:  # pylint: disable=protected-access
         would).
         """
         self._message_streamer.append(messages)
+        return self
+
+    def send_message_unordered(self, messages: MessageType) -> "AgentCall":
+        self._message_streamer.append_unordered(messages)
         return self
 
     def reply_sequence(self, finish_call: bool = True) -> MessageSequencePromise:
