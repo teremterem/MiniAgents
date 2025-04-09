@@ -326,8 +326,9 @@ class InteractionContext:
 
     def reply(self, messages: MessageType) -> "InteractionContext":
         """
-        Send a reply to the messages that were received by the agent. The messages can be of any allowed MessageType.
-        They will be converted to Message objects when they arrive at the agent that made a call to the current agent.
+        Send zero or more response messages to the calling agent. The messages can be of any allowed `MessageType`
+        (see `miniagent_typing.py`). They will be converted to `Message` objects after they arrive at the
+        calling agent and the calling agent `awaits` for their respective promises.
 
         ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
@@ -337,6 +338,19 @@ class InteractionContext:
         return self
 
     def reply_urgently(self, messages: MessageType) -> "InteractionContext":
+        """
+        Send zero or more response messages to the calling agent. The messages can be of any allowed `MessageType` (see
+        `miniagent_typing.py`). They will be converted to `Message` objects after they arrive at the calling agent and
+        the calling agent `awaits` for their respective promises.
+
+        NOTE: Unlike `reply()`, these response messages are treated as high priority and will bypass the usual message
+        ordering in the resulting sequence as much as possible.
+
+        ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
+        content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
+        would).
+        """
+
         self._reply_streamer.inject_as_urgent(messages)
         return self
 
@@ -406,7 +420,7 @@ class AgentCall:  # pylint: disable=protected-access
 
     def send_message(self, messages: MessageType) -> "AgentCall":
         """
-        Send a zero or more input messages to the agent.
+        Send zero or more input messages to the agent.
 
         ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
@@ -416,6 +430,16 @@ class AgentCall:  # pylint: disable=protected-access
         return self
 
     def send_urgent_message(self, messages: MessageType) -> "AgentCall":
+        """
+        Send zero or more input messages to the agent.
+
+        NOTE: Unlike `send_message()`, these input messages are treated as high priority and will bypass the usual
+        message ordering in the resulting sequence as much as possible.
+
+        ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
+        content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
+        would).
+        """
         self._message_streamer.inject_as_urgent(messages)
         return self
 
