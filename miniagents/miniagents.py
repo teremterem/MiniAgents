@@ -8,6 +8,7 @@ import logging
 import re
 import warnings
 from contextvars import ContextVar
+from importlib.metadata import version, PackageNotFoundError
 from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Union
 
 from pydantic import Field
@@ -25,6 +26,11 @@ from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseResolvedEventHandler
 from miniagents.promising.promising import Promise, PromisingContext
 from miniagents.utils import MiniAgentsLogFormatter
+
+try:
+    __version__ = version("MiniAgents")
+except PackageNotFoundError:
+    __version__ = "0.0.0"  # fallback or default for dev environments
 
 
 _default_logger = logging.Logger("MiniAgents", level=logging.WARNING)
