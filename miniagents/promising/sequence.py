@@ -89,8 +89,11 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 self._promising_context.start_soon(_go_over_unordered_stream())
 
             async for zero_or_more_items in self._ordered_streamer_aiter:
-                async for item in self._flattener(zero_or_more_items):
-                    self._queue.put_nowait(item)
+                try:
+                    async for item in self._flattener(zero_or_more_items):
+                        self._queue.put_nowait(item)
+                except BaseException as exc:  # pylint: disable=broad-except
+                    self._queue.put_nowait(exc)
         except BaseException as exc:  # pylint: disable=broad-except
             self._queue.put_nowait(exc)
         finally:
