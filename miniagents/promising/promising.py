@@ -154,16 +154,24 @@ class PromisingContext:
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
         return self
 
+    async def agather(self, *awaitables: Awaitable[Any], return_exceptions=True) -> list[Any]:
+        """
+        Gather the results of the given `awaitables`. This method works exactly as `asyncio.gather` does, except we
+        encourage `return_exceptions` to be True by choosing it to be the default. This way all the given `awaitables`
+        will be awaited for, regardless of how many of them fail (as opposed to giving up the whole gathering operation
+        should just one of them fail). Correspondent exceptions will be put into the result list in place of the
+        results of those `awaitables` that failed when `return_exceptions` is True (see the `asyncio.gather`
+        documentation for more details).
+        """
+        return await asyncio.gather(*awaitables, return_exceptions=return_exceptions)
+
     async def aflush_tasks(self) -> None:
         """
         Wait for all the child tasks to finish. This is useful when you want to wait for all the child tasks to finish
         before proceeding with the rest of the code.
         """
         while self.child_tasks:
-            await asyncio.gather(
-                *self.child_tasks,
-                return_exceptions=True,  # this prevents waiting until the first exception and then giving up
-            )
+            await self.agather(*self.child_tasks)
 
     async def afinalize(self) -> None:
         """
@@ -206,6 +214,7 @@ class PromisingContext:
 class Promise(Generic[T_co]):
     def __init__(
         self,
+        *,
         start_soon: Optional[bool] = None,
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
@@ -220,7 +229,7 @@ class Promise(Generic[T_co]):
         self._start_soon = start_soon
 
         if resolver:
-            self._resolver = partial(resolver, self)
+            self._aresolver = partial(resolver, self)
 
         if prefill_result is NO_VALUE:
             # NO_VALUE is used because `None` is also a legitimate value
@@ -234,7 +243,7 @@ class Promise(Generic[T_co]):
         if start_soon and prefill_result is NO_VALUE:
             self._promising_context.start_soon(self)
 
-    async def _resolver(self) -> T_co:  # pylint: disable=method-hidden
+    async def _aresolver(self) -> T_co:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
             "The `resolver` function should be provided either via the constructor "
             "or by subclassing the `Promise` class."
@@ -247,7 +256,7 @@ class Promise(Generic[T_co]):
             async with self._resolver_lock:
                 if self._result is NO_VALUE:
                     try:
-                        self._result = await self._resolver()
+                        self._result = await self._aresolver()
                     except BaseException as exc:  # pylint: disable=broad-except
                         self._promising_context.logger.debug(
                             "An error occurred while resolving a Promise", exc_info=True
@@ -323,7 +332,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         del start_soon
 
         if streamer:
-            self._streamer = partial(streamer, self)
+            self._astreamer = partial(streamer, self)
 
         if prefill_pieces is NO_VALUE:
             self._pieces_so_far: list[Union[PIECE_co, BaseException]] = []
@@ -343,12 +352,12 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             # of the StreamedPromise)
             self._queue = None
 
-        self._streamer_aiter: Union[Optional[AsyncIterator[PIECE_co]], Sentinel] = None
+        self._astreamer_aiter: Union[Optional[AsyncIterator[PIECE_co]], Sentinel] = None
 
-    def _streamer(self) -> AsyncIterator[PIECE_co]:  # pylint: disable=method-hidden
+    def _astreamer(self) -> AsyncIterator[PIECE_co]:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
             "The `streamer` function should be provided either via the constructor "
-            "or by subclassing the `StreamedPromise` class."
+            "or by subclassing the `StreamedPromise` class and overriding the `_astreamer` method."
         )
 
     def __aiter__(self) -> AsyncIterator[PIECE_co]:
@@ -367,32 +376,32 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
 
     async def _aconsume_the_stream(self) -> None:
         while True:
-            piece = await self._streamer_aiter_anext()
+            piece = await self._astreamer_aiter_anext()
             self._queue.put_nowait(piece)
             if isinstance(piece, StopAsyncIteration):
                 break
 
-    async def _streamer_aiter_anext(self) -> Union[PIECE_co, BaseException]:
+    async def _astreamer_aiter_anext(self) -> Union[PIECE_co, BaseException]:
         # pylint: disable=broad-except
-        if self._streamer_aiter is None:
+        if self._astreamer_aiter is None:
             try:
-                self._streamer_aiter = self._streamer()
+                self._astreamer_aiter = self._astreamer()
                 # noinspection PyUnresolvedReferences
-                if not callable(self._streamer_aiter.__anext__):
+                if not callable(self._astreamer_aiter.__anext__):
                     raise TypeError("The streamer must return an async iterator")
             except BaseException as exc:
                 self._promising_context.logger.debug(
                     "An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True
                 )
-                self._streamer_aiter = FAILED
+                self._astreamer_aiter = FAILED
                 return exc
 
-        elif self._streamer_aiter is FAILED:
+        elif self._astreamer_aiter is FAILED:
             # we were not able to instantiate the streamer iterator at all - stopping the stream
             return StopAsyncIteration()
 
         try:
-            return await self._streamer_aiter.__anext__()
+            return await self._astreamer_aiter.__anext__()
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 self._promising_context.logger.debug(
@@ -413,7 +422,7 @@ class _StreamReplayIterator(AsyncIterator[PIECE_co]):
     The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
     `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
     continues to retrieve new pieces from the original streamer of the parent `StreamedPromise`
-    (`_streamer_aiter` attribute of the parent `StreamedPromise`).
+    (`_astreamer_aiter` attribute of the parent `StreamedPromise`).
     """
 
     def __init__(self, streamed_promise: "StreamedPromise") -> None:
@@ -448,7 +457,7 @@ class _StreamReplayIterator(AsyncIterator[PIECE_co]):
         # pylint: disable=protected-access
         if self._streamed_promise._queue is None:
             # the stream is being produced on demand, not beforehand (`start_soon` is False)
-            piece = await self._streamed_promise._streamer_aiter_anext()
+            piece = await self._streamed_promise._astreamer_aiter_anext()
         else:
             # the stream is being produced beforehand (`start_soon` is True)
             piece = await self._streamed_promise._queue.get()
@@ -486,6 +495,8 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         # otherwise it will propagate outside of the `with` block
 
     # After the context block, the stream is closed automatically
+
+    # TODO !!! mention in the docstring that `StreamAppender` instances are not "replayable" !!!
     ```
     """
 
@@ -522,29 +533,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         exc_value: Optional[BaseException],
         exc_traceback: Optional[TracebackType],
     ) -> bool:
-        is_append_closed_error = isinstance(exc_value, AppenderClosedError)
-        error_should_be_squashed = self._capture_errors and not is_append_closed_error
-
-        if exc_value and error_should_be_squashed:
-            if self._append_closed:
-                self._promising_context.logger.log(
-                    PromisingContext.get_current().log_level_for_errors,
-                    "A STREAM APPENDER WAS NOT ABLE TO CAPTURE THE FOLLOWING ERROR "
-                    "BECAUSE APPEND WAS ALREADY CLOSED:",
-                    exc_info=True,
-                )
-            else:
-                self._promising_context.logger.debug(
-                    "An error occurred while appending pieces to a %s",
-                    type(self).__name__,
-                    exc_info=exc_value,
-                )
-                self.append(exc_value)
-        self.close()
-
-        # if `capture_errors` is True, then we also return True, so that the exception is not propagated outside
-        # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
-        return error_should_be_squashed
+        return self.close(exc_value)
 
     async def __aenter__(self) -> "StreamAppender[PIECE_co]":
         raise RuntimeError(f"Use `with {type(self).__name__}()` instead of `async with {type(self).__name__}()`.")
@@ -582,7 +571,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         self._append_was_open = True
         return self
 
-    def close(self) -> None:
+    def close(self, exc_value: Optional[BaseException] = None) -> bool:
         """
         Close the streamer after all the pieces have been appended.
 
@@ -592,10 +581,32 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         Forgetting to call `close()` or not calling it due to an exception will result in `StreamedPromise`
         (and the code that is consuming from it) waiting for more `pieces` forever.
         """
-        if self._append_closed:
-            return
-        self._append_closed = True
-        self._queue.put_nowait(END_OF_QUEUE)
+        is_append_closed_error = isinstance(exc_value, AppenderClosedError)
+        error_should_be_squashed = self._capture_errors and not is_append_closed_error
+
+        if exc_value and error_should_be_squashed:
+            if self._append_closed:
+                self._promising_context.logger.log(
+                    PromisingContext.get_current().log_level_for_errors,
+                    "A STREAM APPENDER WAS NOT ABLE TO CAPTURE THE FOLLOWING ERROR "
+                    "BECAUSE APPEND WAS ALREADY CLOSED:",
+                    exc_info=True,
+                )
+            else:
+                self._promising_context.logger.debug(
+                    "An error occurred while appending pieces to a %s",
+                    type(self).__name__,
+                    exc_info=exc_value,
+                )
+                self.append(exc_value)
+
+        if not self._append_closed:
+            self._append_closed = True
+            self._queue.put_nowait(END_OF_QUEUE)
+
+        # if `capture_errors` is True, then we also return True, so that the exception is not propagated outside
+        # the `with` block (except if the error is an `AppenderClosedError` - in this case, we do not suppress it)
+        return error_should_be_squashed
 
     async def __anext__(self) -> PIECE_co:
         if self._queue is None:
@@ -608,5 +619,8 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
 
         return piece
 
-    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
+    def __aiter__(self) -> AsyncIterator[PIECE_co]:
         return self
+
+    def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
+        return self.__aiter__()

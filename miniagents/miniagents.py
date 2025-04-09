@@ -8,6 +8,7 @@ import logging
 import re
 import warnings
 from contextvars import ContextVar
+from importlib.metadata import version, PackageNotFoundError
 from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Union
 
 from pydantic import Field
@@ -26,6 +27,11 @@ from miniagents.promising.promise_typing import PromiseResolvedEventHandler
 from miniagents.promising.promising import Promise, PromisingContext
 from miniagents.utils import MiniAgentsLogFormatter
 
+try:
+    __version__ = version("MiniAgents")
+except PackageNotFoundError:
+    __version__ = "0.0.0"  # fallback or default for dev environments
+
 
 _default_logger = logging.Logger("MiniAgents", level=logging.WARNING)
 _log_formatter = MiniAgentsLogFormatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -37,8 +43,6 @@ _default_logger.addHandler(_log_handler)
 class MiniAgents(PromisingContext):
     stream_llm_tokens_by_default: bool
     llm_logger_agent: Union["MiniAgent", bool]
-    normalize_agent_func_and_class_names: bool
-    normalize_spaces_in_agent_docstrings: bool
     on_persist_message_handlers: list[PersistMessageEventHandler]
     log_reduced_tracebacks: bool
 
@@ -49,8 +53,6 @@ class MiniAgents(PromisingContext):
         *,
         stream_llm_tokens_by_default: bool = True,
         llm_logger_agent: Union["MiniAgent", bool] = False,
-        normalize_agent_func_and_class_names: bool = True,
-        normalize_spaces_in_agent_docstrings: bool = True,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         log_reduced_tracebacks: bool = True,
@@ -67,8 +69,6 @@ class MiniAgents(PromisingContext):
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
-        self.normalize_agent_func_and_class_names = normalize_agent_func_and_class_names
-        self.normalize_spaces_in_agent_docstrings = normalize_spaces_in_agent_docstrings
         self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
             [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
         )
@@ -127,11 +127,16 @@ def miniagent(
     normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
-    mutable_state: Optional[dict[str, Any]] = None,
+    non_freezable_kwargs: Optional[dict[str, Any]] = None,
+    mutable_state: Optional[dict[str, Any]] = None,  # deprecated
     **kwargs_to_freeze,
 ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
+
+    Args:
+        mutable_state: Deprecated. Use `non_freezable_kwargs` instead.
+        # TODO describe all the parameters
     """
     if func_or_class is None:
         # the decorator `@miniagent(...)` was used with arguments
@@ -143,6 +148,7 @@ def miniagent(
                 normalize_func_or_class_name=normalize_func_or_class_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
                 interaction_metadata=interaction_metadata,
+                non_freezable_kwargs=non_freezable_kwargs,
                 mutable_state=mutable_state,
                 **kwargs_to_freeze,
             )
@@ -157,6 +163,7 @@ def miniagent(
         normalize_func_or_class_name=normalize_func_or_class_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
         interaction_metadata=interaction_metadata,
+        non_freezable_kwargs=non_freezable_kwargs,
         mutable_state=mutable_state,
         **kwargs_to_freeze,
     )
@@ -177,16 +184,28 @@ class MiniAgent(Frozen):
         *,
         alias: Optional[str] = None,
         description: Optional[str] = None,
-        normalize_func_or_class_name: Optional[bool] = None,
-        normalize_spaces_in_docstring: Optional[bool] = None,
+        normalize_func_or_class_name: bool = True,
+        normalize_spaces_in_docstring: bool = True,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
-        mutable_state: Optional[dict[str, Any]] = None,
+        non_freezable_kwargs: Optional[dict[str, Any]] = None,
+        mutable_state: Optional[dict[str, Any]] = None,  # deprecated
         **kwargs_to_freeze,
     ) -> None:
-        if normalize_func_or_class_name is None:
-            normalize_func_or_class_name = MiniAgents.get_current().normalize_agent_func_and_class_names
-        if normalize_spaces_in_docstring is None:
-            normalize_spaces_in_docstring = MiniAgents.get_current().normalize_spaces_in_agent_docstrings
+        if mutable_state is not None:
+            warnings.warn(
+                "The `mutable_state` parameter is deprecated and will be removed in a future version. "
+                "Use `non_freezable_kwargs` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if non_freezable_kwargs is not None:
+                raise ValueError(
+                    "Both `mutable_state` and `non_freezable_kwargs` are set. Please use only one of them "
+                    "(preferrably the latter because the former is deprecated)."
+                )
+
+            non_freezable_kwargs = mutable_state
+        del mutable_state
 
         if alias is None:
             alias = func_or_class.__name__
@@ -213,8 +232,8 @@ class MiniAgent(Frozen):
         self.__doc__ = description
 
         self._func_or_class = func_or_class
-        self._static_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
-        self._mutable_state = dict(mutable_state or {})
+        self._frozen_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
+        self._non_freezable_kwargs = dict(non_freezable_kwargs or {})
 
     def trigger(
         self,
@@ -238,9 +257,7 @@ class MiniAgent(Frozen):
         Start a call with the agent. The agent will be called with the provided function kwargs.
         TODO expand this docstring ?
         """
-        input_sequence = MessageSequence(
-            start_soon=False,
-        )
+        input_sequence = MessageSequence(start_soon=False)
         reply_sequence = AgentReplyMessageSequence(
             mini_agent=self,
             kwargs_to_freeze=kwargs_to_freeze,
@@ -261,7 +278,8 @@ class MiniAgent(Frozen):
         description: Optional[str] = None,
         *,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
-        mutable_state: Optional[dict[str, Any]] = None,
+        non_freezable_kwargs: Optional[dict[str, Any]] = None,
+        mutable_state: Optional[dict[str, Any]] = None,  # deprecated
         **kwargs_to_freeze,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
@@ -271,12 +289,29 @@ class MiniAgent(Frozen):
             alias: New alias for the forked agent. If not provided, uses the original alias.
             description: New description for the forked agent. If not provided, uses the original description.
             interaction_metadata: TODO explain this parameter
-            mutable_state: Additional mutable state to merge with the original mutable state.
+            non_freezable_kwargs: Additional non-freezable kwargs to merge with the original non-freezable kwargs.
+            mutable_state: Deprecated. Use `non_freezable_kwargs` instead.
             **kwargs_to_freeze: Additional static parameters for the forked agent.
 
         Returns:
             A new MiniAgent instance with the modified parameters.
         """
+        if mutable_state is not None:
+            warnings.warn(
+                "The `mutable_state` parameter is deprecated and will be removed in a future version. "
+                "Use `non_freezable_kwargs` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if non_freezable_kwargs is not None:
+                raise ValueError(
+                    "Both `mutable_state` and `non_freezable_kwargs` are set. Please use only one of them "
+                    "(preferrably the latter because the former is deprecated)."
+                )
+
+            non_freezable_kwargs = mutable_state
+        del mutable_state
+
         return MiniAgent(
             self._func_or_class,
             alias=alias or self.alias,
@@ -284,8 +319,8 @@ class MiniAgent(Frozen):
             normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
             interaction_metadata={**dict(self.interaction_metadata), **dict(interaction_metadata or {})},
-            mutable_state={**self._mutable_state, **(mutable_state or {})},
-            **self._static_kwargs,
+            non_freezable_kwargs={**self._non_freezable_kwargs, **(non_freezable_kwargs or {})},
+            **self._frozen_kwargs,
             **kwargs_to_freeze,
         )
 
@@ -315,6 +350,7 @@ class InteractionContext:
         self.this_agent = this_agent
         self.message_promises = message_promises
 
+        self._mini_agents = MiniAgents.get_current()
         self._parent: Optional["InteractionContext"] = None
         self._reply_streamer = reply_streamer
         self._tasks_to_wait_for: list[Awaitable[Any]] = []
@@ -336,16 +372,35 @@ class InteractionContext:
             raise NoActiveContextError(f"No {cls.__name__} is currently active.")
         return current
 
-    def reply(self, messages: MessageType) -> None:
+    def reply(self, messages: MessageType) -> "InteractionContext":
         """
-        Send a reply to the messages that were received by the agent. The messages can be of any allowed MessageType.
-        They will be converted to Message objects when they arrive at the agent that made a call to the current agent.
+        Send zero or more response messages to the calling agent. The messages can be of any allowed `MessageType`
+        (see `miniagent_typing.py`). They will be converted to `Message` objects after they arrive at the
+        calling agent and the calling agent `awaits` for their respective promises.
 
         ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
         self._reply_streamer.append(messages)
+        return self
+
+    def reply_urgently(self, messages: MessageType) -> "InteractionContext":
+        """
+        Send zero or more response messages to the calling agent. The messages can be of any allowed `MessageType` (see
+        `miniagent_typing.py`). They will be converted to `Message` objects after they arrive at the calling agent and
+        the calling agent `awaits` for their respective promises.
+
+        NOTE: Unlike `reply()`, these response messages are treated as high priority and will bypass the usual message
+        ordering in the resulting sequence as much as possible.
+
+        ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
+        content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
+        would).
+        """
+
+        self._reply_streamer.inject_as_urgent(messages)
+        return self
 
     def make_sure_to_wait(self, awaitable: Awaitable[Any], start_soon_if_coroutine: bool = True) -> None:
         """
@@ -354,7 +409,7 @@ class InteractionContext:
         """
         if asyncio.iscoroutine(awaitable) and start_soon_if_coroutine:
             # let's turn this coroutine into our special kind of task and start it as soon as possible
-            awaitable = MiniAgents.get_current().start_soon(awaitable)
+            awaitable = self._mini_agents.start_soon(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
     async def await_now(self) -> None:
@@ -372,7 +427,7 @@ class InteractionContext:
                 stacklevel=2,
             )
 
-        await asyncio.gather(*self._tasks_to_wait_for, return_exceptions=True)
+        await self._mini_agents.agather(*self._tasks_to_wait_for)
 
     async def afinish_early(self, make_sure_to_wait: bool = True) -> None:
         if make_sure_to_wait:
@@ -405,20 +460,35 @@ class AgentCall:  # pylint: disable=protected-access
 
         self._message_streamer.open()
 
+        self._mini_agents = MiniAgents.get_current()
         try:
             InteractionContext.get_current()._child_agent_calls.add(self)
         except NoActiveContextError:
-            MiniAgents.get_current()._child_agent_calls.add(self)
+            self._mini_agents._child_agent_calls.add(self)
 
     def send_message(self, messages: MessageType) -> "AgentCall":
         """
-        Send a zero or more input messages to the agent.
+        Send zero or more input messages to the agent.
 
         ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
         self._message_streamer.append(messages)
+        return self
+
+    def send_urgent_message(self, messages: MessageType) -> "AgentCall":
+        """
+        Send zero or more input messages to the agent.
+
+        NOTE: Unlike `send_message()`, these input messages are treated as high priority and will bypass the usual
+        message ordering in the resulting sequence as much as possible.
+
+        ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
+        content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
+        would).
+        """
+        self._message_streamer.inject_as_urgent(messages)
         return self
 
     def reply_sequence(self, finish_call: bool = True) -> MessageSequencePromise:
@@ -443,7 +513,7 @@ class AgentCall:  # pylint: disable=protected-access
         try:
             InteractionContext.get_current()._child_agent_calls.discard(self)
         except NoActiveContextError:
-            MiniAgents.get_current()._child_agent_calls.discard(self)
+            self._mini_agents._child_agent_calls.discard(self)
         return self
 
     @property
@@ -486,12 +556,12 @@ class AgentReplyMessageSequence(MessageSequence):
         self._mini_agent = mini_agent
         self._input_sequence_promise = input_sequence_promise
         super().__init__(
-            appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `run_the_agent`
+            appender_capture_errors=True,  # we want `self.message_appender` not to let errors out of `_arun_agent`
             **kwargs,
         )
 
-    async def _streamer(self, _) -> AsyncIterator[MessagePromise]:
-        async def run_the_agent(_) -> AgentCallNode:
+    async def _astreamer(self, _) -> AsyncIterator[MessagePromise]:
+        async def _arun_agent(_) -> AgentCallNode:
             ctx = InteractionContext(
                 this_agent=self._mini_agent,
                 message_promises=self._input_sequence_promise,
@@ -503,8 +573,8 @@ class AgentReplyMessageSequence(MessageSequence):
                     ctx._activate()
 
                     kwargs = {
-                        **self._mini_agent._static_kwargs,
-                        **self._mini_agent._mutable_state,
+                        **self._mini_agent._frozen_kwargs,
+                        **self._mini_agent._non_freezable_kwargs,
                         **self._frozen_kwargs,
                     }
                     if isinstance(self._mini_agent._func_or_class, type):
@@ -522,7 +592,7 @@ class AgentReplyMessageSequence(MessageSequence):
                         # the miniagent is a function
                         await self._mini_agent._func_or_class(ctx, **kwargs)
                 except Exception as e:
-                    PromisingContext.get_current()._log_background_error_once(e)
+                    MiniAgents.get_current()._log_background_error_once(e)
                     raise
                 finally:
                     await ctx._afinalize()
@@ -531,20 +601,20 @@ class AgentReplyMessageSequence(MessageSequence):
                 messages=await self._input_sequence_promise,
                 agent=self._mini_agent,
                 **dict(self._mini_agent.interaction_metadata),
-                # TODO **self._mini_agent._static_kwargs ?
-                # TODO **self._mini_agent._mutable_state ?
+                # TODO **self._mini_agent._frozen_kwargs ?
+                # TODO **self._mini_agent._non_freezable_kwargs ?
                 **self._frozen_kwargs,
             )
 
         agent_call_promise = Promise[AgentCallNode](
             start_soon=True,
-            resolver=run_the_agent,
+            resolver=_arun_agent,
         )
 
-        async for reply_promise in super()._streamer(_):
+        async for reply_promise in super()._astreamer(_):
             yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
 
-        async def create_agent_reply_node(_) -> AgentReplyNode:
+        async def _acreate_agent_reply_node(_) -> AgentReplyNode:
             return AgentReplyNode(
                 replies=await self.sequence_promise,
                 agent=self._mini_agent,
@@ -554,5 +624,5 @@ class AgentReplyMessageSequence(MessageSequence):
 
         Promise[AgentReplyNode](
             start_soon=True,  # use a separate async task to avoid deadlock upon AgentReplyNode resolution
-            resolver=create_agent_reply_node,
+            resolver=_acreate_agent_reply_node,
         )

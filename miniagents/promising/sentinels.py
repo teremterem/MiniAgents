@@ -15,3 +15,4 @@ class Sentinel:
 NO_VALUE = Sentinel()
 FAILED = Sentinel()
 END_OF_QUEUE = Sentinel()
+END_OF_HIGH_PRIORITY_QUEUE = Sentinel()
