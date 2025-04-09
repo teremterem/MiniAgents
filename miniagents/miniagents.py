@@ -232,7 +232,7 @@ class MiniAgent(Frozen):
         self.__doc__ = description
 
         self._func_or_class = func_or_class
-        self._static_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
+        self._frozen_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
         self._non_freezable_kwargs = dict(non_freezable_kwargs or {})
 
     def trigger(
@@ -320,7 +320,7 @@ class MiniAgent(Frozen):
             normalize_spaces_in_docstring=False,
             interaction_metadata={**dict(self.interaction_metadata), **dict(interaction_metadata or {})},
             non_freezable_kwargs={**self._non_freezable_kwargs, **(non_freezable_kwargs or {})},
-            **self._static_kwargs,
+            **self._frozen_kwargs,
             **kwargs_to_freeze,
         )
 
@@ -573,7 +573,7 @@ class AgentReplyMessageSequence(MessageSequence):
                     ctx._activate()
 
                     kwargs = {
-                        **self._mini_agent._static_kwargs,
+                        **self._mini_agent._frozen_kwargs,
                         **self._mini_agent._non_freezable_kwargs,
                         **self._frozen_kwargs,
                     }
@@ -601,7 +601,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 messages=await self._input_sequence_promise,
                 agent=self._mini_agent,
                 **dict(self._mini_agent.interaction_metadata),
-                # TODO **self._mini_agent._static_kwargs ?
+                # TODO **self._mini_agent._frozen_kwargs ?
                 # TODO **self._mini_agent._non_freezable_kwargs ?
                 **self._frozen_kwargs,
             )
