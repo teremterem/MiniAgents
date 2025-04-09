@@ -220,7 +220,10 @@ async def test_agents_reply_unordered_exception(
         await asyncio.sleep(0.3)
         ctx.reply_unordered("agent4 msg1 post-sleep unordered")
         ctx.reply_unordered("agent4 msg2 post-sleep unordered")
-        await asyncio.sleep(0.1)  # TODO figure out why the previous two replies are lost if this sleep is removed
+
+        # TODO figure out how to prevent the previous two replies from being lost when the sleep below is removed
+        #  (but also make sure that the same problem doesn't happen when the previous two replies are NOT unordered)
+        await asyncio.sleep(0.1)
         raise ValueError("agent4 exception")
 
     async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
