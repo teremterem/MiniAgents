@@ -184,8 +184,8 @@ class MiniAgent(Frozen):
         *,
         alias: Optional[str] = None,
         description: Optional[str] = None,
-        normalize_func_or_class_name: Optional[bool] = True,
-        normalize_spaces_in_docstring: Optional[bool] = True,
+        normalize_func_or_class_name: bool = True,
+        normalize_spaces_in_docstring: bool = True,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
         mutable_state: Optional[dict[str, Any]] = None,  # deprecated
