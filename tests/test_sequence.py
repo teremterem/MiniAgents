@@ -24,7 +24,7 @@ async def test_flat_sequence(start_soon: bool) -> None:
     async with PromisingContext():
         stream_appender = StreamAppender[int](capture_errors=True)
         flat_sequence = FlatSequence[int, int](
-            ordered_streamer=stream_appender,
+            stream_appender,
             flattener=flattener,
             start_soon=start_soon,
         )

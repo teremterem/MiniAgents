@@ -274,8 +274,8 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
 
         super().__init__(
-            ordered_streamer=self.message_appender.ordered_appender,
-            unordered_streamer=self.message_appender.unordered_appender,
+            normal_streamer=self.message_appender.normal_appender,
+            high_priority_streamer=self.message_appender.high_priority_appender,
             start_soon=start_soon,
             sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
         )
@@ -336,19 +336,23 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
 
 class MessageSequenceAppender:
-    ordered_appender: StreamAppender[MessageType]
-    unordered_appender: StreamAppender[MessageType]
+    normal_appender: StreamAppender[MessageType]
+    high_priority_appender: StreamAppender[MessageType]
 
     def __init__(self, capture_errors: Optional[bool] = None) -> None:
-        self.ordered_appender = StreamAppender(capture_errors=capture_errors)
-        self.unordered_appender = StreamAppender(capture_errors=capture_errors)
+        self.normal_appender = StreamAppender(capture_errors=capture_errors)
+        self.high_priority_appender = StreamAppender(capture_errors=capture_errors)
 
-    def append(self, piece: MessageType) -> "MessageSequenceAppender":
-        self.ordered_appender.append(self._freeze_if_needed(piece))
+    def append(self, piece: MessageType, inject_as_urgent: bool = False) -> "MessageSequenceAppender":
+        frozen_piece = self._freeze_if_needed(piece)
+        if inject_as_urgent:
+            self.high_priority_appender.append(frozen_piece)
+        else:
+            self.normal_appender.append(frozen_piece)
         return self
 
-    def append_unordered(self, piece: MessageType) -> "MessageSequenceAppender":
-        self.unordered_appender.append(self._freeze_if_needed(piece))
+    def inject_as_urgent(self, piece: MessageType) -> "MessageSequenceAppender":
+        self.append(piece, inject_as_urgent=True)
         return self
 
     @classmethod
@@ -378,11 +382,11 @@ class MessageSequenceAppender:
 
     @property
     def was_open(self) -> bool:
-        return self.ordered_appender.was_open and self.unordered_appender.was_open
+        return self.normal_appender.was_open and self.high_priority_appender.was_open
 
     @property
     def is_open(self) -> bool:
-        return self.ordered_appender.is_open and self.unordered_appender.is_open
+        return self.normal_appender.is_open and self.high_priority_appender.is_open
 
     def __enter__(self) -> "MessageSequenceAppender":
         return self.open()
@@ -401,15 +405,15 @@ class MessageSequenceAppender:
     async def __aexit__(self, *args, **kwargs) -> bool: ...
 
     def open(self) -> "MessageSequenceAppender":
-        self.ordered_appender.open()
-        self.unordered_appender.open()
+        self.normal_appender.open()
+        self.high_priority_appender.open()
         return self
 
     def close(self, exc_value: Optional[BaseException] = None) -> bool:
         try:
-            return self.ordered_appender.close(exc_value)
+            return self.normal_appender.close(exc_value)
         finally:
-            self.unordered_appender.close()
+            self.high_priority_appender.close()
 
 
 class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]]):

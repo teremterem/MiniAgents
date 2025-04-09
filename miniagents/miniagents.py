@@ -336,8 +336,8 @@ class InteractionContext:
         self._reply_streamer.append(messages)
         return self
 
-    def reply_unordered(self, messages: MessageType) -> "InteractionContext":
-        self._reply_streamer.append_unordered(messages)
+    def reply_urgently(self, messages: MessageType) -> "InteractionContext":
+        self._reply_streamer.inject_as_urgent(messages)
         return self
 
     def make_sure_to_wait(self, awaitable: Awaitable[Any], start_soon_if_coroutine: bool = True) -> None:
@@ -415,8 +415,8 @@ class AgentCall:  # pylint: disable=protected-access
         self._message_streamer.append(messages)
         return self
 
-    def send_message_unordered(self, messages: MessageType) -> "AgentCall":
-        self._message_streamer.append_unordered(messages)
+    def send_urgent_message(self, messages: MessageType) -> "AgentCall":
+        self._message_streamer.inject_as_urgent(messages)
         return self
 
     def reply_sequence(self, finish_call: bool = True) -> MessageSequencePromise:
