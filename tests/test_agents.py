@@ -235,7 +235,7 @@ async def test_agents_reply_unordered_exception(
                 async for reply_promise in reply_promises:
                     actual_replies.append((await reply_promise).content)
 
-    if start_everything_soon_by_default in [True, None]:
+    if start_everything_soon_by_default:
         # `start_soon` is True by default in `MiniAgents()`
         expected_replies = [
             "agent1 msg1",
