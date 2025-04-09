@@ -127,11 +127,16 @@ def miniagent(
     normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
-    mutable_state: Optional[dict[str, Any]] = None,
+    non_freezable_kwargs: Optional[dict[str, Any]] = None,
+    mutable_state: Optional[dict[str, Any]] = None,  # deprecated
     **kwargs_to_freeze,
 ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
+
+    Args:
+        mutable_state: Deprecated. Use `non_freezable_kwargs` instead.
+        # TODO describe all the parameters
     """
     if func_or_class is None:
         # the decorator `@miniagent(...)` was used with arguments
@@ -143,6 +148,7 @@ def miniagent(
                 normalize_func_or_class_name=normalize_func_or_class_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
                 interaction_metadata=interaction_metadata,
+                non_freezable_kwargs=non_freezable_kwargs,
                 mutable_state=mutable_state,
                 **kwargs_to_freeze,
             )
@@ -157,6 +163,7 @@ def miniagent(
         normalize_func_or_class_name=normalize_func_or_class_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
         interaction_metadata=interaction_metadata,
+        non_freezable_kwargs=non_freezable_kwargs,
         mutable_state=mutable_state,
         **kwargs_to_freeze,
     )
@@ -180,9 +187,26 @@ class MiniAgent(Frozen):
         normalize_func_or_class_name: Optional[bool] = True,
         normalize_spaces_in_docstring: Optional[bool] = True,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
-        mutable_state: Optional[dict[str, Any]] = None,
+        non_freezable_kwargs: Optional[dict[str, Any]] = None,
+        mutable_state: Optional[dict[str, Any]] = None,  # deprecated
         **kwargs_to_freeze,
     ) -> None:
+        if mutable_state is not None:
+            warnings.warn(
+                "The `mutable_state` parameter is deprecated and will be removed in a future version. "
+                "Use `non_freezable_kwargs` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if non_freezable_kwargs is not None:
+                raise ValueError(
+                    "Both `mutable_state` and `non_freezable_kwargs` are set. Please use only one of them "
+                    "(preferrably the latter because the former is deprecated)."
+                )
+
+            non_freezable_kwargs = mutable_state
+        del mutable_state
+
         if alias is None:
             alias = func_or_class.__name__
             if normalize_func_or_class_name:
@@ -209,7 +233,7 @@ class MiniAgent(Frozen):
 
         self._func_or_class = func_or_class
         self._static_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
-        self._mutable_state = dict(mutable_state or {})
+        self._non_freezable_kwargs = dict(non_freezable_kwargs or {})
 
     def trigger(
         self,
@@ -254,7 +278,8 @@ class MiniAgent(Frozen):
         description: Optional[str] = None,
         *,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
-        mutable_state: Optional[dict[str, Any]] = None,
+        non_freezable_kwargs: Optional[dict[str, Any]] = None,
+        mutable_state: Optional[dict[str, Any]] = None,  # deprecated
         **kwargs_to_freeze,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
@@ -264,12 +289,29 @@ class MiniAgent(Frozen):
             alias: New alias for the forked agent. If not provided, uses the original alias.
             description: New description for the forked agent. If not provided, uses the original description.
             interaction_metadata: TODO explain this parameter
-            mutable_state: Additional mutable state to merge with the original mutable state.
+            non_freezable_kwargs: Additional non-freezable kwargs to merge with the original non-freezable kwargs.
+            mutable_state: Deprecated. Use `non_freezable_kwargs` instead.
             **kwargs_to_freeze: Additional static parameters for the forked agent.
 
         Returns:
             A new MiniAgent instance with the modified parameters.
         """
+        if mutable_state is not None:
+            warnings.warn(
+                "The `mutable_state` parameter is deprecated and will be removed in a future version. "
+                "Use `non_freezable_kwargs` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if non_freezable_kwargs is not None:
+                raise ValueError(
+                    "Both `mutable_state` and `non_freezable_kwargs` are set. Please use only one of them "
+                    "(preferrably the latter because the former is deprecated)."
+                )
+
+            non_freezable_kwargs = mutable_state
+        del mutable_state
+
         return MiniAgent(
             self._func_or_class,
             alias=alias or self.alias,
@@ -277,7 +319,7 @@ class MiniAgent(Frozen):
             normalize_func_or_class_name=False,
             normalize_spaces_in_docstring=False,
             interaction_metadata={**dict(self.interaction_metadata), **dict(interaction_metadata or {})},
-            mutable_state={**self._mutable_state, **(mutable_state or {})},
+            non_freezable_kwargs={**self._non_freezable_kwargs, **(non_freezable_kwargs or {})},
             **self._static_kwargs,
             **kwargs_to_freeze,
         )
@@ -532,7 +574,7 @@ class AgentReplyMessageSequence(MessageSequence):
 
                     kwargs = {
                         **self._mini_agent._static_kwargs,
-                        **self._mini_agent._mutable_state,
+                        **self._mini_agent._non_freezable_kwargs,
                         **self._frozen_kwargs,
                     }
                     if isinstance(self._mini_agent._func_or_class, type):
@@ -560,7 +602,7 @@ class AgentReplyMessageSequence(MessageSequence):
                 agent=self._mini_agent,
                 **dict(self._mini_agent.interaction_metadata),
                 # TODO **self._mini_agent._static_kwargs ?
-                # TODO **self._mini_agent._mutable_state ?
+                # TODO **self._mini_agent._non_freezable_kwargs ?
                 **self._frozen_kwargs,
             )
 
