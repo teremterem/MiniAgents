@@ -257,7 +257,7 @@ async def test_agents_reply_urgently_exception(
         if errors_to_messages:
             expected_replies.extend(
                 [
-                    "agent 4 EXCEPTION",
+                    "ValueError: agent 4 EXCEPTION",
                     "agent 1 msg 3",
                     "agent 1 msg 4",
                 ]
@@ -278,7 +278,7 @@ async def test_agents_reply_urgently_exception(
         if errors_to_messages:
             expected_replies.extend(
                 [
-                    "agent 4 EXCEPTION",
+                    "ValueError: agent 4 EXCEPTION",
                     "agent 3 msg 3 post-sleep high priority",
                     "agent 3 msg 4 post-sleep high priority",
                     "agent 1 msg 3",
