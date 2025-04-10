@@ -14,6 +14,7 @@ from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
+from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import join_messages
 
@@ -32,13 +33,7 @@ class Message(Frozen):
 
     content: Optional[str] = None
     content_template: Optional[str] = None
-
-    # # TODO finish "error to message" feature
-    # contains_error: bool = False
-    # error_message: Optional[str] = None
-    # error_class: Optional[str] = None
-    # error_traceback: Optional[str] = None
-    # # TODO attach custom miniagent_call attribute to each exception object and display it with traceback
+    # is_error: Optional[bool] = None  # this field is only present in messages that are errors
 
     @property
     @cached_privately
@@ -52,7 +47,7 @@ class Message(Frozen):
     def promise(
         cls,
         content: Optional[str] = None,
-        start_soon: Optional[bool] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **preliminary_metadata,
     ) -> "MessagePromise":
@@ -171,7 +166,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     def __init__(
         self,
-        start_soon: Optional[bool] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
@@ -267,17 +262,24 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
     def __init__(
         self,
-        appender_capture_errors: Optional[bool] = None,
-        start_soon: Optional[bool] = None,
-        errors_to_messages: bool = False,  # TODO finish "error to message" feature
+        appender_capture_errors: Union[bool, Sentinel] = NO_VALUE,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
+        errors_as_messages: Union[bool, Sentinel] = NO_VALUE,
     ) -> None:
         self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
+
+        self._errors_as_messages = errors_as_messages
+        if self._errors_as_messages is NO_VALUE:
+            # pylint: disable=import-outside-toplevel,cyclic-import
+            from miniagents.miniagents import MiniAgents
+
+            self._errors_as_messages = MiniAgents.get_current().errors_as_messages
 
         super().__init__(
             normal_streamer=self.message_appender.normal_appender,
             high_priority_streamer=self.message_appender.high_priority_appender,
             start_soon=start_soon,
-            sequence_promise_class=SafeMessageSequencePromise if errors_to_messages else MessageSequencePromise,
+            sequence_promise_class=SafeMessageSequencePromise if self._errors_as_messages else MessageSequencePromise,
         )
 
     @classmethod
@@ -339,7 +341,7 @@ class MessageSequenceAppender:
     normal_appender: StreamAppender[MessageType]
     high_priority_appender: StreamAppender[MessageType]
 
-    def __init__(self, capture_errors: Optional[bool] = None) -> None:
+    def __init__(self, capture_errors: Union[bool, Sentinel] = NO_VALUE) -> None:
         self.normal_appender = StreamAppender(capture_errors=capture_errors)
         self.high_priority_appender = StreamAppender(capture_errors=capture_errors)
 
@@ -444,8 +446,8 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
             return _SafeMessagePromiseProxy(message_promise)
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
-            return Message.promise(str(exc), is_error=True)
+        except Exception as exc:  # pylint: disable=broad-except
+            return Message.promise(f"{type(exc).__name__}: {str(exc)}", is_error=True)
 
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
@@ -455,8 +457,8 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             async for token in self.__wrapped__:
                 tokens.append(token)
             return await self.__wrapped__.aresolve()
-        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
-            return Message(f"{''.join(tokens)}\n{exc}")
+        except Exception as exc:  # pylint: disable=broad-except
+            return Message(f"{''.join(tokens)}\n{type(exc).__name__}: {str(exc)}", is_error=True)
 
     def __await__(self):
         return self.aresolve().__await__()
@@ -471,5 +473,5 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             return await self.__wrapped__.__anext__()
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
-            return f"\n{exc}"
+        except Exception as exc:  # pylint: disable=broad-except
+            return f"\n{type(exc).__name__}: {str(exc)}"

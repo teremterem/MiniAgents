@@ -4,12 +4,12 @@ The main class in this module is `FlatSequence`. See its docstring for more info
 
 import asyncio
 from functools import partial
-from typing import AsyncIterator, Generic, Optional
+from typing import AsyncIterator, Generic, Optional, Union
 
 from miniagents.promising.errors import FunctionNotProvidedError
 from miniagents.promising.promise_typing import IN_co, OUT_co, PromiseStreamer, SequenceFlattener
 from miniagents.promising.promising import PromisingContext, StreamedPromise
-from miniagents.promising.sentinels import END_OF_QUEUE, END_OF_HIGH_PRIORITY_QUEUE
+from miniagents.promising.sentinels import END_OF_QUEUE, END_OF_HIGH_PRIORITY_QUEUE, NO_VALUE, Sentinel
 
 
 class FlatSequence(Generic[IN_co, OUT_co]):
@@ -22,7 +22,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         # TODO explain what this streamer is for in the docstring
         high_priority_streamer: Optional[PromiseStreamer[IN_co]] = None,
         flattener: Optional[SequenceFlattener[IN_co, OUT_co]] = None,
-        start_soon: Optional[bool] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
         sequence_promise_class: type[StreamedPromise[OUT_co, tuple[OUT_co, ...]]] = StreamedPromise[
             OUT_co, tuple[OUT_co, ...]
         ],
@@ -32,7 +32,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
 
         self._promising_context = PromisingContext.get_current()
         self._start_soon = start_soon
-        if self._start_soon is None:
+        if self._start_soon is NO_VALUE:
             self._start_soon = self._promising_context.start_everything_soon_by_default
 
         self._queue = asyncio.Queue() if self._start_soon else None

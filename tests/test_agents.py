@@ -8,10 +8,10 @@ from typing import Union
 import pytest
 
 from miniagents import InteractionContext, MiniAgents, miniagent
-from miniagents.promising.sentinels import Sentinel
+from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None:
     """
     Test that agents can run in parallel.
@@ -39,7 +39,7 @@ async def test_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None
             await replies1
             await replies2
 
-    if start_soon in [True, None]:
+    if start_soon in [True, NO_VALUE]:
         # `start_soon` is True by default in `MiniAgents()`
         assert event_sequence == [
             "agent1 - start",
@@ -57,7 +57,7 @@ async def test_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None
         ]
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_sub_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None:
     """
     Test that two agents that were called by the third agent can run in parallel.
@@ -89,7 +89,7 @@ async def test_sub_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> 
             # for their respective functions to be called
             await replies
 
-    if start_soon in [True, None]:
+    if start_soon in [True, NO_VALUE]:
         # `start_soon` is True by default in `MiniAgents()`
         assert event_sequence == [
             "agent1 - start",
@@ -146,7 +146,7 @@ async def test_agents_reply_urgently(start_everything_soon_by_default: Union[boo
         replies = await agent1.trigger()
         replies = [reply.content for reply in replies]
 
-    if start_everything_soon_by_default in [True, None]:
+    if start_everything_soon_by_default in [True, NO_VALUE]:
         # `start_soon` is True by default in `MiniAgents()`
         assert replies == [
             "agent 1 msg 1",
@@ -184,15 +184,15 @@ async def test_agents_reply_urgently(start_everything_soon_by_default: Union[boo
 
 
 @pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
-@pytest.mark.parametrize("errors_to_messages", [False, True])
+@pytest.mark.parametrize("errors_as_messages", [False, True])
 async def test_agents_reply_urgently_exception(
-    start_everything_soon_by_default: Union[bool, Sentinel], errors_to_messages: bool
+    start_everything_soon_by_default: bool, errors_as_messages: bool
 ) -> None:
     @miniagent
     async def agent1(ctx: InteractionContext) -> None:
         ctx.reply("agent 1 msg 1")
         ctx.reply("agent 1 msg 2")
-        ctx.reply(agent2.trigger(errors_to_messages=errors_to_messages))
+        ctx.reply(agent2.trigger())
         ctx.reply("agent 1 msg 3")
         ctx.reply("agent 1 msg 4")
 
@@ -201,7 +201,7 @@ async def test_agents_reply_urgently_exception(
         ctx.reply_urgently("agent 2 msg 1 PRE-SLEEP high priority")
         ctx.reply_urgently("agent 2 msg 2 PRE-SLEEP high priority")
         await asyncio.sleep(0.1)
-        ctx.reply(agent3.trigger(errors_to_messages=errors_to_messages))
+        ctx.reply(agent3.trigger())
         await asyncio.sleep(0.1)
         ctx.reply_urgently("agent 2 msg 3 post-sleep high priority")
         ctx.reply_urgently("agent 2 msg 4 post-sleep high priority")
@@ -210,7 +210,7 @@ async def test_agents_reply_urgently_exception(
     async def agent3(ctx: InteractionContext) -> None:
         ctx.reply_urgently("agent 3 msg 1 PRE-SLEEP high priority")
         ctx.reply_urgently("agent 3 msg 2 PRE-SLEEP high priority")
-        ctx.reply_urgently(agent4.trigger(errors_to_messages=errors_to_messages))
+        ctx.reply_urgently(agent4.trigger())
         await asyncio.sleep(0.2)
         ctx.reply_urgently("agent 3 msg 3 post-sleep high priority")
         ctx.reply_urgently("agent 3 msg 4 post-sleep high priority")
@@ -226,10 +226,12 @@ async def test_agents_reply_urgently_exception(
         await asyncio.sleep(0.1)
         raise ValueError("agent 4 EXCEPTION")
 
-    async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
-        reply_promises = agent1.trigger(errors_to_messages=errors_to_messages)
+    async with MiniAgents(
+        start_everything_soon_by_default=start_everything_soon_by_default, errors_as_messages=errors_as_messages
+    ):
+        reply_promises = agent1.trigger()
 
-        if errors_to_messages:
+        if errors_as_messages:
             actual_replies = await reply_promises
             actual_replies = [reply.content for reply in actual_replies]
         else:
@@ -254,10 +256,10 @@ async def test_agents_reply_urgently_exception(
             "agent 4 msg 1 post-sleep high priority",
             "agent 4 msg 2 post-sleep high priority",
         ]
-        if errors_to_messages:
+        if errors_as_messages:
             expected_replies.extend(
                 [
-                    "agent 4 EXCEPTION",
+                    "ValueError: agent 4 EXCEPTION",
                     "agent 1 msg 3",
                     "agent 1 msg 4",
                 ]
@@ -275,10 +277,10 @@ async def test_agents_reply_urgently_exception(
             "agent 4 msg 1 post-sleep high priority",
             "agent 4 msg 2 post-sleep high priority",
         ]
-        if errors_to_messages:
+        if errors_as_messages:
             expected_replies.extend(
                 [
-                    "agent 4 EXCEPTION",
+                    "ValueError: agent 4 EXCEPTION",
                     "agent 3 msg 3 post-sleep high priority",
                     "agent 3 msg 4 post-sleep high priority",
                     "agent 1 msg 3",
