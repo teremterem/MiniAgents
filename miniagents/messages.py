@@ -271,6 +271,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         errors_to_messages: bool = False,  # TODO finish "error to message" feature
     ) -> None:
         self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
+        self._errors_to_messages = errors_to_messages
 
         super().__init__(
             normal_streamer=self.message_appender.normal_appender,

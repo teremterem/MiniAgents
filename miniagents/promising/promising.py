@@ -193,7 +193,7 @@ class PromisingContext:
 
     def __exit__(self, *args, **kwargs) -> None: ...
 
-    def _log_background_error_once(self, error: Exception) -> None:
+    def _log_background_error_once(self, error: Exception, fake_log: bool = False) -> None:
         log_level = logging.DEBUG
 
         if not getattr(error, "_promising__already_logged", False):
@@ -206,7 +206,11 @@ class PromisingContext:
                     type(error).__name__,
                     exc_info=ae,
                 )
-            log_level = self.log_level_for_errors
+            if not fake_log:
+                # we only rise the log level if we are not faking the log (we might do the latter if we want to avoid
+                # logging this error at all - i.e. don't log but still mark the error as already logged so no one else
+                # logs it either)
+                log_level = self.log_level_for_errors
 
         self.logger.log(log_level, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=error)
 

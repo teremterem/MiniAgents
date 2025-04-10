@@ -592,7 +592,12 @@ class AgentReplyMessageSequence(MessageSequence):
                         # the miniagent is a function
                         await self._mini_agent._func_or_class(ctx, **kwargs)
                 except Exception as e:
-                    MiniAgents.get_current()._log_background_error_once(e)
+                    MiniAgents.get_current()._log_background_error_once(
+                        e,
+                        # if `errors_to_messages` is True, we don't want to log the error, we treat it as "just another
+                        # message" in that case
+                        fake_log=self._errors_to_messages,
+                    )
                     raise
                 finally:
                     await ctx._afinalize()
