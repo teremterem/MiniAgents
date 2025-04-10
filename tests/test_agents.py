@@ -231,7 +231,7 @@ async def test_agents_reply_urgently_exception(
     ):
         reply_promises = agent1.trigger()
 
-        if errors_as_messages is True:
+        if errors_as_messages:
             actual_replies = await reply_promises
             actual_replies = [reply.content for reply in actual_replies]
         else:
@@ -256,7 +256,7 @@ async def test_agents_reply_urgently_exception(
             "agent 4 msg 1 post-sleep high priority",
             "agent 4 msg 2 post-sleep high priority",
         ]
-        if errors_as_messages is True:
+        if errors_as_messages:
             expected_replies.extend(
                 [
                     "ValueError: agent 4 EXCEPTION",
@@ -277,7 +277,7 @@ async def test_agents_reply_urgently_exception(
             "agent 4 msg 1 post-sleep high priority",
             "agent 4 msg 2 post-sleep high priority",
         ]
-        if errors_as_messages is True:
+        if errors_as_messages:
             expected_replies.extend(
                 [
                     "ValueError: agent 4 EXCEPTION",
