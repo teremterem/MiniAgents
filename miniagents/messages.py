@@ -38,7 +38,6 @@ class Message(Frozen):
     # error_message: Optional[str] = None
     # error_class: Optional[str] = None
     # error_traceback: Optional[str] = None
-    # # TODO attach custom miniagent_call attribute to each exception object and display it with traceback
 
     @property
     @cached_privately
@@ -445,7 +444,7 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
         except StopAsyncIteration:
             raise
         except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
-            return Message.promise(str(exc), is_error=True)
+            return Message.promise(f"{type(exc).__name__}: {str(exc)}", is_error=True)
 
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
@@ -456,7 +455,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
                 tokens.append(token)
             return await self.__wrapped__.aresolve()
         except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
-            return Message(f"{''.join(tokens)}\n{exc}")
+            return Message(f"{''.join(tokens)}\n{type(exc).__name__}: {str(exc)}", is_error=True)
 
     def __await__(self):
         return self.aresolve().__await__()
@@ -472,4 +471,4 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
         except StopAsyncIteration:
             raise
         except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
-            return f"\n{exc}"
+            return f"\n{type(exc).__name__}: {str(exc)}"

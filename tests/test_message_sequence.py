@@ -141,12 +141,12 @@ async def test_message_sequence_error_to_message(start_soon: bool, collect_token
     if collect_token_by_token:
         assert message_result == [
             "msg1",
-            "error1",
+            "ValueError: error1",
         ]
     else:
         assert message_result == [
             Message(content="msg1"),
-            Message(content="error1", is_error=True),
+            Message(content="ValueError: error1", is_error=True),
         ]
 
 
@@ -175,12 +175,12 @@ async def test_message_sequence_token_error_to_message(
             "msg1",
             "token1",
             "token2",
-            "\nerror1",
+            "\nValueError: error1",
         ]
     else:
         assert result == [
             Message(content="msg1"),
-            Message(content="token1token2\nerror1"),
+            Message(content="token1token2\nValueError: error1", is_error=True),
         ]
 
 
