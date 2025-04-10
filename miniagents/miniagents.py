@@ -44,6 +44,7 @@ class MiniAgents(PromisingContext):
     stream_llm_tokens_by_default: bool
     llm_logger_agent: Union["MiniAgent", bool]
     on_persist_message_handlers: list[PersistMessageEventHandler]
+    errors_to_messages: bool
     log_reduced_tracebacks: bool
 
     logger: logging.Logger = _default_logger
@@ -55,6 +56,7 @@ class MiniAgents(PromisingContext):
         llm_logger_agent: Union["MiniAgent", bool] = False,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        errors_to_messages: bool = None,
         log_reduced_tracebacks: bool = True,
         logger: Optional[logging.Logger] = None,
         **kwargs,
@@ -66,6 +68,7 @@ class MiniAgents(PromisingContext):
         )
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
+        self.errors_to_messages = errors_to_messages
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
@@ -239,7 +242,7 @@ class MiniAgent(Frozen):
         self,
         messages: Optional[MessageType] = None,
         start_soon: Optional[bool] = None,
-        errors_to_messages: bool = False,
+        errors_to_messages: bool = None,
         **kwargs_to_freeze,
     ) -> MessageSequencePromise:
         agent_call = self.initiate_call(
@@ -251,13 +254,13 @@ class MiniAgent(Frozen):
 
     # noinspection PyProtectedMember
     def initiate_call(
-        self, start_soon: Optional[bool] = None, errors_to_messages: bool = False, **kwargs_to_freeze
+        self, start_soon: Optional[bool] = None, errors_to_messages: bool = None, **kwargs_to_freeze
     ) -> "AgentCall":
         """
         Start a call with the agent. The agent will be called with the provided function kwargs.
         TODO expand this docstring ?
         """
-        input_sequence = MessageSequence(start_soon=False)
+        input_sequence = MessageSequence(start_soon=False, errors_to_messages=False)
         reply_sequence = AgentReplyMessageSequence(
             mini_agent=self,
             kwargs_to_freeze=kwargs_to_freeze,

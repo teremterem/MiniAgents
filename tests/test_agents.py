@@ -184,7 +184,7 @@ async def test_agents_reply_urgently(start_everything_soon_by_default: Union[boo
 
 
 @pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
-@pytest.mark.parametrize("errors_to_messages", [False, True])
+@pytest.mark.parametrize("errors_to_messages", [False, True, None])
 async def test_agents_reply_urgently_exception(
     start_everything_soon_by_default: Union[bool, Sentinel], errors_to_messages: bool
 ) -> None:
@@ -192,7 +192,7 @@ async def test_agents_reply_urgently_exception(
     async def agent1(ctx: InteractionContext) -> None:
         ctx.reply("agent 1 msg 1")
         ctx.reply("agent 1 msg 2")
-        ctx.reply(agent2.trigger(errors_to_messages=errors_to_messages))
+        ctx.reply(agent2.trigger())
         ctx.reply("agent 1 msg 3")
         ctx.reply("agent 1 msg 4")
 
@@ -201,7 +201,7 @@ async def test_agents_reply_urgently_exception(
         ctx.reply_urgently("agent 2 msg 1 PRE-SLEEP high priority")
         ctx.reply_urgently("agent 2 msg 2 PRE-SLEEP high priority")
         await asyncio.sleep(0.1)
-        ctx.reply(agent3.trigger(errors_to_messages=errors_to_messages))
+        ctx.reply(agent3.trigger())
         await asyncio.sleep(0.1)
         ctx.reply_urgently("agent 2 msg 3 post-sleep high priority")
         ctx.reply_urgently("agent 2 msg 4 post-sleep high priority")
@@ -210,7 +210,7 @@ async def test_agents_reply_urgently_exception(
     async def agent3(ctx: InteractionContext) -> None:
         ctx.reply_urgently("agent 3 msg 1 PRE-SLEEP high priority")
         ctx.reply_urgently("agent 3 msg 2 PRE-SLEEP high priority")
-        ctx.reply_urgently(agent4.trigger(errors_to_messages=errors_to_messages))
+        ctx.reply_urgently(agent4.trigger())
         await asyncio.sleep(0.2)
         ctx.reply_urgently("agent 3 msg 3 post-sleep high priority")
         ctx.reply_urgently("agent 3 msg 4 post-sleep high priority")
@@ -226,8 +226,10 @@ async def test_agents_reply_urgently_exception(
         await asyncio.sleep(0.1)
         raise ValueError("agent 4 EXCEPTION")
 
-    async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
-        reply_promises = agent1.trigger(errors_to_messages=errors_to_messages)
+    async with MiniAgents(
+        start_everything_soon_by_default=start_everything_soon_by_default, errors_to_messages=errors_to_messages
+    ):
+        reply_promises = agent1.trigger()
 
         if errors_to_messages:
             actual_replies = await reply_promises

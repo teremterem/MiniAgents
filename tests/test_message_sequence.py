@@ -7,7 +7,7 @@ from typing import Optional, Union
 import pytest
 
 from miniagents.messages import Message, MessageSequence, MessageTokenAppender
-from miniagents.promising.promising import PromisingContext
+from miniagents.miniagents import MiniAgents
 
 
 @pytest.mark.parametrize("errors_to_messages", [False, True])
@@ -16,7 +16,7 @@ async def test_message_sequence(start_soon: bool, errors_to_messages: bool) -> N
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence.
     """
-    async with PromisingContext():
+    async with MiniAgents():
         msg_seq1 = MessageSequence(
             appender_capture_errors=True,
             start_soon=start_soon,
@@ -90,7 +90,7 @@ async def test_message_sequence_error(start_soon: bool) -> None:
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
     the right place.
     """
-    async with PromisingContext(appenders_capture_errors_by_default=True):
+    async with MiniAgents(appenders_capture_errors_by_default=True):
         msg_seq1 = MessageSequence(start_soon=start_soon)
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
@@ -130,7 +130,7 @@ async def test_message_sequence_error_to_message(start_soon: bool, collect_token
     """
     Assert that `MessageSequence` converts errors into messages if `errors_to_messages` is set to `True`.
     """
-    async with PromisingContext(appenders_capture_errors_by_default=True):
+    async with MiniAgents(appenders_capture_errors_by_default=True):
         msg_seq = MessageSequence(start_soon=start_soon, errors_to_messages=True)
         with msg_seq.message_appender:
             msg_seq.message_appender.append("msg1")
@@ -158,7 +158,7 @@ async def test_message_sequence_token_error_to_message(
     """
     Assert that `MessageSequence` puts token level errors into the message if `errors_to_messages` is set to `True`.
     """
-    async with PromisingContext(appenders_capture_errors_by_default=True):
+    async with MiniAgents(appenders_capture_errors_by_default=True):
         msg_seq = MessageSequence(start_soon=start_soon, errors_to_messages=True)
         with msg_seq.message_appender:
             msg_seq.message_appender.append("msg1")
