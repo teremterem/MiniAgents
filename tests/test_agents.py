@@ -108,7 +108,7 @@ async def test_sub_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> 
 
 
 @pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
-async def test_agents_reply_urgently(start_everything_soon_by_default: Union[bool, Sentinel]) -> None:
+async def test_agents_reply_out_of_order(start_everything_soon_by_default: bool) -> None:
     @miniagent
     async def agent1(ctx: InteractionContext) -> None:
         ctx.reply("agent 1 msg 1")
@@ -119,48 +119,48 @@ async def test_agents_reply_urgently(start_everything_soon_by_default: Union[boo
 
     @miniagent
     async def agent2(ctx: InteractionContext) -> None:
-        ctx.reply_urgently("agent 2 msg 1 PRE-SLEEP high priority")
-        ctx.reply_urgently("agent 2 msg 2 PRE-SLEEP high priority")
+        ctx.reply_out_of_order("agent 2 msg 1 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order("agent 2 msg 2 PRE-SLEEP out-of-order")
         await asyncio.sleep(0.1)
         ctx.reply(agent3.trigger())
         await asyncio.sleep(0.1)
-        ctx.reply_urgently("agent 2 msg 3 post-sleep high priority")
-        ctx.reply_urgently("agent 2 msg 4 post-sleep high priority")
+        ctx.reply_out_of_order("agent 2 msg 3 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 2 msg 4 post-sleep out-of-order")
 
     @miniagent
     async def agent3(ctx: InteractionContext) -> None:
-        ctx.reply_urgently("agent 3 msg 1 PRE-SLEEP high priority")
-        ctx.reply_urgently("agent 3 msg 2 PRE-SLEEP high priority")
-        ctx.reply_urgently(agent4.trigger())
+        ctx.reply_out_of_order("agent 3 msg 1 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order("agent 3 msg 2 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order(agent4.trigger())
         await asyncio.sleep(0.2)
-        ctx.reply_urgently("agent 3 msg 3 post-sleep high priority")
-        ctx.reply_urgently("agent 3 msg 4 post-sleep high priority")
+        ctx.reply_out_of_order("agent 3 msg 3 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 3 msg 4 post-sleep out-of-order")
 
     @miniagent
     async def agent4(ctx: InteractionContext) -> None:
         await asyncio.sleep(0.3)
-        ctx.reply_urgently("agent 4 msg 1 post-sleep high priority")
-        ctx.reply_urgently("agent 4 msg 2 post-sleep high priority")
+        ctx.reply_out_of_order("agent 4 msg 1 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 4 msg 2 post-sleep out-of-order")
 
     async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
         replies = await agent1.trigger()
         replies = [reply.content for reply in replies]
 
-    if start_everything_soon_by_default in [True, NO_VALUE]:
+    if start_everything_soon_by_default:
         # `start_soon` is True by default in `MiniAgents()`
         assert replies == [
             "agent 1 msg 1",
             "agent 1 msg 2",
-            "agent 2 msg 1 PRE-SLEEP high priority",
-            "agent 2 msg 2 PRE-SLEEP high priority",
-            "agent 3 msg 1 PRE-SLEEP high priority",
-            "agent 3 msg 2 PRE-SLEEP high priority",
-            "agent 2 msg 3 post-sleep high priority",
-            "agent 2 msg 4 post-sleep high priority",
-            "agent 3 msg 3 post-sleep high priority",
-            "agent 3 msg 4 post-sleep high priority",
-            "agent 4 msg 1 post-sleep high priority",
-            "agent 4 msg 2 post-sleep high priority",
+            "agent 2 msg 1 PRE-SLEEP out-of-order",
+            "agent 2 msg 2 PRE-SLEEP out-of-order",
+            "agent 3 msg 1 PRE-SLEEP out-of-order",
+            "agent 3 msg 2 PRE-SLEEP out-of-order",
+            "agent 2 msg 3 post-sleep out-of-order",
+            "agent 2 msg 4 post-sleep out-of-order",
+            "agent 3 msg 3 post-sleep out-of-order",
+            "agent 3 msg 4 post-sleep out-of-order",
+            "agent 4 msg 1 post-sleep out-of-order",
+            "agent 4 msg 2 post-sleep out-of-order",
             "agent 1 msg 3",
             "agent 1 msg 4",
         ]
@@ -168,16 +168,16 @@ async def test_agents_reply_urgently(start_everything_soon_by_default: Union[boo
         assert replies == [
             "agent 1 msg 1",
             "agent 1 msg 2",
-            "agent 2 msg 1 PRE-SLEEP high priority",
-            "agent 2 msg 2 PRE-SLEEP high priority",
-            "agent 2 msg 3 post-sleep high priority",
-            "agent 2 msg 4 post-sleep high priority",
-            "agent 3 msg 1 PRE-SLEEP high priority",
-            "agent 3 msg 2 PRE-SLEEP high priority",
-            "agent 4 msg 1 post-sleep high priority",
-            "agent 4 msg 2 post-sleep high priority",
-            "agent 3 msg 3 post-sleep high priority",
-            "agent 3 msg 4 post-sleep high priority",
+            "agent 2 msg 1 PRE-SLEEP out-of-order",
+            "agent 2 msg 2 PRE-SLEEP out-of-order",
+            "agent 2 msg 3 post-sleep out-of-order",
+            "agent 2 msg 4 post-sleep out-of-order",
+            "agent 3 msg 1 PRE-SLEEP out-of-order",
+            "agent 3 msg 2 PRE-SLEEP out-of-order",
+            "agent 4 msg 1 post-sleep out-of-order",
+            "agent 4 msg 2 post-sleep out-of-order",
+            "agent 3 msg 3 post-sleep out-of-order",
+            "agent 3 msg 4 post-sleep out-of-order",
             "agent 1 msg 3",
             "agent 1 msg 4",
         ]
@@ -185,7 +185,7 @@ async def test_agents_reply_urgently(start_everything_soon_by_default: Union[boo
 
 @pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
 @pytest.mark.parametrize("errors_as_messages", [False, True])
-async def test_agents_reply_urgently_exception(
+async def test_agents_reply_out_of_order_exception(
     start_everything_soon_by_default: bool, errors_as_messages: bool
 ) -> None:
     @miniagent
@@ -198,31 +198,31 @@ async def test_agents_reply_urgently_exception(
 
     @miniagent
     async def agent2(ctx: InteractionContext) -> None:
-        ctx.reply_urgently("agent 2 msg 1 PRE-SLEEP high priority")
-        ctx.reply_urgently("agent 2 msg 2 PRE-SLEEP high priority")
+        ctx.reply_out_of_order("agent 2 msg 1 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order("agent 2 msg 2 PRE-SLEEP out-of-order")
         await asyncio.sleep(0.1)
         ctx.reply(agent3.trigger())
         await asyncio.sleep(0.1)
-        ctx.reply_urgently("agent 2 msg 3 post-sleep high priority")
-        ctx.reply_urgently("agent 2 msg 4 post-sleep high priority")
+        ctx.reply_out_of_order("agent 2 msg 3 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 2 msg 4 post-sleep out-of-order")
 
     @miniagent
     async def agent3(ctx: InteractionContext) -> None:
-        ctx.reply_urgently("agent 3 msg 1 PRE-SLEEP high priority")
-        ctx.reply_urgently("agent 3 msg 2 PRE-SLEEP high priority")
-        ctx.reply_urgently(agent4.trigger())
+        ctx.reply_out_of_order("agent 3 msg 1 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order("agent 3 msg 2 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order(agent4.trigger())
         await asyncio.sleep(0.2)
-        ctx.reply_urgently("agent 3 msg 3 post-sleep high priority")
-        ctx.reply_urgently("agent 3 msg 4 post-sleep high priority")
+        ctx.reply_out_of_order("agent 3 msg 3 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 3 msg 4 post-sleep out-of-order")
 
     @miniagent
     async def agent4(ctx: InteractionContext) -> None:
         await asyncio.sleep(0.3)
-        ctx.reply_urgently("agent 4 msg 1 post-sleep high priority")
-        ctx.reply_urgently("agent 4 msg 2 post-sleep high priority")
+        ctx.reply_out_of_order("agent 4 msg 1 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 4 msg 2 post-sleep out-of-order")
 
         # TODO figure out how to prevent the previous two replies from being lost when the sleep below is removed
-        #  (but also make sure that the same problem doesn't happen when the previous two replies are NOT high priority)
+        #  (but also make sure that the same problem doesn't happen when the previous two replies are NOT out-of-order)
         await asyncio.sleep(0.1)
         raise ValueError("agent 4 EXCEPTION")
 
@@ -245,16 +245,16 @@ async def test_agents_reply_urgently_exception(
         expected_replies = [
             "agent 1 msg 1",
             "agent 1 msg 2",
-            "agent 2 msg 1 PRE-SLEEP high priority",
-            "agent 2 msg 2 PRE-SLEEP high priority",
-            "agent 3 msg 1 PRE-SLEEP high priority",
-            "agent 3 msg 2 PRE-SLEEP high priority",
-            "agent 2 msg 3 post-sleep high priority",
-            "agent 2 msg 4 post-sleep high priority",
-            "agent 3 msg 3 post-sleep high priority",
-            "agent 3 msg 4 post-sleep high priority",
-            "agent 4 msg 1 post-sleep high priority",
-            "agent 4 msg 2 post-sleep high priority",
+            "agent 2 msg 1 PRE-SLEEP out-of-order",
+            "agent 2 msg 2 PRE-SLEEP out-of-order",
+            "agent 3 msg 1 PRE-SLEEP out-of-order",
+            "agent 3 msg 2 PRE-SLEEP out-of-order",
+            "agent 2 msg 3 post-sleep out-of-order",
+            "agent 2 msg 4 post-sleep out-of-order",
+            "agent 3 msg 3 post-sleep out-of-order",
+            "agent 3 msg 4 post-sleep out-of-order",
+            "agent 4 msg 1 post-sleep out-of-order",
+            "agent 4 msg 2 post-sleep out-of-order",
         ]
         if errors_as_messages:
             expected_replies.extend(
@@ -268,21 +268,21 @@ async def test_agents_reply_urgently_exception(
         expected_replies = [
             "agent 1 msg 1",
             "agent 1 msg 2",
-            "agent 2 msg 1 PRE-SLEEP high priority",
-            "agent 2 msg 2 PRE-SLEEP high priority",
-            "agent 2 msg 3 post-sleep high priority",
-            "agent 2 msg 4 post-sleep high priority",
-            "agent 3 msg 1 PRE-SLEEP high priority",
-            "agent 3 msg 2 PRE-SLEEP high priority",
-            "agent 4 msg 1 post-sleep high priority",
-            "agent 4 msg 2 post-sleep high priority",
+            "agent 2 msg 1 PRE-SLEEP out-of-order",
+            "agent 2 msg 2 PRE-SLEEP out-of-order",
+            "agent 2 msg 3 post-sleep out-of-order",
+            "agent 2 msg 4 post-sleep out-of-order",
+            "agent 3 msg 1 PRE-SLEEP out-of-order",
+            "agent 3 msg 2 PRE-SLEEP out-of-order",
+            "agent 4 msg 1 post-sleep out-of-order",
+            "agent 4 msg 2 post-sleep out-of-order",
         ]
         if errors_as_messages:
             expected_replies.extend(
                 [
                     "ValueError: agent 4 EXCEPTION",
-                    "agent 3 msg 3 post-sleep high priority",
-                    "agent 3 msg 4 post-sleep high priority",
+                    "agent 3 msg 3 post-sleep out-of-order",
+                    "agent 3 msg 4 post-sleep out-of-order",
                     "agent 1 msg 3",
                     "agent 1 msg 4",
                 ]
