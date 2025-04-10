@@ -226,8 +226,8 @@ async def test_agents_reply_out_of_order_exception(
             ctx.reply("AGENT 4 MSG 1")
             ctx.reply("AGENT 4 MSG 2")
 
-        # TODO figure out how to prevent the previous two replies from being lost when the sleep below is removed
-        #  (but also make sure that the same problem doesn't happen when the previous two replies are NOT out-of-order)
+        # TODO is it ok that without the sleep below, the previous two replies are lost when they are delivered as
+        #  out-of-order messages ?
         await asyncio.sleep(0.1)
         raise ValueError("agent 4 EXCEPTION")
 
