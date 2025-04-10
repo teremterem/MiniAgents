@@ -441,7 +441,7 @@ class InteractionContext:
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
 
     async def _afinalize(self) -> None:
-        for agent_call in self._child_agent_calls:
+        for agent_call in list(self._child_agent_calls):
             agent_call.finish()
         await self.await_now()
         self._current.reset(self._previous_ctx_token)
