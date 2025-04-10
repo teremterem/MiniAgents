@@ -345,16 +345,16 @@ class MessageSequenceAppender:
         self.normal_appender = StreamAppender(capture_errors=capture_errors)
         self.unordered_appender = StreamAppender(capture_errors=capture_errors)
 
-    def append(self, piece: MessageType, inject_out_of_order: bool = False) -> "MessageSequenceAppender":
+    def append(self, piece: MessageType, out_of_order: bool = False) -> "MessageSequenceAppender":
         frozen_piece = self._freeze_if_needed(piece)
-        if inject_out_of_order:
+        if out_of_order:
             self.unordered_appender.append(frozen_piece)
         else:
             self.normal_appender.append(frozen_piece)
         return self
 
     def inject_out_of_order(self, piece: MessageType) -> "MessageSequenceAppender":
-        self.append(piece, inject_out_of_order=True)
+        self.append(piece, out_of_order=True)
         return self
 
     @classmethod

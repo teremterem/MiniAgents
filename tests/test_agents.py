@@ -185,8 +185,9 @@ async def test_agents_reply_out_of_order(start_everything_soon_by_default: bool)
 
 @pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
 @pytest.mark.parametrize("errors_as_messages", [False, True])
+@pytest.mark.parametrize("try_out_of_order_in_agent4", [False, True])
 async def test_agents_reply_out_of_order_exception(
-    start_everything_soon_by_default: bool, errors_as_messages: bool
+    start_everything_soon_by_default: bool, errors_as_messages: bool, try_out_of_order_in_agent4: bool
 ) -> None:
     @miniagent
     async def agent1(ctx: InteractionContext) -> None:
@@ -218,8 +219,12 @@ async def test_agents_reply_out_of_order_exception(
     @miniagent
     async def agent4(ctx: InteractionContext) -> None:
         await asyncio.sleep(0.3)
-        ctx.reply_out_of_order("agent 4 msg 1 post-sleep out-of-order")
-        ctx.reply_out_of_order("agent 4 msg 2 post-sleep out-of-order")
+        if try_out_of_order_in_agent4:
+            ctx.reply_out_of_order("AGENT 4 MSG 1")
+            ctx.reply_out_of_order("AGENT 4 MSG 2")
+        else:
+            ctx.reply("AGENT 4 MSG 1")
+            ctx.reply("AGENT 4 MSG 2")
 
         # TODO figure out how to prevent the previous two replies from being lost when the sleep below is removed
         #  (but also make sure that the same problem doesn't happen when the previous two replies are NOT out-of-order)
@@ -253,8 +258,8 @@ async def test_agents_reply_out_of_order_exception(
             "agent 2 msg 4 post-sleep out-of-order",
             "agent 3 msg 3 post-sleep out-of-order",
             "agent 3 msg 4 post-sleep out-of-order",
-            "agent 4 msg 1 post-sleep out-of-order",
-            "agent 4 msg 2 post-sleep out-of-order",
+            "AGENT 4 MSG 1",
+            "AGENT 4 MSG 2",
         ]
         if errors_as_messages:
             expected_replies.extend(
@@ -274,8 +279,8 @@ async def test_agents_reply_out_of_order_exception(
             "agent 2 msg 4 post-sleep out-of-order",
             "agent 3 msg 1 PRE-SLEEP out-of-order",
             "agent 3 msg 2 PRE-SLEEP out-of-order",
-            "agent 4 msg 1 post-sleep out-of-order",
-            "agent 4 msg 2 post-sleep out-of-order",
+            "AGENT 4 MSG 1",
+            "AGENT 4 MSG 2",
         ]
         if errors_as_messages:
             expected_replies.extend(

@@ -379,7 +379,7 @@ class InteractionContext:
             raise NoActiveContextError(f"No {cls.__name__} is currently active.")
         return current
 
-    def reply(self, messages: MessageType) -> "InteractionContext":
+    def reply(self, messages: MessageType, out_of_order: bool = False) -> "InteractionContext":
         """
         Send zero or more response messages to the calling agent. The messages can be of any allowed `MessageType`
         (see `miniagent_typing.py`). They will be converted to `Message` objects after they arrive at the
@@ -389,7 +389,7 @@ class InteractionContext:
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
-        self._reply_streamer.append(messages)
+        self._reply_streamer.append(messages, out_of_order=out_of_order)
         return self
 
     def reply_out_of_order(self, messages: MessageType) -> "InteractionContext":
@@ -407,9 +407,7 @@ class InteractionContext:
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
-
-        self._reply_streamer.inject_out_of_order(messages)
-        return self
+        return self.reply(messages, out_of_order=True)
 
     def make_sure_to_wait(self, awaitable: Awaitable[Any], start_soon_if_coroutine: bool = True) -> None:
         """
@@ -475,7 +473,7 @@ class AgentCall:  # pylint: disable=protected-access
         except NoActiveContextError:
             self._mini_agents._child_agent_calls.add(self)
 
-    def send_message(self, messages: MessageType) -> "AgentCall":
+    def send_message(self, messages: MessageType, out_of_order: bool = False) -> "AgentCall":
         """
         Send zero or more input messages to the agent.
 
@@ -483,7 +481,7 @@ class AgentCall:  # pylint: disable=protected-access
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
-        self._message_streamer.append(messages)
+        self._message_streamer.append(messages, out_of_order=out_of_order)
         return self
 
     def send_out_of_order(self, messages: MessageType) -> "AgentCall":
@@ -499,8 +497,7 @@ class AgentCall:  # pylint: disable=protected-access
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
-        self._message_streamer.inject_out_of_order(messages)
-        return self
+        return self.send_message(messages, out_of_order=True)
 
     def reply_sequence(self, finish_call: bool = True) -> MessageSequencePromise:
         """
