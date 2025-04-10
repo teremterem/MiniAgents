@@ -399,7 +399,9 @@ class InteractionContext:
         the calling agent `awaits` for their respective promises.
 
         NOTE: Unlike `reply()`, these response messages are treated as unordered and will bypass the usual message
-        ordering in the resulting sequence as much as possible.
+        ordering in the resulting sequence as much as possible. This means that they will be delivered earlier than
+        some other messages which were sent before them but aren't available yet (e.g. a sequence that is coming from
+        some other agent and was already placed into the response sequence of this agent but is not yet complete).
 
         ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
@@ -488,8 +490,10 @@ class AgentCall:  # pylint: disable=protected-access
         """
         Send zero or more input messages to the agent.
 
-        NOTE: Unlike `send_message()`, these input messages are treated as unordered and will bypass the usual
-        message ordering in the resulting sequence as much as possible.
+        NOTE: Unlike `send_message()`, these input messages are treated as unordered and will bypass the usual message
+        ordering in the resulting sequence as much as possible. This means that they will be delivered earlier than
+        some other messages which were sent before them but aren't available yet (e.g. a sequence that is coming from
+        some other agent and was already placed into the message sequence for this agent but is not yet complete).
 
         ATTENTION! If an async iterator is passed as `messages`, it will not be iterated over immediately and its
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
