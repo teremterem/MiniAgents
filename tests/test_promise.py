@@ -7,9 +7,10 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promising.promising import PromisingContext, StreamAppender, StreamedPromise
+from miniagents.promising.sentinels import NO_VALUE
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_stream_replay_iterator(start_soon: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times, the `streamer` is only called once.
@@ -40,7 +41,7 @@ async def test_stream_replay_iterator(start_soon: bool) -> None:
     assert streamer_iterations == 5
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_stream_replay_iterator_exception(start_soon: bool) -> None:
     """
     Assert that when a `StreamedPromise` is iterated over multiple times and an exception is raised in the middle of
@@ -90,7 +91,7 @@ async def _async_streamer_but_not_generator(_):
         _async_streamer_but_not_generator,
     ],
 )
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_broken_streamer(broken_streamer, start_soon: bool) -> None:
     """
     Assert that when a `StreamedPromise` tries to iterate over a broken `streamer` it does not hang indefinitely, just
@@ -129,7 +130,7 @@ async def test_broken_streamer(broken_streamer, start_soon: bool) -> None:
         TypeError,
     ],
 )
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_broken_stream_resolver(broken_resolver, start_soon: bool) -> None:
     """
     Assert that if `resolver` is broken, `StreamedPromise` still yields the stream and only fails upon `aresolve()`
@@ -171,7 +172,7 @@ async def test_broken_stream_resolver(broken_resolver, start_soon: bool) -> None
     assert actual_resolver_call_count == expected_resolver_call_count
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_streamed_promise_aresolve(start_soon: bool) -> None:
     """
     Assert that:
@@ -207,7 +208,7 @@ async def test_streamed_promise_aresolve(start_soon: bool) -> None:
         assert result2 is result1  # the promise should always return the exact same instance of the result object
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_stream_appender_dont_capture_errors(start_soon: bool) -> None:
     """
     Assert that when `StreamAppender` is not capturing errors, then:
@@ -234,7 +235,7 @@ async def test_stream_appender_dont_capture_errors(start_soon: bool) -> None:
         assert await streamed_promise == [1, 2]
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_streamed_promise_same_instance(start_soon: bool) -> None:
     """
     Assert that `streamer` and `resolver` receive the exact same instance of `StreamedPromise`.

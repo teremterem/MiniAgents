@@ -14,6 +14,7 @@ from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError
 from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
+from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import join_messages
 
@@ -46,7 +47,7 @@ class Message(Frozen):
     def promise(
         cls,
         content: Optional[str] = None,
-        start_soon: Optional[bool] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **preliminary_metadata,
     ) -> "MessagePromise":
@@ -165,7 +166,7 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     def __init__(
         self,
-        start_soon: Optional[bool] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
@@ -261,14 +262,14 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
 
     def __init__(
         self,
-        appender_capture_errors: Optional[bool] = None,
-        start_soon: Optional[bool] = None,
-        errors_as_messages: bool = None,
+        appender_capture_errors: Union[bool, Sentinel] = NO_VALUE,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
+        errors_as_messages: Union[bool, Sentinel] = NO_VALUE,
     ) -> None:
         self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
 
         self._errors_as_messages = errors_as_messages
-        if self._errors_as_messages is None:
+        if self._errors_as_messages is NO_VALUE:
             # pylint: disable=import-outside-toplevel,cyclic-import
             from miniagents.miniagents import MiniAgents
 
@@ -340,7 +341,7 @@ class MessageSequenceAppender:
     normal_appender: StreamAppender[MessageType]
     high_priority_appender: StreamAppender[MessageType]
 
-    def __init__(self, capture_errors: Optional[bool] = None) -> None:
+    def __init__(self, capture_errors: Union[bool, Sentinel] = NO_VALUE) -> None:
         self.normal_appender = StreamAppender(capture_errors=capture_errors)
         self.high_priority_appender = StreamAppender(capture_errors=capture_errors)
 

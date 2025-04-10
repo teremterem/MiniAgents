@@ -8,11 +8,12 @@ import pytest
 
 from miniagents.messages import Message, MessageSequence, MessageTokenAppender
 from miniagents.miniagents import MiniAgents
+from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
-@pytest.mark.parametrize("errors_as_messages", [False, True])
-@pytest.mark.parametrize("start_soon", [False, True, None])
-async def test_message_sequence(start_soon: bool, errors_as_messages: bool) -> None:
+@pytest.mark.parametrize("errors_as_messages", [False, True, NO_VALUE])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
+async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_messages: Union[bool, Sentinel]) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence.
     """
@@ -84,8 +85,8 @@ async def test_message_sequence(start_soon: bool, errors_as_messages: bool) -> N
         ]
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
-async def test_message_sequence_error(start_soon: bool) -> None:
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
+async def test_message_sequence_error(start_soon: Union[bool, Sentinel]) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
     the right place.
@@ -125,8 +126,10 @@ async def test_message_sequence_error(start_soon: bool) -> None:
 
 
 @pytest.mark.parametrize("collect_token_by_token", [False, True, None])
-@pytest.mark.parametrize("start_soon", [False, True, None])
-async def test_message_sequence_error_to_message(start_soon: bool, collect_token_by_token: Optional[bool]) -> None:
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
+async def test_message_sequence_error_to_message(
+    start_soon: Union[bool, Sentinel], collect_token_by_token: Optional[bool]
+) -> None:
     """
     Assert that `MessageSequence` converts errors into messages if `errors_as_messages` is set to `True`.
     """
@@ -150,10 +153,10 @@ async def test_message_sequence_error_to_message(start_soon: bool, collect_token
         ]
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
 @pytest.mark.parametrize("collect_token_by_token", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_message_sequence_token_error_to_message(
-    start_soon: bool, collect_token_by_token: Optional[bool]
+    start_soon: Union[bool, Sentinel], collect_token_by_token: Optional[bool]
 ) -> None:
     """
     Assert that `MessageSequence` puts token level errors into the message if `errors_as_messages` is set to `True`.
@@ -188,6 +191,7 @@ async def _collect_message_sequence_result(
     msg_seq: MessageSequence, collect_token_by_token: Optional[bool]
 ) -> list[Union[str, Message]]:
     if collect_token_by_token is None:
+        # None means lets test resolution of the whole sequence at once
         return list(await msg_seq.sequence_promise)
 
     result = []

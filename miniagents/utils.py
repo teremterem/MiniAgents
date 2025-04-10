@@ -12,6 +12,8 @@ from typing import Any, AsyncIterator, Iterable, Optional, Union
 # noinspection PyProtectedMember
 from pydantic._internal._model_construction import ModelMetaclass
 
+from miniagents.promising.sentinels import NO_VALUE
+
 if typing.TYPE_CHECKING:
     from miniagents.messages import Message, MessagePromise
     from miniagents.miniagent_typing import MessageType
@@ -77,6 +79,9 @@ def join_messages(
     :param message_class: A class of the resulting message. If None, the default Message class will be used.
     """
     from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD, Message, MessageSequence
+
+    if start_soon is None:
+        start_soon = NO_VALUE  # inherit the default value from the current MiniAgents context
 
     if message_class is None:
         message_class = Message

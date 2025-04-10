@@ -10,6 +10,7 @@ import pytest
 from miniagents import Message, MiniAgents
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import Promise, PromisingContext
+from miniagents.promising.sentinels import NO_VALUE
 
 
 async def test_message_nesting_vs_hash_key() -> None:
@@ -69,7 +70,7 @@ async def test_message_nesting_vs_hash_key() -> None:
 
 
 # noinspection PyAsyncCall
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_on_persist_message_event_called_once(start_soon: bool) -> None:
     """
     Assert that the `on_persist_message` event is called only once if the same Message is resolved multiple times.
@@ -98,7 +99,7 @@ async def test_on_persist_message_event_called_once(start_soon: bool) -> None:
     assert persist_message_calls == 1
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
     """
     Assert that the `on_persist_message` event is called twice if two different Messages are resolved.
@@ -128,7 +129,7 @@ async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
     assert persist_message_calls == 2
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_on_persist_message_event_not_called(start_soon: bool) -> None:
     """
     Assert that the `on_persist_message` event is not called if the resolved value is not a Message.

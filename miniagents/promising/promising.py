@@ -219,7 +219,7 @@ class Promise(Generic[T_co]):
     def __init__(
         self,
         *,
-        start_soon: Optional[bool] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
     ) -> None:
@@ -228,7 +228,7 @@ class Promise(Generic[T_co]):
 
         self._promising_context = PromisingContext.get_current()
 
-        if start_soon is None:
+        if start_soon is NO_VALUE:
             start_soon = self._promising_context.start_everything_soon_by_default
         self._start_soon = start_soon
 
@@ -321,7 +321,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         prefill_pieces: Union[Optional[Iterable[PIECE_co]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
-        start_soon: Optional[bool] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
     ) -> None:
         if streamer is not None and prefill_pieces is not NO_VALUE:
             raise ValueError("Cannot provide both 'streamer' and 'prefill_pieces' parameters")
@@ -504,9 +504,9 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
     ```
     """
 
-    def __init__(self, capture_errors: Optional[bool] = None) -> None:
+    def __init__(self, capture_errors: Union[bool, Sentinel] = NO_VALUE) -> None:
         self._promising_context = PromisingContext.get_current()
-        if capture_errors is None:
+        if capture_errors is NO_VALUE:
             capture_errors = self._promising_context.appenders_capture_errors_by_default
         self._capture_errors = capture_errors
         self._queue = asyncio.Queue()

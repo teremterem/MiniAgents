@@ -25,6 +25,7 @@ from miniagents.promising.errors import NoActiveContextError, WrongActiveContext
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseResolvedEventHandler
 from miniagents.promising.promising import Promise, PromisingContext
+from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.utils import MiniAgentsLogFormatter
 
 try:
@@ -56,7 +57,7 @@ class MiniAgents(PromisingContext):
         llm_logger_agent: Union["MiniAgent", bool] = False,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
-        errors_as_messages: bool = None,
+        errors_as_messages: bool = False,
         log_reduced_tracebacks: bool = True,
         logger: Optional[logging.Logger] = None,
         **kwargs,
@@ -241,8 +242,8 @@ class MiniAgent(Frozen):
     def trigger(
         self,
         messages: Optional[MessageType] = None,
-        start_soon: Optional[bool] = None,
-        errors_as_messages: bool = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
+        errors_as_messages: Union[bool, Sentinel] = NO_VALUE,
         **kwargs_to_freeze,
     ) -> MessageSequencePromise:
         agent_call = self.initiate_call(
@@ -254,7 +255,10 @@ class MiniAgent(Frozen):
 
     # noinspection PyProtectedMember
     def initiate_call(
-        self, start_soon: Optional[bool] = None, errors_as_messages: bool = None, **kwargs_to_freeze
+        self,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
+        errors_as_messages: Union[bool, Sentinel] = NO_VALUE,
+        **kwargs_to_freeze,
     ) -> "AgentCall":
         """
         Start a call with the agent. The agent will be called with the provided function kwargs.
