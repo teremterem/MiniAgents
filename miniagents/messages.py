@@ -32,12 +32,7 @@ class Message(Frozen):
 
     content: Optional[str] = None
     content_template: Optional[str] = None
-
-    # # TODO finish "error to message" feature
-    # contains_error: bool = False
-    # error_message: Optional[str] = None
-    # error_class: Optional[str] = None
-    # error_traceback: Optional[str] = None
+    # is_error: Optional[bool] = None  # this field is only present in messages that are errors
 
     @property
     @cached_privately
@@ -268,7 +263,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         self,
         appender_capture_errors: Optional[bool] = None,
         start_soon: Optional[bool] = None,
-        errors_as_messages: bool = None,  # TODO finish "error to message" feature
+        errors_as_messages: bool = None,
     ) -> None:
         self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
 
@@ -450,7 +445,7 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
             return _SafeMessagePromiseProxy(message_promise)
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
+        except Exception as exc:  # pylint: disable=broad-except
             return Message.promise(f"{type(exc).__name__}: {str(exc)}", is_error=True)
 
 
@@ -461,7 +456,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             async for token in self.__wrapped__:
                 tokens.append(token)
             return await self.__wrapped__.aresolve()
-        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
+        except Exception as exc:  # pylint: disable=broad-except
             return Message(f"{''.join(tokens)}\n{type(exc).__name__}: {str(exc)}", is_error=True)
 
     def __await__(self):
@@ -477,5 +472,5 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             return await self.__wrapped__.__anext__()
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except  # TODO finish "error to message" feature
+        except Exception as exc:  # pylint: disable=broad-except
             return f"\n{type(exc).__name__}: {str(exc)}"
