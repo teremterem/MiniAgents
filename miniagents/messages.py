@@ -268,22 +268,22 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         self,
         appender_capture_errors: Optional[bool] = None,
         start_soon: Optional[bool] = None,
-        errors_to_messages: bool = None,  # TODO finish "error to message" feature
+        errors_as_messages: bool = None,  # TODO finish "error to message" feature
     ) -> None:
         self.message_appender = MessageSequenceAppender(capture_errors=appender_capture_errors)
 
-        self._errors_to_messages = errors_to_messages
-        if self._errors_to_messages is None:
+        self._errors_as_messages = errors_as_messages
+        if self._errors_as_messages is None:
             # pylint: disable=import-outside-toplevel,cyclic-import
             from miniagents.miniagents import MiniAgents
 
-            self._errors_to_messages = MiniAgents.get_current().errors_to_messages
+            self._errors_as_messages = MiniAgents.get_current().errors_as_messages
 
         super().__init__(
             normal_streamer=self.message_appender.normal_appender,
             high_priority_streamer=self.message_appender.high_priority_appender,
             start_soon=start_soon,
-            sequence_promise_class=SafeMessageSequencePromise if self._errors_to_messages else MessageSequencePromise,
+            sequence_promise_class=SafeMessageSequencePromise if self._errors_as_messages else MessageSequencePromise,
         )
 
     @classmethod

@@ -44,7 +44,7 @@ class MiniAgents(PromisingContext):
     stream_llm_tokens_by_default: bool
     llm_logger_agent: Union["MiniAgent", bool]
     on_persist_message_handlers: list[PersistMessageEventHandler]
-    errors_to_messages: bool
+    errors_as_messages: bool
     log_reduced_tracebacks: bool
 
     logger: logging.Logger = _default_logger
@@ -56,7 +56,7 @@ class MiniAgents(PromisingContext):
         llm_logger_agent: Union["MiniAgent", bool] = False,
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
-        errors_to_messages: bool = None,
+        errors_as_messages: bool = None,
         log_reduced_tracebacks: bool = True,
         logger: Optional[logging.Logger] = None,
         **kwargs,
@@ -68,7 +68,7 @@ class MiniAgents(PromisingContext):
         )
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
-        self.errors_to_messages = errors_to_messages
+        self.errors_as_messages = errors_as_messages
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
@@ -242,11 +242,11 @@ class MiniAgent(Frozen):
         self,
         messages: Optional[MessageType] = None,
         start_soon: Optional[bool] = None,
-        errors_to_messages: bool = None,
+        errors_as_messages: bool = None,
         **kwargs_to_freeze,
     ) -> MessageSequencePromise:
         agent_call = self.initiate_call(
-            start_soon=start_soon, errors_to_messages=errors_to_messages, **kwargs_to_freeze
+            start_soon=start_soon, errors_as_messages=errors_as_messages, **kwargs_to_freeze
         )
         if messages is not None:
             agent_call.send_message(messages)
@@ -254,19 +254,19 @@ class MiniAgent(Frozen):
 
     # noinspection PyProtectedMember
     def initiate_call(
-        self, start_soon: Optional[bool] = None, errors_to_messages: bool = None, **kwargs_to_freeze
+        self, start_soon: Optional[bool] = None, errors_as_messages: bool = None, **kwargs_to_freeze
     ) -> "AgentCall":
         """
         Start a call with the agent. The agent will be called with the provided function kwargs.
         TODO expand this docstring ?
         """
-        input_sequence = MessageSequence(start_soon=False, errors_to_messages=False)
+        input_sequence = MessageSequence(start_soon=False, errors_as_messages=False)
         reply_sequence = AgentReplyMessageSequence(
             mini_agent=self,
             kwargs_to_freeze=kwargs_to_freeze,
             input_sequence_promise=input_sequence.sequence_promise,
             start_soon=start_soon,
-            errors_to_messages=errors_to_messages,
+            errors_as_messages=errors_as_messages,
         )
 
         agent_call = AgentCall(
@@ -597,9 +597,9 @@ class AgentReplyMessageSequence(MessageSequence):
                 except Exception as e:
                     MiniAgents.get_current()._log_background_error_once(
                         e,
-                        # if `errors_to_messages` is True, we don't want to log the error, we treat it as "just another
+                        # if `errors_as_messages` is True, we don't want to log the error, we treat it as "just another
                         # message" in that case
-                        fake_log=self._errors_to_messages,
+                        fake_log=self._errors_as_messages,
                     )
                     raise
                 finally:

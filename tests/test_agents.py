@@ -184,9 +184,9 @@ async def test_agents_reply_urgently(start_everything_soon_by_default: Union[boo
 
 
 @pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
-@pytest.mark.parametrize("errors_to_messages", [False, True, None])
+@pytest.mark.parametrize("errors_as_messages", [False, True, None])
 async def test_agents_reply_urgently_exception(
-    start_everything_soon_by_default: Union[bool, Sentinel], errors_to_messages: bool
+    start_everything_soon_by_default: Union[bool, Sentinel], errors_as_messages: bool
 ) -> None:
     @miniagent
     async def agent1(ctx: InteractionContext) -> None:
@@ -227,11 +227,11 @@ async def test_agents_reply_urgently_exception(
         raise ValueError("agent 4 EXCEPTION")
 
     async with MiniAgents(
-        start_everything_soon_by_default=start_everything_soon_by_default, errors_to_messages=errors_to_messages
+        start_everything_soon_by_default=start_everything_soon_by_default, errors_as_messages=errors_as_messages
     ):
         reply_promises = agent1.trigger()
 
-        if errors_to_messages:
+        if errors_as_messages:
             actual_replies = await reply_promises
             actual_replies = [reply.content for reply in actual_replies]
         else:
@@ -256,7 +256,7 @@ async def test_agents_reply_urgently_exception(
             "agent 4 msg 1 post-sleep high priority",
             "agent 4 msg 2 post-sleep high priority",
         ]
-        if errors_to_messages:
+        if errors_as_messages:
             expected_replies.extend(
                 [
                     "ValueError: agent 4 EXCEPTION",
@@ -277,7 +277,7 @@ async def test_agents_reply_urgently_exception(
             "agent 4 msg 1 post-sleep high priority",
             "agent 4 msg 2 post-sleep high priority",
         ]
-        if errors_to_messages:
+        if errors_as_messages:
             expected_replies.extend(
                 [
                     "ValueError: agent 4 EXCEPTION",
