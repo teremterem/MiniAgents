@@ -34,8 +34,9 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         self._start_soon = start_soon
         if self._start_soon is NO_VALUE:
             self._start_soon = self._promising_context.start_everything_soon_by_default
+        del start_soon
 
-        self._queue = asyncio.Queue() if self._start_soon else None
+        self._queue = asyncio.Queue()
 
         # # TODO why do we need this promise ? it doesn't seem to accomplish anything
         # self._input_promise = StreamedPromise(
@@ -50,7 +51,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         self.sequence_promise = sequence_promise_class(
             streamer=self._astreamer,  # self._input_promise,
             resolver=self._aresolver,
-            start_soon=start_soon,
+            start_soon=self._start_soon,
         )
 
     def _flattener(self, zero_or_more_items: IN_co) -> AsyncIterator[OUT_co]:  # pylint: disable=method-hidden
@@ -65,6 +66,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         #  "exceptions as messages" mode (the latter being a partially implemented feature)
         async def _process_unordered_piece(zero_or_more_items: OUT_co) -> None:
             try:
+                # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence
                 async for item in self._flattener(zero_or_more_items):
                     self._queue.put_nowait(item)
             except BaseException as exc:  # pylint: disable=broad-except
@@ -91,6 +93,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
 
             async for zero_or_more_items in self._normal_streamer_aiter:
                 try:
+                    # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence
                     async for item in self._flattener(zero_or_more_items):
                         self._queue.put_nowait(item)
                 except BaseException as exc:  # pylint: disable=broad-except
@@ -101,34 +104,21 @@ class FlatSequence(Generic[IN_co, OUT_co]):
             self._queue.put_nowait(END_OF_QUEUE)
 
     async def _astreamer(self, _) -> AsyncIterator[OUT_co]:
-        if self._start_soon:
-            normal_stream_finished = self._normal_streamer_aiter is None  # will always be `False`, though
-            unordered_stream_finished = self._unordered_streamer_aiter is None
+        normal_stream_finished = self._normal_streamer_aiter is None  # will always be `False`, though
+        unordered_stream_finished = self._unordered_streamer_aiter is None
 
-            self._promising_context.start_soon(self._amerge_streams())
-            while True:
-                item = await self._queue.get()
-                if item is END_OF_UNORDERED_QUEUE:
-                    unordered_stream_finished = True
-                elif item is END_OF_QUEUE:
-                    normal_stream_finished = True
-                else:
-                    yield item
+        self._promising_context.start_soon(self._amerge_streams())
+        while True:
+            item = await self._queue.get()
+            if item is END_OF_UNORDERED_QUEUE:
+                unordered_stream_finished = True
+            elif item is END_OF_QUEUE:
+                normal_stream_finished = True
+            else:
+                yield item
 
-                if normal_stream_finished and unordered_stream_finished:
-                    return
-        else:
-            # since we are not in `start_soon` mode, we will just yield all the unordered items first
-            # and the normal items after that
-            if self._unordered_streamer_aiter is not None:
-                async for zero_or_more_items in self._unordered_streamer_aiter:
-                    # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence
-                    async for item in self._flattener(zero_or_more_items):
-                        yield item
-            async for zero_or_more_items in self._normal_streamer_aiter:
-                # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence
-                async for item in self._flattener(zero_or_more_items):
-                    yield item
+            if normal_stream_finished and unordered_stream_finished:
+                return
 
     async def _aresolver(self, seq_promise: StreamedPromise[OUT_co, tuple[OUT_co, ...]]) -> tuple[OUT_co, ...]:
         # pylint: disable=consider-using-generator

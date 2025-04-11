@@ -146,41 +146,22 @@ async def test_agents_reply_out_of_order(start_everything_soon_by_default: bool)
         replies = await agent1.trigger()
         replies = [reply.content for reply in replies]
 
-    if start_everything_soon_by_default:
-        # `start_soon` is True by default in `MiniAgents()`
-        assert replies == [
-            "agent 1 msg 1",
-            "agent 1 msg 2",
-            "agent 2 msg 1 PRE-SLEEP out-of-order",
-            "agent 2 msg 2 PRE-SLEEP out-of-order",
-            "agent 3 msg 1 PRE-SLEEP out-of-order",
-            "agent 3 msg 2 PRE-SLEEP out-of-order",
-            "agent 2 msg 3 post-sleep out-of-order",
-            "agent 2 msg 4 post-sleep out-of-order",
-            "agent 3 msg 3 post-sleep out-of-order",
-            "agent 3 msg 4 post-sleep out-of-order",
-            "agent 4 msg 1 post-sleep out-of-order",
-            "agent 4 msg 2 post-sleep out-of-order",
-            "agent 1 msg 3",
-            "agent 1 msg 4",
-        ]
-    else:
-        assert replies == [
-            "agent 1 msg 1",
-            "agent 1 msg 2",
-            "agent 2 msg 1 PRE-SLEEP out-of-order",
-            "agent 2 msg 2 PRE-SLEEP out-of-order",
-            "agent 2 msg 3 post-sleep out-of-order",
-            "agent 2 msg 4 post-sleep out-of-order",
-            "agent 3 msg 1 PRE-SLEEP out-of-order",
-            "agent 3 msg 2 PRE-SLEEP out-of-order",
-            "agent 4 msg 1 post-sleep out-of-order",
-            "agent 4 msg 2 post-sleep out-of-order",
-            "agent 3 msg 3 post-sleep out-of-order",
-            "agent 3 msg 4 post-sleep out-of-order",
-            "agent 1 msg 3",
-            "agent 1 msg 4",
-        ]
+    assert replies == [
+        "agent 1 msg 1",
+        "agent 1 msg 2",
+        "agent 2 msg 1 PRE-SLEEP out-of-order",
+        "agent 2 msg 2 PRE-SLEEP out-of-order",
+        "agent 3 msg 1 PRE-SLEEP out-of-order",
+        "agent 3 msg 2 PRE-SLEEP out-of-order",
+        "agent 2 msg 3 post-sleep out-of-order",
+        "agent 2 msg 4 post-sleep out-of-order",
+        "agent 3 msg 3 post-sleep out-of-order",
+        "agent 3 msg 4 post-sleep out-of-order",
+        "agent 4 msg 1 post-sleep out-of-order",
+        "agent 4 msg 2 post-sleep out-of-order",
+        "agent 1 msg 3",
+        "agent 1 msg 4",
+    ]
 
 
 @pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
@@ -245,52 +226,27 @@ async def test_agents_reply_out_of_order_exception(
                 async for reply_promise in reply_promises:
                     actual_replies.append((await reply_promise).content)
 
-    if start_everything_soon_by_default:
-        # `start_soon` is True by default in `MiniAgents()`
-        expected_replies = [
-            "agent 1 msg 1",
-            "agent 1 msg 2",
-            "agent 2 msg 1 PRE-SLEEP out-of-order",
-            "agent 2 msg 2 PRE-SLEEP out-of-order",
-            "agent 3 msg 1 PRE-SLEEP out-of-order",
-            "agent 3 msg 2 PRE-SLEEP out-of-order",
-            "agent 2 msg 3 post-sleep out-of-order",
-            "agent 2 msg 4 post-sleep out-of-order",
-            "agent 3 msg 3 post-sleep out-of-order",
-            "agent 3 msg 4 post-sleep out-of-order",
-            "AGENT 4 MSG 1",
-            "AGENT 4 MSG 2",
-        ]
-        if errors_as_messages:
-            expected_replies.extend(
-                [
-                    "ValueError: agent 4 EXCEPTION",
-                    "agent 1 msg 3",
-                    "agent 1 msg 4",
-                ]
-            )
-    else:
-        expected_replies = [
-            "agent 1 msg 1",
-            "agent 1 msg 2",
-            "agent 2 msg 1 PRE-SLEEP out-of-order",
-            "agent 2 msg 2 PRE-SLEEP out-of-order",
-            "agent 2 msg 3 post-sleep out-of-order",
-            "agent 2 msg 4 post-sleep out-of-order",
-            "agent 3 msg 1 PRE-SLEEP out-of-order",
-            "agent 3 msg 2 PRE-SLEEP out-of-order",
-            "AGENT 4 MSG 1",
-            "AGENT 4 MSG 2",
-        ]
-        if errors_as_messages:
-            expected_replies.extend(
-                [
-                    "ValueError: agent 4 EXCEPTION",
-                    "agent 3 msg 3 post-sleep out-of-order",
-                    "agent 3 msg 4 post-sleep out-of-order",
-                    "agent 1 msg 3",
-                    "agent 1 msg 4",
-                ]
-            )
+    expected_replies = [
+        "agent 1 msg 1",
+        "agent 1 msg 2",
+        "agent 2 msg 1 PRE-SLEEP out-of-order",
+        "agent 2 msg 2 PRE-SLEEP out-of-order",
+        "agent 3 msg 1 PRE-SLEEP out-of-order",
+        "agent 3 msg 2 PRE-SLEEP out-of-order",
+        "agent 2 msg 3 post-sleep out-of-order",
+        "agent 2 msg 4 post-sleep out-of-order",
+        "agent 3 msg 3 post-sleep out-of-order",
+        "agent 3 msg 4 post-sleep out-of-order",
+        "AGENT 4 MSG 1",
+        "AGENT 4 MSG 2",
+    ]
+    if errors_as_messages:
+        expected_replies.extend(
+            [
+                "ValueError: agent 4 EXCEPTION",
+                "agent 1 msg 3",
+                "agent 1 msg 4",
+            ]
+        )
 
     assert actual_replies == expected_replies
