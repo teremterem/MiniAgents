@@ -419,17 +419,22 @@ class InteractionContext:
             awaitable = self._mini_agents.start_soon(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
-    async def await_now(self) -> None:
+    async def await_now(self, suppress_deadlock_warning: bool = False) -> None:
         """
         Wait for all the awaitables that were fed into the `make_sure_to_wait` method to finish. If this method is not
         called in the agent explicitly, then all such awaitables will be awaited for automatically before the agent's
         reply sequence is closed.
         """
-        if any(not call.is_finished for call in self._child_agent_calls):
+        if not suppress_deadlock_warning and any(not call.is_finished for call in self._child_agent_calls):
             warnings.warn(
                 "Potential deadlock detected: unfinished agent call(s) encountered. "
-                "Make sure to call .finish() on all AgentCall objects or use reply_sequence() "
-                "with finish_call=True (default) to avoid deadlocks.",
+                "Make sure to call `finish()` on all `AgentCall` objects or use `reply_sequence()` "
+                "with `finish_call=True` (default) to avoid potential deadlocks.\n"
+                "\n"
+                "A deadlock is possible if a certain agent's response is registered to be awaited for and "
+                "`await_now()` is called before the corresponding `AgentCall` is finished (this would lead to both "
+                "waiting for each other). Use `suppress_deadlock_warning=True` to suppress this warning if you are "
+                "sure that this is not the case.",
                 RuntimeWarning,
                 stacklevel=2,
             )
