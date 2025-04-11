@@ -434,7 +434,7 @@ class InteractionContext:
                 "A deadlock is possible if a certain agent's response is registered to be awaited for and "
                 "`await_now()` is called before the corresponding `AgentCall` is finished (this would lead to both "
                 "waiting for each other). Use `suppress_deadlock_warning=True` to suppress this warning if you are "
-                "sure that this is not the case.",
+                "sure that this is not the case.\n",
                 RuntimeWarning,
                 stacklevel=2,
             )
