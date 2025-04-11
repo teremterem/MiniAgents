@@ -8,10 +8,10 @@ from typing import Union
 import pytest
 
 from miniagents import InteractionContext, MiniAgents, miniagent
-from miniagents.promising.sentinels import Sentinel
+from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None:
     """
     Test that agents can run in parallel.
@@ -39,7 +39,7 @@ async def test_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None
             await replies1
             await replies2
 
-    if start_soon in [True, None]:
+    if start_soon in [True, NO_VALUE]:
         # `start_soon` is True by default in `MiniAgents()`
         assert event_sequence == [
             "agent1 - start",
@@ -57,7 +57,7 @@ async def test_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None
         ]
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_sub_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None:
     """
     Test that two agents that were called by the third agent can run in parallel.
@@ -89,7 +89,7 @@ async def test_sub_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> 
             # for their respective functions to be called
             await replies
 
-    if start_soon in [True, None]:
+    if start_soon in [True, NO_VALUE]:
         # `start_soon` is True by default in `MiniAgents()`
         assert event_sequence == [
             "agent1 - start",
@@ -105,3 +105,148 @@ async def test_sub_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> 
             "agent2 - start",
             "agent2 - end",
         ]
+
+
+@pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
+async def test_agents_reply_out_of_order(start_everything_soon_by_default: bool) -> None:
+    @miniagent
+    async def agent1(ctx: InteractionContext) -> None:
+        ctx.reply("agent 1 msg 1")
+        ctx.reply("agent 1 msg 2")
+        ctx.reply(agent2.trigger())
+        ctx.reply("agent 1 msg 3")
+        ctx.reply("agent 1 msg 4")
+
+    @miniagent
+    async def agent2(ctx: InteractionContext) -> None:
+        ctx.reply_out_of_order("agent 2 msg 1 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order("agent 2 msg 2 PRE-SLEEP out-of-order")
+        await asyncio.sleep(0.1)
+        ctx.reply(agent3.trigger())
+        await asyncio.sleep(0.1)
+        ctx.reply_out_of_order("agent 2 msg 3 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 2 msg 4 post-sleep out-of-order")
+
+    @miniagent
+    async def agent3(ctx: InteractionContext) -> None:
+        ctx.reply_out_of_order("agent 3 msg 1 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order("agent 3 msg 2 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order(agent4.trigger())
+        await asyncio.sleep(0.2)
+        ctx.reply_out_of_order("agent 3 msg 3 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 3 msg 4 post-sleep out-of-order")
+
+    @miniagent
+    async def agent4(ctx: InteractionContext) -> None:
+        await asyncio.sleep(0.3)
+        ctx.reply_out_of_order("agent 4 msg 1 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 4 msg 2 post-sleep out-of-order")
+
+    async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
+        replies = await agent1.trigger()
+        replies = [reply.content for reply in replies]
+
+    assert replies == [
+        "agent 1 msg 1",
+        "agent 1 msg 2",
+        "agent 2 msg 1 PRE-SLEEP out-of-order",
+        "agent 2 msg 2 PRE-SLEEP out-of-order",
+        "agent 3 msg 1 PRE-SLEEP out-of-order",
+        "agent 3 msg 2 PRE-SLEEP out-of-order",
+        "agent 2 msg 3 post-sleep out-of-order",
+        "agent 2 msg 4 post-sleep out-of-order",
+        "agent 3 msg 3 post-sleep out-of-order",
+        "agent 3 msg 4 post-sleep out-of-order",
+        "agent 4 msg 1 post-sleep out-of-order",
+        "agent 4 msg 2 post-sleep out-of-order",
+        "agent 1 msg 3",
+        "agent 1 msg 4",
+    ]
+
+
+@pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
+@pytest.mark.parametrize("errors_as_messages", [False, True])
+@pytest.mark.parametrize("try_out_of_order_in_agent4", [False, True])
+async def test_agents_reply_out_of_order_exception(
+    start_everything_soon_by_default: bool, errors_as_messages: bool, try_out_of_order_in_agent4: bool
+) -> None:
+    @miniagent
+    async def agent1(ctx: InteractionContext) -> None:
+        ctx.reply("agent 1 msg 1")
+        ctx.reply("agent 1 msg 2")
+        ctx.reply(agent2.trigger())
+        ctx.reply("agent 1 msg 3")
+        ctx.reply("agent 1 msg 4")
+
+    @miniagent
+    async def agent2(ctx: InteractionContext) -> None:
+        ctx.reply_out_of_order("agent 2 msg 1 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order("agent 2 msg 2 PRE-SLEEP out-of-order")
+        await asyncio.sleep(0.1)
+        ctx.reply(agent3.trigger())
+        await asyncio.sleep(0.1)
+        ctx.reply_out_of_order("agent 2 msg 3 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 2 msg 4 post-sleep out-of-order")
+
+    @miniagent
+    async def agent3(ctx: InteractionContext) -> None:
+        ctx.reply_out_of_order("agent 3 msg 1 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order("agent 3 msg 2 PRE-SLEEP out-of-order")
+        ctx.reply_out_of_order(agent4.trigger())
+        await asyncio.sleep(0.2)
+        ctx.reply_out_of_order("agent 3 msg 3 post-sleep out-of-order")
+        ctx.reply_out_of_order("agent 3 msg 4 post-sleep out-of-order")
+
+    @miniagent
+    async def agent4(ctx: InteractionContext) -> None:
+        await asyncio.sleep(0.3)
+        if try_out_of_order_in_agent4:
+            ctx.reply_out_of_order("AGENT 4 MSG 1")
+            ctx.reply_out_of_order("AGENT 4 MSG 2")
+        else:
+            ctx.reply("AGENT 4 MSG 1")
+            ctx.reply("AGENT 4 MSG 2")
+
+        # TODO is it ok that without the sleep below, the previous two replies are lost when they are delivered as
+        #  out-of-order messages ?
+        await asyncio.sleep(0.1)
+        raise ValueError("agent 4 EXCEPTION")
+
+    async with MiniAgents(
+        start_everything_soon_by_default=start_everything_soon_by_default, errors_as_messages=errors_as_messages
+    ):
+        reply_promises = agent1.trigger()
+
+        if errors_as_messages:
+            actual_replies = await reply_promises
+            actual_replies = [reply.content for reply in actual_replies]
+        else:
+            actual_replies = []
+            with pytest.raises(ValueError):
+                async for reply_promise in reply_promises:
+                    actual_replies.append((await reply_promise).content)
+
+    expected_replies = [
+        "agent 1 msg 1",
+        "agent 1 msg 2",
+        "agent 2 msg 1 PRE-SLEEP out-of-order",
+        "agent 2 msg 2 PRE-SLEEP out-of-order",
+        "agent 3 msg 1 PRE-SLEEP out-of-order",
+        "agent 3 msg 2 PRE-SLEEP out-of-order",
+        "agent 2 msg 3 post-sleep out-of-order",
+        "agent 2 msg 4 post-sleep out-of-order",
+        "agent 3 msg 3 post-sleep out-of-order",
+        "agent 3 msg 4 post-sleep out-of-order",
+        "AGENT 4 MSG 1",
+        "AGENT 4 MSG 2",
+    ]
+    if errors_as_messages:
+        expected_replies.extend(
+            [
+                "ValueError: agent 4 EXCEPTION",
+                "agent 1 msg 3",
+                "agent 1 msg 4",
+            ]
+        )
+
+    assert actual_replies == expected_replies

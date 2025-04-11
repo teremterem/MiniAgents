@@ -101,7 +101,7 @@ class FullRepoMessage(Message, ModelSingleton):
                     for prefix in [
                         ".",
                         "dist/",
-                        # relative_posix_path(SELF_DEV_PROMPTS),  # TODO Oleksandr: skip the prompts file ?
+                        # relative_posix_path(SELF_DEV_PROMPTS),  # TODO skip the prompts file ?
                         "htmlcov/",
                         "images/",
                         # "LICENSE",

@@ -7,21 +7,22 @@ from typing import Optional, Union
 import pytest
 
 from miniagents.messages import Message, MessageSequence, MessageTokenAppender
-from miniagents.promising.promising import PromisingContext
+from miniagents.miniagents import MiniAgents
+from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
-@pytest.mark.parametrize("errors_to_messages", [False, True])
-@pytest.mark.parametrize("start_soon", [False, True, None])
-async def test_message_sequence(start_soon: bool, errors_to_messages: bool) -> None:
+@pytest.mark.parametrize("errors_as_messages", [False, True, NO_VALUE])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
+async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_messages: Union[bool, Sentinel]) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence.
     """
-    async with PromisingContext():
+    async with MiniAgents():
         msg_seq1 = MessageSequence(
             appender_capture_errors=True,
             start_soon=start_soon,
-            # assert that `errors_to_messages` parameter has no effect on the outcome when there are no errors
-            errors_to_messages=errors_to_messages,
+            # assert that `errors_as_messages` parameter has no effect on the outcome when there are no errors
+            errors_as_messages=errors_as_messages,
         )
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
@@ -31,7 +32,7 @@ async def test_message_sequence(start_soon: bool, errors_to_messages: bool) -> N
             msg_seq2 = MessageSequence(
                 appender_capture_errors=True,
                 start_soon=start_soon,
-                errors_to_messages=errors_to_messages,
+                errors_as_messages=errors_as_messages,
             )
             with msg_seq2.message_appender:
                 msg_seq2.message_appender.append("msg4")
@@ -39,7 +40,7 @@ async def test_message_sequence(start_soon: bool, errors_to_messages: bool) -> N
                 msg_seq3 = MessageSequence(
                     appender_capture_errors=True,
                     start_soon=start_soon,
-                    errors_to_messages=errors_to_messages,
+                    errors_as_messages=errors_as_messages,
                 )
                 with msg_seq3.message_appender:
                     msg_seq3.message_appender.append("msg5")
@@ -84,13 +85,13 @@ async def test_message_sequence(start_soon: bool, errors_to_messages: bool) -> N
         ]
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
-async def test_message_sequence_error(start_soon: bool) -> None:
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
+async def test_message_sequence_error(start_soon: Union[bool, Sentinel]) -> None:
     """
     Assert that `MessageSequence` "flattens" a hierarchy of messages into a flat sequence, but raises an error at
     the right place.
     """
-    async with PromisingContext(appenders_capture_errors_by_default=True):
+    async with MiniAgents(appenders_capture_errors_by_default=True):
         msg_seq1 = MessageSequence(start_soon=start_soon)
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
@@ -125,13 +126,15 @@ async def test_message_sequence_error(start_soon: bool) -> None:
 
 
 @pytest.mark.parametrize("collect_token_by_token", [False, True, None])
-@pytest.mark.parametrize("start_soon", [False, True, None])
-async def test_message_sequence_error_to_message(start_soon: bool, collect_token_by_token: Optional[bool]) -> None:
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
+async def test_message_sequence_error_to_message(
+    start_soon: Union[bool, Sentinel], collect_token_by_token: Optional[bool]
+) -> None:
     """
-    Assert that `MessageSequence` converts errors into messages if `errors_to_messages` is set to `True`.
+    Assert that `MessageSequence` converts errors into messages if `errors_as_messages` is set to `True`.
     """
-    async with PromisingContext(appenders_capture_errors_by_default=True):
-        msg_seq = MessageSequence(start_soon=start_soon, errors_to_messages=True)
+    async with MiniAgents(appenders_capture_errors_by_default=True):
+        msg_seq = MessageSequence(start_soon=start_soon, errors_as_messages=True)
         with msg_seq.message_appender:
             msg_seq.message_appender.append("msg1")
             raise ValueError("error1")
@@ -141,25 +144,25 @@ async def test_message_sequence_error_to_message(start_soon: bool, collect_token
     if collect_token_by_token:
         assert message_result == [
             "msg1",
-            "error1",
+            "ValueError: error1",
         ]
     else:
         assert message_result == [
             Message(content="msg1"),
-            Message(content="error1", is_error=True),
+            Message(content="ValueError: error1", is_error=True),
         ]
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
 @pytest.mark.parametrize("collect_token_by_token", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_message_sequence_token_error_to_message(
-    start_soon: bool, collect_token_by_token: Optional[bool]
+    start_soon: Union[bool, Sentinel], collect_token_by_token: Optional[bool]
 ) -> None:
     """
-    Assert that `MessageSequence` puts token level errors into the message if `errors_to_messages` is set to `True`.
+    Assert that `MessageSequence` puts token level errors into the message if `errors_as_messages` is set to `True`.
     """
-    async with PromisingContext(appenders_capture_errors_by_default=True):
-        msg_seq = MessageSequence(start_soon=start_soon, errors_to_messages=True)
+    async with MiniAgents(appenders_capture_errors_by_default=True):
+        msg_seq = MessageSequence(start_soon=start_soon, errors_as_messages=True)
         with msg_seq.message_appender:
             msg_seq.message_appender.append("msg1")
             with MessageTokenAppender() as token_appender:
@@ -175,12 +178,12 @@ async def test_message_sequence_token_error_to_message(
             "msg1",
             "token1",
             "token2",
-            "\nerror1",
+            "\nValueError: error1",
         ]
     else:
         assert result == [
             Message(content="msg1"),
-            Message(content="token1token2\nerror1"),
+            Message(content="token1token2\nValueError: error1", is_error=True),
         ]
 
 
@@ -188,6 +191,7 @@ async def _collect_message_sequence_result(
     msg_seq: MessageSequence, collect_token_by_token: Optional[bool]
 ) -> list[Union[str, Message]]:
     if collect_token_by_token is None:
+        # None means lets test resolution of the whole sequence at once
         return list(await msg_seq.sequence_promise)
 
     result = []

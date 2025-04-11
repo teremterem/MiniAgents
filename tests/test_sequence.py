@@ -7,10 +7,11 @@ from typing import AsyncIterator
 import pytest
 
 from miniagents.promising.promising import PromisingContext, StreamAppender
+from miniagents.promising.sentinels import NO_VALUE
 from miniagents.promising.sequence import FlatSequence
 
 
-@pytest.mark.parametrize("start_soon", [False, True, None])
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_flat_sequence(start_soon: bool) -> None:
     """
     Assert that `FlatSequence` "flattens" the input sequence of (0, 1, 2, 3) into the output sequence of
@@ -24,7 +25,7 @@ async def test_flat_sequence(start_soon: bool) -> None:
     async with PromisingContext():
         stream_appender = StreamAppender[int](capture_errors=True)
         flat_sequence = FlatSequence[int, int](
-            incoming_streamer=stream_appender,
+            stream_appender,
             flattener=flattener,
             start_soon=start_soon,
         )

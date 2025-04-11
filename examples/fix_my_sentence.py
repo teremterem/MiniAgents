@@ -15,7 +15,7 @@ async def main() -> None:
     """
     The main conversation loop.
     """
-    # TODO Oleksandr: incorporate "think before you answer" ?
+    # TODO incorporate "think before you answer" ?
     dialog_loop.trigger(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences that the user throws at you. "
