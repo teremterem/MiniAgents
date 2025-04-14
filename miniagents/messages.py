@@ -451,6 +451,7 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
+                # TODO support `log_reduced_tracebacks` here as well ?
                 tb = exc.__traceback__
             else:
                 tb = None
@@ -468,6 +469,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
+                # TODO support `log_reduced_tracebacks` here as well ?
                 tb = exc.__traceback__
             else:
                 tb = None
@@ -493,6 +495,7 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
+                # TODO support `log_reduced_tracebacks` here as well ?
                 tb = exc.__traceback__
             else:
                 tb = None
