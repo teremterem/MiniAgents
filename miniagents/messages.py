@@ -455,6 +455,7 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
                 error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
+
             return Message.promise(error_msg, is_error=True)
 
 
@@ -473,6 +474,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
                 error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
+
             return Message(
                 f"{''.join(tokens)}\n{error_msg}",
                 is_error=True,
@@ -499,4 +501,5 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
                 error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
+
             return f"\n{error_msg}"
