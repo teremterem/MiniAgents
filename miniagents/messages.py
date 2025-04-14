@@ -2,6 +2,7 @@
 `Message` class and other classes related to messages.
 """
 
+import traceback
 import warnings
 from pprint import pformat
 from types import TracebackType
@@ -436,7 +437,7 @@ class SafeMessageSequencePromise(MessageSequencePromise):
         return _SafeMessagePromiseIteratorProxy(super().__aiter__())
 
 
-# pylint: disable=abstract-method
+# pylint: disable=abstract-method,import-outside-toplevel
 
 
 class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
@@ -447,7 +448,13 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
         except StopAsyncIteration:
             raise
         except Exception as exc:  # pylint: disable=broad-except
-            return Message.promise(f"{type(exc).__name__}: {str(exc)}", is_error=True)
+            from miniagents.miniagents import MiniAgents
+
+            if MiniAgents.get_current().error_tracebacks_in_messages:
+                tb = exc.__traceback__
+            else:
+                tb = None
+            return Message.promise("".join(traceback.format_exception(type(exc), exc, tb)), is_error=True)
 
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
@@ -458,7 +465,16 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
                 tokens.append(token)
             return await self.__wrapped__.aresolve()
         except Exception as exc:  # pylint: disable=broad-except
-            return Message(f"{''.join(tokens)}\n{type(exc).__name__}: {str(exc)}", is_error=True)
+            from miniagents.miniagents import MiniAgents
+
+            if MiniAgents.get_current().error_tracebacks_in_messages:
+                tb = exc.__traceback__
+            else:
+                tb = None
+            return Message(
+                f"{''.join(tokens)}\n{''.join(traceback.format_exception(type(exc), exc, tb))}",
+                is_error=True,
+            )
 
     def __await__(self):
         return self.aresolve().__await__()
@@ -474,4 +490,10 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
         except StopAsyncIteration:
             raise
         except Exception as exc:  # pylint: disable=broad-except
-            return f"\n{type(exc).__name__}: {str(exc)}"
+            from miniagents.miniagents import MiniAgents
+
+            if MiniAgents.get_current().error_tracebacks_in_messages:
+                tb = exc.__traceback__
+            else:
+                tb = None
+            return f"\n{''.join(traceback.format_exception(type(exc), exc, tb))}"

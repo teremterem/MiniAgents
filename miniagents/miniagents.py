@@ -46,6 +46,7 @@ class MiniAgents(PromisingContext):
     llm_logger_agent: Union["MiniAgent", bool]
     on_persist_message_handlers: list[PersistMessageEventHandler]
     errors_as_messages: bool
+    error_tracebacks_in_messages: bool
     log_reduced_tracebacks: bool
 
     logger: logging.Logger = _default_logger
@@ -58,6 +59,7 @@ class MiniAgents(PromisingContext):
         on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         errors_as_messages: bool = False,
+        error_tracebacks_in_messages: bool = False,
         log_reduced_tracebacks: bool = True,
         logger: Optional[logging.Logger] = None,
         **kwargs,
@@ -70,6 +72,7 @@ class MiniAgents(PromisingContext):
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
         self.errors_as_messages = errors_as_messages
+        self.error_tracebacks_in_messages = error_tracebacks_in_messages
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
@@ -389,6 +392,11 @@ class InteractionContext:
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
+        # TODO make it possible to send additional attributes through kwargs
+        #  if there are no concrete messages, message promises or async iterators ?
+        #  (will there be any confusion in regards to how kwargs are used in `trigger`, though ?)
+        # TODO set agent_alias attribute automatically
+        #  if there are no concrete messages, message promises or async iterators ?
         self._reply_streamer.append(messages, out_of_order=out_of_order)
         return self
 
@@ -407,6 +415,11 @@ class InteractionContext:
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
+        # TODO make it possible to send additional attributes through kwargs
+        #  if there are no concrete messages, message promises or async iterators ?
+        #  (will there be any confusion in regards to how kwargs are used in `trigger`, though ?)
+        # TODO set agent_alias attribute automatically
+        #  if there are no concrete messages, message promises or async iterators ?
         return self.reply(messages, out_of_order=True)
 
     def make_sure_to_wait(self, awaitable: Awaitable[Any], start_soon_if_coroutine: bool = True) -> None:
@@ -486,6 +499,11 @@ class AgentCall:  # pylint: disable=protected-access
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
+        # TODO make it possible to send additional attributes through kwargs
+        #  if there are no concrete messages, message promises or async iterators ?
+        #  (will there be any confusion in regards to how kwargs are used in `trigger`, though ?)
+        # TODO set agent_alias attribute automatically
+        #  if there are no concrete messages, message promises or async iterators ?
         self._message_streamer.append(messages, out_of_order=out_of_order)
         return self
 
@@ -502,6 +520,11 @@ class AgentCall:  # pylint: disable=protected-access
         content will not be "frozen" exactly at the moment it was passed (they way regular iterables and other types
         would).
         """
+        # TODO make it possible to send additional attributes through kwargs
+        #  if there are no concrete messages, message promises or async iterators ?
+        #  (will there be any confusion in regards to how kwargs are used in `trigger`, though ?)
+        # TODO set agent_alias attribute automatically
+        #  if there are no concrete messages, message promises or async iterators ?
         return self.send_message(messages, out_of_order=True)
 
     def reply_sequence(self, finish_call: bool = True) -> MessageSequencePromise:

@@ -243,7 +243,7 @@ async def test_agents_reply_out_of_order_exception(
     if errors_as_messages:
         expected_replies.extend(
             [
-                "ValueError: agent 4 EXCEPTION",
+                "ValueError: agent 4 EXCEPTION\n",
                 "agent 1 msg 3",
                 "agent 1 msg 4",
             ]
