@@ -452,10 +452,10 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
                 # TODO support `log_reduced_tracebacks` here as well ?
-                tb = exc.__traceback__
+                error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             else:
-                tb = None
-            return Message.promise("".join(traceback.format_exception(type(exc), exc, tb)), is_error=True)
+                error_msg = f"{type(exc).__name__}: {exc}"
+            return Message.promise(error_msg, is_error=True)
 
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
@@ -470,11 +470,11 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
                 # TODO support `log_reduced_tracebacks` here as well ?
-                tb = exc.__traceback__
+                error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             else:
-                tb = None
+                error_msg = f"{type(exc).__name__}: {exc}"
             return Message(
-                f"{''.join(tokens)}\n{''.join(traceback.format_exception(type(exc), exc, tb))}",
+                f"{''.join(tokens)}\n{error_msg}",
                 is_error=True,
             )
 
@@ -496,7 +496,7 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
                 # TODO support `log_reduced_tracebacks` here as well ?
-                tb = exc.__traceback__
+                error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
             else:
-                tb = None
-            return f"\n{''.join(traceback.format_exception(type(exc), exc, tb))}"
+                error_msg = f"{type(exc).__name__}: {exc}"
+            return f"\n{error_msg}"
