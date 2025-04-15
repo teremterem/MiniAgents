@@ -45,6 +45,7 @@ async def dialog_loop(
     ctx: InteractionContext,
     user_agent: Optional[MiniAgent],  # pylint: disable=redefined-outer-name
     assistant_agent: Optional[MiniAgent],
+    prompt_at_the_end: bool = True,
 ) -> None:
     """
     Run a loop that chains the user agent and the assistant agent in a dialog. The `dialog_loop` agent uses
@@ -52,12 +53,20 @@ async def dialog_loop(
     the user agent (which also means that they aren't shared with the underlying `history_agent` and don't
     show up in chat history as a result).
     """
+    prompt_messages = await ctx.message_promises
+
+    if prompt_messages:
+        if prompt_at_the_end:
+            assistant_agent = prompt_agent.fork(target_agent=assistant_agent, prompt_suffix=prompt_messages)
+        else:
+            assistant_agent = prompt_agent.fork(target_agent=assistant_agent, prompt_prefix=prompt_messages)
+
     ctx.reply(
         agent_loop.trigger(
             agents=[
                 user_agent,
                 AWAIT,
-                prompt_agent.fork(target_agent=assistant_agent, prompt_prefix=await ctx.message_promises),
+                assistant_agent,
             ],
             raise_keyboard_interrupt=False,
         )

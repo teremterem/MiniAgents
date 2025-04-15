@@ -141,16 +141,17 @@ async def test_message_sequence_error_to_message(
 
         message_result = await _collect_message_sequence_result(msg_seq, collect_token_by_token)
 
-    if collect_token_by_token:
-        assert message_result == [
-            "msg1",
-            "ValueError: error1",
-        ]
-    else:
-        assert message_result == [
-            Message(content="msg1"),
-            Message(content="ValueError: error1", is_error=True),
-        ]
+        if collect_token_by_token:
+            assert message_result == [
+                "msg1",
+                "ValueError: error1",
+            ]
+            assert (await msg_seq.sequence_promise)[-1].is_error
+        else:
+            assert message_result == [
+                Message(content="msg1"),
+                Message(content="ValueError: error1", is_error=True),
+            ]
 
 
 @pytest.mark.parametrize("collect_token_by_token", [False, True, None])
@@ -173,18 +174,19 @@ async def test_message_sequence_token_error_to_message(
 
         result = await _collect_message_sequence_result(msg_seq, collect_token_by_token)
 
-    if collect_token_by_token:
-        assert result == [
-            "msg1",
-            "token1",
-            "token2",
-            "\nValueError: error1",
-        ]
-    else:
-        assert result == [
-            Message(content="msg1"),
-            Message(content="token1token2\nValueError: error1", is_error=True),
-        ]
+        if collect_token_by_token:
+            assert result == [
+                "msg1",
+                "token1",
+                "token2",
+                "\nValueError: error1",
+            ]
+            assert (await msg_seq.sequence_promise)[-1].is_error
+        else:
+            assert result == [
+                Message(content="msg1"),
+                Message(content="token1token2\nValueError: error1", is_error=True),
+            ]
 
 
 async def _collect_message_sequence_result(
