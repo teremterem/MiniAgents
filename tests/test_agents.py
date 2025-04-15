@@ -57,6 +57,27 @@ async def test_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None
         ]
 
 
+async def test_full_duplex_communication():
+    @miniagent
+    async def some_agent(ctx: InteractionContext) -> None:
+        async for msg_promise in ctx.message_promises:
+            ctx.reply(f"you said: {await msg_promise}")
+
+    async with MiniAgents():
+        call = some_agent.initiate_call()
+        reply_aiter = call.reply_sequence(finish_call=False).__aiter__()
+
+        # Test first exchange
+        call.send_message("hello")
+        response1 = await (await reply_aiter.__anext__())
+        assert str(response1) == "you said: hello"
+
+        # Test second exchange
+        call.send_message("world")
+        response2 = await (await reply_aiter.__anext__())
+        assert str(response2) == "you said: world"
+
+
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_sub_agents_run_in_parallel(start_soon: Union[bool, Sentinel]) -> None:
     """
