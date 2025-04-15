@@ -6,7 +6,7 @@ branch = true
 
 [tool.poetry]
 name = "miniagents"
-version = "0.0.29"
+version = "0.0.30"
 description = """\
 An open-source, async-first framework for building multi-agent AI systems with an innovative approach to parallelism, \
 so you can focus on creating intelligent agents, not on managing the concurrency of your flows.\
