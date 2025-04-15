@@ -144,13 +144,13 @@ async def test_message_sequence_error_to_message(
         if collect_token_by_token:
             assert message_result == [
                 "msg1",
-                "ValueError: error1\n",
+                "ValueError: error1",
             ]
             assert (await msg_seq.sequence_promise)[-1].is_error
         else:
             assert message_result == [
                 Message(content="msg1"),
-                Message(content="ValueError: error1\n", is_error=True),
+                Message(content="ValueError: error1", is_error=True),
             ]
 
 
@@ -179,13 +179,13 @@ async def test_message_sequence_token_error_to_message(
                 "msg1",
                 "token1",
                 "token2",
-                "\nValueError: error1\n",
+                "\nValueError: error1",
             ]
             assert (await msg_seq.sequence_promise)[-1].is_error
         else:
             assert result == [
                 Message(content="msg1"),
-                Message(content="token1token2\nValueError: error1\n", is_error=True),
+                Message(content="token1token2\nValueError: error1", is_error=True),
             ]
 
 
