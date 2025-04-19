@@ -27,9 +27,15 @@
     </a>
 </p>
 
+<!--
 <p align="center">
     <img alt="MiniAgents on the Moon"
-        src="https://github.com/teremterem/MiniAgents/raw/main/images/miniagents-5-by-4-fixed.jpeg">
+        src="https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-04-19.jpeg">
+</p>
+-->
+<p align="center">
+    <img alt="MiniAgents on the Moon"
+        src="https://github.com/teremterem/MiniAgents/raw/improvements/miscellaneous/images/banner-miniagents-2025-04-19.jpeg">
 </p>
 
 MiniAgents is an open-source Python framework that takes the complexity out of building multi-agent AI systems. With its innovative approach to parallelism and async-first design, you can focus on creating intelligent agents in an easy to follow procedural fashion while the framework handles the concurrency challenges for you.
