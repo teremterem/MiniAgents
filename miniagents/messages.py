@@ -171,6 +171,8 @@ class MessagePromise(StreamedPromise[str, Message]):
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: type[Message] = Message,
+        # TODO is `preliminary_metadata` a good name given that it eventually overrides any other metadata entries
+        #  that might have been produced by the `message_token_streamer` after streaming has finished ?
         **preliminary_metadata,
     ) -> None:
         # Validate initialization parameters
@@ -199,9 +201,8 @@ class MessagePromise(StreamedPromise[str, Message]):
                         "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
                     )
                 self._metadata_so_far = message_token_streamer.metadata_so_far
-                self._metadata_so_far.update(self.preliminary_metadata)
             else:
-                self._metadata_so_far = dict(self.preliminary_metadata)
+                self._metadata_so_far = {}
 
             self._amessage_token_streamer = message_token_streamer
             super().__init__(start_soon=start_soon)
@@ -215,6 +216,8 @@ class MessagePromise(StreamedPromise[str, Message]):
         message as a single token. This implementation is only called if the message was pre-filled. In case of real
         streaming the constructor of the class always overrides this method with an externally supplied streamer.
         """
+        # TODO test coverage shows that the line below does get executed, but when and why ?
+        #  maybe just try to do nothing here ?
         yield str(self.preliminary_metadata)
 
     async def _aresolver(self) -> Message:
@@ -224,6 +227,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         tokens = [token async for token in self]
         # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
 
+        # TODO check `preliminary_metadata` for `content` and `content_template` too
         if MESSAGE_CONTENT_FIELD in self._metadata_so_far or MESSAGE_CONTENT_TEMPLATE_FIELD in self._metadata_so_far:
             raise ValueError(
                 f"The `metadata_so_far` dictionary must NOT contain neither {MESSAGE_CONTENT_FIELD!r} nor "
@@ -235,7 +239,9 @@ class MessagePromise(StreamedPromise[str, Message]):
                 f"{pformat(self._metadata_so_far)}"
             )
 
-        return self.message_class(content="".join(tokens), **self._metadata_so_far)
+        return self.message_class(
+            content="".join(tokens), **{**self._metadata_so_far, **self.preliminary_metadata.as_kwargs()}
+        )
 
 
 class MessageTokenAppender(StreamAppender[str]):
