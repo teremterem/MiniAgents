@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from miniagents.messages import MESSAGE_CONTENT_FIELD, Message
 from miniagents.miniagents import InteractionContext, miniagent
 from miniagents.promising.ext.frozen import Frozen
+from miniagents.utils import display_agent_trace, get_current_agent_trace
 
 GLOBAL_MESSAGE_HISTORY: list[Message] = []
 
@@ -198,14 +199,25 @@ async def markdown_llm_logger_agent(
     log_file = log_folder / (
         f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
     )
-
     if log_file.exists():
         # this should not happen - not only there are milliseconds in the file name, but also a random number in the
         # range of 0 through 4095 (0 through 0xfff)
         raise FileExistsError(f"Log file already exists: {log_file}")
 
+    agent_trace = get_current_agent_trace()
+    if agent_trace[0] is ctx.this_agent:
+        # there is no point in displaying the agent responsible for logging in the agent trace
+        agent_trace = agent_trace[1:]
+
+    if agent_trace:
+        preamble = f"{display_agent_trace(agent_trace)}\n\n"
+    else:
+        preamble = ""
+
     if request_metadata:
-        log_file.write_text(f"```python\n{pformat(request_metadata.model_dump())}\n```\n", encoding="utf-8")
+        preamble += f"```python\n{pformat(request_metadata.model_dump())}\n```\n"
+
+    log_file.write_text(preamble, encoding="utf-8")
 
     await MarkdownHistoryAgent.trigger(ctx.message_promises, history_md_file=str(log_file), ignore_no_history=True)
 

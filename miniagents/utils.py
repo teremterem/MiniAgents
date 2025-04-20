@@ -17,6 +17,7 @@ from miniagents.promising.sentinels import NO_VALUE
 if typing.TYPE_CHECKING:
     from miniagents.messages import Message, MessagePromise
     from miniagents.miniagent_typing import MessageType
+    from miniagents.miniagents import MiniAgent
 
 
 class SingletonMeta(type):
@@ -155,7 +156,7 @@ class MiniAgentsLogFormatter(logging.Formatter):
         return Path(match.group(1))
 
     def formatException(self, ei) -> str:
-        from miniagents.miniagents import MiniAgents, InteractionContext
+        from miniagents.miniagents import MiniAgents
         from miniagents.promising.errors import PromisingContextError
 
         try:
@@ -205,11 +206,26 @@ class MiniAgentsLogFormatter(logging.Formatter):
         # Add the agent trace if enabled
         if self.include_agent_trace:
             try:
-                agent_trace_str = " <- ".join(
-                    agent.alias for agent in InteractionContext.get_current().get_agent_trace()
-                )
-                lines.append(f"\nAgent trace:\n{agent_trace_str}\n---\n")
+                lines.append(f"\nAgent trace:\n{display_agent_trace()}\n---\n")
             except PromisingContextError:
                 pass
 
         return "".join(lines)
+
+
+def get_current_agent_trace() -> list["MiniAgent"]:
+    """
+    Get the current agent trace.
+    """
+    from miniagents.miniagents import InteractionContext
+
+    return InteractionContext.get_current().get_agent_trace()
+
+
+def display_agent_trace(agent_trace: Optional[Iterable["MiniAgent"]] = None) -> str:
+    """
+    Display the current agent trace, or the one provided as an argument.
+    """
+    if agent_trace is None:
+        agent_trace = get_current_agent_trace()
+    return " <- ".join([agent.alias for agent in agent_trace])
