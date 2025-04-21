@@ -199,7 +199,8 @@ class ErrorMessage(TextMessage):
     is_error: bool = True
 
 
-class MessagePromise(StreamedPromise[Token, Message]):
+class MessagePromise(StreamedPromise[str, Message]):
+    # TODO use Token object instead of str and allow appending empty text tokens too, for simplicity
     """
     A promise of a message that can be streamed token by token.
     """
