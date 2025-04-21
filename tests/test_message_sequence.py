@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import pytest
 
-from miniagents.messages import Message, MessageSequence, MessageTokenAppender
+from miniagents.messages import ErrorMessage, Message, MessageSequence, MessageTokenAppender, TextMessage
 from miniagents.miniagents import MiniAgents
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
@@ -27,7 +27,7 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
             msg_seq1.message_appender.append({"content": "msg2", "some_attr": 2})
-            msg_seq1.message_appender.append(Message(content="msg3", another_attr=3))
+            msg_seq1.message_appender.append(TextMessage("msg3", another_attr=3))
 
             msg_seq2 = MessageSequence(
                 appender_capture_errors=True,
@@ -45,27 +45,27 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
                 with msg_seq3.message_appender:
                     msg_seq3.message_appender.append("msg5")
                     msg_seq3.message_appender.append(["msg6", "msg7"])
-                    msg_seq3.message_appender.append([[Message(content="msg8", another_attr=8)]])
+                    msg_seq3.message_appender.append([[TextMessage("msg8", another_attr=8)]])
 
                 msg_seq2.message_appender.append(msg_seq3.sequence_promise)
                 msg_seq2.message_appender.append("msg9")
 
             msg_seq1.message_appender.append(msg_seq2.sequence_promise)
-            msg_seq1.message_appender.append(Message.promise(content="msg10", yet_another_attr=10))
+            msg_seq1.message_appender.append(TextMessage.promise("msg10", yet_another_attr=10))
             # msg_seq1.message_appender.append(ValueError("msg11"))
 
         message_result = [await msg_promise async for msg_promise in msg_seq1.sequence_promise]
         assert message_result == [
-            Message(content="msg1"),
-            Message(content="msg2", some_attr=2),
-            Message(content="msg3", another_attr=3),
-            Message(content="msg4"),
-            Message(content="msg5"),
-            Message(content="msg6"),
-            Message(content="msg7"),
-            Message(content="msg8", another_attr=8),
-            Message(content="msg9"),
-            Message(content="msg10", yet_another_attr=10),
+            TextMessage("msg1"),
+            TextMessage("msg2", some_attr=2),
+            TextMessage("msg3", another_attr=3),
+            TextMessage("msg4"),
+            TextMessage("msg5"),
+            TextMessage("msg6"),
+            TextMessage("msg7"),
+            TextMessage("msg8", another_attr=8),
+            TextMessage("msg9"),
+            TextMessage("msg10", yet_another_attr=10),
             # ValueError("msg11"),
         ]
 
@@ -118,9 +118,9 @@ async def test_message_sequence_error(start_soon: Union[bool, Sentinel]) -> None
                 message_result.append(await msg_promise)
 
     assert message_result == [
-        Message(content="msg1"),
-        Message(content="msg2"),
-        Message(content="msg3"),
+        TextMessage("msg1"),
+        TextMessage("msg2"),
+        TextMessage("msg3"),
         # ValueError("msg4"),
     ]
 
@@ -149,8 +149,8 @@ async def test_message_sequence_error_to_message(
             assert (await msg_seq.sequence_promise)[-1].is_error
         else:
             assert message_result == [
-                Message(content="msg1"),
-                Message(content="ValueError: error1", is_error=True),
+                TextMessage("msg1"),
+                ErrorMessage("ValueError: error1"),
             ]
 
 
@@ -184,8 +184,8 @@ async def test_message_sequence_token_error_to_message(
             assert (await msg_seq.sequence_promise)[-1].is_error
         else:
             assert result == [
-                Message(content="msg1"),
-                Message(content="token1token2\nValueError: error1", is_error=True),
+                TextMessage("msg1"),
+                ErrorMessage("token1token2\nValueError: error1"),
             ]
 
 

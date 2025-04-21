@@ -8,7 +8,7 @@ from typing import Callable
 import pytest
 from dotenv import load_dotenv
 
-from miniagents import Message, MiniAgent, MiniAgents
+from miniagents import Message, MiniAgent, MiniAgents, TextMessage
 
 load_dotenv()
 
@@ -46,7 +46,7 @@ async def test_llm(
     """
     async with MiniAgents(start_everything_soon_by_default=start_soon):
         reply_sequence = llm_agent.trigger(
-            Message(content="ANSWER:", role="assistant"),
+            TextMessage("ANSWER:", role="assistant"),
             system=(
                 "This is a test to verify that you are online. Your response will be validated using a strict "
                 "program that does not tolerate any deviations from the expected output at all. Please respond "

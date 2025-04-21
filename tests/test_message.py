@@ -1,5 +1,5 @@
 """
-Tests for the `Message`-based models.
+Tests for the `TextMessage`-based models.
 """
 
 import hashlib
@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from miniagents import Message, MiniAgents
+from miniagents import Message, MiniAgents, TextMessage
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import Promise, PromisingContext
 from miniagents.promising.sentinels import NO_VALUE
@@ -25,22 +25,22 @@ async def test_message_nesting_vs_hash_key() -> None:
         """
 
     async with PromisingContext():
-        message = Message(
-            content="юнікод",
+        message = TextMessage(
+            "юнікод",
             extra_field=[
                 15,
                 {
                     "role": "user",
-                    "nested_nested": (Message(content="nested_text"), Message(content="nested_text2")),
-                    "nested_nested2": [Message(content="nested_text2")],
+                    "nested_nested": (TextMessage("nested_text"), TextMessage("nested_text2")),
+                    "nested_nested2": [TextMessage(content="nested_text2")],
                 },
             ],
-            extra_node=SpecialNode(nested_nested=Message(content="nested_text3")),
-            nested_message=Message(content="nested_text"),
+            extra_node=SpecialNode(nested_nested=TextMessage("nested_text3")),
+            nested_message=TextMessage("nested_text"),
         )
 
         expected_structure = {
-            "class_": "Message",
+            "class_": "TextMessage",
             "content": "юнікод",
             "content_template": None,
             "extra_field": (
@@ -49,17 +49,17 @@ async def test_message_nesting_vs_hash_key() -> None:
                     "class_": "Frozen",
                     "role": "user",
                     "nested_nested__hash_keys": (
-                        "03ebecb2b3a3d5508ea47adf49fb9dfcefec45c6",
-                        "b4b1128ee0d4be12150e3e5f69b5d7f302db689f",
+                        "05549eba31f5f800e6f720331d99cb93c62cfaab",
+                        "73695a09b7a91de152d65fbea44b4813e97ecd9d",
                     ),
-                    "nested_nested2__hash_keys": ("b4b1128ee0d4be12150e3e5f69b5d7f302db689f",),
+                    "nested_nested2__hash_keys": ("73695a09b7a91de152d65fbea44b4813e97ecd9d",),
                 },
             ),
             "extra_node": {
                 "class_": "SpecialNode",
-                "nested_nested__hash_key": "af776c46f2e2c2e01e159cd8622320686bc6b4b2",
+                "nested_nested__hash_key": "4df48c769ae0669b377dc307f51a8df9cc671cc1",
             },
-            "nested_message__hash_key": "03ebecb2b3a3d5508ea47adf49fb9dfcefec45c6",
+            "nested_message__hash_key": "05549eba31f5f800e6f720331d99cb93c62cfaab",
         }
         assert message.serialize() == expected_structure
 
@@ -162,9 +162,9 @@ def test_message_content_template() -> None:
     """
     Test that the variable substitution in the content template works as expected.
     """
-    message = Message(
+    message = TextMessage(
         "Some content",
         content_template="Hello, {name}! I am {class_}. Here is some content: {content}",
         name="Alice",
     )
-    assert str(message) == "Hello, Alice! I am Message. Here is some content: Some content"
+    assert str(message) == "Hello, Alice! I am TextMessage. Here is some content: Some content"
