@@ -5,9 +5,10 @@ Tests for the `TextMessage`-based models.
 import hashlib
 import json
 
+from pydantic import ValidationError
 import pytest
 
-from miniagents import Message, MiniAgents, TextMessage
+from miniagents import Message, MiniAgents, StrictMessage, TextMessage
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import Promise, PromisingContext
 from miniagents.promising.sentinels import NO_VALUE
@@ -180,3 +181,35 @@ def test_message_content_template_only() -> None:
         name="Alice",
     )
     assert str(message) == "Hello, Alice! I am TextMessage. Here is some content: None"
+
+
+def test_strict_message_subclass_extra_field_fails() -> None:
+    """
+    Test that instantiating a subclass of StrictMessage with an extra field raises a ValidationError.
+    """
+
+    class MyStrictMessage(StrictMessage):
+        field1: str
+
+    with pytest.raises(ValidationError) as excinfo:
+        MyStrictMessage(field1="value1", extra_field="extra_value")
+
+    assert "Extra inputs are not permitted" in str(excinfo.value)
+
+
+def test_strict_message_subclass_correct_fields_succeeds() -> None:
+    """
+    Test that instantiating a subclass of StrictMessage with only defined fields succeeds.
+    """
+
+    class MyStrictMessage(StrictMessage):
+        field1: str
+        field2: int = 42
+
+    message = MyStrictMessage(field1="value1")
+    assert message.field1 == "value1"
+    assert message.field2 == 42
+
+    message = MyStrictMessage(field1="value1", field2=100)
+    assert message.field1 == "value1"
+    assert message.field2 == 100
