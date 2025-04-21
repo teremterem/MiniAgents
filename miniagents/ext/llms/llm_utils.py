@@ -47,6 +47,14 @@ class AssistantMessage(LLMMessage):
     agent_alias: Optional[str] = None
 
 
+class EmbeddingMessage(Message):
+    """
+    A message that contains an embedding (a vector of numbers).
+    """
+
+    embedding: tuple[float, ...]
+
+
 class PromptLogMessage(LLMMessage):
     """
     A message that is a part of a prompt to be logged.
