@@ -1,5 +1,5 @@
 """
-Tests for the `TextMessage`-based models.
+Tests for the `Message`-based models.
 """
 
 import hashlib
