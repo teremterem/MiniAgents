@@ -8,12 +8,12 @@ from typing import Any, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
-from miniagents.messages import Message, MessagePromise, MessageTokenAppender
+from miniagents.messages import Message, MessagePromise, MessageTokenAppender, TextMessage
 from miniagents.miniagents import InteractionContext, MiniAgent, MiniAgents
 from miniagents.promising.ext.frozen import Frozen
 
 
-class LLMMessage(Message):
+class LLMMessage(TextMessage):
     """
     A message class that is used to interact with large language models (either as input or as output).
     """
@@ -132,14 +132,14 @@ class LLMAgent(ABC, BaseModel):
         return response_promise
 
 
-def message_to_llm_dict(message: Message) -> dict[str, Any]:
+def message_to_llm_dict(message: Message, default_role: str = "user") -> dict[str, Any]:
     """
     Convert a message to a dictionary that can be sent to a large language model.
     """
     try:
         role = message.role
     except AttributeError:
-        role = "user"
+        role = default_role
 
     return {
         "role": role,

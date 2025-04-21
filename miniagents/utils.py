@@ -113,7 +113,7 @@ def join_messages(
             if reference_original_messages:
                 metadata_so_far["original_messages"].append(await message_promise)
 
-            # TODO should I care about merging values of the same keys instead of just overwriting them ?
+            # TODO should we care about merging values of the same keys instead of just overwriting them ?
             metadata_so_far.update(
                 (key, value)
                 for key, value in await message_promise

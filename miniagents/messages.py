@@ -4,7 +4,6 @@
 
 import traceback
 import warnings
-from pprint import pformat
 from types import TracebackType
 from typing import Any, AsyncIterator, Iterator, Optional, Union
 
@@ -161,9 +160,29 @@ class TextMessage(Message):
         content: Optional[str] = None,
         *,
         content_template: Optional[str] = None,
-        **kwargs,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
+        message_token_streamer: Optional[MessageTokenStreamer] = None,
+        **preliminary_metadata,
     ) -> "MessagePromise":
-        return super().promise(content=content, content_template=content_template, **kwargs)
+        if message_token_streamer:
+            if content is not None:
+                raise ValueError(
+                    "Cannot provide both 'content' and 'message_token_streamer' parameters. "
+                    "Please provide only one of them."
+                )
+            return super().promise(
+                content_template=content_template,
+                start_soon=start_soon,
+                message_token_streamer=message_token_streamer,
+                **preliminary_metadata,
+            )
+        return super().promise(
+            content=content,
+            content_template=content_template,
+            start_soon=start_soon,
+            message_token_streamer=message_token_streamer,
+            **preliminary_metadata,
+        )
 
     def __init__(self, content: Optional[str] = None, **metadata) -> None:
         super().__init__(content=content, **metadata)
@@ -250,18 +269,6 @@ class MessagePromise(StreamedPromise[Token, Message]):
         """
         tokens = [token async for token in self]
         # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
-
-        # TODO check `preliminary_metadata` for `content` and `content_template` too
-        if MESSAGE_CONTENT_FIELD in self._metadata_so_far or MESSAGE_CONTENT_TEMPLATE_FIELD in self._metadata_so_far:
-            raise ValueError(
-                f"The `metadata_so_far` dictionary must NOT contain neither {MESSAGE_CONTENT_FIELD!r} nor "
-                f"{MESSAGE_CONTENT_TEMPLATE_FIELD!r} keys. The value of {MESSAGE_CONTENT_FIELD!r} is meant to be "
-                f"resolved from the stream.\n"
-                f"\n"
-                f"Dictionary that was received:\n"
-                f"\n"
-                f"{pformat(self._metadata_so_far)}"
-            )
 
         return self.message_class(
             content="".join(tokens), **{**self._metadata_so_far, **self.preliminary_metadata.as_kwargs()}
