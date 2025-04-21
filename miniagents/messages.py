@@ -22,16 +22,6 @@ MESSAGE_CONTENT_FIELD = "content"
 MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 
 
-class Token(Frozen): ...
-
-
-class TextToken(Token):
-    content: str
-
-    def _as_string(self) -> str:
-        return self.content or ""
-
-
 class Message(Frozen):
     @property
     @cached_privately
@@ -207,7 +197,6 @@ class MessagePromise(StreamedPromise[str, Message]):
 
     preliminary_metadata: Frozen
     message_class: type[Message]
-    token_class: type[Token]
 
     def __init__(
         self,
