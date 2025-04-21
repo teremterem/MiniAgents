@@ -22,6 +22,16 @@ MESSAGE_CONTENT_FIELD = "content"
 MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 
 
+class Token(Frozen): ...
+
+
+class TextToken(Token):
+    content: str
+
+    def _as_string(self) -> str:
+        return self.content or ""
+
+
 class Message(Frozen):
     @property
     @cached_privately
@@ -189,14 +199,14 @@ class ErrorMessage(TextMessage):
     is_error: bool = True
 
 
-class MessagePromise(StreamedPromise[str, Message]):
-    # TODO use Token object instead of str and allow appending empty text tokens too, for simplicity
+class MessagePromise(StreamedPromise[Token, Message]):
     """
     A promise of a message that can be streamed token by token.
     """
 
     preliminary_metadata: Frozen
     message_class: type[Message]
+    token_class: type[Token]
 
     def __init__(
         self,
