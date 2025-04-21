@@ -158,9 +158,10 @@ async def test_on_persist_message_event_not_called(start_soon: bool) -> None:
     assert persist_message_calls == 0
 
 
-def test_message_content_template() -> None:
+def test_message_content_template_and_content() -> None:
     """
-    Test that the variable substitution in the content template works as expected.
+    Test that the variable substitution in the content template works as expected (the case when the `content` field
+    is provided too).
     """
     message = TextMessage(
         "Some content",
@@ -168,3 +169,14 @@ def test_message_content_template() -> None:
         name="Alice",
     )
     assert str(message) == "Hello, Alice! I am TextMessage. Here is some content: Some content"
+
+
+def test_message_content_template_only() -> None:
+    """
+    Test that the variable substitution in the content template works as expected.
+    """
+    message = TextMessage(
+        content_template="Hello, {name}! I am {class_}. Here is some content: {content}",
+        name="Alice",
+    )
+    assert str(message) == "Hello, Alice! I am TextMessage. Here is some content: None"
