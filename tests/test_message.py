@@ -213,3 +213,21 @@ def test_strict_message_subclass_correct_fields_succeeds() -> None:
     message = MyStrictMessage(field1="value1", field2=100)
     assert message.field1 == "value1"
     assert message.field2 == 100
+
+
+def test_strict_message_subclass_is_frozen() -> None:
+    """
+    Test that subclasses of StrictMessage are frozen (immutable).
+    """
+
+    class MyStrictMessage(StrictMessage):
+        field1: str
+
+    message = MyStrictMessage(field1="initial_value")
+
+    # Attempt to modify an existing field
+    with pytest.raises(ValidationError) as excinfo:
+        message.field1 = "new_value"
+
+    assert "Instance is frozen" in str(excinfo.value)
+    assert message.field1 == "initial_value"
