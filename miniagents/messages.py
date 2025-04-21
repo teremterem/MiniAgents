@@ -23,6 +23,13 @@ MESSAGE_CONTENT_FIELD = "content"
 MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 
 
+class Token(Frozen):
+    content: Optional[str] = None
+
+    def _as_string(self) -> str:
+        return self.content or ""
+
+
 class Message(Frozen):
     """
     A message that can be sent between agents.
