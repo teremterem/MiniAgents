@@ -4,12 +4,11 @@
 
 import traceback
 import warnings
-from pprint import pformat
 from types import TracebackType
 from typing import Any, AsyncIterator, Iterator, Optional, Union
 
 import wrapt
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError
@@ -17,25 +16,13 @@ from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
-from miniagents.utils import join_messages
+from miniagents.utils import dict_to_message, join_messages
 
 MESSAGE_CONTENT_FIELD = "content"
 MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
 
 
 class Message(Frozen):
-    """
-    A message that can be sent between agents.
-    """
-
-    # TODO split this class into two: Message and NonStrictMessage
-    #  (with NonStrictMessage allowing extra fields) ?
-    #  (is it to reduce confusion as to whether to expect extra fields in a message or not ?)
-
-    content: Optional[str] = None
-    content_template: Optional[str] = None
-    # is_error: Optional[bool] = None  # this field is only present in messages that are errors
-
     @property
     @cached_privately
     def as_promise(self) -> "MessagePromise":
@@ -47,7 +34,6 @@ class Message(Frozen):
     @classmethod
     def promise(
         cls,
-        content: Optional[str] = None,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
         **preliminary_metadata,
@@ -57,15 +43,20 @@ class Message(Frozen):
         arguments.
         """
         if message_token_streamer:
-            if content is not None:
-                raise ValueError("The `content` argument must be None if `message_token_streamer` is provided.")
             return MessagePromise(
                 start_soon=start_soon,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
                 **preliminary_metadata,
             )
-        return cls(content=content, **preliminary_metadata).as_promise
+        return cls(**preliminary_metadata).as_promise
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._persist_message_event_triggered = False
+
+    def _as_string(self) -> str:
+        return f"```json\n{super()._as_string()}\n```"
 
     def serialize(self) -> dict[str, Any]:
         include_into_serialization, sub_messages = self._serialization_metadata
@@ -144,16 +135,58 @@ class Message(Frozen):
         build_serialization_metadata(include_into_serialization, self, ())
         return include_into_serialization, sub_messages
 
+
+class StrictMessage(Message):
+    model_config = ConfigDict(extra="forbid")
+
+
+class TextMessage(Message):
+    content: Optional[str] = None
+    content_template: Optional[str] = None
+
+    @classmethod
+    def promise(  # pylint: disable=arguments-differ
+        cls,
+        content: Optional[str] = None,
+        *,
+        content_template: Optional[str] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
+        message_token_streamer: Optional[MessageTokenStreamer] = None,
+        **preliminary_metadata,
+    ) -> "MessagePromise":
+        if message_token_streamer:
+            if content is not None:
+                raise ValueError(
+                    "Cannot provide both 'content' and 'message_token_streamer' parameters. "
+                    "Please provide only one of them."
+                )
+            return super().promise(
+                content_template=content_template,
+                start_soon=start_soon,
+                message_token_streamer=message_token_streamer,
+                **preliminary_metadata,
+            )
+        return super().promise(
+            content=content,
+            content_template=content_template,
+            start_soon=start_soon,
+            message_token_streamer=message_token_streamer,
+            **preliminary_metadata,
+        )
+
+    def __init__(self, content: Optional[str] = None, **metadata) -> None:
+        super().__init__(content=content, **metadata)
+
     def _as_string(self) -> str:
         if self.content_template is not None:
             return self.content_template.format(**dict(self))
         if self.content is not None:
             return self.content
-        return f"```json\n{super()._as_string()}\n```"
+        return super()._as_string()
 
-    def __init__(self, content: Optional[str] = None, **metadata) -> None:
-        super().__init__(content=content, **metadata)
-        self._persist_message_event_triggered = False
+
+class ErrorMessage(TextMessage):
+    is_error: bool = True
 
 
 class MessagePromise(StreamedPromise[str, Message]):
@@ -226,18 +259,6 @@ class MessagePromise(StreamedPromise[str, Message]):
         """
         tokens = [token async for token in self]
         # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
-
-        # TODO check `preliminary_metadata` for `content` and `content_template` too
-        if MESSAGE_CONTENT_FIELD in self._metadata_so_far or MESSAGE_CONTENT_TEMPLATE_FIELD in self._metadata_so_far:
-            raise ValueError(
-                f"The `metadata_so_far` dictionary must NOT contain neither {MESSAGE_CONTENT_FIELD!r} nor "
-                f"{MESSAGE_CONTENT_TEMPLATE_FIELD!r} keys. The value of {MESSAGE_CONTENT_FIELD!r} is meant to be "
-                f"resolved from the stream.\n"
-                f"\n"
-                f"Dictionary that was received:\n"
-                f"\n"
-                f"{pformat(self._metadata_so_far)}"
-            )
 
         return self.message_class(
             content="".join(tokens), **{**self._metadata_so_far, **self.preliminary_metadata.as_kwargs()}
@@ -315,11 +336,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, Message):
             yield zero_or_more_items.as_promise
         elif isinstance(zero_or_more_items, BaseModel):
-            yield Message(**dict(zero_or_more_items)).as_promise
+            yield dict_to_message(dict(zero_or_more_items)).as_promise
         elif isinstance(zero_or_more_items, dict):
-            yield Message(**zero_or_more_items).as_promise
+            yield dict_to_message(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, str):
-            yield Message(zero_or_more_items).as_promise
+            yield TextMessage(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
             raise zero_or_more_items
         elif hasattr(zero_or_more_items, "__iter__"):
@@ -370,9 +391,9 @@ class MessageSequenceAppender:
             # these types are "frozen enough" as they are
             return zero_or_more_messages
         if isinstance(zero_or_more_messages, BaseModel):
-            return Message(**dict(zero_or_more_messages))
+            return dict_to_message(dict(zero_or_more_messages))
         if isinstance(zero_or_more_messages, dict):
-            return Message(**zero_or_more_messages)
+            return dict_to_message(zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__iter__"):
             return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__aiter__"):
@@ -462,7 +483,7 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return Message.promise(error_msg, is_error=True)
+            return ErrorMessage.promise(error_msg)
 
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
@@ -481,10 +502,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return Message(
-                f"{''.join(tokens)}\n{error_msg}",
-                is_error=True,
-            )
+            return ErrorMessage(f"{''.join(tokens)}\n{error_msg}")
 
     def __await__(self):
         return self.aresolve().__await__()
