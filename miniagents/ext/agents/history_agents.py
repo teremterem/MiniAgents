@@ -12,7 +12,7 @@ from typing import Callable, Optional
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
-from miniagents.messages import MESSAGE_CONTENT_FIELD, Message
+from miniagents.messages import MESSAGE_CONTENT_FIELD, Message, TextMessage
 from miniagents.miniagents import InteractionContext, miniagent
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.utils import display_agent_trace, get_current_agent_trace
@@ -51,7 +51,7 @@ class MarkdownHistoryAgent(BaseModel):
     history_md_file: str = "CHAT.md"
     default_role: str = "assistant"
     return_full_history: bool = False
-    history_message_factory: Callable[..., Message] = Message
+    history_message_factory: Callable[..., Message] = TextMessage
     append: bool = True
     skip_empty: bool = True
     ignore_no_history: bool = False

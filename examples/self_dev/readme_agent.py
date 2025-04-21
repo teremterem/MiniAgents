@@ -12,7 +12,7 @@ from examples.self_dev.self_dev_common import (
     mini_agents,
 )
 from examples.self_dev.self_dev_prompts import SYSTEM_HERE_ARE_REPO_FILES, SYSTEM_IMPROVE_README
-from miniagents import InteractionContext, Message, MessageSequencePromise, MessageTokenAppender, miniagent
+from miniagents import InteractionContext, MessageSequencePromise, MessageTokenAppender, TextMessage, miniagent
 from miniagents.ext import MarkdownHistoryAgent, console_user_agent, dialog_loop, file_output_agent
 from miniagents.ext.llms import SystemMessage
 
@@ -37,7 +37,7 @@ async def readme_agent(ctx: InteractionContext) -> None:
         token_appender.append(f"{_md_file_name}\n")
 
     with MessageTokenAppender() as token_appender:
-        ctx.reply(Message.promise(message_token_streamer=token_appender))
+        ctx.reply(TextMessage.promise(message_token_streamer=token_appender))
 
         token_appender.append(f"Generating {len(MODEL_AGENTS)} variants of README.md\n\n")
 
