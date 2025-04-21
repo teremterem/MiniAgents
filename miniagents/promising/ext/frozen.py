@@ -28,7 +28,7 @@ def cached_privately(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     `@property` or `@functools.cached_property` (they might have hardcoded this behaviour).
     """
 
-    # TODO make it thread-safe if we're planning to support synchronous agents ?
+    # TODO can it be made thread-safe ? (for the sake of tricks like `asyncio.to_thread()` and similar)
 
     @wraps(func)
     def wrapper(self: Any) -> Any:

@@ -27,7 +27,7 @@ class SingletonMeta(type):
     it thread-safe (people typically don't mix multithreading and asynchronous paradigms together).
     """
 
-    # TODO make it thread-safe if we're planning to support synchronous agents ?
+    # TODO make it thread-safe just in case ? (for the sake of tricks like `asyncio.to_thread()` and similar)
 
     def __call__(cls):
         if not hasattr(cls, "_instance"):
@@ -114,6 +114,7 @@ def join_messages(
                 metadata_so_far["original_messages"].append(await message_promise)
 
             # TODO should we care about merging values of the same keys instead of just overwriting them ?
+            #  (if not, add a comment about this)
             metadata_so_far.update(
                 (key, value)
                 for key, value in await message_promise
