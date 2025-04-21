@@ -203,7 +203,7 @@ class MessagePromise(StreamedPromise[str, Message]):
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
-        message_class: type[Message] = Message,
+        message_class: Optional[type[Message]] = None,
         # TODO is `preliminary_metadata` a good name given that it eventually overrides any other metadata entries
         #  that might have been produced by the `message_token_streamer` after streaming has finished ?
         **preliminary_metadata,
@@ -223,6 +223,8 @@ class MessagePromise(StreamedPromise[str, Message]):
             self._metadata_so_far = None
             super().__init__(prefill_result=prefill_message, start_soon=False)
         else:
+            if message_class is None:
+                raise ValueError("'message_class' parameter must be provided if 'prefill_message' is not provided")
             self.preliminary_metadata = Frozen(**preliminary_metadata)
             self.message_class = message_class
 

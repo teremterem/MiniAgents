@@ -101,9 +101,9 @@ async def test_on_persist_message_event_called_once(start_soon: bool) -> None:
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
-async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
+async def test_on_persist_message_event_called_four_times(start_soon: bool) -> None:
     """
-    Assert that the `on_persist_message` event is called twice if two different Messages are resolved.
+    Assert that the `on_persist_message` event is called four times if four different Messages are resolved.
     """
     promise_resolved_calls = 0
     persist_message_calls = 0
@@ -117,7 +117,9 @@ async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
         persist_message_calls += 1
 
     message1 = Message()
-    message2 = Message()
+    message2 = TextMessage()
+    message3 = Message()
+    message4 = TextMessage()
 
     async with MiniAgents(
         on_promise_resolved=on_promise_resolved,
@@ -125,9 +127,11 @@ async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
     ):
         Promise(prefill_result=message1, start_soon=start_soon)
         Promise(prefill_result=message2, start_soon=start_soon)
+        Promise(prefill_result=message3, start_soon=start_soon)
+        Promise(prefill_result=message4, start_soon=start_soon)
 
-    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
-    assert persist_message_calls == 2
+    assert promise_resolved_calls == 4  # on_promise_resolved should be called four times regardless
+    assert persist_message_calls == 4
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])

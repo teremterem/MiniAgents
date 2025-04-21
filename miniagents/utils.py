@@ -15,7 +15,7 @@ from pydantic._internal._model_construction import ModelMetaclass
 from miniagents.promising.sentinels import NO_VALUE
 
 if typing.TYPE_CHECKING:
-    from miniagents.messages import Message, MessagePromise
+    from miniagents.messages import Message, MessagePromise, TextMessage
     from miniagents.miniagent_typing import MessageType
     from miniagents.miniagents import MiniAgent
 
@@ -60,11 +60,11 @@ def join_messages(
     strip_leading_newlines: bool = False,
     reference_original_messages: bool = True,
     start_soon: Optional[bool] = False,
-    message_class: Optional[type["Message"]] = None,
+    message_class: Optional[type["TextMessage"]] = None,
     **preliminary_metadata,
 ) -> "MessagePromise":
     """
-    Join multiple messages into a single message using a delimiter.
+    Join multiple messages into a single text message using a delimiter.
 
     :param messages: Messages to join.
     :param delimiter: A string that will be inserted between messages.
@@ -77,15 +77,15 @@ def join_messages(
     of when it is going to be consumed.
     :param preliminary_metadata: Metadata that will be available as a field of the resulting MessagePromise even
     before it is resolved.
-    :param message_class: A class of the resulting message. If None, the default Message class will be used.
+    :param message_class: A class of the resulting message. If None, the default TextMessage class will be used.
     """
-    from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD, Message, MessageSequence
+    from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD, MessageSequence, TextMessage
 
     if start_soon is None:
         start_soon = NO_VALUE  # inherit the default value from the current MiniAgents context
 
     if message_class is None:
-        message_class = Message
+        message_class = TextMessage
 
     async def token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
         if reference_original_messages:
