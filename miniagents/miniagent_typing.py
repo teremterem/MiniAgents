@@ -28,7 +28,7 @@ class MessageTokenStreamer(Protocol):
     A protocol for message token streamer functions.
     """
 
-    def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
+    def __call__(self, fields_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
 
 
 class PersistMessageEventHandler(Protocol):

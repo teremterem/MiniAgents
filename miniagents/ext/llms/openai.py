@@ -88,11 +88,11 @@ class OpenAIAgent(LLMAgent):
                 if token:
                     token_appender.append(token)
 
-                token_appender.metadata_so_far["role"] = (
-                    chunk.choices[0].delta.role or token_appender.metadata_so_far["role"]
+                token_appender.fields_so_far["role"] = (
+                    chunk.choices[0].delta.role or token_appender.fields_so_far["role"]
                 )
                 self._merge_openai_dicts(
-                    token_appender.metadata_so_far,
+                    token_appender.fields_so_far,
                     chunk.model_dump(exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}),
                 )
         else:
@@ -104,8 +104,8 @@ class OpenAIAgent(LLMAgent):
             # send the complete message content as a single token
             token_appender.append(openai_response.choices[0].message.content)
 
-            token_appender.metadata_so_far["role"] = openai_response.choices[0].message.role
-            token_appender.metadata_so_far.update(
+            token_appender.fields_so_far["role"] = openai_response.choices[0].message.role
+            token_appender.fields_so_far.update(
                 openai_response.model_dump(
                     exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
                 )
@@ -184,11 +184,11 @@ async def openai_embedding_agent(
     else:
         # if we are not in batch mode, and we still receive multiple messages, we will concatenate them all into
         # a single piece of text with parts (messages) separated by double newlines
-        texts = [str(await ctx.message_promises.as_single_promise())]
+        texts = [str(await ctx.message_promises.as_single_text_promise())]
 
     data = (await async_client.embeddings.create(input=texts, model=model, **kwargs)).data
 
-    response_metadata_dict = dict(response_metadata or Frozen())
+    response_metadata_dict = dict(response_metadata or {})
 
     embedding_messages = [EmbeddingMessage(embedding=entry.embedding, **response_metadata_dict) for entry in data]
     ctx.reply(embedding_messages)

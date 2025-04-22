@@ -16,7 +16,7 @@ from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
-from miniagents.utils import dict_to_message, join_messages
+from miniagents.utils import dict_to_message, as_single_text_promise
 
 MESSAGE_CONTENT_FIELD = "content"
 MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
@@ -46,7 +46,7 @@ class Message(Frozen):
         cls,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
-        **preliminary_metadata,
+        **known_beforehand,
     ) -> "MessagePromise":
         """
         Create a MessagePromise object based on the Message class this method is called for and the provided
@@ -57,9 +57,9 @@ class Message(Frozen):
                 start_soon=start_soon,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
-                **preliminary_metadata,
+                **known_beforehand,
             )
-        return cls(**preliminary_metadata).as_promise
+        return cls(**known_beforehand).as_promise
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -162,7 +162,7 @@ class TextMessage(Message):
         content_template: Optional[str] = None,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
-        **preliminary_metadata,
+        **known_beforehand,
     ) -> "MessagePromise":
         if message_token_streamer:
             if content is not None:
@@ -174,14 +174,14 @@ class TextMessage(Message):
                 content_template=content_template,
                 start_soon=start_soon,
                 message_token_streamer=message_token_streamer,
-                **preliminary_metadata,
+                **known_beforehand,
             )
         return super().promise(
             content=content,
             content_template=content_template,
             start_soon=start_soon,
             message_token_streamer=message_token_streamer,
-            **preliminary_metadata,
+            **known_beforehand,
         )
 
     def __init__(self, content: Optional[str] = None, **metadata) -> None:
@@ -204,7 +204,7 @@ class MessagePromise(StreamedPromise[Token, Message]):
     A promise of a message that can be streamed token by token.
     """
 
-    preliminary_metadata: Frozen
+    known_beforehand: Frozen
     message_class: type[Message]
     token_class: type[Token]
 
@@ -214,28 +214,26 @@ class MessagePromise(StreamedPromise[Token, Message]):
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: Optional[type[Message]] = None,
-        # TODO is `preliminary_metadata` a good name given that it eventually overrides any other metadata entries
-        #  that might have been produced by the `message_token_streamer` after streaming has finished ?
-        **preliminary_metadata,
+        **known_beforehand,
     ) -> None:
         # Validate initialization parameters
-        if prefill_message is not None and (message_token_streamer is not None or preliminary_metadata):
+        if prefill_message is not None and (message_token_streamer is not None or known_beforehand):
             raise ValueError(
-                "Cannot provide both 'prefill_message' and 'message_token_streamer'/'preliminary_metadata' parameters"
+                "Cannot provide both 'prefill_message' and 'message_token_streamer'/'known_beforehand' parameters"
             )
         if prefill_message is None and message_token_streamer is None:
             raise ValueError("Either 'prefill_message' or 'message_token_streamer' parameter must be provided")
 
         if prefill_message:
-            self.preliminary_metadata = prefill_message
+            self.known_beforehand = prefill_message
             self.message_class = type(prefill_message)
 
-            self._metadata_so_far = None
+            self._fields_so_far = None
             super().__init__(prefill_result=prefill_message, start_soon=False)
         else:
             if message_class is None:
                 raise ValueError("'message_class' parameter must be provided if 'prefill_message' is not provided")
-            self.preliminary_metadata = Frozen(**preliminary_metadata)
+            self.known_beforehand = Frozen(**known_beforehand)
             self.message_class = message_class
 
             if isinstance(message_token_streamer, MessageTokenAppender):
@@ -245,15 +243,15 @@ class MessagePromise(StreamedPromise[Token, Message]):
                         "The MessageTokenAppender must be opened before it can be used. Put this statement "
                         "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
                     )
-                self._metadata_so_far = message_token_streamer.metadata_so_far
+                self._fields_so_far = message_token_streamer.fields_so_far
             else:
-                self._metadata_so_far = {}
+                self._fields_so_far = {}
 
             self._amessage_token_streamer = message_token_streamer
             super().__init__(start_soon=start_soon)
 
     def _astreamer(self) -> AsyncIterator[str]:
-        return self._amessage_token_streamer(self._metadata_so_far)
+        return self._amessage_token_streamer(self._fields_so_far)
 
     async def _amessage_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[str]:  # pylint: disable=method-hidden
         """
@@ -263,37 +261,37 @@ class MessagePromise(StreamedPromise[Token, Message]):
         """
         # TODO test coverage shows that the line below does get executed, but when and why ?
         #  maybe just try to do nothing here ?
-        yield str(self.preliminary_metadata)
+        yield str(self.known_beforehand)
 
     async def _aresolver(self) -> Message:
         """
         Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
         """
         tokens = [token async for token in self]
-        # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
+        # NOTE: `_fields_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
 
         return self.message_class(
-            content="".join(tokens), **{**self._metadata_so_far, **self.preliminary_metadata.as_kwargs()}
+            content="".join(tokens), **{**self._fields_so_far, **self.known_beforehand.as_kwargs()}
         )
 
 
 class MessageTokenAppender(StreamAppender[str]):
     """
-    A stream appender that appends message tokens to the message promise. It also maintains `metadata_so_far`
-    dictionary so metadata can be added as tokens are appended.
+    A stream appender that appends message tokens to the message promise. It also maintains `fields_so_far`
+    dictionary so message fields can be added as tokens are appended.
     """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._metadata_so_far = {}
+        self._fields_so_far = {}
 
     @property
-    def metadata_so_far(self) -> dict[str, Any]:
+    def fields_so_far(self) -> dict[str, Any]:
         """
-        This property protects `_metadata_so_far` dictionary from being replaced completely. You should only modify
+        This property protects `_fields_so_far` dictionary from being replaced completely. You should only modify
         it, not replace it.
         """
-        return self._metadata_so_far
+        return self._fields_so_far
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
@@ -463,12 +461,12 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
     A promise of a sequence of messages that can be streamed message by message.
     """
 
-    def as_single_promise(self, **kwargs) -> MessagePromise:
+    def as_single_text_promise(self, **kwargs) -> MessagePromise:
         """
         Convert this sequence promise into a single message promise that will contain all the messages from this
         sequence (separated by double newlines by default).
         """
-        return join_messages(self, start_soon=False, **kwargs)
+        return as_single_text_promise(self, start_soon=False, **kwargs)
 
 
 class SafeMessageSequencePromise(MessageSequencePromise):

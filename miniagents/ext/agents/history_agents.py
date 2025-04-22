@@ -71,16 +71,16 @@ class MarkdownHistoryAgent(BaseModel):
             encoding="utf-8",
         ) as chat_md_file:
             async for msg_promise in self.ctx.message_promises:
-                if getattr(msg_promise.preliminary_metadata, "no_history", False) and not self.ignore_no_history:
+                if getattr(msg_promise.known_beforehand, "no_history", False) and not self.ignore_no_history:
                     # do not log this message to the chat history
                     continue
 
                 try:
-                    message_role = msg_promise.preliminary_metadata.role
+                    message_role = msg_promise.known_beforehand.role
                 except AttributeError:
                     message_role = self.default_role
                 try:
-                    message_model = msg_promise.preliminary_metadata.model or ""
+                    message_model = msg_promise.known_beforehand.model or ""
                 except AttributeError:
                     message_model = ""
 

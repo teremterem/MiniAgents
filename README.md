@@ -252,9 +252,9 @@ async def user_agent(ctx: InteractionContext) -> None:
 async def assistant_agent(ctx: InteractionContext) -> None:
     # Turn a sequence of message promises into a single message promise (if
     # there had been multiple messages in the sequence they would have had
-    # been separated by double newlines - this is how `as_single_promise()`
+    # been separated by double newlines - this is how `as_single_text_promise()`
     # works by default).
-    aggregated_message = await ctx.message_promises.as_single_promise()
+    aggregated_message = await ctx.message_promises.as_single_text_promise()
     ctx.reply(f'You said "{aggregated_message}"')
 
 
@@ -544,7 +544,7 @@ Here are some of the core concepts in the MiniAgents framework:
 
 - `MiniAgent`: A wrapper around an async function (or a whole class with `async def __call__()` method) that defines an agent's behavior. Created using the `@miniagent` decorator.
 - `InteractionContext`: Passed to each agent function, provides access to incoming messages and allows sending replies.
-- `Message`: Represents a message exchanged between agents. Can contain content, metadata, and nested messages. Immutable once created.
+- `Message`: Represents a message exchanged between agents. Can contain arbitrary data, together with nested messages. Immutable on all levels of depth once created.
 - `MessagePromise`: A promise of a message that can be streamed token by token.
 - `MessageSequencePromise`: A promise of a sequence of message promises.
 - `Frozen`: An immutable Pydantic model with a git-style hash key calculated from its JSON representation. The base class for `Message`.

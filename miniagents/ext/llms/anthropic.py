@@ -94,7 +94,7 @@ class AnthropicAgent(LLMAgent):
             # send the complete message content as a single token
             token_appender.append(anthropic_final_message.content[0].text)
 
-        token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
+        token_appender.fields_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 
     async def _cut_off_system_message(self, message_dicts: list[dict[str, Any]]) -> str:
         if message_dicts and message_dicts[-1]["role"] == "system":

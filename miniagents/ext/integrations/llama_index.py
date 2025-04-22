@@ -73,7 +73,7 @@ class LlamaIndexMiniAgentLLM(LLM):
         **kwargs: Any,
     ) -> ChatResponse:
         miniagent_messages = [LLMMessage(chat_message.content, role=chat_message.role) for chat_message in messages]
-        miniagent_response = await self.underlying_miniagent.trigger(miniagent_messages).as_single_promise()
+        miniagent_response = await self.underlying_miniagent.trigger(miniagent_messages).as_single_text_promise()
 
         return ChatResponse(
             message=ChatMessage(
@@ -93,18 +93,18 @@ class LlamaIndexMiniAgentLLM(LLM):
         **kwargs: Any,
     ) -> ChatResponseAsyncGen:
         miniagent_messages = [LLMMessage(chat_message.content, role=chat_message.role) for chat_message in messages]
-        miniagent_resp_promise = self.underlying_miniagent.trigger(miniagent_messages).as_single_promise()
-        role = getattr(miniagent_resp_promise.preliminary_metadata, "role", None) or MessageRole.ASSISTANT
+        miniagent_resp_promise = self.underlying_miniagent.trigger(miniagent_messages).as_single_text_promise()
+        role = getattr(miniagent_resp_promise.known_beforehand, "role", None) or MessageRole.ASSISTANT
 
         async def gen() -> ChatResponseAsyncGen:
             yield ChatResponse(
                 message=ChatMessage(
                     role=role,
                     additional_kwargs={
-                        key: value for key, value in miniagent_resp_promise.preliminary_metadata if key != "role"
+                        key: value for key, value in miniagent_resp_promise.known_beforehand if key != "role"
                     },
                 ),
-                raw=dict(miniagent_resp_promise.preliminary_metadata),
+                raw=dict(miniagent_resp_promise.known_beforehand),
             )
 
             content = ""
@@ -136,7 +136,7 @@ class LlamaIndexMiniAgentLLM(LLM):
 
     @llm_completion_callback()
     async def acomplete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
-        miniagent_response = await self.underlying_miniagent.trigger(prompt).as_single_promise()
+        miniagent_response = await self.underlying_miniagent.trigger(prompt).as_single_text_promise()
 
         return CompletionResponse(
             text=miniagent_response.content,
@@ -148,10 +148,10 @@ class LlamaIndexMiniAgentLLM(LLM):
     async def astream_complete(
         self, prompt: str, formatted: bool = False, **kwargs: Any
     ) -> CompletionResponseAsyncGen:
-        miniagent_resp_promise = self.underlying_miniagent.trigger(prompt).as_single_promise()
+        miniagent_resp_promise = self.underlying_miniagent.trigger(prompt).as_single_text_promise()
 
         async def gen() -> CompletionResponseAsyncGen:
-            preliminary_dict = dict(miniagent_resp_promise.preliminary_metadata)
+            preliminary_dict = dict(miniagent_resp_promise.known_beforehand)
             yield CompletionResponse(additional_kwargs=preliminary_dict, raw=preliminary_dict)
 
             content = ""
@@ -189,7 +189,7 @@ class LlamaIndexMiniAgentEmbedding(BaseEmbedding):
         )
 
     async def _aget_query_embedding(self, query: str) -> list[float]:
-        response_msg = await self.underlying_miniagent.trigger(query).as_single_promise()
+        response_msg = await self.underlying_miniagent.trigger(query).as_single_text_promise()
         return response_msg.embedding
 
     def _get_text_embedding(self, text: str) -> list[float]:
@@ -199,7 +199,7 @@ class LlamaIndexMiniAgentEmbedding(BaseEmbedding):
         )
 
     async def _aget_text_embedding(self, text: str) -> list[float]:
-        response_msg = await self.underlying_miniagent.trigger(text).as_single_promise()
+        response_msg = await self.underlying_miniagent.trigger(text).as_single_text_promise()
         return response_msg.embedding
 
     def _get_text_embeddings(self, texts: list[str]) -> list[list[float]]:

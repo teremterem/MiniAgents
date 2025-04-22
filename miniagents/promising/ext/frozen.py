@@ -154,7 +154,7 @@ class Frozen(BaseModel):
         if isinstance(value, (tuple, list)):
             return tuple(cls._validate_and_freeze_value(key, sub_value) for sub_value in value)
         if isinstance(value, dict):
-            return Frozen(**value)
+            return Frozen(**value)  # this other instance of Frozen will take care of freezing deeper levels
         if not isinstance(value, cls._allowed_value_types()):
             raise ValueError(
                 f"only {{{', '.join([t.__name__ for t in cls._allowed_value_types()])}}} "
