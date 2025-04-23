@@ -259,6 +259,8 @@ class MessagePromise(StreamedPromise[Token, Message]):
         """
         # TODO test coverage shows that the line below does get executed, but when and why ?
         #  maybe just try to do nothing here ?
+        # TODO TODO TODO ANSWER: THIS IS WHEN MESSAGE IS PREFILLED BUT CLIENT STILL REQUESTS TO STREAM
+        # TODO TODO TODO TODO TODO wrap with `token_class`
         yield str(self.known_beforehand)
 
     async def _aresolver(self) -> Message:
