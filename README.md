@@ -499,8 +499,7 @@ class CustomMessage(Message):
     custom_field: str
 
 
-message = CustomMessage("Hello", custom_field="Custom Value")
-print(message.content)  # Output: Hello
+message = CustomMessage(custom_field="Custom Value")
 print(message.custom_field)  # Output: Custom Value
 ```
 

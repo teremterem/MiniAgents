@@ -78,7 +78,7 @@ class LlamaIndexMiniAgentLLM(LLM):
         return ChatResponse(
             message=ChatMessage(
                 role=miniagent_response.role,
-                content=miniagent_response.content,
+                content=str(miniagent_response),
                 additional_kwargs={
                     key: value for key, value in miniagent_response if key not in ("role", MESSAGE_CONTENT_FIELD)
                 },
@@ -139,7 +139,7 @@ class LlamaIndexMiniAgentLLM(LLM):
         miniagent_response = await self.underlying_miniagent.trigger(prompt).as_single_text_promise()
 
         return CompletionResponse(
-            text=miniagent_response.content,
+            text=str(miniagent_response),
             additional_kwargs={key: value for key, value in miniagent_response if key != MESSAGE_CONTENT_FIELD},
             raw=miniagent_response.model_dump(),
         )

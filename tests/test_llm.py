@@ -17,12 +17,12 @@ from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
 
 def _check_openai_response(message: Message) -> None:
-    assert message.content.strip() == "I AM ONLINE"
+    assert str(message).strip() == "I AM ONLINE"
     assert message.choices[0].finish_reason == "stop"
 
 
 def _check_anthropic_response(message: Message) -> None:
-    assert message.content.strip() == "I AM ONLINE"
+    assert str(message).strip() == "I AM ONLINE"
     assert message.stop_reason == "end_turn"
 
 

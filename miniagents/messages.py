@@ -190,9 +190,7 @@ class TextMessage(Message):
     def _as_string(self) -> str:
         if self.content_template is not None:
             return self.content_template.format(**dict(self))
-        if self.content is not None:
-            return self.content
-        return super()._as_string()
+        return self.content or ""
 
 
 class ErrorMessage(TextMessage):
