@@ -267,9 +267,10 @@ class MessagePromise(StreamedPromise[Token, Message]):
         """
         Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
         """
-        tokens = [token async for token in self]
+        tokens = [str(token) async for token in self]
         # NOTE: `_fields_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
 
+        # TODO TODO TODO if TextMessage then content and tokens to str
         return self.message_class(
             content="".join(tokens), **{**self._fields_so_far, **self.known_beforehand.as_kwargs()}
         )
