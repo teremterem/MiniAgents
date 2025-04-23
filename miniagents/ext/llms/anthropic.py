@@ -135,7 +135,7 @@ async def aprepare_dicts_for_anthropic(
         non_system_message_dicts.insert(0, {"role": "user", "content": fake_first_user_message})
 
     system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
-    # let's put all the system messages in the beginning (they will later be combined into a single message
+    # let's put all the system messages to the end (they will later be combined into a single message
     # and stripped away)
     message_dicts = non_system_message_dicts + system_message_dicts
     if system:
