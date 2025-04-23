@@ -79,7 +79,7 @@ def as_single_text_promise(
     before the promise is resolved.
     :param message_class: A class of the resulting message. If None, the default TextMessage class will be used.
     """
-    from miniagents.messages import MessageSequence, TextMessage
+    from miniagents.messages import MessageSequence, TextMessage, Token
 
     if start_soon is None:
         start_soon = NO_VALUE  # inherit the default value from the current MiniAgents context
@@ -87,7 +87,7 @@ def as_single_text_promise(
     if message_class is None:
         message_class = TextMessage
 
-    async def token_streamer(fields_so_far: dict[str, Any]) -> AsyncIterator[str]:
+    async def token_streamer(fields_so_far: dict[str, Any]) -> AsyncIterator[Token]:
         if reference_original_messages:
             fields_so_far["original_messages"] = []
 

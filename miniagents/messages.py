@@ -35,6 +35,10 @@ class Message(Frozen):
     def non_metadata_fields(cls) -> tuple[str, ...]:
         return ()
 
+    @classmethod
+    def token_class(cls) -> type[Token]:
+        return Token
+
     @property
     @cached_privately
     def as_promise(self) -> "MessagePromise":
@@ -161,6 +165,10 @@ class TextMessage(Message):
         return ("content", "content_template")
 
     @classmethod
+    def token_class(cls) -> type[TextToken]:
+        return TextToken
+
+    @classmethod
     def promise(  # pylint: disable=arguments-differ
         cls,
         content: Optional[str] = None,
@@ -254,10 +262,12 @@ class MessagePromise(StreamedPromise[Token, Message]):
             self._amessage_token_streamer = message_token_streamer
             super().__init__(start_soon=start_soon)
 
-    def _astreamer(self) -> AsyncIterator[str]:
+    def _astreamer(self) -> AsyncIterator[Token]:
         return self._amessage_token_streamer(self._fields_so_far)
 
-    async def _amessage_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[str]:  # pylint: disable=method-hidden
+    async def _amessage_token_streamer(  # pylint: disable=method-hidden
+        self, _: dict[str, Any]
+    ) -> AsyncIterator[Token]:
         """
         The default implementation of the message token streamer that just yields the string representation of the
         message as a single token. This implementation is only called if the message was pre-filled. In case of real
@@ -282,7 +292,7 @@ class MessagePromise(StreamedPromise[Token, Message]):
         )
 
 
-class MessageTokenAppender(StreamAppender[str]):
+class MessageTokenAppender(StreamAppender[Token]):
     """
     A stream appender that appends message tokens to the message promise. It also maintains `fields_so_far`
     dictionary so message fields can be added as tokens are appended.
