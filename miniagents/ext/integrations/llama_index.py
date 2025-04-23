@@ -109,7 +109,7 @@ class LlamaIndexMiniAgentLLM(LLM):
 
             content = ""
             async for token in miniagent_resp_promise:
-                content += token
+                content += str(token)
                 yield ChatResponse(
                     message=ChatMessage(
                         role=role,
@@ -156,7 +156,7 @@ class LlamaIndexMiniAgentLLM(LLM):
 
             content = ""
             async for token in miniagent_resp_promise:
-                content += token
+                content += str(token)
                 yield CompletionResponse(text=content, delta=token)
 
             miniagent_resp_message = await miniagent_resp_promise
