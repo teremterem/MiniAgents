@@ -21,7 +21,7 @@ from llama_index.core.llms.callbacks import llm_chat_callback, llm_completion_ca
 from llama_index.core.llms.llm import LLM
 
 from miniagents.ext.llms.llm_utils import LLMMessage
-from miniagents.messages import MESSAGE_CONTENT_FIELD
+from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD
 from miniagents.miniagents import MiniAgent
 
 
@@ -80,7 +80,9 @@ class LlamaIndexMiniAgentLLM(LLM):
                 role=miniagent_response.role,
                 content=str(miniagent_response),
                 additional_kwargs={
-                    key: value for key, value in miniagent_response if key not in ("role", MESSAGE_CONTENT_FIELD)
+                    key: value
+                    for key, value in miniagent_response
+                    if key not in ("role", MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
                 },
             ),
             raw=dict(miniagent_response),
@@ -126,7 +128,7 @@ class LlamaIndexMiniAgentLLM(LLM):
                     additional_kwargs={
                         key: value
                         for key, value in miniagent_resp_message
-                        if key not in ("role", MESSAGE_CONTENT_FIELD)
+                        if key not in ("role", MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
                     },
                 ),
                 raw=dict(miniagent_resp_message),
@@ -140,7 +142,11 @@ class LlamaIndexMiniAgentLLM(LLM):
 
         return CompletionResponse(
             text=str(miniagent_response),
-            additional_kwargs={key: value for key, value in miniagent_response if key != MESSAGE_CONTENT_FIELD},
+            additional_kwargs={
+                key: value
+                for key, value in miniagent_response
+                if key not in (MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
+            },
             raw=miniagent_response.model_dump(),
         )
 
@@ -163,7 +169,9 @@ class LlamaIndexMiniAgentLLM(LLM):
             yield CompletionResponse(
                 text=content,
                 additional_kwargs={
-                    key: value for key, value in miniagent_resp_message if key != MESSAGE_CONTENT_FIELD
+                    key: value
+                    for key, value in miniagent_resp_message
+                    if key not in (MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
                 },
                 raw=dict(miniagent_resp_message),
             )
