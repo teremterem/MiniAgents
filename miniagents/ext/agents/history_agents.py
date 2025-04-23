@@ -12,7 +12,7 @@ from typing import Callable, Optional
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
-from miniagents.messages import MESSAGE_CONTENT_FIELD, Message, TextMessage
+from miniagents.messages import Message, TextMessage
 from miniagents.miniagents import InteractionContext, miniagent
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.utils import display_agent_trace, get_current_agent_trace
@@ -90,7 +90,7 @@ class MarkdownHistoryAgent(BaseModel):
                 chat_md_file.write(f"\n{message_role}{message_model}\n========================================\n")
 
                 async for token in msg_promise:
-                    chat_md_file.write(token)
+                    chat_md_file.write(str(token))
                 chat_md_file.write("\n")
 
         if self.return_full_history:
@@ -225,7 +225,7 @@ async def markdown_llm_logger_agent(
     if not messages or not show_response_metadata:
         return
 
-    response_metadata = messages[-1].model_dump(exclude={MESSAGE_CONTENT_FIELD})
+    response_metadata = messages[-1].model_dump(exclude=set(messages[-1].non_metadata_fields()))
     with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
         log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(response_metadata)}\n```\n")
 

@@ -79,7 +79,7 @@ def as_single_text_promise(
     before the promise is resolved.
     :param message_class: A class of the resulting message. If None, the default TextMessage class will be used.
     """
-    from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD, MessageSequence, TextMessage
+    from miniagents.messages import MessageSequence, TextMessage
 
     if start_soon is None:
         start_soon = NO_VALUE  # inherit the default value from the current MiniAgents context
@@ -96,7 +96,7 @@ def as_single_text_promise(
             fields_so_far.update(
                 (key, value)
                 for key, value in message_promise.known_beforehand
-                if key not in (MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
+                if key not in message_promise.message_class.non_metadata_fields()
             )
             if delimiter and not first_message:
                 yield delimiter
@@ -118,7 +118,7 @@ def as_single_text_promise(
             fields_so_far.update(
                 (key, value)
                 for key, value in await message_promise
-                if key not in (MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
+                if key not in message_promise.message_class.non_metadata_fields()
             )
 
             first_message = False
@@ -233,8 +233,8 @@ def display_agent_trace(agent_trace: Optional[Iterable["MiniAgent"]] = None) -> 
 
 
 def dict_to_message(d: dict[str, Any]) -> "Message":
-    from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD, TextMessage, Message
+    from miniagents.messages import TextMessage, Message
 
-    if isinstance(d.get(MESSAGE_CONTENT_FIELD), str) or isinstance(d.get(MESSAGE_CONTENT_TEMPLATE_FIELD), str):
+    if any(isinstance(d.get(field), str) for field in TextMessage.non_metadata_fields()):
         return TextMessage(**d)
     return Message(**d)

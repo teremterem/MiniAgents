@@ -18,9 +18,6 @@ from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import dict_to_message, as_single_text_promise
 
-MESSAGE_CONTENT_FIELD = "content"
-MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
-
 
 class Token(Frozen): ...
 
@@ -33,6 +30,11 @@ class TextToken(Token):
 
 
 class Message(Frozen):
+
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ()
+
     @property
     @cached_privately
     def as_promise(self) -> "MessagePromise":
@@ -153,6 +155,10 @@ class StrictMessage(Message):
 class TextMessage(Message):
     content: Optional[str] = None
     content_template: Optional[str] = None
+
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ("content", "content_template")
 
     @classmethod
     def promise(  # pylint: disable=arguments-differ
