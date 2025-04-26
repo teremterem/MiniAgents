@@ -35,10 +35,6 @@ class Message(Frozen):
     def non_metadata_fields(cls) -> tuple[str, ...]:
         return ()
 
-    @classmethod
-    def token_class(cls) -> type[Token]:
-        return Token
-
     @property
     @cached_privately
     def as_promise(self) -> "MessagePromise":
@@ -165,10 +161,6 @@ class TextMessage(Message):
         return ("content", "content_template")
 
     @classmethod
-    def token_class(cls) -> type[TextToken]:
-        return TextToken
-
-    @classmethod
     def promise(  # pylint: disable=arguments-differ
         cls,
         content: Optional[str] = None,
@@ -207,8 +199,7 @@ class TextMessage(Message):
         return self.content or ""
 
 
-class ErrorMessage(TextMessage):
-    is_error: bool = True
+class ErrorMessage(TextMessage): ...
 
 
 class MessagePromise(StreamedPromise[Token, Message]):
@@ -218,7 +209,6 @@ class MessagePromise(StreamedPromise[Token, Message]):
 
     known_beforehand: Frozen
     message_class: type[Message]
-    token_class: type[Token]
 
     def __init__(
         self,
@@ -309,6 +299,11 @@ class MessageTokenAppender(StreamAppender[Token]):
         it, not replace it.
         """
         return self._fields_so_far
+
+    def append(self, piece: Token) -> "MessageTokenAppender":
+        if not isinstance(piece, Token) and not isinstance(piece, BaseException):
+            raise TypeError(f"Expected Token, got {type(piece).__name__}")
+        return super().append(piece)
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):

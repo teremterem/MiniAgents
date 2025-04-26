@@ -592,8 +592,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
             if self._append_closed:
                 self._promising_context.logger.log(
                     PromisingContext.get_current().log_level_for_errors,
-                    "A STREAM APPENDER WAS NOT ABLE TO CAPTURE THE FOLLOWING ERROR "
-                    "BECAUSE APPEND WAS ALREADY CLOSED:",
+                    "STREAM APPENDER WAS NOT ABLE TO CAPTURE THE FOLLOWING ERROR BECAUSE APPEND WAS ALREADY CLOSED:",
                     exc_info=True,
                 )
             else:
@@ -602,7 +601,15 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
                     type(self).__name__,
                     exc_info=exc_value,
                 )
-                self.append(exc_value)
+                try:
+                    self.append(exc_value)
+                except BaseException as exc:  # pylint: disable=broad-except
+                    # serious error - should not happen if `StreamAppender.append()` is implemented properly
+                    self._promising_context.logger.error(
+                        "A PROBLEM WITH THE WAY STREAM APPENDER IS IMPLEMENTED: %s",
+                        type(self).__name__,
+                        exc_info=exc,
+                    )
 
         if not self._append_closed:
             self._append_closed = True

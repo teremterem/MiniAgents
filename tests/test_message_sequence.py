@@ -146,7 +146,8 @@ async def test_message_sequence_error_to_message(
                 "msg1",
                 "ValueError: error1",
             ]
-            assert (await msg_seq.sequence_promise)[-1].is_error
+            assert issubclass((promise async for promise in msg_seq.sequence_promise)[-1].message_class, ErrorMessage)
+            assert isinstance((await msg_seq.sequence_promise)[-1], ErrorMessage)
         else:
             assert message_result == [
                 TextMessage("msg1"),
@@ -181,7 +182,8 @@ async def test_message_sequence_token_error_to_message(
                 "token2",
                 "\nValueError: error1",
             ]
-            assert (await msg_seq.sequence_promise)[-1].is_error
+            assert issubclass((promise async for promise in msg_seq.sequence_promise)[-1].message_class, ErrorMessage)
+            assert isinstance((await msg_seq.sequence_promise)[-1], ErrorMessage)
         else:
             assert result == [
                 TextMessage("msg1"),
