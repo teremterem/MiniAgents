@@ -19,11 +19,18 @@ from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import dict_to_message, as_single_text_promise
 
 
-class Token(Frozen): ...
+class Token(Frozen):
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ()
 
 
 class TextToken(Token):
     content: Optional[str] = None
+
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ("content",)
 
     def _as_string(self) -> str:
         return self.content or ""
@@ -303,9 +310,18 @@ class MessageTokenAppender(StreamAppender[Token]):
         """
         return self._fields_so_far
 
-    def append(self, piece: Token) -> "MessageTokenAppender":
-        if not isinstance(piece, Token) and not isinstance(piece, BaseException):
-            raise TypeError(f"Expected Token, got {type(piece).__name__}")
+    def append(self, piece: Union[Token, str, dict[str, Any]]) -> "MessageTokenAppender":
+        if not isinstance(piece, Token) and isinstance(piece, BaseModel):
+            piece = dict(piece)
+        elif isinstance(piece, str):
+            piece = TextToken(piece)
+
+        if isinstance(piece, dict):
+            if any(isinstance(piece.get(field), str) for field in TextToken.non_metadata_fields()):
+                piece = TextToken(**piece)
+            else:
+                piece = Token(**piece)
+
         return super().append(piece)
 
 
