@@ -240,7 +240,7 @@ class MessagePromise(StreamedPromise[Token, Message]):
             self.known_beforehand = prefill_message
             self.message_class = type(prefill_message)
 
-            self._fields_so_far = None  # TODO get rid of this in favor of just accumulating tokens with metadata
+            self._fields_so_far = None  # TODO get rid of this in favor of just accumulating tokens with metadata ?
             super().__init__(prefill_result=prefill_message, start_soon=False)
         else:
             if message_class is None:
