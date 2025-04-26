@@ -277,7 +277,7 @@ class MessagePromise(StreamedPromise[Token, Message]):
         #  maybe just try to do nothing here ?
         # TODO TODO TODO ANSWER: THIS IS WHEN MESSAGE IS PREFILLED BUT CLIENT STILL REQUESTS TO STREAM
         # TODO TODO TODO TODO TODO wrap with `token_class`
-        yield str(self.known_beforehand)
+        yield Token(**dict(self.known_beforehand))
 
     async def _aresolver(self) -> Message:
         """
@@ -287,9 +287,7 @@ class MessagePromise(StreamedPromise[Token, Message]):
         # NOTE: `_fields_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
 
         # TODO TODO TODO if TextMessage then content and tokens to str
-        return self.message_class(
-            content="".join(tokens), **{**self._fields_so_far, **self.known_beforehand.as_kwargs()}
-        )
+        return self.message_class(content="".join(tokens), **{**self._fields_so_far, **dict(self.known_beforehand)})
 
 
 class MessageTokenAppender(StreamAppender[Token]):
@@ -532,7 +530,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
         tokens = []
         try:
             async for token in self.__wrapped__:
-                tokens.append(str(token))
+                tokens.append(token)
             return await self.__wrapped__.aresolve()
         except Exception as exc:  # pylint: disable=broad-except
             from miniagents.miniagents import MiniAgents
@@ -543,7 +541,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return ErrorMessage(f"{''.join(tokens)}\n{error_msg}")
+            return ErrorMessage(f"{''.join([str(token) for token in tokens])}\n{error_msg}")
 
     def __await__(self):
         return self.aresolve().__await__()

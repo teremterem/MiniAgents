@@ -105,7 +105,10 @@ def as_single_text_promise(
             async for token in message_promise:
                 if lstrip_newlines and isinstance(token, TextToken):
                     # let's remove leading newlines from the first message
-                    token = TextToken(str(token).lstrip("\n\r"), **token.model_dump(exclude={"content"}))
+                    original_token_str = str(token)
+                    token_str = original_token_str.lstrip("\n\r")
+                    if original_token_str != token_str:
+                        token = token.model_copy(update={"content": token_str})
                 if str(token):
                     lstrip_newlines = False  # non-empty token was found - time to stop stripping newlines
                 yield token
