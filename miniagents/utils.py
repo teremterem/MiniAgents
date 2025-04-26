@@ -79,7 +79,7 @@ def as_single_text_promise(
     before the promise is resolved.
     :param message_class: A class of the resulting message. If None, the default TextMessage class will be used.
     """
-    from miniagents.messages import MessageSequence, TextMessage, Token
+    from miniagents.messages import MessageSequence, TextMessage, Token, TextToken
 
     if start_soon is None:
         start_soon = NO_VALUE  # inherit the default value from the current MiniAgents context
@@ -103,12 +103,12 @@ def as_single_text_promise(
 
             lstrip_newlines = strip_leading_newlines
             async for token in message_promise:
-                if lstrip_newlines:
+                if lstrip_newlines and isinstance(token, TextToken):
                     # let's remove leading newlines from the first message
-                    token = token.lstrip("\n\r")
-                if token:
+                    token = TextToken(str(token).lstrip("\n\r"), **token.model_dump(exclude={"content"}))
+                if str(token):
                     lstrip_newlines = False  # non-empty token was found - time to stop stripping newlines
-                    yield token
+                yield token
 
             if reference_original_messages:
                 fields_so_far["original_messages"].append(await message_promise)
