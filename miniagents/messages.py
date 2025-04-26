@@ -23,10 +23,13 @@ class Token(Frozen): ...
 
 
 class TextToken(Token):
-    content: str
+    content: Optional[str] = None
 
     def _as_string(self) -> str:
         return self.content or ""
+
+    def __init__(self, content: Optional[str] = None, **metadata) -> None:
+        super().__init__(content=content, **metadata)
 
 
 class Message(Frozen):

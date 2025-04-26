@@ -10,7 +10,7 @@ from pydantic import Field
 
 from miniagents import Message
 from miniagents.ext.llms.llm_utils import AssistantMessage, LLMAgent, message_to_llm_dict
-from miniagents.messages import MessageSequence, MessageTokenAppender
+from miniagents.messages import MessageSequence, MessageTokenAppender, TextToken
 from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import miniagent
 
@@ -73,8 +73,9 @@ class AnthropicAgent(LLMAgent):
                 model=self.model,
                 **self.__pydantic_extra__,
             ) as response:
+                # TODO use non-text streaming so all the token metadata is available
                 async for token in response.text_stream:
-                    token_appender.append(token)
+                    token_appender.append(TextToken(token))
                 anthropic_final_message = await response.get_final_message()
 
         else:
@@ -92,7 +93,8 @@ class AnthropicAgent(LLMAgent):
                     f"but {len(anthropic_final_message.content)} were returned instead"
                 )
             # send the complete message content as a single token
-            token_appender.append(anthropic_final_message.content[0].text)
+            # TODO put all the token metadata into the token too (in this case metadata of complete message)
+            token_appender.append(TextToken(anthropic_final_message.content[0].text))
 
         token_appender.fields_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
 

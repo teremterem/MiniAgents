@@ -60,6 +60,6 @@ async def test_llm(
         result = ""
         async for msg_promise in reply_sequence:
             async for token in msg_promise:
-                result += token
+                result += str(token)
             check_response_func(await msg_promise)
     assert result.strip() == "I AM ONLINE"
