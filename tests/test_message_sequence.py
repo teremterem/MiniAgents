@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import pytest
 
-from miniagents.messages import ErrorMessage, Message, MessageSequence, MessageTokenAppender, TextMessage
+from miniagents.messages import ErrorMessage, Message, MessageSequence, MessageTokenAppender, TextMessage, TextToken
 from miniagents.miniagents import MiniAgents
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
@@ -178,11 +178,14 @@ async def test_message_sequence_token_error_to_message(
         if collect_token_by_token:
             assert result == [
                 "msg1",
-                "token1",
-                "token2",
+                TextToken("token1"),
+                TextToken("token2"),
                 "\nValueError: error1",
             ]
-            assert issubclass([promise async for promise in msg_seq.sequence_promise][-1].message_class, ErrorMessage)
+            assert issubclass(
+                [promise async for promise in msg_seq.sequence_promise][-1].message_class,
+                Message,  # it will only become an ErrorMessage after faulty token is encountered
+            )
             assert isinstance((await msg_seq.sequence_promise)[-1], ErrorMessage)
         else:
             assert result == [

@@ -532,7 +532,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
         tokens = []
         try:
             async for token in self.__wrapped__:
-                tokens.append(token)
+                tokens.append(str(token))
             return await self.__wrapped__.aresolve()
         except Exception as exc:  # pylint: disable=broad-except
             from miniagents.miniagents import MiniAgents
