@@ -16,7 +16,7 @@ from miniagents.ext.llms.llm_utils import (
     PromptLogMessage,
     message_to_llm_dict,
 )
-from miniagents.messages import Message, MessageSequence, MessageTokenAppender, TextToken
+from miniagents.messages import Message, MessageSequence, MessageTokenAppender
 from miniagents.miniagent_typing import MessageType
 from miniagents.miniagents import InteractionContext, MiniAgent, MiniAgents, miniagent
 from miniagents.promising.ext.frozen import Frozen
@@ -85,7 +85,7 @@ class OpenAIAgent(LLMAgent):
                         f"but {len(openai_response.choices)} were returned instead"
                     )
                 # TODO put all the token metadata into the token
-                token_appender.append(TextToken(chunk.choices[0].delta.content))
+                token_appender.append(self.response_message_class.token_class()(chunk.choices[0].delta.content))
 
                 token_appender.fields_so_far["role"] = (
                     chunk.choices[0].delta.role or token_appender.fields_so_far["role"]
@@ -102,7 +102,9 @@ class OpenAIAgent(LLMAgent):
                 )
             # send the complete message content as a single token
             # TODO put all the token metadata into the token too (in this case metadata of complete message)
-            token_appender.append(TextToken(openai_response.choices[0].message.content))
+            token_appender.append(
+                self.response_message_class.token_class()(openai_response.choices[0].message.content)
+            )
 
             token_appender.fields_so_far["role"] = openai_response.choices[0].message.role
             token_appender.fields_so_far.update(

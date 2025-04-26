@@ -40,6 +40,9 @@ class TextToken(Token):
 
 
 class Message(Frozen):
+    @classmethod
+    def token_class(cls) -> type[Token]:
+        return Token
 
     @classmethod
     def non_metadata_fields(cls) -> tuple[str, ...]:
@@ -165,6 +168,10 @@ class StrictMessage(Message):
 class TextMessage(Message):
     content: Optional[str] = None
     content_template: Optional[str] = None
+
+    @classmethod
+    def token_class(cls) -> type[TextToken]:
+        return TextToken
 
     @classmethod
     def non_metadata_fields(cls) -> tuple[str, ...]:
