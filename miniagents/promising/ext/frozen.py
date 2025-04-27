@@ -56,6 +56,30 @@ class Frozen(BaseModel):
     def __str__(self) -> str:
         return self.as_string
 
+    def get(self, key: str, default: FrozenType = None) -> FrozenType:
+        return getattr(self, key, default)
+
+    def __getitem__(self, item: str) -> FrozenType:
+        return getattr(self, item)
+
+    def __contains__(self, key: Union[str, tuple[str, FrozenType]]) -> bool:
+        # second part of the condition is for backwards compatibility with the Pydantic itself
+        # TODO do we need to maintain a set of keys along with the tuple of keys or there is no benefit ?
+        if isinstance(key, str):
+            return key in self.keys()
+        return key in iter(self)
+
+    @cached_privately
+    def keys(self) -> tuple[str]:
+        return tuple(key for key, _ in self)
+
+    @cached_privately
+    def values(self) -> tuple[FrozenType]:
+        return tuple(value for _, value in self)
+
+    def __len__(self) -> int:
+        return len(self.keys())
+
     @property
     @cached_privately
     def as_string(self) -> str:
@@ -113,7 +137,7 @@ class Frozen(BaseModel):
             hash_key = hash_key[:40]
         return hash_key
 
-    def as_kwargs(self) -> dict[str, Any]:
+    def as_kwargs(self) -> dict[str, FrozenType]:
         """
         Get a dict of field names and values of this Pydantic object which can be used as keyword arguments for
         a function call ("class_" field is excluded, because it wouldn't likely to make sense as a keyword argument).
