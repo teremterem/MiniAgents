@@ -280,11 +280,8 @@ class MessagePromise(StreamedPromise[Token, Message]):
         message as a single token. This implementation is only called if the message was pre-filled. In case of real
         streaming the constructor of the class always overrides this method with an externally supplied streamer.
         """
-        # TODO test coverage shows that the line below does get executed, but when and why ?
-        #  maybe just try to do nothing here ?
-        # TODO TODO TODO ANSWER: THIS IS WHEN MESSAGE IS PREFILLED BUT CLIENT STILL REQUESTS TO STREAM
-        # TODO TODO TODO TODO TODO wrap with `token_class`
-        yield Token(**dict(self.known_beforehand))
+        # The code below is executed when the message is prefilled but the client still requests to stream
+        yield self.message_class.token_class()(**dict(self.known_beforehand))
 
     async def _aresolver(self) -> Message:
         """
