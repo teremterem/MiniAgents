@@ -8,12 +8,12 @@ from typing import Any, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from miniagents.ext.agents.history_agents import markdown_llm_logger_agent
-from miniagents.messages import Message, MessagePromise, MessageTokenAppender
+from miniagents.messages import Message, MessagePromise, MessageTokenAppender, TextMessage
 from miniagents.miniagents import InteractionContext, MiniAgent, MiniAgents
 from miniagents.promising.ext.frozen import Frozen
 
 
-class LLMMessage(Message):
+class LLMMessage(TextMessage):
     """
     A message class that is used to interact with large language models (either as input or as output).
     """
@@ -45,6 +45,14 @@ class AssistantMessage(LLMMessage):
     role: str = "assistant"
     model: Optional[str] = None
     agent_alias: Optional[str] = None
+
+
+class EmbeddingMessage(Message):
+    """
+    A message that contains an embedding (a vector of numbers).
+    """
+
+    embedding: tuple[float, ...]
 
 
 class PromptLogMessage(LLMMessage):
@@ -119,10 +127,10 @@ class LLMAgent(ABC, BaseModel):
         response_promise = self.response_message_class.promise(
             start_soon=False,  # the agent is already running and will collect tokens anyway (see below)
             message_token_streamer=token_appender,
-            # preliminary metadata:
+            # `**known_beforehand`:
             model=self.model,
             agent_alias=self.ctx.this_agent.alias,
-            **dict(self.response_metadata or Frozen()),
+            **dict(self.response_metadata or {}),
         )
         self.ctx.reply(response_promise)
         # we already know that there will be no more response messages, so we close the response sequence
@@ -132,14 +140,14 @@ class LLMAgent(ABC, BaseModel):
         return response_promise
 
 
-def message_to_llm_dict(message: Message) -> dict[str, Any]:
+def message_to_llm_dict(message: Message, default_role: str = "user") -> dict[str, Any]:
     """
     Convert a message to a dictionary that can be sent to a large language model.
     """
     try:
         role = message.role
     except AttributeError:
-        role = "user"
+        role = default_role
 
     return {
         "role": role,

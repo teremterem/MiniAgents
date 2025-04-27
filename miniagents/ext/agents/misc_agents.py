@@ -72,12 +72,12 @@ async def console_output_agent(
     #  (to interrupt whoever is producing it) ?
 
     async for msg_promise in ctx.message_promises:
-        resolved_style = getattr(msg_promise.preliminary_metadata, "console_style", None) or assistant_style
+        resolved_style = getattr(msg_promise.known_beforehand, "console_style", None) or assistant_style
 
         if mention_aliases:
             agent_alias = (
-                getattr(msg_promise.preliminary_metadata, "agent_alias", None)
-                or getattr(msg_promise.preliminary_metadata, "role", None)
+                getattr(msg_promise.known_beforehand, "agent_alias", None)
+                or getattr(msg_promise.known_beforehand, "role", None)
                 or default_role
             )
 
@@ -103,7 +103,7 @@ async def file_output_agent(ctx: InteractionContext, file: str, **kwargs) -> Non
         buffering=1,  # line buffering
         encoding="utf-8",
     ) as file_stream:
-        async for token in ctx.message_promises.as_single_promise(**kwargs):
+        async for token in ctx.message_promises.as_single_text_promise(**kwargs):
             file_stream.write(token)
 
 

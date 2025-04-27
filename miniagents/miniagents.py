@@ -71,7 +71,7 @@ class MiniAgents(PromisingContext):
         )
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
-        self.errors_as_messages = errors_as_messages
+        self.errors_as_messages = errors_as_messages  # TODO should this propagate to all child agent calls if set ?
         self.error_tracebacks_in_messages = error_tracebacks_in_messages
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
@@ -334,7 +334,8 @@ class MiniAgent(Frozen):
             **kwargs_to_freeze,
         )
 
-    def original_def(self) -> Union[AgentFunction, type]:
+    @property
+    def wrapped_func_or_class(self) -> Union[AgentFunction, type]:
         """
         Get the original definition of the agent, which is either a function or a class. The `@miniagent` decorator
         hides the original function or class from the client code behind a `MiniAgent` object, but in certain scenarios

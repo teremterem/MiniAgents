@@ -38,7 +38,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
 
         self._queue = asyncio.Queue()
 
-        # # TODO why do we need this promise ? it doesn't seem to accomplish anything
+        # # TODO why did we need this promise ? it didn't seem to accomplish anything
         # self._input_promise = StreamedPromise(
         #     streamer=self._astreamer,
         #     resolver=lambda _: None,
@@ -63,7 +63,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
     async def _amerge_streams(self) -> None:
         # TODO a detailed docstring is crucial for this private method
         # TODO we might want to stop processing any more items if an exception is raised and we are not in
-        #  "exceptions as messages" mode (the latter being a partially implemented feature)
+        #  "exceptions as messages" mode (or maybe not, I'm not sure)
         async def _process_unordered_piece(zero_or_more_items: OUT_co) -> None:
             try:
                 # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence

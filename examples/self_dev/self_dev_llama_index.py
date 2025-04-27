@@ -94,14 +94,14 @@ async def llama_index_rag_agent(ctx: InteractionContext, llm_agent: MiniAgent) -
     #  btw, and how it works ?
     agent = ReActAgent.from_tools(tools, llm=llm)
 
-    input_messages = [msg for msg in await ctx.message_promises if msg.content and msg.content.strip()]
+    input_messages = [msg for msg in await ctx.message_promises if str(msg) and str(msg).strip()]
     if not input_messages:
         return
 
-    query = input_messages[-1].content
+    query = str(input_messages[-1])
     chat_history = [
         # TODO the differentiation between user and assistant messages should be standardised somehow
-        ChatMessage(content=msg.content, role=getattr(msg, "role", None) or "assistant")
+        ChatMessage(content=str(msg), role=getattr(msg, "role", None) or "assistant")
         for msg in input_messages[:-1]
     ]
 

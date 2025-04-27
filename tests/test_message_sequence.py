@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import pytest
 
-from miniagents.messages import Message, MessageSequence, MessageTokenAppender
+from miniagents.messages import ErrorMessage, Message, MessageSequence, MessageTokenAppender, TextMessage, TextToken
 from miniagents.miniagents import MiniAgents
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
@@ -27,7 +27,7 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
         with msg_seq1.message_appender:
             msg_seq1.message_appender.append("msg1")
             msg_seq1.message_appender.append({"content": "msg2", "some_attr": 2})
-            msg_seq1.message_appender.append(Message(content="msg3", another_attr=3))
+            msg_seq1.message_appender.append(TextMessage("msg3", another_attr=3))
 
             msg_seq2 = MessageSequence(
                 appender_capture_errors=True,
@@ -45,43 +45,43 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
                 with msg_seq3.message_appender:
                     msg_seq3.message_appender.append("msg5")
                     msg_seq3.message_appender.append(["msg6", "msg7"])
-                    msg_seq3.message_appender.append([[Message(content="msg8", another_attr=8)]])
+                    msg_seq3.message_appender.append([[TextMessage("msg8", another_attr=8)]])
 
                 msg_seq2.message_appender.append(msg_seq3.sequence_promise)
                 msg_seq2.message_appender.append("msg9")
 
             msg_seq1.message_appender.append(msg_seq2.sequence_promise)
-            msg_seq1.message_appender.append(Message.promise(content="msg10", yet_another_attr=10))
+            msg_seq1.message_appender.append(TextMessage.promise("msg10", yet_another_attr=10))
             # msg_seq1.message_appender.append(ValueError("msg11"))
 
         message_result = [await msg_promise async for msg_promise in msg_seq1.sequence_promise]
         assert message_result == [
-            Message(content="msg1"),
-            Message(content="msg2", some_attr=2),
-            Message(content="msg3", another_attr=3),
-            Message(content="msg4"),
-            Message(content="msg5"),
-            Message(content="msg6"),
-            Message(content="msg7"),
-            Message(content="msg8", another_attr=8),
-            Message(content="msg9"),
-            Message(content="msg10", yet_another_attr=10),
+            TextMessage("msg1"),
+            TextMessage("msg2", some_attr=2),
+            TextMessage("msg3", another_attr=3),
+            TextMessage("msg4"),
+            TextMessage("msg5"),
+            TextMessage("msg6"),
+            TextMessage("msg7"),
+            TextMessage("msg8", another_attr=8),
+            TextMessage("msg9"),
+            TextMessage("msg10", yet_another_attr=10),
             # ValueError("msg11"),
         ]
 
         token_result = [token async for msg_promise in msg_seq1.sequence_promise async for token in msg_promise]
         assert token_result == [
-            "msg1",
-            "msg2",
-            "msg3",
-            "msg4",
-            "msg5",
-            "msg6",
-            "msg7",
-            "msg8",
-            "msg9",
-            "msg10",
-            # "msg11",
+            TextToken("msg1", content_template=None),
+            TextToken("msg2", content_template=None, some_attr=2),
+            TextToken("msg3", content_template=None, another_attr=3),
+            TextToken("msg4", content_template=None),
+            TextToken("msg5", content_template=None),
+            TextToken("msg6", content_template=None),
+            TextToken("msg7", content_template=None),
+            TextToken("msg8", content_template=None, another_attr=8),
+            TextToken("msg9", content_template=None),
+            TextToken("msg10", content_template=None, yet_another_attr=10),
+            # TextToken("msg11", content_template=None),
         ]
 
 
@@ -118,9 +118,9 @@ async def test_message_sequence_error(start_soon: Union[bool, Sentinel]) -> None
                 message_result.append(await msg_promise)
 
     assert message_result == [
-        Message(content="msg1"),
-        Message(content="msg2"),
-        Message(content="msg3"),
+        TextMessage("msg1"),
+        TextMessage("msg2"),
+        TextMessage("msg3"),
         # ValueError("msg4"),
     ]
 
@@ -143,14 +143,15 @@ async def test_message_sequence_error_to_message(
 
         if collect_token_by_token:
             assert message_result == [
-                "msg1",
-                "ValueError: error1",
+                TextToken("msg1", content_template=None),
+                TextToken("ValueError: error1", content_template=None),
             ]
-            assert (await msg_seq.sequence_promise)[-1].is_error
+            assert issubclass([promise async for promise in msg_seq.sequence_promise][-1].message_class, ErrorMessage)
+            assert isinstance((await msg_seq.sequence_promise)[-1], ErrorMessage)
         else:
             assert message_result == [
-                Message(content="msg1"),
-                Message(content="ValueError: error1", is_error=True),
+                TextMessage("msg1"),
+                ErrorMessage("ValueError: error1"),
             ]
 
 
@@ -176,16 +177,20 @@ async def test_message_sequence_token_error_to_message(
 
         if collect_token_by_token:
             assert result == [
-                "msg1",
-                "token1",
-                "token2",
-                "\nValueError: error1",
+                TextToken("msg1", content_template=None),
+                TextToken("token1"),
+                TextToken("token2"),
+                TextToken("\nValueError: error1"),
             ]
-            assert (await msg_seq.sequence_promise)[-1].is_error
+            assert issubclass(
+                [promise async for promise in msg_seq.sequence_promise][-1].message_class,
+                Message,  # it will only become an ErrorMessage after faulty token is encountered
+            )
+            assert isinstance((await msg_seq.sequence_promise)[-1], ErrorMessage)
         else:
             assert result == [
-                Message(content="msg1"),
-                Message(content="token1token2\nValueError: error1", is_error=True),
+                TextMessage("msg1"),
+                ErrorMessage("token1token2\nValueError: error1"),
             ]
 
 

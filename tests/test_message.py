@@ -5,9 +5,10 @@ Tests for the `Message`-based models.
 import hashlib
 import json
 
+from pydantic import ValidationError
 import pytest
 
-from miniagents import Message, MiniAgents
+from miniagents import Message, MiniAgents, StrictMessage, TextMessage
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promising import Promise, PromisingContext
 from miniagents.promising.sentinels import NO_VALUE
@@ -25,22 +26,22 @@ async def test_message_nesting_vs_hash_key() -> None:
         """
 
     async with PromisingContext():
-        message = Message(
-            content="юнікод",
+        message = TextMessage(
+            "юнікод",
             extra_field=[
                 15,
                 {
                     "role": "user",
-                    "nested_nested": (Message(content="nested_text"), Message(content="nested_text2")),
-                    "nested_nested2": [Message(content="nested_text2")],
+                    "nested_nested": (TextMessage("nested_text"), TextMessage("nested_text2")),
+                    "nested_nested2": [TextMessage(content="nested_text2")],
                 },
             ],
-            extra_node=SpecialNode(nested_nested=Message(content="nested_text3")),
-            nested_message=Message(content="nested_text"),
+            extra_node=SpecialNode(nested_nested=TextMessage("nested_text3")),
+            nested_message=TextMessage("nested_text"),
         )
 
         expected_structure = {
-            "class_": "Message",
+            "class_": "TextMessage",
             "content": "юнікод",
             "content_template": None,
             "extra_field": (
@@ -49,17 +50,17 @@ async def test_message_nesting_vs_hash_key() -> None:
                     "class_": "Frozen",
                     "role": "user",
                     "nested_nested__hash_keys": (
-                        "03ebecb2b3a3d5508ea47adf49fb9dfcefec45c6",
-                        "b4b1128ee0d4be12150e3e5f69b5d7f302db689f",
+                        "05549eba31f5f800e6f720331d99cb93c62cfaab",
+                        "73695a09b7a91de152d65fbea44b4813e97ecd9d",
                     ),
-                    "nested_nested2__hash_keys": ("b4b1128ee0d4be12150e3e5f69b5d7f302db689f",),
+                    "nested_nested2__hash_keys": ("73695a09b7a91de152d65fbea44b4813e97ecd9d",),
                 },
             ),
             "extra_node": {
                 "class_": "SpecialNode",
-                "nested_nested__hash_key": "af776c46f2e2c2e01e159cd8622320686bc6b4b2",
+                "nested_nested__hash_key": "4df48c769ae0669b377dc307f51a8df9cc671cc1",
             },
-            "nested_message__hash_key": "03ebecb2b3a3d5508ea47adf49fb9dfcefec45c6",
+            "nested_message__hash_key": "05549eba31f5f800e6f720331d99cb93c62cfaab",
         }
         assert message.serialize() == expected_structure
 
@@ -100,9 +101,9 @@ async def test_on_persist_message_event_called_once(start_soon: bool) -> None:
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
-async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
+async def test_on_persist_message_event_called_four_times(start_soon: bool) -> None:
     """
-    Assert that the `on_persist_message` event is called twice if two different Messages are resolved.
+    Assert that the `on_persist_message` event is called four times if four different Messages are resolved.
     """
     promise_resolved_calls = 0
     persist_message_calls = 0
@@ -116,7 +117,9 @@ async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
         persist_message_calls += 1
 
     message1 = Message()
-    message2 = Message()
+    message2 = TextMessage()
+    message3 = Message()
+    message4 = TextMessage()
 
     async with MiniAgents(
         on_promise_resolved=on_promise_resolved,
@@ -124,9 +127,11 @@ async def test_on_persist_message_event_called_twice(start_soon: bool) -> None:
     ):
         Promise(prefill_result=message1, start_soon=start_soon)
         Promise(prefill_result=message2, start_soon=start_soon)
+        Promise(prefill_result=message3, start_soon=start_soon)
+        Promise(prefill_result=message4, start_soon=start_soon)
 
-    assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
-    assert persist_message_calls == 2
+    assert promise_resolved_calls == 4  # on_promise_resolved should be called four times regardless
+    assert persist_message_calls == 4
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
@@ -158,13 +163,75 @@ async def test_on_persist_message_event_not_called(start_soon: bool) -> None:
     assert persist_message_calls == 0
 
 
-def test_message_content_template() -> None:
+def test_message_content_template_and_content() -> None:
     """
-    Test that the variable substitution in the content template works as expected.
+    Test that the variable substitution in the content template works as expected (the case when the `content` field
+    is provided too).
     """
-    message = Message(
+    message = TextMessage(
         "Some content",
         content_template="Hello, {name}! I am {class_}. Here is some content: {content}",
         name="Alice",
     )
-    assert str(message) == "Hello, Alice! I am Message. Here is some content: Some content"
+    assert str(message) == "Hello, Alice! I am TextMessage. Here is some content: Some content"
+
+
+def test_message_content_template_only() -> None:
+    """
+    Test that the variable substitution in the content template works as expected.
+    """
+    message = TextMessage(
+        content_template="Hello, {name}! I am {class_}. Here is some content: {content}",
+        name="Alice",
+    )
+    assert str(message) == "Hello, Alice! I am TextMessage. Here is some content: None"
+
+
+def test_strict_message_subclass_extra_field_fails() -> None:
+    """
+    Test that instantiating a subclass of StrictMessage with an extra field raises a ValidationError.
+    """
+
+    class MyStrictMessage(StrictMessage):
+        field1: str
+
+    with pytest.raises(ValidationError) as excinfo:
+        MyStrictMessage(field1="value1", extra_field="extra_value")
+
+    assert "Extra inputs are not permitted" in str(excinfo.value)
+
+
+def test_strict_message_subclass_correct_fields_succeeds() -> None:
+    """
+    Test that instantiating a subclass of StrictMessage with only defined fields succeeds.
+    """
+
+    class MyStrictMessage(StrictMessage):
+        field1: str
+        field2: int = 42
+
+    message = MyStrictMessage(field1="value1")
+    assert message.field1 == "value1"
+    assert message.field2 == 42
+
+    message = MyStrictMessage(field1="value1", field2=100)
+    assert message.field1 == "value1"
+    assert message.field2 == 100
+
+
+def test_strict_message_subclass_is_frozen() -> None:
+    """
+    Test that subclasses of StrictMessage are frozen (immutable).
+    """
+
+    class MyStrictMessage(StrictMessage):
+        field1: str
+
+    message = MyStrictMessage(field1="initial_value")
+
+    # Attempt to modify an existing field
+    with pytest.raises(ValidationError) as excinfo:
+        message.field1 = "new_value"
+
+    assert "Instance is frozen" in str(excinfo.value)
+    assert message.field1 == "initial_value"

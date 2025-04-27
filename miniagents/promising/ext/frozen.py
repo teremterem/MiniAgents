@@ -28,7 +28,7 @@ def cached_privately(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     `@property` or `@functools.cached_property` (they might have hardcoded this behaviour).
     """
 
-    # TODO make it thread-safe if we're planning to support synchronous agents ?
+    # TODO can it be made thread-safe ? (for the sake of tricks like `asyncio.to_thread()` and similar)
 
     @wraps(func)
     def wrapper(self: Any) -> Any:
@@ -56,14 +56,39 @@ class Frozen(BaseModel):
     def __str__(self) -> str:
         return self.as_string
 
+    def get(self, key: str, default: FrozenType = None) -> FrozenType:
+        return getattr(self, key, default)
+
+    def __getitem__(self, item: str) -> FrozenType:
+        return getattr(self, item)
+
+    def __contains__(self, key: Union[str, tuple[str, FrozenType]]) -> bool:
+        # second part of the condition is for backwards compatibility with the Pydantic itself
+        # TODO do we need to maintain a set of keys along with the tuple of keys or there is no benefit ?
+        if isinstance(key, str):
+            return key in self.keys()
+        return key in iter(self)
+
+    @cached_privately
+    def keys(self) -> tuple[str]:
+        return tuple(key for key, _ in self)
+
+    @cached_privately
+    def values(self) -> tuple[FrozenType]:
+        return tuple(value for _, value in self)
+
+    def __len__(self) -> int:
+        return len(self.keys())
+
     @property
     @cached_privately
     def as_string(self) -> str:
         """
         Return a string representation of this model. This is usually the representation that will be used when
         the model needs to be a part of an LLM prompts.
+
+        NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         """
-        # NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         return self._as_string()
 
     @property
@@ -112,7 +137,7 @@ class Frozen(BaseModel):
             hash_key = hash_key[:40]
         return hash_key
 
-    def as_kwargs(self) -> dict[str, Any]:
+    def as_kwargs(self) -> dict[str, FrozenType]:
         """
         Get a dict of field names and values of this Pydantic object which can be used as keyword arguments for
         a function call ("class_" field is excluded, because it wouldn't likely to make sense as a keyword argument).
@@ -154,7 +179,7 @@ class Frozen(BaseModel):
         if isinstance(value, (tuple, list)):
             return tuple(cls._validate_and_freeze_value(key, sub_value) for sub_value in value)
         if isinstance(value, dict):
-            return Frozen(**value)
+            return Frozen(**value)  # this other instance of Frozen will take care of freezing deeper levels
         if not isinstance(value, cls._allowed_value_types()):
             raise ValueError(
                 f"only {{{', '.join([t.__name__ for t in cls._allowed_value_types()])}}} "

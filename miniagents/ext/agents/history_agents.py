@@ -12,9 +12,10 @@ from typing import Callable, Optional
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
-from miniagents.messages import MESSAGE_CONTENT_FIELD, Message
+from miniagents.messages import Message, TextMessage
 from miniagents.miniagents import InteractionContext, miniagent
 from miniagents.promising.ext.frozen import Frozen
+from miniagents.utils import display_agent_trace, get_current_agent_trace
 
 GLOBAL_MESSAGE_HISTORY: list[Message] = []
 
@@ -50,7 +51,7 @@ class MarkdownHistoryAgent(BaseModel):
     history_md_file: str = "CHAT.md"
     default_role: str = "assistant"
     return_full_history: bool = False
-    history_message_factory: Callable[..., Message] = Message
+    history_message_factory: Callable[..., Message] = TextMessage
     append: bool = True
     skip_empty: bool = True
     ignore_no_history: bool = False
@@ -70,16 +71,16 @@ class MarkdownHistoryAgent(BaseModel):
             encoding="utf-8",
         ) as chat_md_file:
             async for msg_promise in self.ctx.message_promises:
-                if getattr(msg_promise.preliminary_metadata, "no_history", False) and not self.ignore_no_history:
+                if getattr(msg_promise.known_beforehand, "no_history", False) and not self.ignore_no_history:
                     # do not log this message to the chat history
                     continue
 
                 try:
-                    message_role = msg_promise.preliminary_metadata.role
+                    message_role = msg_promise.known_beforehand.role
                 except AttributeError:
                     message_role = self.default_role
                 try:
-                    message_model = msg_promise.preliminary_metadata.model or ""
+                    message_model = msg_promise.known_beforehand.model or ""
                 except AttributeError:
                     message_model = ""
 
@@ -89,7 +90,7 @@ class MarkdownHistoryAgent(BaseModel):
                 chat_md_file.write(f"\n{message_role}{message_model}\n========================================\n")
 
                 async for token in msg_promise:
-                    chat_md_file.write(token)
+                    chat_md_file.write(str(token))
                 chat_md_file.write("\n")
 
         if self.return_full_history:
@@ -198,14 +199,25 @@ async def markdown_llm_logger_agent(
     log_file = log_folder / (
         f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
     )
-
     if log_file.exists():
         # this should not happen - not only there are milliseconds in the file name, but also a random number in the
         # range of 0 through 4095 (0 through 0xfff)
         raise FileExistsError(f"Log file already exists: {log_file}")
 
+    agent_trace = get_current_agent_trace()
+    if agent_trace[0] is ctx.this_agent:
+        # there is no point in displaying the agent responsible for logging in the agent trace
+        agent_trace = agent_trace[1:]
+
+    if agent_trace:
+        preamble = f"{display_agent_trace(agent_trace)}\n\n"
+    else:
+        preamble = ""
+
     if request_metadata:
-        log_file.write_text(f"```python\n{pformat(request_metadata.model_dump())}\n```\n", encoding="utf-8")
+        preamble += f"```python\n{pformat(request_metadata.model_dump())}\n```\n"
+
+    log_file.write_text(preamble, encoding="utf-8")
 
     await MarkdownHistoryAgent.trigger(ctx.message_promises, history_md_file=str(log_file), ignore_no_history=True)
 
@@ -213,7 +225,7 @@ async def markdown_llm_logger_agent(
     if not messages or not show_response_metadata:
         return
 
-    response_metadata = messages[-1].model_dump(exclude={MESSAGE_CONTENT_FIELD})
+    response_metadata = messages[-1].model_dump(exclude=set(messages[-1].non_metadata_fields()))
     with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
         log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(response_metadata)}\n```\n")
 

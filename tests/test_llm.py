@@ -8,7 +8,7 @@ from typing import Callable
 import pytest
 from dotenv import load_dotenv
 
-from miniagents import Message, MiniAgent, MiniAgents
+from miniagents import Message, MiniAgent, MiniAgents, TextMessage
 
 load_dotenv()
 
@@ -17,12 +17,12 @@ from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
 
 def _check_openai_response(message: Message) -> None:
-    assert message.content.strip() == "I AM ONLINE"
+    assert str(message).strip() == "I AM ONLINE"
     assert message.choices[0].finish_reason == "stop"
 
 
 def _check_anthropic_response(message: Message) -> None:
-    assert message.content.strip() == "I AM ONLINE"
+    assert str(message).strip() == "I AM ONLINE"
     assert message.stop_reason == "end_turn"
 
 
@@ -46,7 +46,7 @@ async def test_llm(
     """
     async with MiniAgents(start_everything_soon_by_default=start_soon):
         reply_sequence = llm_agent.trigger(
-            Message(content="ANSWER:", role="assistant"),
+            TextMessage("ANSWER:", role="assistant"),
             system=(
                 "This is a test to verify that you are online. Your response will be validated using a strict "
                 "program that does not tolerate any deviations from the expected output at all. Please respond "
@@ -60,6 +60,6 @@ async def test_llm(
         result = ""
         async for msg_promise in reply_sequence:
             async for token in msg_promise:
-                result += token
+                result += str(token)
             check_response_func(await msg_promise)
     assert result.strip() == "I AM ONLINE"

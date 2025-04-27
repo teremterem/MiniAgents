@@ -4,12 +4,11 @@
 
 import traceback
 import warnings
-from pprint import pformat
 from types import TracebackType
-from typing import Any, AsyncIterator, Iterator, Optional, Union
+from typing import Any, AsyncIterator, Iterable, Iterator, Optional, Union
 
 import wrapt
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError
@@ -17,24 +16,55 @@ from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
-from miniagents.utils import join_messages
+from miniagents.utils import dict_to_message, as_single_text_promise
 
-MESSAGE_CONTENT_FIELD = "content"
-MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
+
+class Token(Frozen):
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ()
+
+
+class TextToken(Token):
+    content: Optional[str] = None
+
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ("content",)
+
+    def _as_string(self) -> str:
+        return self.content or ""
+
+    def __init__(self, content: Optional[str] = None, **metadata) -> None:
+        super().__init__(content=content, **metadata)
 
 
 class Message(Frozen):
-    """
-    A message that can be sent between agents.
-    """
+    @classmethod
+    def token_class(cls) -> type[Token]:
+        return Token
 
-    # TODO split this class into two: Message and NonStrictMessage
-    #  (with NonStrictMessage allowing extra fields) ?
-    #  (is it to reduce confusion as to whether to expect extra fields in a message or not ?)
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ()
 
-    content: Optional[str] = None
-    content_template: Optional[str] = None
-    # is_error: Optional[bool] = None  # this field is only present in messages that are errors
+    @classmethod
+    def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "Message":
+        # This method is meant to be overridden only by message classes that support token streaming
+        # Child classes that don't need token streaming don't need to implement this method
+        raise TypeError(f"{cls.__name__} does not support token streaming.")
+
+    def _message_to_tokens(self) -> tuple[Token, ...]:
+        return (self.token_class()(**dict(self)),)
+
+    @cached_privately
+    def message_to_tokens(self) -> tuple[Token, ...]:
+        """
+        Convert this message into a tuple of tokens.
+
+        NOTE: This method is cached. Please do not override it in subclasses. Override `_message_to_tokens` instead.
+        """
+        return self._message_to_tokens()
 
     @property
     @cached_privately
@@ -47,25 +77,29 @@ class Message(Frozen):
     @classmethod
     def promise(
         cls,
-        content: Optional[str] = None,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
-        **preliminary_metadata,
+        **known_beforehand,
     ) -> "MessagePromise":
         """
         Create a MessagePromise object based on the Message class this method is called for and the provided
         arguments.
         """
         if message_token_streamer:
-            if content is not None:
-                raise ValueError("The `content` argument must be None if `message_token_streamer` is provided.")
             return MessagePromise(
                 start_soon=start_soon,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
-                **preliminary_metadata,
+                **known_beforehand,
             )
-        return cls(content=content, **preliminary_metadata).as_promise
+        return cls(**known_beforehand).as_promise
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._persist_message_event_triggered = False
+
+    def _as_string(self) -> str:
+        return f"```json\n{super()._as_string()}\n```"
 
     def serialize(self) -> dict[str, Any]:
         include_into_serialization, sub_messages = self._serialization_metadata
@@ -144,25 +178,78 @@ class Message(Frozen):
         build_serialization_metadata(include_into_serialization, self, ())
         return include_into_serialization, sub_messages
 
-    def _as_string(self) -> str:
-        if self.content_template is not None:
-            return self.content_template.format(**dict(self))
-        if self.content is not None:
-            return self.content
-        return f"```json\n{super()._as_string()}\n```"
+
+class StrictMessage(Message):
+    model_config = ConfigDict(extra="forbid")
+
+
+class TextMessage(Message):
+    content: Optional[str] = None
+    content_template: Optional[str] = None
+
+    @classmethod
+    def token_class(cls) -> type[TextToken]:
+        return TextToken
+
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ("content", "content_template")
+
+    @classmethod
+    def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "TextMessage":
+        return cls(
+            content="".join(str(token) for token in tokens),
+            **{k: v for k, v in extra_fields.items() if k not in cls.non_metadata_fields()},
+        )
+
+    @classmethod
+    def promise(  # pylint: disable=arguments-differ
+        cls,
+        content: Optional[str] = None,
+        *,
+        content_template: Optional[str] = None,
+        start_soon: Union[bool, Sentinel] = NO_VALUE,
+        message_token_streamer: Optional[MessageTokenStreamer] = None,
+        **known_beforehand,
+    ) -> "MessagePromise":
+        if message_token_streamer:
+            if content is not None or content_template is not None:
+                raise ValueError(
+                    "If you provide `message_token_streamer` parameter, you cannot provide `content` or "
+                    "`content_template` parameters."
+                )
+            return super().promise(
+                content_template=content_template,
+                start_soon=start_soon,
+                message_token_streamer=message_token_streamer,
+                **known_beforehand,
+            )
+        return super().promise(
+            content=content,
+            content_template=content_template,
+            start_soon=start_soon,
+            message_token_streamer=message_token_streamer,
+            **known_beforehand,
+        )
 
     def __init__(self, content: Optional[str] = None, **metadata) -> None:
         super().__init__(content=content, **metadata)
-        self._persist_message_event_triggered = False
+
+    def _as_string(self) -> str:
+        if self.content_template is not None:
+            return self.content_template.format(**dict(self))
+        return self.content or ""
 
 
-class MessagePromise(StreamedPromise[str, Message]):
-    # TODO use Token object instead of str and allow appending empty text tokens too, for simplicity
+class ErrorMessage(TextMessage): ...
+
+
+class MessagePromise(StreamedPromise[Token, Message]):
     """
     A promise of a message that can be streamed token by token.
     """
 
-    preliminary_metadata: Frozen
+    known_beforehand: Frozen
     message_class: type[Message]
 
     def __init__(
@@ -170,25 +257,27 @@ class MessagePromise(StreamedPromise[str, Message]):
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
-        message_class: type[Message] = Message,
-        **preliminary_metadata,
+        message_class: Optional[type[Message]] = None,
+        **known_beforehand,
     ) -> None:
         # Validate initialization parameters
-        if prefill_message is not None and (message_token_streamer is not None or preliminary_metadata):
+        if prefill_message is not None and (message_token_streamer is not None or known_beforehand):
             raise ValueError(
-                "Cannot provide both 'prefill_message' and 'message_token_streamer'/'preliminary_metadata' parameters"
+                "Cannot provide both 'prefill_message' and 'message_token_streamer'/'known_beforehand' parameters"
             )
         if prefill_message is None and message_token_streamer is None:
             raise ValueError("Either 'prefill_message' or 'message_token_streamer' parameter must be provided")
 
         if prefill_message:
-            self.preliminary_metadata = prefill_message
+            self.known_beforehand = prefill_message
             self.message_class = type(prefill_message)
 
-            self._metadata_so_far = None
+            self._auxiliary_field_collector = None
             super().__init__(prefill_result=prefill_message, start_soon=False)
         else:
-            self.preliminary_metadata = Frozen(**preliminary_metadata)
+            if message_class is None:
+                raise ValueError("'message_class' parameter must be provided if 'prefill_message' is not provided")
+            self.known_beforehand = Frozen(**known_beforehand)
             self.message_class = message_class
 
             if isinstance(message_token_streamer, MessageTokenAppender):
@@ -198,63 +287,72 @@ class MessagePromise(StreamedPromise[str, Message]):
                         "The MessageTokenAppender must be opened before it can be used. Put this statement "
                         "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
                     )
-                self._metadata_so_far = message_token_streamer.metadata_so_far
-                self._metadata_so_far.update(self.preliminary_metadata)
+                self._auxiliary_field_collector = message_token_streamer.auxiliary_field_collector
             else:
-                self._metadata_so_far = dict(self.preliminary_metadata)
+                self._auxiliary_field_collector = {}
 
             self._amessage_token_streamer = message_token_streamer
             super().__init__(start_soon=start_soon)
 
-    def _astreamer(self) -> AsyncIterator[str]:
-        return self._amessage_token_streamer(self._metadata_so_far)
+    def _astreamer(self) -> AsyncIterator[Token]:
+        return self._amessage_token_streamer(self._auxiliary_field_collector)
 
-    async def _amessage_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[str]:  # pylint: disable=method-hidden
+    async def _amessage_token_streamer(  # pylint: disable=method-hidden
+        self, _: dict[str, Any]
+    ) -> AsyncIterator[Token]:
         """
         The default implementation of the message token streamer that just yields the string representation of the
         message as a single token. This implementation is only called if the message was pre-filled. In case of real
         streaming the constructor of the class always overrides this method with an externally supplied streamer.
         """
-        yield str(self.preliminary_metadata)
+        # The code below is executed when the message is prefilled but the client still requests to stream
+        for token in self._result.message_to_tokens():
+            yield token
 
     async def _aresolver(self) -> Message:
         """
         Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
         """
         tokens = [token async for token in self]
-        # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
-
-        if MESSAGE_CONTENT_FIELD in self._metadata_so_far or MESSAGE_CONTENT_TEMPLATE_FIELD in self._metadata_so_far:
-            raise ValueError(
-                f"The `metadata_so_far` dictionary must NOT contain neither {MESSAGE_CONTENT_FIELD!r} nor "
-                f"{MESSAGE_CONTENT_TEMPLATE_FIELD!r} keys. The value of {MESSAGE_CONTENT_FIELD!r} is meant to be "
-                f"resolved from the stream.\n"
-                f"\n"
-                f"Dictionary that was received:\n"
-                f"\n"
-                f"{pformat(self._metadata_so_far)}"
-            )
-
-        return self.message_class(content="".join(tokens), **self._metadata_so_far)
+        # NOTE: `_auxiliary_field_collector` is expected to be "fully formed" only after the stream is exhausted with
+        #  the above comprehension
+        return self.message_class.tokens_to_message(
+            tokens, **{**self._auxiliary_field_collector, **dict(self.known_beforehand)}
+        )
 
 
-class MessageTokenAppender(StreamAppender[str]):
+class MessageTokenAppender(StreamAppender[Token]):
     """
-    A stream appender that appends message tokens to the message promise. It also maintains `metadata_so_far`
-    dictionary so metadata can be added as tokens are appended.
+    A stream appender that appends message tokens to the message promise. It also maintains `auxiliary_field_collector`
+    dictionary so message additional fields could be added to the message (if, for any reason, they cannot be delivered
+    via tokens).
     """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._metadata_so_far = {}
+        self._auxiliary_field_collector = {}
 
     @property
-    def metadata_so_far(self) -> dict[str, Any]:
+    def auxiliary_field_collector(self) -> dict[str, Any]:
         """
-        This property protects `_metadata_so_far` dictionary from being replaced completely. You should only modify
-        it, not replace it.
+        This property protects `_auxiliary_field_collector` dictionary from being replaced completely. You should only
+        modify it, not replace it.
         """
-        return self._metadata_so_far
+        return self._auxiliary_field_collector
+
+    def append(self, piece: Union[Token, str, dict[str, Any]]) -> "MessageTokenAppender":
+        if not isinstance(piece, Token) and isinstance(piece, BaseModel):
+            piece = dict(piece)
+        elif isinstance(piece, str):
+            piece = TextToken(piece)
+
+        if isinstance(piece, dict):
+            if any(isinstance(piece.get(field), str) for field in TextToken.non_metadata_fields()):
+                piece = TextToken(**piece)
+            else:
+                piece = Token(**piece)
+
+        return super().append(piece)
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
@@ -309,11 +407,11 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, Message):
             yield zero_or_more_items.as_promise
         elif isinstance(zero_or_more_items, BaseModel):
-            yield Message(**dict(zero_or_more_items)).as_promise
+            yield dict_to_message(dict(zero_or_more_items)).as_promise
         elif isinstance(zero_or_more_items, dict):
-            yield Message(**zero_or_more_items).as_promise
+            yield dict_to_message(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, str):
-            yield Message(zero_or_more_items).as_promise
+            yield TextMessage(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
             raise zero_or_more_items
         elif hasattr(zero_or_more_items, "__iter__"):
@@ -364,9 +462,9 @@ class MessageSequenceAppender:
             # these types are "frozen enough" as they are
             return zero_or_more_messages
         if isinstance(zero_or_more_messages, BaseModel):
-            return Message(**dict(zero_or_more_messages))
+            return dict_to_message(dict(zero_or_more_messages))
         if isinstance(zero_or_more_messages, dict):
-            return Message(**zero_or_more_messages)
+            return dict_to_message(zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__iter__"):
             return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__aiter__"):
@@ -424,12 +522,12 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
     A promise of a sequence of messages that can be streamed message by message.
     """
 
-    def as_single_promise(self, **kwargs) -> MessagePromise:
+    def as_single_text_promise(self, **kwargs) -> MessagePromise:
         """
         Convert this sequence promise into a single message promise that will contain all the messages from this
         sequence (separated by double newlines by default).
         """
-        return join_messages(self, start_soon=False, **kwargs)
+        return as_single_text_promise(self, start_soon=False, **kwargs)
 
 
 class SafeMessageSequencePromise(MessageSequencePromise):
@@ -456,7 +554,7 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return Message.promise(error_msg, is_error=True)
+            return ErrorMessage.promise(error_msg)
 
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
@@ -475,10 +573,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return Message(
-                f"{''.join(tokens)}\n{error_msg}",
-                is_error=True,
-            )
+            return ErrorMessage(f"{''.join([str(token) for token in tokens])}\n{error_msg}")
 
     def __await__(self):
         return self.aresolve().__await__()
@@ -502,4 +597,4 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return f"\n{error_msg}"
+            return TextToken(f"\n{error_msg}")
