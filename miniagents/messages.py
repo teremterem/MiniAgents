@@ -4,7 +4,6 @@
 
 import traceback
 import warnings
-from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Any, AsyncIterator, Iterable, Iterator, Optional, Union
 
@@ -40,7 +39,7 @@ class TextToken(Token):
         super().__init__(content=content, **metadata)
 
 
-class Message(ABC, Frozen):
+class Message(Frozen):
     @classmethod
     def token_class(cls) -> type[Token]:
         return Token
@@ -50,8 +49,10 @@ class Message(ABC, Frozen):
         return ()
 
     @classmethod
-    @abstractmethod
-    def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "Message": ...
+    def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "Message":
+        # This method is meant to be overridden only by message classes that support token streaming
+        # Child classes that don't need token streaming don't need to implement this method
+        raise TypeError(f"{cls.__name__} does not support token streaming.")
 
     def _message_to_tokens(self) -> tuple[Token, ...]:
         return (self.token_class()(**dict(self)),)
