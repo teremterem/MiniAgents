@@ -334,7 +334,8 @@ class MiniAgent(Frozen):
             **kwargs_to_freeze,
         )
 
-    def original_def(self) -> Union[AgentFunction, type]:
+    @property
+    def wrapped_func_or_class(self) -> Union[AgentFunction, type]:
         """
         Get the original definition of the agent, which is either a function or a class. The `@miniagent` decorator
         hides the original function or class from the client code behind a `MiniAgent` object, but in certain scenarios
