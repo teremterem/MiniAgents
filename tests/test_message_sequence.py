@@ -71,17 +71,17 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
 
         token_result = [token async for msg_promise in msg_seq1.sequence_promise async for token in msg_promise]
         assert token_result == [
-            "msg1",
-            "msg2",
-            "msg3",
-            "msg4",
-            "msg5",
-            "msg6",
-            "msg7",
-            "msg8",
-            "msg9",
-            "msg10",
-            # "msg11",
+            TextToken("msg1", content_template=None),
+            TextToken("msg2", content_template=None, some_attr=2),
+            TextToken("msg3", content_template=None, another_attr=3),
+            TextToken("msg4", content_template=None),
+            TextToken("msg5", content_template=None),
+            TextToken("msg6", content_template=None),
+            TextToken("msg7", content_template=None),
+            TextToken("msg8", content_template=None, another_attr=8),
+            TextToken("msg9", content_template=None),
+            TextToken("msg10", content_template=None, yet_another_attr=10),
+            # TextToken("msg11", content_template=None),
         ]
 
 
@@ -143,8 +143,8 @@ async def test_message_sequence_error_to_message(
 
         if collect_token_by_token:
             assert message_result == [
-                "msg1",
-                "ValueError: error1",
+                TextToken("msg1", content_template=None),
+                TextToken("ValueError: error1", content_template=None),
             ]
             assert issubclass([promise async for promise in msg_seq.sequence_promise][-1].message_class, ErrorMessage)
             assert isinstance((await msg_seq.sequence_promise)[-1], ErrorMessage)
@@ -177,10 +177,10 @@ async def test_message_sequence_token_error_to_message(
 
         if collect_token_by_token:
             assert result == [
-                "msg1",
+                TextToken("msg1", content_template=None),
                 TextToken("token1"),
                 TextToken("token2"),
-                "\nValueError: error1",
+                TextToken("\nValueError: error1"),
             ]
             assert issubclass(
                 [promise async for promise in msg_seq.sequence_promise][-1].message_class,
