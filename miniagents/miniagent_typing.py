@@ -11,7 +11,7 @@ from miniagents.promising.promise_typing import PromiseBound
 
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
-    from miniagents.messages import Message, MessagePromise
+    from miniagents.messages import Message, MessagePromise, Token
     from miniagents.miniagents import InteractionContext
 
 
@@ -28,7 +28,7 @@ class MessageTokenStreamer(Protocol):
     A protocol for message token streamer functions.
     """
 
-    def __call__(self, metadata_so_far: dict[str, Any]) -> AsyncIterator[str]: ...
+    def __call__(self, auxiliary_field_collector: dict[str, Any]) -> AsyncIterator["Token"]: ...
 
 
 class PersistMessageEventHandler(Protocol):

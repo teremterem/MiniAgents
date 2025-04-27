@@ -5,7 +5,7 @@
 import traceback
 import warnings
 from types import TracebackType
-from typing import Any, AsyncIterator, Iterator, Optional, Union
+from typing import Any, AsyncIterator, Iterable, Iterator, Optional, Union
 
 import wrapt
 from pydantic import BaseModel, ConfigDict
@@ -16,13 +16,56 @@ from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
-from miniagents.utils import dict_to_message, join_messages
+from miniagents.utils import dict_to_message, as_single_text_promise
 
-MESSAGE_CONTENT_FIELD = "content"
-MESSAGE_CONTENT_TEMPLATE_FIELD = "content_template"
+
+class Token(Frozen):
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ()
+
+
+class TextToken(Token):
+    content: Optional[str] = None
+
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ("content",)
+
+    def _as_string(self) -> str:
+        return self.content or ""
+
+    def __init__(self, content: Optional[str] = None, **metadata) -> None:
+        super().__init__(content=content, **metadata)
 
 
 class Message(Frozen):
+    @classmethod
+    def token_class(cls) -> type[Token]:
+        return Token
+
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ()
+
+    @classmethod
+    def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "Message":
+        # This method is meant to be overridden only by message classes that support token streaming
+        # Child classes that don't need token streaming don't need to implement this method
+        raise TypeError(f"{cls.__name__} does not support token streaming.")
+
+    def _message_to_tokens(self) -> tuple[Token, ...]:
+        return (self.token_class()(**dict(self)),)
+
+    @cached_privately
+    def message_to_tokens(self) -> tuple[Token, ...]:
+        """
+        Convert this message into a tuple of tokens.
+
+        NOTE: This method is cached. Please do not override it in subclasses. Override `_message_to_tokens` instead.
+        """
+        return self._message_to_tokens()
+
     @property
     @cached_privately
     def as_promise(self) -> "MessagePromise":
@@ -36,7 +79,7 @@ class Message(Frozen):
         cls,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
-        **preliminary_metadata,
+        **known_beforehand,
     ) -> "MessagePromise":
         """
         Create a MessagePromise object based on the Message class this method is called for and the provided
@@ -47,9 +90,9 @@ class Message(Frozen):
                 start_soon=start_soon,
                 message_token_streamer=message_token_streamer,
                 message_class=cls,
-                **preliminary_metadata,
+                **known_beforehand,
             )
-        return cls(**preliminary_metadata).as_promise
+        return cls(**known_beforehand).as_promise
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -145,6 +188,21 @@ class TextMessage(Message):
     content_template: Optional[str] = None
 
     @classmethod
+    def token_class(cls) -> type[TextToken]:
+        return TextToken
+
+    @classmethod
+    def non_metadata_fields(cls) -> tuple[str, ...]:
+        return ("content", "content_template")
+
+    @classmethod
+    def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "TextMessage":
+        return cls(
+            content="".join(str(token) for token in tokens),
+            **{k: v for k, v in extra_fields.items() if k not in cls.non_metadata_fields()},
+        )
+
+    @classmethod
     def promise(  # pylint: disable=arguments-differ
         cls,
         content: Optional[str] = None,
@@ -152,26 +210,26 @@ class TextMessage(Message):
         content_template: Optional[str] = None,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[MessageTokenStreamer] = None,
-        **preliminary_metadata,
+        **known_beforehand,
     ) -> "MessagePromise":
         if message_token_streamer:
-            if content is not None:
+            if content is not None or content_template is not None:
                 raise ValueError(
-                    "Cannot provide both 'content' and 'message_token_streamer' parameters. "
-                    "Please provide only one of them."
+                    "If you provide `message_token_streamer` parameter, you cannot provide `content` or "
+                    "`content_template` parameters."
                 )
             return super().promise(
                 content_template=content_template,
                 start_soon=start_soon,
                 message_token_streamer=message_token_streamer,
-                **preliminary_metadata,
+                **known_beforehand,
             )
         return super().promise(
             content=content,
             content_template=content_template,
             start_soon=start_soon,
             message_token_streamer=message_token_streamer,
-            **preliminary_metadata,
+            **known_beforehand,
         )
 
     def __init__(self, content: Optional[str] = None, **metadata) -> None:
@@ -180,22 +238,18 @@ class TextMessage(Message):
     def _as_string(self) -> str:
         if self.content_template is not None:
             return self.content_template.format(**dict(self))
-        if self.content is not None:
-            return self.content
-        return super()._as_string()
+        return self.content or ""
 
 
-class ErrorMessage(TextMessage):
-    is_error: bool = True
+class ErrorMessage(TextMessage): ...
 
 
-class MessagePromise(StreamedPromise[str, Message]):
-    # TODO use Token object instead of str and allow appending empty text tokens too, for simplicity
+class MessagePromise(StreamedPromise[Token, Message]):
     """
     A promise of a message that can be streamed token by token.
     """
 
-    preliminary_metadata: Frozen
+    known_beforehand: Frozen
     message_class: type[Message]
 
     def __init__(
@@ -204,28 +258,26 @@ class MessagePromise(StreamedPromise[str, Message]):
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
         message_class: Optional[type[Message]] = None,
-        # TODO is `preliminary_metadata` a good name given that it eventually overrides any other metadata entries
-        #  that might have been produced by the `message_token_streamer` after streaming has finished ?
-        **preliminary_metadata,
+        **known_beforehand,
     ) -> None:
         # Validate initialization parameters
-        if prefill_message is not None and (message_token_streamer is not None or preliminary_metadata):
+        if prefill_message is not None and (message_token_streamer is not None or known_beforehand):
             raise ValueError(
-                "Cannot provide both 'prefill_message' and 'message_token_streamer'/'preliminary_metadata' parameters"
+                "Cannot provide both 'prefill_message' and 'message_token_streamer'/'known_beforehand' parameters"
             )
         if prefill_message is None and message_token_streamer is None:
             raise ValueError("Either 'prefill_message' or 'message_token_streamer' parameter must be provided")
 
         if prefill_message:
-            self.preliminary_metadata = prefill_message
+            self.known_beforehand = prefill_message
             self.message_class = type(prefill_message)
 
-            self._metadata_so_far = None
+            self._auxiliary_field_collector = None
             super().__init__(prefill_result=prefill_message, start_soon=False)
         else:
             if message_class is None:
                 raise ValueError("'message_class' parameter must be provided if 'prefill_message' is not provided")
-            self.preliminary_metadata = Frozen(**preliminary_metadata)
+            self.known_beforehand = Frozen(**known_beforehand)
             self.message_class = message_class
 
             if isinstance(message_token_streamer, MessageTokenAppender):
@@ -235,55 +287,72 @@ class MessagePromise(StreamedPromise[str, Message]):
                         "The MessageTokenAppender must be opened before it can be used. Put this statement "
                         "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
                     )
-                self._metadata_so_far = message_token_streamer.metadata_so_far
+                self._auxiliary_field_collector = message_token_streamer.auxiliary_field_collector
             else:
-                self._metadata_so_far = {}
+                self._auxiliary_field_collector = {}
 
             self._amessage_token_streamer = message_token_streamer
             super().__init__(start_soon=start_soon)
 
-    def _astreamer(self) -> AsyncIterator[str]:
-        return self._amessage_token_streamer(self._metadata_so_far)
+    def _astreamer(self) -> AsyncIterator[Token]:
+        return self._amessage_token_streamer(self._auxiliary_field_collector)
 
-    async def _amessage_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[str]:  # pylint: disable=method-hidden
+    async def _amessage_token_streamer(  # pylint: disable=method-hidden
+        self, _: dict[str, Any]
+    ) -> AsyncIterator[Token]:
         """
         The default implementation of the message token streamer that just yields the string representation of the
         message as a single token. This implementation is only called if the message was pre-filled. In case of real
         streaming the constructor of the class always overrides this method with an externally supplied streamer.
         """
-        # TODO test coverage shows that the line below does get executed, but when and why ?
-        #  maybe just try to do nothing here ?
-        yield str(self.preliminary_metadata)
+        # The code below is executed when the message is prefilled but the client still requests to stream
+        for token in self._result.message_to_tokens():
+            yield token
 
     async def _aresolver(self) -> Message:
         """
         Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
         """
         tokens = [token async for token in self]
-        # NOTE: `_metadata_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
-
-        return self.message_class(
-            content="".join(tokens), **{**self._metadata_so_far, **self.preliminary_metadata.as_kwargs()}
+        # NOTE: `_auxiliary_field_collector` is expected to be "fully formed" only after the stream is exhausted with
+        #  the above comprehension
+        return self.message_class.tokens_to_message(
+            tokens, **{**self._auxiliary_field_collector, **dict(self.known_beforehand)}
         )
 
 
-class MessageTokenAppender(StreamAppender[str]):
+class MessageTokenAppender(StreamAppender[Token]):
     """
-    A stream appender that appends message tokens to the message promise. It also maintains `metadata_so_far`
-    dictionary so metadata can be added as tokens are appended.
+    A stream appender that appends message tokens to the message promise. It also maintains `auxiliary_field_collector`
+    dictionary so message additional fields could be added to the message (if, for any reason, they cannot be delivered
+    via tokens).
     """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._metadata_so_far = {}
+        self._auxiliary_field_collector = {}
 
     @property
-    def metadata_so_far(self) -> dict[str, Any]:
+    def auxiliary_field_collector(self) -> dict[str, Any]:
         """
-        This property protects `_metadata_so_far` dictionary from being replaced completely. You should only modify
-        it, not replace it.
+        This property protects `_auxiliary_field_collector` dictionary from being replaced completely. You should only
+        modify it, not replace it.
         """
-        return self._metadata_so_far
+        return self._auxiliary_field_collector
+
+    def append(self, piece: Union[Token, str, dict[str, Any]]) -> "MessageTokenAppender":
+        if not isinstance(piece, Token) and isinstance(piece, BaseModel):
+            piece = dict(piece)
+        elif isinstance(piece, str):
+            piece = TextToken(piece)
+
+        if isinstance(piece, dict):
+            if any(isinstance(piece.get(field), str) for field in TextToken.non_metadata_fields()):
+                piece = TextToken(**piece)
+            else:
+                piece = Token(**piece)
+
+        return super().append(piece)
 
 
 class MessageSequence(FlatSequence[MessageType, MessagePromise]):
@@ -453,12 +522,12 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
     A promise of a sequence of messages that can be streamed message by message.
     """
 
-    def as_single_promise(self, **kwargs) -> MessagePromise:
+    def as_single_text_promise(self, **kwargs) -> MessagePromise:
         """
         Convert this sequence promise into a single message promise that will contain all the messages from this
         sequence (separated by double newlines by default).
         """
-        return join_messages(self, start_soon=False, **kwargs)
+        return as_single_text_promise(self, start_soon=False, **kwargs)
 
 
 class SafeMessageSequencePromise(MessageSequencePromise):
@@ -504,7 +573,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return ErrorMessage(f"{''.join(tokens)}\n{error_msg}")
+            return ErrorMessage(f"{''.join([str(token) for token in tokens])}\n{error_msg}")
 
     def __await__(self):
         return self.aresolve().__await__()
@@ -528,4 +597,4 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return f"\n{error_msg}"
+            return TextToken(f"\n{error_msg}")

@@ -53,7 +53,7 @@ class ModelSingleton(metaclass=ModelSingletonMeta):
     """
 
 
-def join_messages(
+def as_single_text_promise(
     messages: "MessageType",
     *,
     delimiter: Optional[str] = "\n\n",
@@ -61,7 +61,7 @@ def join_messages(
     reference_original_messages: bool = True,
     start_soon: Optional[bool] = False,
     message_class: Optional[type["TextMessage"]] = None,
-    **preliminary_metadata,
+    **known_beforehand,
 ) -> "MessagePromise":
     """
     Join multiple messages into a single text message using a delimiter.
@@ -75,11 +75,11 @@ def join_messages(
     in the `original_messages` field.
     :param start_soon: If True, the resulting message will be scheduled for background resolution regardless
     of when it is going to be consumed.
-    :param preliminary_metadata: Metadata that will be available as a field of the resulting MessagePromise even
-    before it is resolved.
+    :param known_beforehand: Message fields that will be available under `MessagePromise.known_beforehand` even
+    before the promise is resolved.
     :param message_class: A class of the resulting message. If None, the default TextMessage class will be used.
     """
-    from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD, MessageSequence, TextMessage
+    from miniagents.messages import MessageSequence, TextMessage, Token, TextToken
 
     if start_soon is None:
         start_soon = NO_VALUE  # inherit the default value from the current MiniAgents context
@@ -87,38 +87,36 @@ def join_messages(
     if message_class is None:
         message_class = TextMessage
 
-    async def token_streamer(metadata_so_far: dict[str, Any]) -> AsyncIterator[str]:
+    async def token_streamer(auxiliary_field_collector: dict[str, Any]) -> AsyncIterator[Token]:
         if reference_original_messages:
-            metadata_so_far["original_messages"] = []
+            auxiliary_field_collector["original_messages"] = []
 
         first_message = True
         async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
-            metadata_so_far.update(
-                (key, value)
-                for key, value in message_promise.preliminary_metadata
-                if key not in (MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
-            )
             if delimiter and not first_message:
                 yield delimiter
 
             lstrip_newlines = strip_leading_newlines
             async for token in message_promise:
-                if lstrip_newlines:
+                if lstrip_newlines and isinstance(token, TextToken):
                     # let's remove leading newlines from the first message
-                    token = token.lstrip("\n\r")
-                if token:
+                    original_token_str = str(token)
+                    token_str = original_token_str.lstrip("\n\r")
+                    if original_token_str != token_str:
+                        token = token.model_copy(update={"content": token_str})
+                if str(token):
                     lstrip_newlines = False  # non-empty token was found - time to stop stripping newlines
-                    yield token
+                yield token
 
             if reference_original_messages:
-                metadata_so_far["original_messages"].append(await message_promise)
+                auxiliary_field_collector["original_messages"].append(await message_promise)
 
             # TODO should we care about merging values of the same keys instead of just overwriting them ?
             #  (if not, add a comment about this)
-            metadata_so_far.update(
+            auxiliary_field_collector.update(
                 (key, value)
                 for key, value in await message_promise
-                if key not in (MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD)
+                if key not in message_promise.message_class.non_metadata_fields()
             )
 
             first_message = False
@@ -126,7 +124,7 @@ def join_messages(
     return message_class.promise(
         message_token_streamer=token_streamer,
         start_soon=start_soon,
-        **preliminary_metadata,
+        **known_beforehand,
     )
 
 
@@ -233,8 +231,8 @@ def display_agent_trace(agent_trace: Optional[Iterable["MiniAgent"]] = None) -> 
 
 
 def dict_to_message(d: dict[str, Any]) -> "Message":
-    from miniagents.messages import MESSAGE_CONTENT_FIELD, MESSAGE_CONTENT_TEMPLATE_FIELD, TextMessage, Message
+    from miniagents.messages import TextMessage, Message
 
-    if isinstance(d.get(MESSAGE_CONTENT_FIELD), str) or isinstance(d.get(MESSAGE_CONTENT_TEMPLATE_FIELD), str):
+    if any(isinstance(d.get(field), str) for field in TextMessage.non_metadata_fields()):
         return TextMessage(**d)
     return Message(**d)

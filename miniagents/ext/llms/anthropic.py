@@ -73,8 +73,9 @@ class AnthropicAgent(LLMAgent):
                 model=self.model,
                 **self.__pydantic_extra__,
             ) as response:
+                # TODO use non-text streaming so all the token metadata is available
                 async for token in response.text_stream:
-                    token_appender.append(token)
+                    token_appender.append(self.response_message_class.token_class()(token))
                 anthropic_final_message = await response.get_final_message()
 
         else:
@@ -92,9 +93,10 @@ class AnthropicAgent(LLMAgent):
                     f"but {len(anthropic_final_message.content)} were returned instead"
                 )
             # send the complete message content as a single token
-            token_appender.append(anthropic_final_message.content[0].text)
+            # TODO put all the token metadata into the token too (in this case metadata of complete message)
+            token_appender.append(self.response_message_class.token_class()(anthropic_final_message.content[0].text))
 
-        token_appender.metadata_so_far.update(anthropic_final_message.model_dump(exclude={"content"}))
+        token_appender.auxiliary_field_collector.update(anthropic_final_message.model_dump(exclude={"content"}))
 
     async def _cut_off_system_message(self, message_dicts: list[dict[str, Any]]) -> str:
         if message_dicts and message_dicts[-1]["role"] == "system":
@@ -135,7 +137,7 @@ async def aprepare_dicts_for_anthropic(
         non_system_message_dicts.insert(0, {"role": "user", "content": fake_first_user_message})
 
     system_message_dicts = [message_dict for message_dict in message_dicts if message_dict["role"] == "system"]
-    # let's put all the system messages in the beginning (they will later be combined into a single message
+    # let's put all the system messages to the end (they will later be combined into a single message
     # and stripped away)
     message_dicts = non_system_message_dicts + system_message_dicts
     if system:

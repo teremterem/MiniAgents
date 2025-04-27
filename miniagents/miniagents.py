@@ -71,7 +71,7 @@ class MiniAgents(PromisingContext):
         )
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
-        self.errors_as_messages = errors_as_messages
+        self.errors_as_messages = errors_as_messages  # TODO should this propagate to all child agent calls if set ?
         self.error_tracebacks_in_messages = error_tracebacks_in_messages
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default

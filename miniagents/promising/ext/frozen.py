@@ -62,8 +62,9 @@ class Frozen(BaseModel):
         """
         Return a string representation of this model. This is usually the representation that will be used when
         the model needs to be a part of an LLM prompts.
+
+        NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         """
-        # NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         return self._as_string()
 
     @property
@@ -154,7 +155,7 @@ class Frozen(BaseModel):
         if isinstance(value, (tuple, list)):
             return tuple(cls._validate_and_freeze_value(key, sub_value) for sub_value in value)
         if isinstance(value, dict):
-            return Frozen(**value)
+            return Frozen(**value)  # this other instance of Frozen will take care of freezing deeper levels
         if not isinstance(value, cls._allowed_value_types()):
             raise ValueError(
                 f"only {{{', '.join([t.__name__ for t in cls._allowed_value_types()])}}} "

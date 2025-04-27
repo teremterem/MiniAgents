@@ -165,7 +165,7 @@ async def test_agents_reply_out_of_order(start_everything_soon_by_default: bool)
 
     async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
         replies = await agent1.trigger()
-        replies = [reply.content for reply in replies]
+        replies = [str(reply) for reply in replies]
 
     assert replies == [
         "agent 1 msg 1",
@@ -240,12 +240,12 @@ async def test_agents_reply_out_of_order_exception(
 
         if errors_as_messages:
             actual_replies = await reply_promises
-            actual_replies = [reply.content for reply in actual_replies]
+            actual_replies = [str(reply) for reply in actual_replies]
         else:
             actual_replies = []
             with pytest.raises(ValueError):
                 async for reply_promise in reply_promises:
-                    actual_replies.append((await reply_promise).content)
+                    actual_replies.append(str(await reply_promise))
 
     expected_replies = [
         "agent 1 msg 1",
