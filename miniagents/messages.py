@@ -272,7 +272,7 @@ class MessagePromise(StreamedPromise[Token, Message]):
             self.known_beforehand = prefill_message
             self.message_class = type(prefill_message)
 
-            self._fields_so_far = None  # TODO get rid of this in favor of just accumulating tokens with metadata ?
+            self._auxiliary_field_collector = None
             super().__init__(prefill_result=prefill_message, start_soon=False)
         else:
             if message_class is None:
@@ -287,15 +287,15 @@ class MessagePromise(StreamedPromise[Token, Message]):
                         "The MessageTokenAppender must be opened before it can be used. Put this statement "
                         "inside a `with MessageTokenAppender(...) as appender:` block to resolve this issue."
                     )
-                self._fields_so_far = message_token_streamer.fields_so_far
+                self._auxiliary_field_collector = message_token_streamer.auxiliary_field_collector
             else:
-                self._fields_so_far = {}
+                self._auxiliary_field_collector = {}
 
             self._amessage_token_streamer = message_token_streamer
             super().__init__(start_soon=start_soon)
 
     def _astreamer(self) -> AsyncIterator[Token]:
-        return self._amessage_token_streamer(self._fields_so_far)
+        return self._amessage_token_streamer(self._auxiliary_field_collector)
 
     async def _amessage_token_streamer(  # pylint: disable=method-hidden
         self, _: dict[str, Any]
@@ -314,28 +314,31 @@ class MessagePromise(StreamedPromise[Token, Message]):
         Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
         """
         tokens = [token async for token in self]
-        # NOTE: `_fields_so_far` is expected to be "fully formed" only after the stream is exhausted with the above
-        #  comprehension
-        return self.message_class.tokens_to_message(tokens, **{**self._fields_so_far, **dict(self.known_beforehand)})
+        # NOTE: `_auxiliary_field_collector` is expected to be "fully formed" only after the stream is exhausted with
+        #  the above comprehension
+        return self.message_class.tokens_to_message(
+            tokens, **{**self._auxiliary_field_collector, **dict(self.known_beforehand)}
+        )
 
 
 class MessageTokenAppender(StreamAppender[Token]):
     """
-    A stream appender that appends message tokens to the message promise. It also maintains `fields_so_far`
-    dictionary so message fields can be added as tokens are appended.
+    A stream appender that appends message tokens to the message promise. It also maintains `auxiliary_field_collector`
+    dictionary so message additional fields could be added to the message (if, for any reason, they cannot be delivered
+    via tokens).
     """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._fields_so_far = {}
+        self._auxiliary_field_collector = {}
 
     @property
-    def fields_so_far(self) -> dict[str, Any]:
+    def auxiliary_field_collector(self) -> dict[str, Any]:
         """
-        This property protects `_fields_so_far` dictionary from being replaced completely. You should only modify
-        it, not replace it.
+        This property protects `_auxiliary_field_collector` dictionary from being replaced completely. You should only
+        modify it, not replace it.
         """
-        return self._fields_so_far
+        return self._auxiliary_field_collector
 
     def append(self, piece: Union[Token, str, dict[str, Any]]) -> "MessageTokenAppender":
         if not isinstance(piece, Token) and isinstance(piece, BaseModel):

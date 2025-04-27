@@ -87,17 +87,12 @@ def as_single_text_promise(
     if message_class is None:
         message_class = TextMessage
 
-    async def token_streamer(fields_so_far: dict[str, Any]) -> AsyncIterator[Token]:
+    async def token_streamer(auxiliary_field_collector: dict[str, Any]) -> AsyncIterator[Token]:
         if reference_original_messages:
-            fields_so_far["original_messages"] = []
+            auxiliary_field_collector["original_messages"] = []
 
         first_message = True
         async for message_promise in MessageSequence.turn_into_sequence_promise(messages):
-            fields_so_far.update(
-                (key, value)
-                for key, value in message_promise.known_beforehand
-                if key not in message_promise.message_class.non_metadata_fields()
-            )
             if delimiter and not first_message:
                 yield delimiter
 
@@ -114,11 +109,11 @@ def as_single_text_promise(
                 yield token
 
             if reference_original_messages:
-                fields_so_far["original_messages"].append(await message_promise)
+                auxiliary_field_collector["original_messages"].append(await message_promise)
 
             # TODO should we care about merging values of the same keys instead of just overwriting them ?
             #  (if not, add a comment about this)
-            fields_so_far.update(
+            auxiliary_field_collector.update(
                 (key, value)
                 for key, value in await message_promise
                 if key not in message_promise.message_class.non_metadata_fields()

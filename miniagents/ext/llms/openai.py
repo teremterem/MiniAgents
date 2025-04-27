@@ -87,11 +87,11 @@ class OpenAIAgent(LLMAgent):
                 # TODO put all the token metadata into the token
                 token_appender.append(self.response_message_class.token_class()(chunk.choices[0].delta.content))
 
-                token_appender.fields_so_far["role"] = (
-                    chunk.choices[0].delta.role or token_appender.fields_so_far["role"]
+                token_appender.auxiliary_field_collector["role"] = (
+                    chunk.choices[0].delta.role or token_appender.auxiliary_field_collector["role"]
                 )
                 self._merge_openai_dicts(
-                    token_appender.fields_so_far,
+                    token_appender.auxiliary_field_collector,
                     chunk.model_dump(exclude={"choices": {0: {"index": ..., "delta": {"content": ..., "role": ...}}}}),
                 )
         else:
@@ -106,8 +106,8 @@ class OpenAIAgent(LLMAgent):
                 self.response_message_class.token_class()(openai_response.choices[0].message.content)
             )
 
-            token_appender.fields_so_far["role"] = openai_response.choices[0].message.role
-            token_appender.fields_so_far.update(
+            token_appender.auxiliary_field_collector["role"] = openai_response.choices[0].message.role
+            token_appender.auxiliary_field_collector.update(
                 openai_response.model_dump(
                     exclude={"choices": {0: {"index": ..., "message": {"content": ..., "role": ...}}}}
                 )
