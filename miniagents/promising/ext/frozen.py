@@ -62,8 +62,9 @@ class Frozen(BaseModel):
         """
         Return a string representation of this model. This is usually the representation that will be used when
         the model needs to be a part of an LLM prompts.
+
+        NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         """
-        # NOTE: child classes should override the private version, `_as_string()` if they want to customize behaviour
         return self._as_string()
 
     @property

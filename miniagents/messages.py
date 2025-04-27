@@ -4,8 +4,9 @@
 
 import traceback
 import warnings
+from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import Any, AsyncIterator, Iterator, Optional, Union
+from typing import Any, AsyncIterator, Iterable, Iterator, Optional, Union
 
 import wrapt
 from pydantic import BaseModel, ConfigDict
@@ -39,7 +40,7 @@ class TextToken(Token):
         super().__init__(content=content, **metadata)
 
 
-class Message(Frozen):
+class Message(ABC, Frozen):
     @classmethod
     def token_class(cls) -> type[Token]:
         return Token
@@ -47,6 +48,22 @@ class Message(Frozen):
     @classmethod
     def non_metadata_fields(cls) -> tuple[str, ...]:
         return ()
+
+    @classmethod
+    @abstractmethod
+    def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "Message": ...
+
+    def _message_to_tokens(self) -> tuple[Token, ...]:
+        return (self.token_class()(**dict(self)),)
+
+    @cached_privately
+    def message_to_tokens(self) -> tuple[Token, ...]:
+        """
+        Convert this message into a tuple of tokens.
+
+        NOTE: This method is cached. Please do not override it in subclasses. Override `_message_to_tokens` instead.
+        """
+        return self._message_to_tokens()
 
     @property
     @cached_privately
@@ -178,6 +195,13 @@ class TextMessage(Message):
         return ("content", "content_template")
 
     @classmethod
+    def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "TextMessage":
+        return cls(
+            content="".join(str(token) for token in tokens),
+            **{k: v for k, v in extra_fields.items() if k not in cls.non_metadata_fields()},
+        )
+
+    @classmethod
     def promise(  # pylint: disable=arguments-differ
         cls,
         content: Optional[str] = None,
@@ -188,10 +212,10 @@ class TextMessage(Message):
         **known_beforehand,
     ) -> "MessagePromise":
         if message_token_streamer:
-            if content is not None:
+            if content is not None or content_template is not None:
                 raise ValueError(
-                    "Cannot provide both 'content' and 'message_token_streamer' parameters. "
-                    "Please provide only one of them."
+                    "If you provide `message_token_streamer` parameter, you cannot provide `content` or "
+                    "`content_template` parameters."
                 )
             return super().promise(
                 content_template=content_template,
@@ -281,17 +305,17 @@ class MessagePromise(StreamedPromise[Token, Message]):
         streaming the constructor of the class always overrides this method with an externally supplied streamer.
         """
         # The code below is executed when the message is prefilled but the client still requests to stream
-        yield self.message_class.token_class()(**dict(self.known_beforehand))
+        for token in self._result.message_to_tokens():
+            yield token
 
     async def _aresolver(self) -> Message:
         """
         Resolve the message from the stream of tokens. Only called if the message was not pre-filled.
         """
-        tokens = [str(token) async for token in self]
-        # NOTE: `_fields_so_far` is "fully formed" only after the stream is exhausted with the above comprehension
-
-        # TODO TODO TODO if TextMessage then content and tokens to str
-        return self.message_class(content="".join(tokens), **{**self._fields_so_far, **dict(self.known_beforehand)})
+        tokens = [token async for token in self]
+        # NOTE: `_fields_so_far` is expected to be "fully formed" only after the stream is exhausted with the above
+        #  comprehension
+        return self.message_class.tokens_to_message(tokens, **{**self._fields_so_far, **dict(self.known_beforehand)})
 
 
 class MessageTokenAppender(StreamAppender[Token]):
@@ -569,4 +593,4 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return f"\n{error_msg}"
+            return TextToken(f"\n{error_msg}")
