@@ -12,14 +12,14 @@ async def research_agent(ctx: InteractionContext) -> None:
         ctx.reply(
             web_search_agent.trigger(
                 ctx.message_promises,
-                search_query=f"search {i+1}",
+                search_query=f"query {i+1}",
             )
         )
 
 
 @miniagent
 async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
-    ctx.reply(f"{search_query}")
+    ctx.reply(f"{search_query} - SEARCHING")
     await asyncio.sleep(random.uniform(0.1, 1))
     ctx.reply(f"{search_query} - DONE")
 
@@ -34,7 +34,7 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
 
 @miniagent
 async def page_scraper_agent(ctx: InteractionContext, url: str) -> None:
-    ctx.reply(f"SCRAPING: {url}")
+    ctx.reply(f"{url} - SCRAPING")
     await asyncio.sleep(random.uniform(0.1, 1))
     ctx.reply(f"{url} - DONE")
 
