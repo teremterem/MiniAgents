@@ -21,20 +21,29 @@ import random
 from typing import AsyncGenerator
 
 
-async def page_scraper_agent_naive(url: str) -> AsyncGenerator[str, None]:
+async def research_agent_naive(question: str) -> AsyncGenerator[str, None]:
     """
-    Pretends to scrape a web page.
-    Yields status messages sequentially.
+    The main research agent, implemented naively.
+    Calls web_search_agent_naive sequentially using a `yield from` analogue -
+    `async for ... yield` (`yield from` does not work with async generators).
     """
-    yield f"{url} - SCRAPING"
-    await asyncio.sleep(random.uniform(0.1, 1))
-    yield f"{url} - DONE"
+    yield f"RESEARCHING: {question}"
+
+    for i in range(3):
+        query = f"query {i+1}"
+        # NOTE: The `async for ... yield` construct processes the generator
+        # sequentially. The `web_search_agent_naive` for "query 2" will only
+        # start after the one for "query 1" (including all its pretend-scraping)
+        # is finished.
+        async for item in web_search_agent_naive(search_query=query):
+            yield item
 
 
 async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]:
     """
     Pretends to perform a web search and trigger scraping.
-    Calls page_scraper_agent_naive sequentially using `yield from`.
+    Calls page_scraper_agent_naive sequentially using a `yield from` analogue -
+    `async for ... yield`.
     """
     yield f"{search_query} - SEARCHING"
     await asyncio.sleep(random.uniform(0.1, 1))
@@ -42,27 +51,21 @@ async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]
 
     for i in range(3):
         url = f"http://dummy.page/{search_query.replace(' ', '-')}/page-{i+1}"
-        # NOTE: `yield from` processes the generator sequentially.
+        # NOTE: The `async for ... yield` construct leads to sequential execution.
         # The next iteration or yield in this function only happens *after*
         # page_scraper_agent_naive is completely finished.
         async for item in page_scraper_agent_naive(url=url):
             yield item
 
 
-async def research_agent_naive(question: str) -> AsyncGenerator[str, None]:
+async def page_scraper_agent_naive(url: str) -> AsyncGenerator[str, None]:
     """
-    The main research agent, implemented naively.
-    Calls web_search_agent_naive sequentially using `yield from`.
+    Pretends to scrape a web page.
+    Yields simple status messages.
     """
-    yield f"RESEARCHING: {question}"
-
-    for i in range(3):
-        query = f"query {i+1}"
-        # NOTE: Again, `yield from` leads to sequential execution.
-        # `web_search_agent_naive` for "query 2" will only start after
-        # the one for "query 1" (including all its scraping) is finished.
-        async for item in web_search_agent_naive(search_query=query):
-            yield item
+    yield f"{url} - SCRAPING"
+    await asyncio.sleep(random.uniform(0.1, 1))
+    yield f"{url} - DONE"
 
 
 async def stream_to_stdout_naive(generator: AsyncGenerator[str, None]):
