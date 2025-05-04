@@ -44,7 +44,13 @@ async def research_agent(ctx: InteractionContext) -> None:
     # `research_agent`.
 
     for i in range(3):
-        # TODO explain how `ctx.reply_out_of_order()` is different from `ctx.reply()`
+        # Unlike regular `reply`, `reply_out_of_order` doesn't enforce the order of the messages, it just delivers them
+        # as soon as they are available (useful here, because we want to report the progress of the web search and
+        # scraping as soon as things are done, instead of adhering to the order in which the promises were "registered"
+        # to be part of the response sequence).
+        #
+        # NOTE: This doesn't influence the parallelism of the actual execution, however. It is only about the order
+        # of the messages in the response sequence.
         ctx.reply_out_of_order(
             # Trigger the web_search_agent for each query.
             # IMPORTANT: No `await` here! `trigger` returns immediately with a
@@ -76,7 +82,8 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
     ctx.reply(f"{search_query} - SEARCH DONE")
 
     for i in range(3):
-        # TODO `ctx.reply_out_of_order()` again
+        # Return scraping results in order of their availability rather than sequentially (`reply_out_of_order`, see
+        # more detailed explanation earlier in this file)
         ctx.reply_out_of_order(
             # Trigger the page_scraper_agent for each dummy URL.
             # Again, no `await` - MessageSequencePromise will be returned immediately.
