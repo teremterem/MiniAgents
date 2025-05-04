@@ -47,10 +47,10 @@ async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]
     """
     yield f"{search_query} - SEARCHING"
     await asyncio.sleep(random.uniform(0.5, 1))
-    yield f"{search_query} - DONE"
+    yield f"{search_query} - SEARCH DONE"
 
     for i in range(3):
-        url = f"http://dummy.page/{search_query.replace(' ', '-')}/page-{i+1}"
+        url = f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}"
         # NOTE: The `async for ... yield` construct leads to sequential execution.
         # The next iteration or yield in this function only happens *after*
         # page_scraper_agent_naive is completely finished.

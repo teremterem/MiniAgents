@@ -73,7 +73,7 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
     """
     ctx.reply(f"{search_query} - SEARCHING")
     await asyncio.sleep(random.uniform(0.5, 1))
-    ctx.reply(f"{search_query} - DONE")
+    ctx.reply(f"{search_query} - SEARCH DONE")
 
     for i in range(3):
         # TODO `ctx.reply_out_of_order()` again
@@ -86,7 +86,7 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
                 # implementation)
                 ctx.message_promises,
                 # Pass the dummy URL as a keyword argument
-                url=f"http://dummy.page/{search_query.replace(' ', '-')}/page-{i+1}",
+                url=f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}",
             )
         )
 
