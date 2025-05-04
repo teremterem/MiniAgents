@@ -1,6 +1,6 @@
 # MiniAgents: Multi-Agent AI With Procedural Simplicity
 
-![MiniAgents on the Moon](images/miniagents-5-by-4-fixed.jpeg)
+![MiniAgents on the Moon](../../images/miniagents-5-by-4-fixed.jpeg)
 
 An open-source, async-first Python framework for building multi-agent AI systems with an innovative approach to parallelism, so you can focus on creating intelligent agents, not on managing the concurrency of your flows.
 
