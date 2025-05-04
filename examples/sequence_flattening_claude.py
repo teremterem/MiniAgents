@@ -56,7 +56,7 @@ async def research_agent(ctx: InteractionContext) -> None:
     # does not require all input messages upfront)
     final_answer_call: AgentCall = final_answer_agent.initiate_call(
         # Pass the original user question as a keyword argument
-        user_question=await ctx.message_promises,
+        user_question=await ctx.message_promises.as_single_text_promise(),
     )
 
     # For each search query, trigger a web search agent
@@ -181,7 +181,7 @@ async def final_answer_agent(ctx: InteractionContext, user_question: Message) ->
     # Simulate generating an answer based on the collected information
     # In reality, this would use an LLM to synthesize the information
     ctx.reply(
-        f"Based on the research conducted for the question '{await user_question}', "
+        f"Based on the research conducted for the question '{user_question}', "
         f"here is a synthesized answer using information from multiple sources."
     )
 
