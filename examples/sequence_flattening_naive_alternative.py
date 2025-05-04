@@ -87,21 +87,20 @@ async def main_naive():
     result_generator = research_agent_naive(question)
 
     print()
-    print("--- Naive Async Generator Execution ---")
+    print("=== Naive Async Generator Execution ===")
     print()
     # Consume and print results sequentially
     await stream_to_stdout_naive(result_generator)
     print()
-    print("--- End of Naive Execution ---")
+    print("=== End of Naive Execution ===")
     print()
 
-    print()
     print("Attempting to reiterate (will yield nothing):")
     # Note: Re-iterating a standard async generator like this is not possible.
     # Once consumed, it's exhausted. This contrasts with MiniAgents promises,
     # which are replayable.
     await stream_to_stdout_naive(result_generator)  # This won't print anything
-    print("--- End of Reiteration Attempt ---")
+    print("=== End of Reiteration Attempt ===")
     print()
 
 
