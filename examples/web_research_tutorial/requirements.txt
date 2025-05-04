@@ -1,0 +1,8 @@
+black
+httpx
+markdownify
+miniagents
+openai
+pydantic
+python-dotenv
+selenium

@@ -25,30 +25,21 @@ wrapt = "*"
 
 [tool.poetry.dev-dependencies]
 anthropic = "*"
-#anyio = "*"
 black = "*"
-#haystack-ai = "*"
+httpx = "*"
 ipython = "*"
 jupyterlab = "*"
-#langchain = "*"
-#langchain-anthropic = "*"
-#langchain-openai = "*"
-#langgraph = "*"
 llama-index = "*"
+markdownify = "*"
 notebook = "*"
 openai = "*"
 pre-commit = "*"
-#promptlayer = "*"
 pylint = "*"
-#pypdf = "*"
 pytest = "*"
 pytest-asyncio = "*"
 pytest-cov = "*"
 python-dotenv = "*"
-#trafilatura = "*"
-#trio = "*"
-#unstructured = {version = "*", extras = ["md"]}
-xonsh = {version = "*", extras = ["full"]}
+selenium = "*"
 
 [build-system]
 requires = ["poetry-core"]
