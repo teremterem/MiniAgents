@@ -148,6 +148,11 @@ async def main():
     # If we iterate through the sequence again, we will see that exactly same messages
     # are yielded again (and in exactly the same order). This demonstrates the
     # replayability of all types of promises in MiniAgents.
+    #
+    # Replayability is useful because it allows you to feed the same same sequences
+    # (be it responses from some agents, or an input to the current agent) to
+    # multiple other agents without even thinking that those sequences might
+    # already be "exhausted" in a traditional, async generator sense.
     await stream_to_stdout(response_promises)
 
     print()
