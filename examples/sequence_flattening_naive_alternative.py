@@ -27,7 +27,7 @@ async def page_scraper_agent_naive(url: str) -> AsyncGenerator[str, None]:
     Yields status messages sequentially.
     """
     yield f"{url} - SCRAPING"
-    await asyncio.sleep(random.uniform(0.1, 0.5))  # Shorter sleep for faster demo
+    await asyncio.sleep(random.uniform(0.1, 1))
     yield f"{url} - DONE"
 
 
@@ -37,10 +37,10 @@ async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]
     Calls page_scraper_agent_naive sequentially using `yield from`.
     """
     yield f"{search_query} - SEARCHING"
-    await asyncio.sleep(random.uniform(0.1, 0.5))
+    await asyncio.sleep(random.uniform(0.1, 1))
     yield f"{search_query} - DONE"
 
-    for i in range(2):
+    for i in range(3):
         url = f"http://dummy.page/{search_query.replace(' ', '-')}/page-{i+1}"
         # NOTE: `yield from` processes the generator sequentially.
         # The next iteration or yield in this function only happens *after*
@@ -56,7 +56,7 @@ async def research_agent_naive(question: str) -> AsyncGenerator[str, None]:
     """
     yield f"RESEARCHING: {question}"
 
-    for i in range(2):
+    for i in range(3):
         query = f"query {i+1}"
         # NOTE: Again, `yield from` leads to sequential execution.
         # `web_search_agent_naive` for "query 2" will only start after

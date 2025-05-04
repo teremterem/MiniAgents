@@ -43,7 +43,7 @@ async def research_agent(ctx: InteractionContext) -> None:
     # as if all the messages from the nested sequences were yielded directly by
     # `research_agent`.
 
-    for i in range(2):
+    for i in range(3):
         # TODO explain how `ctx.reply_out_of_order()` is different from `ctx.reply()`
         ctx.reply_out_of_order(
             # Trigger the web_search_agent for each query.
@@ -75,7 +75,7 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
     await asyncio.sleep(random.uniform(0.1, 1))
     ctx.reply(f"{search_query} - DONE")
 
-    for i in range(2):
+    for i in range(3):
         # TODO `ctx.reply_out_of_order()` again
         ctx.reply_out_of_order(
             # Trigger the page_scraper_agent for each dummy URL.
@@ -161,7 +161,7 @@ async def main():
         # When you run this example, you will see that for agents replying with
         # simple strings, they are automatically wrapped into TextMessage objects
         # (a subclass of Message).
-        print(f"{type(message).__name__} {i}: {message}")
+        print(f"{type(message).__name__} {i+1}: {message}")
 
     print()
 
