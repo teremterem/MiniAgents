@@ -149,7 +149,7 @@ async def main():
     await stream_to_stdout(response_promises)
 
     print()
-    print("==============================")
+    print("=== REPLAYING MESSAGES ===")
     print()
 
     # If we iterate through the sequence again, we will see that exactly same messages
@@ -163,7 +163,7 @@ async def main():
     await stream_to_stdout(response_promises)
 
     print()
-    print("==============================")
+    print("=== REPLAYING MESSAGES AGAIN ===")
     print()
 
     # We can even await the whole sequence promise again to get the full list
