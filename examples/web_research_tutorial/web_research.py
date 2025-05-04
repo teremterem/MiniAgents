@@ -31,8 +31,8 @@ load_dotenv()
 
 MODEL = "gpt-4o"  # "gpt-4o-mini"
 SMARTER_MODEL = "o4-mini"  # "o3"
-MAX_WEB_PAGES_PER_SEARCH = 3
-SLEEP_BEFORE_RETRY = 3
+MAX_WEB_PAGES_PER_SEARCH = 2
+SLEEP_BEFORE_RETRY_SEC = 5
 
 openai_client = AsyncOpenAI()
 
@@ -171,7 +171,7 @@ async def web_search_agent(
         search_results = await fetch_google_search(search_query)
     except Exception:  # pylint: disable=broad-exception-caught
         # Something went wrong upon the first attempt - let's give Bright Data SERP API a second chance...
-        await asyncio.sleep(SLEEP_BEFORE_RETRY)
+        await asyncio.sleep(SLEEP_BEFORE_RETRY_SEC)
         ctx.reply(f"RETRYING SEARCH: {search_query}")
         search_results = await fetch_google_search(search_query)
 
@@ -234,7 +234,7 @@ async def page_scraper_agent(
         page_content = await scrape_web_page(url)
     except Exception:  # pylint: disable=broad-exception-caught
         # Something went wrong upon the first attempt - let's give Bright Data Scraping Browser a second chance...
-        await asyncio.sleep(SLEEP_BEFORE_RETRY)
+        await asyncio.sleep(SLEEP_BEFORE_RETRY_SEC)
         ctx.reply(f"RETRYING: {url}")
         page_content = await scrape_web_page(url)
 
