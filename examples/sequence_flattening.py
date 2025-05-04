@@ -9,7 +9,7 @@ async def research_agent(ctx: InteractionContext) -> None:
     ctx.reply(f"RESEARCHING: {await ctx.message_promises.as_single_text_promise()}")
 
     for i in range(2):
-        ctx.reply(
+        ctx.reply_out_of_order(
             web_search_agent.trigger(
                 ctx.message_promises,
                 search_query=f"query {i+1}",
@@ -24,7 +24,7 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
     ctx.reply(f"{search_query} - DONE")
 
     for i in range(2):
-        ctx.reply(
+        ctx.reply_out_of_order(
             page_scraper_agent.trigger(
                 ctx.message_promises,
                 url=f"http://dummy.page/{search_query.replace(' ', '-')}/page-{i+1}",
