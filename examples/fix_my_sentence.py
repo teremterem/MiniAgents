@@ -14,14 +14,13 @@ async def main() -> None:
     """
     The main conversation loop.
     """
-    # TODO incorporate "think before you answer" ?
     dialog_loop.trigger(
         SystemMessage(
             "Your job is to improve the styling and grammar of the sentences that the user throws at you. "
             "Leave the sentences unchanged if they seem fine."
         ),
         user_agent=console_user_agent,
-        assistant_agent=OpenAIAgent.fork(model="gpt-4o"),
+        assistant_agent=OpenAIAgent.fork(model="o4-mini"),
     )
 
 
