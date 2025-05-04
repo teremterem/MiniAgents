@@ -46,7 +46,7 @@ async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]
     `async for ... yield`.
     """
     yield f"{search_query} - SEARCHING"
-    await asyncio.sleep(random.uniform(0.1, 1))
+    await asyncio.sleep(random.uniform(0.5, 1))
     yield f"{search_query} - DONE"
 
     for i in range(3):
@@ -64,7 +64,7 @@ async def page_scraper_agent_naive(url: str) -> AsyncGenerator[str, None]:
     Yields simple status messages.
     """
     yield f"{url} - SCRAPING"
-    await asyncio.sleep(random.uniform(0.1, 1))
+    await asyncio.sleep(random.uniform(0.5, 1))
     yield f"{url} - DONE"
 
 
@@ -86,17 +86,23 @@ async def main_naive():
     # Get the async generator
     result_generator = research_agent_naive(question)
 
-    print("\n--- Naive Async Generator Execution ---")
+    print()
+    print("--- Naive Async Generator Execution ---")
+    print()
     # Consume and print results sequentially
     await stream_to_stdout_naive(result_generator)
+    print()
     print("--- End of Naive Execution ---")
+    print()
 
+    print()
+    print("Attempting to reiterate (will yield nothing):")
     # Note: Re-iterating a standard async generator like this is not possible.
     # Once consumed, it's exhausted. This contrasts with MiniAgents promises,
     # which are replayable.
-    print("\nAttempting to reiterate (will yield nothing):")
     await stream_to_stdout_naive(result_generator)  # This won't print anything
-    print("--- End of Reiteration Attempt ---\n")
+    print("--- End of Reiteration Attempt ---")
+    print()
 
 
 if __name__ == "__main__":

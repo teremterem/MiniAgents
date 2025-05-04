@@ -72,7 +72,7 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
     single sequence in the background.
     """
     ctx.reply(f"{search_query} - SEARCHING")
-    await asyncio.sleep(random.uniform(0.1, 1))
+    await asyncio.sleep(random.uniform(0.5, 1))
     ctx.reply(f"{search_query} - DONE")
 
     for i in range(3):
@@ -101,7 +101,7 @@ async def page_scraper_agent(ctx: InteractionContext, url: str) -> None:
     into web_search_agent's sequence, and then into research_agent's sequence.
     """
     ctx.reply(f"{url} - SCRAPING")
-    await asyncio.sleep(random.uniform(0.1, 1))
+    await asyncio.sleep(random.uniform(0.5, 1))
     ctx.reply(f"{url} - DONE")
 
 
