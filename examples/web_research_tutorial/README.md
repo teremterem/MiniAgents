@@ -6,6 +6,11 @@ A demonstration of the [MiniAgents](https://github.com/teremterem/MiniAgents) fr
 
 ## Overview
 
+<p align="center">
+    <img alt="WebResearch in action"
+        src="../../images/web_research.py-x3plus.gif">
+</p>
+
 WebResearch is a multi-agent system that:
 
 1. Breaks down a user's question into search queries
