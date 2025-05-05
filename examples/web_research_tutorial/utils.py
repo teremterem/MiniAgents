@@ -26,7 +26,7 @@ BRIGHT_DATA_TIMEOUT = 20
 # Allow only a limited number of concurrent web searches
 searching_semaphore = asyncio.Semaphore(5)
 # Allow only a limited number of concurrent web page scrapings
-scraping_thread_pool = ThreadPoolExecutor(max_workers=5)
+scraping_thread_pool = ThreadPoolExecutor(max_workers=4)
 
 
 async def fetch_google_search(query: str) -> dict[str, Any]:
