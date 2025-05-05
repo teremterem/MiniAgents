@@ -38,7 +38,7 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     ])
 ```
 
-# In this tutorial we'll build an example web research system with MiniAgents
+## In this tutorial we'll use MiniAgents to build a Web Research system
 
 In this tutorial, we'll build a web research system that can:
 
@@ -50,4 +50,4 @@ In this tutorial, we'll build a web research system that can:
 
 ***NOTE: The complete example is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).***
 
-## Let's start by exploring the framework's central feature: Sequence Flattening
+# Let's start by exploring the framework's central feature: Sequence Flattening
