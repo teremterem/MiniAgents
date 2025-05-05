@@ -29,8 +29,8 @@ from miniagents.ext.llms import OpenAIAgent, aprepare_dicts_for_openai
 
 load_dotenv()
 
-MODEL = "gpt-4o"  # "gpt-4o-mini"
-SMARTER_MODEL = "o3"  # "o4-mini"
+MODEL = "gpt-4o-mini"  # "gpt-4o"
+SMARTER_MODEL = "o4-mini"  # "o3"
 MAX_WEB_PAGES_PER_SEARCH = 2
 SLEEP_BEFORE_RETRY_SEC = 5
 

@@ -89,17 +89,22 @@ async def main_naive():
     print()
     print("=== Naive Async Generator Execution ===")
     print()
+
     # Consume and print results sequentially
     await stream_to_stdout_naive(result_generator)
+
     print()
     print("=== End of Naive Execution ===")
     print()
 
-    print("Attempting to reiterate (will yield nothing):")
-    # Note: Re-iterating a standard async generator like this is not possible.
+    print("Attempting to reiterate (WILL YIELD NOTHING):")
+    # await asyncio.sleep(0.2)
+
+    # NOTE: Re-iterating a standard async generator like this is not possible.
     # Once consumed, it's exhausted. This contrasts with MiniAgents promises,
     # which are replayable.
     await stream_to_stdout_naive(result_generator)  # This won't print anything
+
     print("=== End of Reiteration Attempt ===")
     print()
 

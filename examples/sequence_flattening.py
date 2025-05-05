@@ -150,6 +150,7 @@ async def main():
 
     print()
     print("=== REPLAYING MESSAGES ===")
+    # await asyncio.sleep(0.2)
     print()
 
     # If we iterate through the sequence again, we will see that exactly same messages
