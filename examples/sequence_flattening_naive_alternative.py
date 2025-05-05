@@ -49,7 +49,7 @@ async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]
     await asyncio.sleep(random.uniform(0.5, 1))
     yield f"{search_query} - SEARCH DONE"
 
-    for i in range(3):
+    for i in range(2):
         url = f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}"
         # NOTE: The `async for ... yield` construct leads to sequential execution.
         # The next iteration or yield in this function only happens *after*

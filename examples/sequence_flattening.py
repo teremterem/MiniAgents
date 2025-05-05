@@ -81,7 +81,7 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
     await asyncio.sleep(random.uniform(0.5, 1))
     ctx.reply(f"{search_query} - SEARCH DONE")
 
-    for i in range(3):
+    for i in range(2):
         # Return scraping results in order of their availability rather than sequentially (`reply_out_of_order`, see
         # more detailed explanation earlier in this file)
         ctx.reply_out_of_order(
