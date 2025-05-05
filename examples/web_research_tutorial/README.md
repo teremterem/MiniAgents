@@ -6,10 +6,7 @@ A demonstration of the [MiniAgents](https://github.com/teremterem/MiniAgents) fr
 
 ## Overview
 
-<p align="center">
-    <img alt="WebResearch in action"
-        src="../../images/web_research.py-x3plus.gif">
-</p>
+![WebResearch in action](../../images/web_research.py-x3plus.gif)
 
 WebResearch is a multi-agent system that:
 
