@@ -1,4 +1,4 @@
-***NOTE: The [web_research.py](web_research.py) file contains exhaustive commentary, we advise you to read it if you want to understand the system in detail (and get a good feel of the framework).***
+***NOTE: The [web_research.py](https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial/web_research.py) file contains exhaustive commentary, we advise you to read it if you want to understand the system in detail (and get a good feel of the framework).***
 
 # WebResearch
 
@@ -6,7 +6,7 @@ A demonstration of the [MiniAgents](https://github.com/teremterem/MiniAgents) fr
 
 ## Overview
 
-![WebResearch in action](../../images/web_research.py-x3plus.gif)
+![WebResearch in action](https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif)
 
 WebResearch is a multi-agent system that:
 
@@ -95,6 +95,6 @@ Learn more: [MiniAgents GitHub Repository](https://github.com/teremterem/MiniAge
 
 <p align="center">
     <a href="https://github.com/teremterem/MiniAgents">
-        <img src="../../images/logo-miniagents-colored.jpeg" alt="MiniAgents Logo" width="128" height="128">
+        <img src="https://github.com/teremterem/MiniAgents/raw/main/images/logo-miniagents-colored.jpeg" alt="MiniAgents Logo" width="128" height="128">
     </a>
 </p>
