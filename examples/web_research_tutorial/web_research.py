@@ -91,7 +91,8 @@ async def research_agent(ctx: InteractionContext) -> None:
         ctx.message_promises,
         system=(
             "Your job is to breakdown the user's question into a list of web searches that need to be done to answer "
-            "the question. Current date is " + datetime.now().strftime("%Y-%m-%d")
+            "the question. Please try to optimize your search queries so there aren't too many of them. Current date "
+            "is " + datetime.now().strftime("%Y-%m-%d")
         ),
     )
     # There is no built-in miniagent for OpenAI's Structured Output feature (yet), so we will use OpenAI's client
