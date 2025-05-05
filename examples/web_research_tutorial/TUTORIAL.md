@@ -38,9 +38,9 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     ])
 ```
 
-## In this tutorial we'll use MiniAgents to build a Web Research system
+## In this tutorial we'll use MiniAgents to build a Web Research System
 
-In this tutorial, we'll build a web research system that can:
+We'll build a system that can:
 
 1. Break down a user's question into search queries
 2. Execute searches in parallel
