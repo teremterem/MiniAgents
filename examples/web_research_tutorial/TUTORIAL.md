@@ -60,7 +60,7 @@ Let's start by doing everything without using the framework.
 
 TODO TODO TODO
 
-## Real Sequence Flattening
+## Real Sequence Flattening with MiniAgents
 
 TODO TODO TODO
 
