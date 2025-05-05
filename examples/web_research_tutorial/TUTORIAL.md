@@ -52,4 +52,4 @@ We'll build a system that can:
 
 # Sequence Flattening
 
-Let's start by exploring the framework's central feature: Sequence Flattening.
+Let's start by exploring the framework's central feature: Sequence Flattening. For this we will build the first version of our web research system but without the actual web search and scraping operations. We will build two versions of the dummy system: first we will do everything without using the framework and then we will do the same, but use the framework to leverage Sequence Flattening.
