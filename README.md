@@ -51,9 +51,7 @@ pip install -U miniagents
 <p>
     <a href="https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp">
         <img alt="WebResearch in action"
-            src="images/web_research.py-x3plus.gif">
-        <!-- <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif"> -->
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif">
     </a>
 </p>
 
