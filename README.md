@@ -48,12 +48,14 @@ pip install -U miniagents
 
 ### [📚 Building a Web Research Multi-Agent System](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp)
 
-<a href="https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp">
-    <img alt="WebResearch in action"
-        src="images/web_research.py-x3plus.gif">
-    <!-- <img alt="WebResearch in action"
-        src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif"> -->
-</a>
+<p>
+    <a href="https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp">
+        <img alt="WebResearch in action"
+            src="images/web_research.py-x3plus.gif">
+        <!-- <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif"> -->
+    </a>
+</p>
 
 The above step-by-step tutorial teaches you how to build a practical multi-agent web research system that can break down complex questions, run parallel searches, and synthesize comprehensive answers.
 
