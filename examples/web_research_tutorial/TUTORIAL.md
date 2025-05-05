@@ -50,4 +50,6 @@ We'll build a system that can:
 
 ***NOTE: The complete example is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).***
 
-# Let's start by exploring the central feature: Sequence Flattening
+# Sequence Flattening
+
+Let's start by exploring the framework's central feature: Sequence Flattening.
