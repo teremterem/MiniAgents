@@ -61,6 +61,8 @@ We'll build a system that can:
 4. Scrape and extract information from those pages
 5. Synthesize a comprehensive answer
 
+In the animation above you can see what sample output of this system will look like.
+
 <!-- ***NOTE: The complete example is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).*** -->
 
 ***NOTE: The complete example is available [here](https://github.com/teremterem/MiniAgents/tree/examples/web-research-tutorial/examples/web_research_tutorial).***
