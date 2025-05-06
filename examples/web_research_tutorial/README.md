@@ -11,7 +11,7 @@ A demonstration of the [MiniAgents](https://github.com/teremterem/MiniAgents) fr
         <!-- <img alt="WebResearch in action"
             src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif"> -->
         <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/examples/web_research_tutorial/images/web_research.py-x3plus.gif">
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/web_research.py-x3plus.gif">
     </a>
 </p>
 
