@@ -38,7 +38,7 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     ])
 ```
 
-## In this tutorial we'll use MiniAgents to build a Web Research System
+# Let's build a Web Research System with MiniAgents
 
 <!-- <p>
     <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial">
@@ -53,7 +53,7 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
     </a>
 </p>
 
-We'll build a system that can:
+In this tutorial we'll build a system that can:
 
 1. Break down a user's question into search queries
 2. Execute searches in parallel
@@ -61,11 +61,11 @@ We'll build a system that can:
 4. Scrape and extract information from those pages
 5. Synthesize a comprehensive answer
 
-In the animation above you can see what sample output of this system will look like.
+The animation above demonstrates what the output of this system will look like.
 
-<!-- ***NOTE: The complete example is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).*** -->
+<!-- ***NOTE: The complete source code is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).*** -->
 
-***NOTE: The complete example is available [here](https://github.com/teremterem/MiniAgents/tree/examples/web-research-tutorial/examples/web_research_tutorial).***
+***NOTE: The complete source code is available [here](https://github.com/teremterem/MiniAgents/tree/examples/web-research-tutorial/examples/web_research_tutorial).***
 
 ## "Message Sequence Flattening"
 
