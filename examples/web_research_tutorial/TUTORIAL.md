@@ -50,13 +50,13 @@ We'll build a system that can:
 
 ***NOTE: The complete example is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).***
 
-# Sequence Flattening
+# "Message Sequence Flattening"
 
-Let's start by exploring the framework's central feature: Sequence Flattening. For this we will build the first version of our web research system - we will not use real LLM just yet and will not do the actual web searching and scraping. We'll just put `asyncio.sleep()` operations to emulate those operations.
+Let's start by exploring MiniAgents's central feature - "Message Sequence Flattening". For this, we will build the first, dummy version of our Web Research System. We will not use the real LLM, will not do the actual web searching and scraping and will not create the "Final Answer" agent just yet. We'll put `asyncio.sleep()` with random delays to emulate those operations. Later in the tutorial, we will replace these delays with real web search, scraping and text generation operations.
 
-## Naive alternative to Sequence Flattening
+## Naive alternative to Message Sequence Flattening
 
-Let's start by doing everything without using the framework.
+To demonstrate the benefits of Message Sequence Flattening as well as set the stage in general, we will first do everything using simple async generators (no MiniAgents just yet).
 
 TODO TODO TODO
 
