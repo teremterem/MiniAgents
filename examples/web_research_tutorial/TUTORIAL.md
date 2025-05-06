@@ -1,6 +1,9 @@
 # MiniAgents: Multi-Agent AI With Procedural Simplicity
 
-![MiniAgents on the Moon](../../images/banner-miniagents-2025-04-27.jpeg)
+<p align="center">
+    <img alt="MiniAgents on Mars"
+        src="https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-04-27.jpeg">
+</p>
 
 An open-source, async-first Python framework for building multi-agent AI systems with an innovative approach to parallelism, so you can focus on creating intelligent agents, not on managing the concurrency of your flows.
 
@@ -98,6 +101,21 @@ await stream_to_stdout_naive(result_generator)
 # Attempt to reuse - will yield nothing
 await stream_to_stdout_naive(result_generator)
 ```
+
+Here is what this process looks like as a result:
+
+<!-- <p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening_naive_alternative.py.gif">
+    </a>
+</p> -->
+<p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/sequence_flattening_naive_alternative.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/sequence_flattening_naive_alternative.py.gif">
+    </a>
+</p>
 
 To achieve concurrency with standard async generators, you would need complex manual management with `asyncio.create_task()`, synchronization primitives, and state tracking - significantly increasing complexity.
 
