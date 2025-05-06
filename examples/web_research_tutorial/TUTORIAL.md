@@ -63,11 +63,11 @@ We'll build a system that can:
 
 ***NOTE: The complete example is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).***
 
-# "Message Sequence Flattening"
+## "Message Sequence Flattening"
 
 Let's start by exploring MiniAgents's central feature - "Message Sequence Flattening". For this, we will build the first, dummy version of our Web Research System. We will not use the real LLM, will not do the actual web searching and scraping and will not create the "Final Answer" agent just yet. We'll put `asyncio.sleep()` with random delays to emulate those operations. Later in the tutorial, we will replace these delays with real web search, scraping and text generation operations.
 
-## Naive alternative to Message Sequence Flattening
+### Naive alternative to Message Sequence Flattening
 
 First, let's look at how you might approach this problem using standard Python async generators. This will help understand the challenges that MiniAgents solves.
 
@@ -129,7 +129,7 @@ Here is what this process looks like as a result:
 
 To achieve concurrency with standard async generators, you would need complex manual management with `asyncio.create_task()`, synchronization primitives, and state tracking - significantly increasing complexity.
 
-## Real Sequence Flattening with MiniAgents
+### Real Message Sequence Flattening with MiniAgents
 
 Now let's see how MiniAgents handles the same workflow with its "Message Sequence Flattening" capability:
 
@@ -208,11 +208,11 @@ If you look at the output of the above code, you'll see that processing happens 
 
 Also, as you might have noticed in the animation above, the response sequence can be replayed as many times as needed. Both, message sequence flattening and sequence replayability apply to all sequences, not only response sequences, but also ones that go as input to other agents. TODO mention why replayability is an important feature.
 
-# Web Research System with real operations
+## Web Research System with real operations
 
 Now that we understand the core concept of Message Sequence Flattening, let's build a complete Web Research System using MiniAgents.
 
-## System Architecture
+### System Architecture
 
 Our Web Research System will have four agents:
 
@@ -223,7 +223,7 @@ Our Web Research System will have four agents:
 
 Let's implement each agent step by step.
 
-## Setting up the environment
+### Setting up the environment
 
 First, we need to import necessary libraries and set up our environment:
 
@@ -250,7 +250,7 @@ MAX_WEB_PAGES_PER_SEARCH = 2
 
 The `utils.py` module contains helper functions for web searching and scraping, but we don't need to focus on those details. They're available in the GitHub repository if you're interested.
 
-## Defining our data models
+### Defining our data models
 
 TODO these aren't MiniAgents's data models, they're just Pydantic models used for structured output by OpenAI. The title should be changed to deemphasize their importance.
 
@@ -272,7 +272,7 @@ class WebPagesToBeRead(BaseModel):
     web_pages: tuple[WebPage, ...]
 ```
 
-## Implementing the research_agent
+### Implementing the research_agent
 
 The `research_agent` is our main orchestrator. It breaks down the user's question into search queries, triggers the web searches, and coordinates the final answer:
 
@@ -343,7 +343,7 @@ Notice how we're using several important MiniAgents features:
 
 4. **Agent calls** with `initiate_call` and `send_message` - This allows us to incrementally build input for the final answer agent as we collect search results.
 
-## Implementing the web_search_agent
+### Implementing the web_search_agent
 
 The `web_search_agent` executes search queries and identifies relevant web pages to scrape:
 
@@ -414,7 +414,7 @@ This agent demonstrates two more important concepts:
 1. **State management** - It receives and updates the `already_picked_urls` set to avoid duplicate scraping.
 2. **Error handling** - It includes retry logic for failed searches.
 
-## Implementing the page_scraper_agent
+### Implementing the page_scraper_agent
 
 The `page_scraper_agent` scrapes web pages and extracts relevant information:
 
@@ -464,7 +464,7 @@ async def page_scraper_agent(
 
 Here we see the use of the built-in `OpenAIAgent` for LLM-powered information extraction. The `response_metadata` parameter with `"not_for_user": True` indicates that this message should not be shown to the end user.
 
-## Implementing the final_answer_agent
+### Implementing the final_answer_agent
 
 The `final_answer_agent` synthesizes all the gathered information into a comprehensive answer:
 
@@ -494,7 +494,7 @@ async def final_answer_agent(ctx: InteractionContext, user_question: Union[Messa
 
 The `await ctx.message_promises` ensures that the "ANSWER" header doesn't appear until all the research is complete. Then we use `as_single_text_promise()` to concatenate all the collected information into a single text that can be used by OpenAI to generate the final answer.
 
-## Running the system
+### Running the system
 
 Finally, we need to set up the entry point for our application:
 
@@ -528,7 +528,7 @@ Note the important configuration in the `MiniAgents` constructor:
 - `llm_logger_agent=True` logs LLM requests and responses for debugging
 - `errors_as_messages=True` makes the system robust by treating errors as messages rather than crashing
 
-## Key MiniAgents features demonstrated
+### Key MiniAgents features demonstrated
 
 This Web Research System demonstrates several powerful features of MiniAgents:
 
