@@ -1,4 +1,4 @@
-# MiniAgents: Multi-Agent AI With Procedural Simplicity
+<h1 align="center">MiniAgents: Multi-Agent AI With Procedural Simplicity</h1>
 
 <p align="center">
     <img alt="MiniAgents on Mars"
