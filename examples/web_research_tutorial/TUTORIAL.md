@@ -131,7 +131,7 @@ To achieve concurrency with standard async generators, you would need complex ma
 
 ## Real Sequence Flattening with MiniAgents
 
-Now let's see how MiniAgents handles the same workflow with its sequence flattening capability:
+Now let's see how MiniAgents handles the same workflow with its "Message Sequence Flattening" capability:
 
 ```python
 @miniagent
@@ -171,7 +171,7 @@ async def page_scraper_agent(ctx: InteractionContext, url: str) -> None:
 
 The MiniAgents approach provides several key advantages:
 
-1. **Automatic concurrency**: All agents start working in parallel as soon as they're triggered
+1. **Automatic concurrency**: All agents start working in parallel as soon as they're triggered  # TODO mention "task switching"
 2. **No explicit task management**: The framework handles background execution without manual task creation
 3. **Sequence flattening**: Deeply nested message hierarchies are automatically flattened into a single, uniform sequence
 4. **Replayable promises**: The same sequence can be consumed multiple times
@@ -185,9 +185,28 @@ await stream_to_stdout(response_promises)
 
 # Consume the SAME sequence again - works perfectly!
 await stream_to_stdout(response_promises)
+
+# TODO the third "replay", the one with "global" await should go here
 ```
 
-MiniAgents uses `reply()` for sequential responses and `reply_out_of_order()` when you want messages delivered as soon as they're available, rather than in strict creation order. This gives you control over message ordering while maintaining the benefits of automatic concurrency.
+MiniAgents uses `reply()` for sequential responses and `reply_out_of_order()` when you want messages delivered as soon as they're available, rather than in strict creation (TODO reply, not creation) order. This gives you control over message ordering while maintaining the benefits of automatic concurrency.
+
+If you look at the output of the above code, you'll see that processing happens much faster, even though we didn't do anything special to achieve that, all thanks to parallelism introduced by the framework:
+
+<!-- <p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening.py.gif">
+    </a>
+</p> -->
+<p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/sequence_flattening.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/sequence_flattening.py.gif">
+    </a>
+</p>
+
+As you can see from the animation above, response sequences are replayable as many times as needed. TODO mention why replayability is an important feature.
 
 # Web Research System with real operations
 
