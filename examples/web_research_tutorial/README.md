@@ -6,7 +6,14 @@ A demonstration of the [MiniAgents](https://github.com/teremterem/MiniAgents) fr
 
 ## Overview
 
-![WebResearch in action](https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif)
+<p>
+    <a href="https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp">
+        <!-- <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif"> -->
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web_research_tutorial/images/web_research.py-x3plus.gif">
+    </a>
+</p>
 
 WebResearch is a multi-agent system that:
 
