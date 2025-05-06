@@ -1,9 +1,6 @@
-<h1 align="center">MiniAgents: Multi-Agent AI With Procedural Simplicity</h1>
+# MiniAgents: Multi-Agent AI With Procedural Simplicity
 
-<p align="center">
-    <img alt="MiniAgents on Mars"
-        src="https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-04-27.jpeg">
-</p>
+![MiniAgents on Mars](https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-04-27.jpeg)
 
 An open-source, async-first Python framework for building multi-agent AI systems with an innovative approach to parallelism, so you can focus on creating intelligent agents, not on managing the concurrency of your flows.
 
