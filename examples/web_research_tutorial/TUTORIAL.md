@@ -40,6 +40,19 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
 
 ## In this tutorial we'll use MiniAgents to build a Web Research System
 
+<!-- <p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial/web_research.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif">
+    </a>
+</p> -->
+<p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/web_research_tutorial/web_research.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/web_research.py-x3plus.gif">
+    </a>
+</p>
+
 We'll build a system that can:
 
 1. Break down a user's question into search queries
