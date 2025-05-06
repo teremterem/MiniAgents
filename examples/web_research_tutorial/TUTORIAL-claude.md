@@ -545,3 +545,18 @@ This Web Research System demonstrates several powerful features of MiniAgents:
 You've now built a complete Web Research System using MiniAgents! The system demonstrates how to write procedural code that executes in parallel, how to manage agent state, and how to coordinate multiple agents working together.
 
 The full code is available in the [GitHub repository](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).
+
+<!-- <p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif">
+    </a>
+</p> -->
+<p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/web_research_tutorial">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/web_research.py-x3plus.gif">
+    </a>
+</p>
+
+Thanks!
