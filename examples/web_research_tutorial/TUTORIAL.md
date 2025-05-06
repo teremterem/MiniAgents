@@ -206,7 +206,7 @@ If you look at the output of the above code, you'll see that processing happens 
     </a>
 </p>
 
-As you can see from the animation above, response sequences are replayable as many times as needed. TODO mention why replayability is an important feature.
+Also, as you might have noticed in the animation above, the response sequence can be replayed as many times as needed. Both, message sequence flattening and sequence replayability apply to all sequences, not only response sequences, but also ones that go as input to other agents. TODO mention why replayability is an important feature.
 
 # Web Research System with real operations
 
