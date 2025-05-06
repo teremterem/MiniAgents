@@ -56,13 +56,110 @@ Let's start by exploring MiniAgents's central feature - "Message Sequence Flatte
 
 ## Naive alternative to Message Sequence Flattening
 
-To demonstrate the benefits of Message Sequence Flattening as well as set the stage in general, we will first do everything using simple async generators (no MiniAgents just yet).
+First, let's look at how you might approach this problem using standard Python async generators. This will help understand the challenges that MiniAgents solves.
 
-TODO TODO TODO
+```python
+async def research_agent_naive(question: str) -> AsyncGenerator[str, None]:
+    yield f"RESEARCHING: {question}"
+
+    for i in range(3):
+        query = f"query {i+1}"
+        # NOTE: The generator below runs sequentially - "query 2" only starts
+        # after "query 1" is completely finished
+        async for item in web_search_agent_naive(search_query=query):
+            yield item
+
+async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]:
+    yield f"{search_query} - SEARCHING"
+    await asyncio.sleep(random.uniform(0.5, 1))
+    yield f"{search_query} - SEARCH DONE"
+
+    for i in range(2):
+        url = f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}"
+        async for item in page_scraper_agent_naive(url=url):
+            yield item
+
+async def page_scraper_agent_naive(url: str) -> AsyncGenerator[str, None]:
+    yield f"{url} - SCRAPING"
+    await asyncio.sleep(random.uniform(0.5, 1))
+    yield f"{url} - DONE"
+```
+
+The core issue with this naive implementation is that it executes everything sequentially:
+
+1. When the research agent processes "query 1", it must wait for all pages from that query to be fully scraped before moving on to "query 2"
+2. Similarly, within each query, it processes pages one at a time
+3. Once consumed, the generator is exhausted and cannot be reused:
+
+```python
+# Consume the generator once
+await stream_to_stdout_naive(result_generator)
+
+# Attempt to reuse - will yield nothing
+await stream_to_stdout_naive(result_generator)
+```
+
+To achieve concurrency with standard async generators, you would need complex manual management with `asyncio.create_task()`, synchronization primitives, and state tracking - significantly increasing complexity.
 
 ## Real Sequence Flattening with MiniAgents
 
-TODO TODO TODO
+Now let's see how MiniAgents handles the same workflow with its sequence flattening capability:
+
+```python
+@miniagent
+async def research_agent(ctx: InteractionContext) -> None:
+    ctx.reply(f"RESEARCHING: {await ctx.message_promises.as_single_text_promise()}")
+
+    for i in range(3):
+        ctx.reply_out_of_order(
+            # No `await` here! The agent starts executing in the background
+            # and returns a MessageSequencePromise immediately
+            web_search_agent.trigger(
+                ctx.message_promises,
+                search_query=f"query {i+1}",
+            )
+        )
+
+@miniagent
+async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
+    ctx.reply(f"{search_query} - SEARCHING")
+    await asyncio.sleep(random.uniform(0.5, 1))
+    ctx.reply(f"{search_query} - SEARCH DONE")
+
+    for i in range(2):
+        ctx.reply_out_of_order(
+            page_scraper_agent.trigger(
+                ctx.message_promises,
+                url=f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}",
+            )
+        )
+
+@miniagent
+async def page_scraper_agent(ctx: InteractionContext, url: str) -> None:
+    ctx.reply(f"{url} - SCRAPING")
+    await asyncio.sleep(random.uniform(0.5, 1))
+    ctx.reply(f"{url} - DONE")
+```
+
+The MiniAgents approach provides several key advantages:
+
+1. **Automatic concurrency**: All agents start working in parallel as soon as they're triggered
+2. **No explicit task management**: The framework handles background execution without manual task creation
+3. **Sequence flattening**: Deeply nested message hierarchies are automatically flattened into a single, uniform sequence
+4. **Replayable promises**: The same sequence can be consumed multiple times
+
+```python
+# Trigger the agent - returns a MessageSequencePromise
+response_promises = research_agent.trigger("Tell me about MiniAgents")
+
+# Consume the sequence once
+await stream_to_stdout(response_promises)
+
+# Consume the SAME sequence again - works perfectly!
+await stream_to_stdout(response_promises)
+```
+
+MiniAgents uses `reply()` for sequential responses and `reply_out_of_order()` when you want messages delivered as soon as they're available, rather than in strict creation order. This gives you control over message ordering while maintaining the benefits of automatic concurrency.
 
 # Web Research System with real operations
 
