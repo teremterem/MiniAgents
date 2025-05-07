@@ -136,6 +136,21 @@ In `research_agent_naive`, the loop that calls `web_search_agent_naive` processe
 
 Similarly, `web_search_agent_naive` waits for `page_scraper_agent_naive` to complete for one URL before processing the next. This is because `async for item in sub_generator:` effectively awaits the completion of `sub_generator`'s items sequentially.
 
+Here is what this process looks like as a result:
+
+<!-- <p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening_naive_alternative.py.gif">
+    </a>
+</p> -->
+<p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/sequence_flattening_naive_alternative.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/sequence_flattening_naive_alternative.py.gif">
+    </a>
+</p>
+
 To achieve true concurrency with this naive approach, you would need to manually manage `asyncio.create_task` for each sub-operation and potentially use queues or other synchronization primitives to collect and yield results as they become available. This would significantly increase code complexity.
 
 Furthermore, standard async generators, once consumed, are exhausted. If you try to iterate over the `result_generator` in `main_naive` a second time, it will yield nothing. This contrasts with MiniAgents' replayable promises.
@@ -210,6 +225,23 @@ In the MiniAgents version:
 3.  MiniAgents automatically "flattens" this potentially deeply nested structure of messages and promises. When the `main` function (or another agent) consumes the `response_promises` from `research_agent`, it receives a single, flat sequence of all messages. This sequence includes messages produced directly by `research_agent`, all messages from all the triggered `web_search_agent` instances, and consequently, all messages from all the `page_scraper_agent` instances called by them.
 4.  The `async for message_promise in promises:` loop in the `stream_to_stdout` function (which consumes the results in `main`) allows asyncio to switch tasks effectively (TODO the word effectively sounds confusing here - what would non-effective task switching look like ?). This enables the agents (`research_agent`, `web_search_agent`, `page_scraper_agent`) to run concurrently in the background. Messages appear in the output stream as they are produced by these parallel operations, rather than waiting for a whole chain of calls to complete. The `reply_out_of_order` usage ensures that messages are yielded as soon as they are ready, further enhancing the sense of parallelism from the consumer's perspective, though it doesn't change the parallelism of the actual agent execution (which is already parallel due to `trigger` being non-blocking).
 5.  A key feature highlighted in the `main` function of `sequence_flattening.py` is the **replayability** of `MessageSequencePromise` objects. You can iterate over `response_promises` multiple times and get the exact same sequence of messages. This is invaluable for scenarios where you might want to feed the same set of results to multiple different subsequent processing agents without worrying about "exhausting" the input stream.
+
+TODO does the text below play well with text above ?
+
+If you look at the output of the above code, you'll see that processing happens much faster, even though we didn't do anything special to achieve that, all thanks to parallelism introduced by the framework:
+
+<!-- <p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening.py.gif">
+    </a>
+</p> -->
+<p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/sequence_flattening.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/sequence_flattening.py.gif">
+    </a>
+</p>
 
 This automatic concurrency and sequence flattening greatly simplify the development of complex, multi-step AI systems. You can focus on the logic of each individual agent, writing code that appears sequential within the agent, while the MiniAgents framework handles the parallel execution and complex data flow management behind the scenes.
 
