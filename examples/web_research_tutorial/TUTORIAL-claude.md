@@ -20,7 +20,7 @@ The source code of the project is hosted on [GitHub](https://github.com/teremter
 
 3. **Immutable message philosophy:** MiniAgents uses immutable, Pydantic-based messages that eliminate race conditions and data corruption concerns. This design choice enables highly parallelized agent execution without the headaches of state management.
 
-4. **Sequential code, parallel execution:** The framework's unique approach to agent communication through sequence promises means your code can look completely sequential while actually running in parallel:
+4. **Sequential code, parallel execution:** The framework's unique approach to agent communication through sequence promises means your code can look completely sequential while actually running in parallel (TODO 4 is actually a duplicate of 1):
 
 ```python
 @miniagent
