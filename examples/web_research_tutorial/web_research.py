@@ -50,6 +50,7 @@ async def main():
     # all the promises.
     async for message_promise in response_promises:
         # Skip messages that are not intended for the user (you'll see where the `not_for_user` attribute is set later)
+        # TODO explain `known_beforehand` right here in the comment ?
         if message_promise.known_beforehand.get("not_for_user"):
             continue
         # Iterate over the individual tokens in the message promise (messages that aren't broken down into tokens will
