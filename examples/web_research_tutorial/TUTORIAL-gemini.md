@@ -69,11 +69,13 @@ The animation above demonstrates what the output of this system will look like.
 
 ## "Message Sequence Flattening"
 
-Let's start by exploring MiniAgents's central feature - "Message Sequence Flattening". For this, we will build the first, dummy version of our Web Research System. We will not use the real LLM, will not do the actual web searching and scraping and will not create the "Final Answer" agent just yet. We'll put `asyncio.sleep()` with random delays to emulate those operations. Later in the tutorial, we will replace these delays with real web search, scraping and text generation operations.
+Let's start by exploring MiniAgents' central feature - "Message Sequence Flattening". For this, we will build the first, dummy version of our Web Research System. We will not use the real LLM, will not do the actual web searching and scraping and will not create the "Final Answer" agent just yet. We'll put `asyncio.sleep()` with random delays to emulate those operations. Later in the tutorial, we will replace these delays with real web search, scraping and text generation operations.
 
 ### Naive alternative to Message Sequence Flattening
 
-First, let's look at how you might approach this problem using standard Python async generators. This will help understand the challenges that MiniAgents solves.
+TODO either explain what Message Sequence Flattening is right away or promise that you will explain it later.
+
+First, let's look at how you might approach this problem (TODO what problem ?!) using standard Python async generators. This will help understand the challenges that MiniAgents solves.
 
 This approach uses standard Python `async def` with `async for ... yield` to simulate how one might try to build a similar system without MiniAgents. The key thing to note here is that this method leads to **sequential execution** of the "agents" (async generators in this case).
 
@@ -130,6 +132,7 @@ async def page_scraper_agent_naive(url: str) -> AsyncGenerator[str, None]:
     await asyncio.sleep(random.uniform(0.5, 1))
     yield f"{url} - DONE"
 
+# TODO don't skip stuff
 # ... (main_naive and stream_to_stdout_naive)
 ```
 In `research_agent_naive`, the loop that calls `web_search_agent_naive` processes each "search query" one after the other. The comment inside the loop explicitly points this out: `web_search_agent_naive` for "query 2" will only begin after "query 1" and all its subsequent operations (like page scraping) are entirely finished.
@@ -156,6 +159,8 @@ To achieve true concurrency with this naive approach, you would need to manually
 Furthermore, standard async generators, once consumed, are exhausted. If you try to iterate over the `result_generator` in `main_naive` a second time, it will yield nothing. This contrasts with MiniAgents' replayable promises.
 
 ### Real Message Sequence Flattening with MiniAgents
+
+TODO move the "Real Sequence Flattening" animation here, so it is easier to compare with the animation above.
 
 Now, let's see how MiniAgents addresses these challenges, enabling concurrent execution with simpler, more declarative code.
 
@@ -279,6 +284,7 @@ The entry point of our application is the `main()` function. It orchestrates the
 
 ```python
 # examples/web_research_tutorial/web_research.py
+# TODO don't skip stuff
 # ... (imports and setup) ...
 
 async def main():
@@ -302,6 +308,7 @@ async def main():
             print(token, end="", flush=True)
         print("\n")
 
+# TODO don't skip stuff ?
 # ... (rest of the file)
 ```
 
@@ -318,6 +325,7 @@ The `research_agent` is the primary coordinator. It takes the user's question an
 
 ```python
 # examples/web_research_tutorial/web_research.py
+# TODO don't skip stuff ?
 # ... (imports and setup) ...
 
 @miniagent
@@ -375,6 +383,7 @@ async def research_agent(ctx: InteractionContext) -> None:
     # to research_agent's output. This also closes the call to final_answer_agent.
     ctx.reply(final_answer_call.reply_sequence())
 
+# TODO don't skip stuff ?
 # ... (other agents)
 ```
 
@@ -529,8 +538,10 @@ This agent receives all the summaries and extracted pieces of information from t
 @miniagent
 async def final_answer_agent(ctx: InteractionContext, user_question: Union[Message, tuple[Message, ...]]) -> None:
     # Await all incoming messages (summaries from page_scraper_agents) to ensure
-    # they are all gathered before we proceed to generate the final answer.
-    # This also ensures the "ANSWER" heading appears after all scraping logs.
+    # they are "materialized" before we proceed to show the "ANSWER" heading. If
+    # not for this heading, `await` would not have been important here -
+    # OpenAIAgent would have waited for all the incoming messages to make them
+    # part of its prompt anyway.
     await ctx.message_promises
 
     ctx.reply("==========\nANSWER:\n==========")
