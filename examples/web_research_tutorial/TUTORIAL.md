@@ -14,9 +14,9 @@ The source code of the project is hosted on [GitHub](https://github.com/teremter
 
 ## Why MiniAgents
 
-1. **Write procedural code, get parallel execution:** Unlike graph-based frameworks that force you to think in nodes and edges, MiniAgents lets you write straightforward sequential code while the framework handles parallelism automatically. Your code stays clear and readable.
+1. **Write procedural code, get parallel execution:** Unlike graph-based frameworks that often require defining explicit nodes and edges for control flow, or general-purpose async libraries like `trio` or `anyio` where you'd manually manage task creation and synchronization, MiniAgents lets you write straightforward sequential code while the framework handles the complexities of parallel execution for agent interactions automatically. Your code stays clear and readable, focusing on agent logic rather than low-level concurrency plumbing.
 
-2. **Nothing blocks until it's needed:** With its innovative promise-based architecture, agents execute in parallel and the execution gets blocked only at the points where specific agent messages are required. Agents communicate through ***replayable promises of message sequences***, not concrete messages, allowing maximum concurrency without complex synchronization code.
+2. **Nothing blocks until it's needed:** With its innovative promise-based architecture, agents execute in parallel. Execution only blocks at points where specific agent messages are actively awaited. Agents communicate through ***replayable promises of message sequences***, not just concrete messages or single-pass async generators. This replayability is a key distinction, allowing message streams to be consumed multiple times by different agents or for different purposes, fostering flexible data flows and enabling maximum concurrency without complex manual synchronization code.
 
 3. **Immutable message philosophy:** MiniAgents uses immutable, Pydantic-based messages that eliminate race conditions and data corruption concerns. This design choice enables highly parallelized agent execution without the headaches of state management.
 
@@ -157,6 +157,8 @@ Here is what this process looks like as a result:
 To achieve true concurrency with this naive approach, you would need to manually manage `asyncio.create_task` for each sub-operation and potentially use queues or other synchronization primitives to collect and yield results as they become available. This would significantly increase code complexity.
 
 Furthermore, standard async generators, once consumed, are exhausted. If you try to iterate over the `result_generator` in `main_naive` a second time, it will yield nothing. This contrasts with MiniAgents' replayable promises.
+
+This manual management is typical when using raw `asyncio` or even foundational async libraries like `trio` or `anyio`. While these libraries provide powerful concurrency tools, MiniAgents aims to provide a higher-level, agent-centric abstraction for these patterns, particularly around how agents stream and combine their results.
 
 ### Real Message Sequence Flattening with MiniAgents
 
@@ -631,6 +633,18 @@ Key `MiniAgents` configurations used here:
 *   **`errors_as_messages=True`**: This global setting makes the system more robust. If an agent encounters an unhandled exception, instead of the agent (and potentially the whole flow) crashing, the error is packaged into an `ErrorMessage` object and continues through the system. Downstream agents can then decide how to handle these error messages (e.g., ignore them, try an alternative; TODO this isn't what's happening in our example, though). As we saw, `page_scraper_agent` locally overrides this for one of its LLM calls.
 *   **`error_tracebacks_in_messages=True` (commented out)**: If you enable this, the error messages produced when `errors_as_messages=True` will also include the full Python traceback, which can be helpful during development.
 
+## Choosing Your Framework: MiniAgents in Context
+
+MiniAgents excels when your primary challenge involves managing complex asynchronous data streams and you want to achieve parallel execution of agent tasks with straightforward, procedural-looking code. Its automatic sequence flattening and replayable promises are designed to simplify the development of agents that produce and consume dynamic, streaming information.
+
+However, the AI agent framework landscape is rich, and other tools might be a better fit depending on your project's core needs:
+
+*   If your application demands explicit, graph-based control flow, intricate state management across agent steps, or you need to define complex cyclical interactions (like in sophisticated state machines), a framework like **LangGraph** could be a more direct choice. LangGraph (and the broader Langchain ecosystem) provides strong primitives for these scenarios and boasts a vast array of integrations.
+*   For systems centered around multi-agent conversations and dynamic role assignments, frameworks like **AutoGen** offer specialized capabilities.
+*   If your focus is on orchestrating role-playing agents in a highly structured collaborative process, **CrewAI** might be more aligned.
+
+Ultimately, the best choice depends on whether your main architectural challenge lies in managing asynchronous data flow and streaming (where MiniAgents shines) or in areas like explicit state/control-flow graphs or leveraging specific collaborative agent paradigms offered by other frameworks.
+
 ## Conclusion
 
 This Web Research System demonstrates several powerful features of MiniAgents:
@@ -643,3 +657,5 @@ This Web Research System demonstrates several powerful features of MiniAgents:
 -   **Debugging and Robustness:** Features like `llm_logger_agent` and `errors_as_messages` aid in development and create more resilient systems.
 
 By focusing on the logic of individual agents, MiniAgents lets you build sophisticated, concurrent AI systems without getting bogged down in the complexities of manual parallelism management.
+
+While frameworks like LangGraph excel at defining the overall control flow and state transitions in an agent graph, and libraries like LlamaIndex provide powerful data indexing and retrieval capabilities, MiniAgents carves out its niche by simplifying the asynchronous data flow and streaming between agents, especially through its automatic sequence flattening and replayable promises.
