@@ -270,8 +270,7 @@ Before running the `web_research.py` script, you'll need to set up a few things:
     BRIGHTDATA_SCRAPING_BROWSER_CREDS="your_scraping_browser_username:your_scraping_browser_password"
     OPENAI_API_KEY="your_openai_api_key"
     ```
-
-# TODO mention that those aren't global user credentials
+    TODO mention that those aren't global user credentials
 
 2.  **Helper Utilities (`utils.py`):** The project uses a `utils.py` file (available [here](https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/web_research_tutorial/utils.py)) which contains helper functions for:
     *   `fetch_google_search()`: Interacts with the Bright Data SERP API.
