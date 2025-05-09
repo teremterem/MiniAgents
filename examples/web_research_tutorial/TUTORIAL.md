@@ -163,13 +163,24 @@ This manual management is typical when using raw `asyncio` or even foundational 
 
 ### Real "Message Sequence Flattening" with MiniAgents
 
-TODO move the "Real Sequence Flattening" animation here, so it is easier to compare with the animation above.
+Now, let's see how MiniAgents addresses these challenges, enabling concurrent execution while keeping the same level of code simplicity. You'll see what the changed version of the same code looks like in a moment, but first, let's jump ahead and take a look at how different its output is going to be:
 
-Now, let's see how MiniAgents addresses these challenges, enabling concurrent execution with simpler, more declarative code.
+<!-- <p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening.py.gif">
+    </a>
+</p> -->
+<p>
+    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/sequence_flattening.py">
+        <img alt="WebResearch in action"
+            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/sequence_flattening.py.gif">
+    </a>
+</p>
 
-The full code for this MiniAgents example can be found in [`sequence_flattening.py`](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py).
+Back to the code. The full example that uses MiniAgents can be found in [`sequence_flattening.py`](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py).
 
-Here are the agent definitions using MiniAgents:
+Here are the agent definitions:
 
 ```python
 # examples/sequence_flattening.py
@@ -219,7 +230,8 @@ async def page_scraper_agent(ctx: InteractionContext, url: str) -> None:
     await asyncio.sleep(random.uniform(0.5, 1)) # Simulate work
     ctx.reply(f"{url} - DONE")
 
-# TODO don't skip these two functions ?
+# TODO don't skip stuff (how do we want to change the wording of this section,
+#  though, if we are going to include the full script here ?)
 # ... (stream_to_stdout and main)
 ```
 
@@ -234,22 +246,7 @@ In the MiniAgents version:
 4.  The `async for message_promise in promises:` loop in the `stream_to_stdout` function (which consumes the results in `main`) allows asyncio to switch tasks effectively (TODO the word effectively sounds confusing here - what would non-effective task switching look like ?). This enables the agents (`research_agent`, `web_search_agent`, `page_scraper_agent`) to run concurrently in the background. Messages appear in the output stream as they are produced by these parallel operations, rather than waiting for a whole chain of calls to complete (TODO `reply_out_of_order` should be mentioned before this sentence, not after). The `reply_out_of_order` usage ensures that messages are yielded as soon as they are ready, further enhancing the sense of parallelism from the consumer's perspective, though it doesn't change the parallelism of the actual agent execution (which is already parallel due to `trigger` being non-blocking).
 5.  A key feature highlighted in the `main` function of `sequence_flattening.py` is the **replayability** of `MessageSequencePromise` objects. You can iterate over `response_promises` multiple times and get the exact same sequence of messages. This is invaluable for scenarios where you might want to feed the same set of results to multiple different subsequent processing agents without worrying about "exhausting" the input stream.
 
-TODO does the text below play well with text above ?
-
-If you look at the output of the above code, you'll see that processing happens much faster, even though we didn't do anything special to achieve that, all thanks to parallelism introduced by the framework:
-
-<!-- <p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening.py.gif">
-    </a>
-</p> -->
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/sequence_flattening.py">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/sequence_flattening.py.gif">
-    </a>
-</p>
+As you saw from the animation at the beginning of this section, the processing happens much faster, even though we didn't do anything special to achieve that, all thanks to parallelism introduced by the framework.
 
 This automatic concurrency and sequence flattening greatly simplify the development of complex, multi-step AI systems. You can focus on the logic of each individual agent, writing code that appears sequential within the agent, while the MiniAgents framework handles the parallel execution and complex data flow management behind the scenes.
 
