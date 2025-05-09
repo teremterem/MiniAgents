@@ -14,11 +14,11 @@ The source code of the project is hosted on [GitHub](https://github.com/teremter
 
 ## Why MiniAgents
 
-1. **Write procedural code, get parallel execution:** Unlike graph-based frameworks that often require defining explicit nodes and edges for control flow, or general-purpose async libraries like `trio` or `anyio` where you'd manually manage task creation and synchronization, MiniAgents lets you write straightforward sequential code while the framework handles the complexities of parallel execution for agent interactions automatically. Your code stays clear and readable, focusing on agent logic rather than low-level concurrency plumbing.
+1. **Write procedural code, get parallel execution:** Unlike graph-based frameworks that often require defining explicit nodes and edges for control flow, or general-purpose async libraries like `trio` or `anyio` where you'd manually manage task creation and synchronization (TODO is it really useful to bring up `trio` or `anyio` here ?), MiniAgents lets you write straightforward sequential code while the framework handles the complexities of parallel execution for agent interactions automatically. Your code stays clear and readable, focusing on agent logic rather than low-level concurrency plumbing.
 
 2. **Nothing blocks until it's needed:** With its innovative promise-based architecture, agents execute in parallel. Execution only blocks at points where specific agent messages are actively awaited. Agents communicate through ***replayable promises of message sequences***, not just concrete messages or single-pass async generators. This replayability is a key distinction, allowing message streams to be consumed multiple times by different agents or for different purposes, fostering flexible data flows and enabling maximum concurrency without complex manual synchronization code.
 
-3. **Immutable message philosophy:** MiniAgents uses immutable, Pydantic-based messages that eliminate race conditions and data corruption concerns. This design choice enables highly parallelized agent execution without the headaches of state management.
+3. **Immutable message philosophy:** MiniAgents uses immutable, Pydantic-based messages that eliminate race conditions and data corruption concerns. This design choice enables highly parallelized agent execution without the headaches of state management. (TODO mention that state management is still possible)
 
 4. **Sequential code, parallel execution:** The framework's unique approach to agent communication through sequence promises means your code can look completely sequential while actually running in parallel (TODO 4 is actually a duplicate of 1):
 
@@ -71,7 +71,7 @@ The animation above demonstrates what the output of this system will look like.
 
 Let's start by exploring MiniAgents' central feature - "Message Sequence Flattening". For this, we will build the first, dummy version of our Web Research System. We will not use the real LLM, will not do the actual web searching and scraping and will not create the "Final Answer" agent just yet. We'll put `asyncio.sleep()` with random delays to emulate those operations. Later in the tutorial, we will replace these delays with real web search, scraping and text generation operations.
 
-### Naive alternative to Message Sequence Flattening
+### Naive alternative to "Message Sequence Flattening"
 
 TODO either explain what Message Sequence Flattening is right away or promise that you will explain it later.
 
@@ -160,7 +160,7 @@ Furthermore, standard async generators, once consumed, are exhausted. If you try
 
 This manual management is typical when using raw `asyncio` or even foundational async libraries like `trio` or `anyio`. While these libraries provide powerful concurrency tools, MiniAgents aims to provide a higher-level, agent-centric abstraction for these patterns, particularly around how agents stream and combine their results.
 
-### Real Message Sequence Flattening with MiniAgents
+### Real "Message Sequence Flattening" with MiniAgents
 
 TODO move the "Real Sequence Flattening" animation here, so it is easier to compare with the animation above.
 
@@ -225,12 +225,12 @@ async def page_scraper_agent(ctx: InteractionContext, url: str) -> None:
 In the MiniAgents version:
 1.  When `research_agent` calls `web_search_agent.trigger(...)`, this call is non-blocking. It immediately returns a `MessageSequencePromise`. The actual execution of `web_search_agent` (and any agents it subsequently triggers) begins in the background when the asyncio event loop gets a chance to switch tasks.
 2.  The `ctx.reply(...)` method (and its variant `ctx.reply_out_of_order(...)`) is versatile. It can accept:
-    *   Concrete messages, like strings, dicts or arbitrary Pydantic objects, which are automatically wrapped into either `Message` or `TextMessage` by the framework, or `Message` objects (and subclasses thereof) directly.
+    *   Concrete messages, like strings, dicts or arbitrary Pydantic objects, which are automatically wrapped into either `Message` or `TextMessage` by the framework, or `Message` objects (and subclasses thereof) directly. TODO this sentence is a mess
     *   Promises of individual messages (`MessagePromise`).
-    *   Promises of sequences of message promises (`MessageSequencePromise`), such as those returned by `agent.trigger()`.
+    *   Promises of sequences of message promises (TODO confusing ?; `MessageSequencePromise`), such as those returned by `agent.trigger()`.
     *   Collections (lists, tuples, etc.) of all of the above.
 3.  MiniAgents automatically "flattens" this potentially deeply nested structure of messages and promises. When the `main` function (or another agent) consumes the `response_promises` from `research_agent`, it receives a single, flat sequence of all messages. This sequence includes messages produced directly by `research_agent`, all messages from all the triggered `web_search_agent` instances, and consequently, all messages from all the `page_scraper_agent` instances called by them.
-4.  The `async for message_promise in promises:` loop in the `stream_to_stdout` function (which consumes the results in `main`) allows asyncio to switch tasks effectively (TODO the word effectively sounds confusing here - what would non-effective task switching look like ?). This enables the agents (`research_agent`, `web_search_agent`, `page_scraper_agent`) to run concurrently in the background. Messages appear in the output stream as they are produced by these parallel operations, rather than waiting for a whole chain of calls to complete. The `reply_out_of_order` usage ensures that messages are yielded as soon as they are ready, further enhancing the sense of parallelism from the consumer's perspective, though it doesn't change the parallelism of the actual agent execution (which is already parallel due to `trigger` being non-blocking).
+4.  The `async for message_promise in promises:` loop in the `stream_to_stdout` function (which consumes the results in `main`) allows asyncio to switch tasks effectively (TODO the word effectively sounds confusing here - what would non-effective task switching look like ?). This enables the agents (`research_agent`, `web_search_agent`, `page_scraper_agent`) to run concurrently in the background. Messages appear in the output stream as they are produced by these parallel operations, rather than waiting for a whole chain of calls to complete (TODO `reply_out_of_order` should be mentioned before this sentence, not after). The `reply_out_of_order` usage ensures that messages are yielded as soon as they are ready, further enhancing the sense of parallelism from the consumer's perspective, though it doesn't change the parallelism of the actual agent execution (which is already parallel due to `trigger` being non-blocking).
 5.  A key feature highlighted in the `main` function of `sequence_flattening.py` is the **replayability** of `MessageSequencePromise` objects. You can iterate over `response_promises` multiple times and get the exact same sequence of messages. This is invaluable for scenarios where you might want to feed the same set of results to multiple different subsequent processing agents without worrying about "exhausting" the input stream.
 
 TODO does the text below play well with text above ?
@@ -317,8 +317,8 @@ Key takeaways from `main()`:
 1.  **Non-Blocking Trigger:** `research_agent.trigger(question)` is called without `await`. This immediately returns a `MessageSequencePromise`, and the `research_agent` (and any agents it triggers) will start processing in the background when the event loop allows.
 2.  **Streaming Responses:** The `async for message_promise in response_promises:` loop iterates through the promised messages. Crucially, this loop allows `asyncio` to switch tasks. As messages (or even tokens within messages, if streaming is enabled for an LLM agent) become available from the agent system, they are printed to the console.
 3.  **Filtering Messages:** Some messages might be internal to the agent system (e.g., detailed summaries for other agents). We can attach metadata to messages (like `not_for_user`) and use it to filter what's shown to the end-user.
-4.  **Centralized Output:** Notice that all user-facing output happens here. Agents themselves don't `print`. They communicate results back, which `main` then decides how to present. This separation makes it easier to change the UI or integrate the agent system elsewhere.
-5.  **Automatic Background Execution:** MiniAgents, by default, starts processing triggered agents as soon as possible. This is generally the desired behavior for maximum parallelism. While you *can* control this with `start_soon=False` in `trigger` calls or globally, it's often unnecessary and can complicate agent interdependencies (TODO the actual problem is deadlocks).
+4.  **Centralized Output:** Notice that all user-facing output happens here. Agents themselves don't `print`. They communicate results back, which `main` then decides how to present. This separation makes it easier to change the UI or integrate the agent system elsewhere (TODO more emphasis on possibility to integrate it as part of a bigger AI system).
+5.  **Automatic Background Execution:** MiniAgents, by default, starts processing triggered agents as soon as possible. This is generally the desired behavior for maximum parallelism. While you *can* control this with `start_soon=False` in `trigger` calls or globally (TODO mention global parameter name), it's often unnecessary and can complicate agent interdependencies (TODO the actual problem is deadlocks).
 
 ### The `research_agent`: Orchestrating the Search
 
@@ -389,12 +389,12 @@ async def research_agent(ctx: InteractionContext) -> None:
 ```
 
 Key aspects of `research_agent`:
-1.  **Query Generation:** It uses an LLM (via `openai_client.beta.chat.completions.parse`) to break the user's question into a list of specific search queries. `WebSearchesToBeDone` is a Pydantic model that ensures the LLM returns data in the expected structure.
-2.  **Agent Forking for State:** The `web_search_agent` needs to keep track of URLs it has already decided to scrape to avoid redundant work across multiple search queries. Instead of making `already_picked_urls` a global variable or passing it through multiple agents explicitly, `research_agent` *forks* `web_search_agent`. `agent.fork()` creates a new, independent version of the agent for this specific `research_agent` invocation. The `non_freezable_kwargs` argument allows passing mutable objects (like our `set`) that will be shared among all calls *to this forked instance*.
+1.  **Query Generation:** It uses an LLM (via `openai_client.beta.chat.completions.parse`) to break the user's question into a list of specific search queries. `WebSearchesToBeDone` is a Pydantic model that ensures the LLM returns data in the expected structure. TODO de-emphasize because it is not a feature of MiniAgents (yet)
+2.  **Agent Forking for State:** The `web_search_agent` needs to keep track of URLs it has already decided to scrape to avoid redundant work across multiple search queries. Instead of making `already_picked_urls` a global variable or passing it through multiple agents explicitly, `research_agent` *forks* `web_search_agent`. `agent.fork()` creates a new, independent version of the agent for this specific `research_agent` invocation. The `non_freezable_kwargs` argument allows passing mutable objects (like our `set`) that will be shared among all calls *to this forked instance*. TODO mention that this is not the only reason to `fork` ? also not the only reason to pass `non_freezable_kwargs` ?
 3.  **Initiating Calls (`initiate_call`):** The `final_answer_agent` will eventually synthesize an answer using all gathered information. We don't have all this information upfront. `final_answer_agent.initiate_call()` creates an `AgentCall` object. This allows `research_agent` to send messages (or message promises) to `final_answer_agent` incrementally using `final_answer_call.send_message()`.
 4.  **Parallel Fan-Out (`trigger` without `await`):** For each generated search query, `_web_search_agent.trigger()` is called. Again, no `await` means these sub-agents start working in parallel.
-5.  **Out-of-Order Replies (`ctx.reply_out_of_order`):** As results from `_web_search_agent` (which include search and scraping steps) become available, `ctx.reply_out_of_order()` sends them to the output stream of `research_agent`. This is crucial for providing real-time feedback to the user, showing progress from different search branches as it happens, rather than waiting for all searches to complete in a fixed order.
-6.  **Chaining Agent Output:** Finally, `ctx.reply(final_answer_call.reply_sequence())` takes the entire sequence of messages (TODO there will be only one message in the sequence in this particular example) that `final_answer_agent` will produce and appends it to `research_agent`'s own output. `reply_sequence()` also signals to `final_answer_agent` that no more input messages will be sent via `final_answer_call.send_message()`.
+5.  **Out-of-Order Replies (`ctx.reply_out_of_order`):** As results from `_web_search_agent` (which include search and scraping steps) become available, `ctx.reply_out_of_order()` sends them to the output stream of `research_agent`. This is crucial for providing real-time feedback to the user, showing progress from different search branches as it happens, rather than waiting for all searches to complete in a fixed order. TODO the explanation found in a comment in web_research.py is more comprehensive, I think
+6.  **Chaining Agent Output:** Finally, `ctx.reply(final_answer_call.reply_sequence())` takes the entire sequence of messages (TODO there will be only one message in the sequence in this particular example) that `final_answer_agent` will produce and appends it to `research_agent`'s own output. `reply_sequence()` also signals to `final_answer_agent` that no more input messages will be sent via `final_answer_call.send_message()`, effectively closing the call.
 
 ### The `web_search_agent`: Searching and Selecting Pages
 
@@ -620,7 +620,7 @@ if __name__ == "__main__":
     MiniAgents(
         # Log LLM requests/responses to markdown files in `llm_logs`
         llm_logger_agent=True,
-        # Convert agent errors into messages rather than crashing the agent
+        # Convert agent errors into messages rather than crashing the agents
         errors_as_messages=True,
         # Optionally include full tracebacks in error messages for debugging
         # error_tracebacks_in_messages=True,
@@ -633,6 +633,8 @@ Key `MiniAgents` configurations used here:
 *   **`error_tracebacks_in_messages=True` (commented out)**: If you enable this, the error messages produced when `errors_as_messages=True` will also include the full Python traceback, which can be helpful during development.
 
 ## Choosing Your Framework: MiniAgents in Context
+
+# TODO is this section really needed ? isn't it diverting attention from MiniAgents ?
 
 MiniAgents excels when your primary challenge involves managing complex asynchronous data streams and you want to achieve parallel execution of agent tasks with straightforward, procedural-looking code. Its automatic sequence flattening and replayable promises are designed to simplify the development of agents that produce and consume dynamic, streaming information.
 
@@ -650,11 +652,11 @@ This Web Research System demonstrates several powerful features of MiniAgents:
 -   **Procedural Code, Parallel Execution:** Agents are written as straightforward async functions, but `trigger` calls without `await` lead to parallel execution.
 -   **Promise-Based Communication:** Agents communicate via `MessageSequencePromise` objects, allowing computation to proceed while data is still being gathered.
 -   **Sequence Flattening:** Complex, nested calls to agents still result in a single, flat stream of messages for the consumer, managed automatically by the framework.
--   **Flexible Message Handling:** Features like `ctx.reply_out_of_order` and `agent.initiate_call` provide fine-grained control over how and when messages are produced and consumed.
--   **State Management with Forks:** `agent.fork()` offers a clean way to create stateful instances of agents for specific tasks without resorting to global state or complex parameter passing (TODO not only for that !).
--   **Built-in LLM Integration:** `OpenAIAgent` simplifies interactions with OpenAI models.
--   **Debugging and Robustness:** Features like `llm_logger_agent` and `errors_as_messages` aid in development and create more resilient systems.
+-   **Flexible Message Handling:** Features like `ctx.reply_out_of_order` and `agent.initiate_call` provide fine-grained control over how and when messages are produced and consumed. TODO is this bullet point really needed ?
+-   **State Management with Forks:** `agent.fork()` offers a clean way to create stateful instances of agents for specific tasks without resorting to global state or complex parameter passing. (TODO not only for that ! rewrite this bullet point to de-emphasize the state management aspect ? drop it completely ?
+-   **Built-in LLM Integration:** `OpenAIAgent` simplifies interactions with OpenAI models. TODO that's not why OpenAIAgent exists !
+-   **Debugging and Robustness:** Features like `llm_logger_agent` and `errors_as_messages` aid in development and create more resilient systems. TODO it is unnatural to group these two features together, they are not related to each other
 
 By focusing on the logic of individual agents, MiniAgents lets you build sophisticated, concurrent AI systems without getting bogged down in the complexities of manual parallelism management.
 
-While frameworks like LangGraph excel at defining the overall control flow and state transitions in an agent graph, and libraries like LlamaIndex provide powerful data indexing and retrieval capabilities, MiniAgents carves out its niche by simplifying the asynchronous data flow and streaming between agents, especially through its automatic sequence flattening and replayable promises.
+While frameworks like LangGraph excel at defining the overall control flow and state transitions in an agent graph, and libraries like LlamaIndex provide powerful data indexing and retrieval capabilities, MiniAgents carves out its niche by simplifying the asynchronous data flow and streaming between agents, especially through its automatic sequence flattening and replayable promises. TODO don't position MiniAgents as a replacement for other frameworks, but as a complement to them !
