@@ -49,8 +49,10 @@ async def main():
     # switching, so the agent above as well as its "sub-agents" will now start their work in the background to serve
     # all the promises.
     async for message_promise in response_promises:
-        # Skip messages that are not intended for the user (you'll see where the `not_for_user` attribute is set later)
-        # TODO Explain `known_beforehand` right here in the comment ? Explain it in the tutorial as well ?
+        # Skip messages that are not intended for the user. The `known_beforehand` attribute of a `MessagePromise`
+        # allows access to metadata that is available before the message content itself is resolved. This can be useful
+        # for early filtering or routing of messages. Here, we use it to check the "not_for_user" flag, which is set in
+        # `page_scraper_agent` to prevent internal page summaries from being directly displayed to the user.
         if message_promise.known_beforehand.get("not_for_user"):
             continue
         # Iterate over the individual tokens in the message promise (messages that aren't broken down into tokens will
@@ -270,8 +272,6 @@ async def page_scraper_agent(
             # NOTE: We came up with the "not_for_user" attribute name specifically in this app. We could have used any
             # other name, as long as we properly read it back (see the `main` function at the top of this file).
             "not_for_user": True,
-            # TODO explain what's this for (do we really need it, though ?)
-            "role": "user",
         },
     )
     ctx.reply(f"SCRAPING SUCCESSFUL: {url}")  # Let's report success
