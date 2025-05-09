@@ -1,19 +1,17 @@
 """
 Naive Async Generator Alternative to Sequence Flattening
 
-This example provides a contrast to `sequence_flattening.py`. It attempts
-to mimic the structure using standard Python `async def`, `yield`, and `yield from`
-without the MiniAgents framework.
+This example provides a contrast to `sequence_flattening.py`. It replicates the
+same sequence of actions but uses Python's vanila async generators and no
+MiniAgents framework.
 
-Crucially, this naive implementation using `yield from` results in **sequential**
-execution of the sub-generators. It does not automatically achieve the concurrency
-and background processing that MiniAgents provides with sequence flattening.
-This difference highlights the complexity MiniAgents handles automatically.
+The main difference is that the `async for ... yield` constructs process the
+generators sequentially. The `web_search_agent_naive` for "query 2" will only
+start after the one for "query 1" (including all its pretend-scraping)
+is finished.
 
-To achieve concurrency similar to the MiniAgents example, one would need to
-manually manage tasks using `asyncio.create_task` and potentially queues or
-other synchronization primitives to yield results as they become available,
-significantly increasing complexity.
+Secondly, message sequence replayability is not supported. Once a generator is
+consumed, it's exhausted.
 """
 
 import asyncio

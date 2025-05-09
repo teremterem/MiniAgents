@@ -132,7 +132,8 @@ async def page_scraper_agent_naive(url: str) -> AsyncGenerator[str, None]:
     await asyncio.sleep(random.uniform(0.5, 1))
     yield f"{url} - DONE"
 
-# TODO don't skip stuff
+# TODO don't skip stuff (how do we want to change the wording of this section,
+#  though, if we are going to include the full script here ?)
 # ... (main_naive and stream_to_stdout_naive)
 ```
 In `research_agent_naive`, the loop that calls `web_search_agent_naive` processes each "search query" one after the other. The comment inside the loop explicitly points this out: `web_search_agent_naive` for "query 2" will only begin after "query 1" and all its subsequent operations (like page scraping) are entirely finished.
