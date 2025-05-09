@@ -178,7 +178,7 @@ Now, let's see how MiniAgents addresses these challenges, enabling concurrent ex
     </a>
 </p>
 
-Looks much faster, right? Now, back to the code. The full example that uses MiniAgents can be found in [`sequence_flattening.py`](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py).
+Looks much faster, doesn't it? Now, back to the code. The full example that uses MiniAgents can be found in [`sequence_flattening.py`](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py).
 
 Here are the agent definitions:
 
