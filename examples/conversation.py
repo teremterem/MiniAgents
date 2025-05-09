@@ -4,11 +4,21 @@ A conversation example between the user and multiple LLMs using the MiniAgents f
 
 from dotenv import load_dotenv
 
-from examples.self_dev.self_dev_common import FAVOURITE_MODEL, MODEL_AGENTS
 from miniagents import InteractionContext, MiniAgents, miniagent
 from miniagents.ext import MarkdownHistoryAgent, console_user_agent, dialog_loop
+from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
 load_dotenv()
+
+MAX_OUTPUT_TOKENS = 4096
+
+MODEL_AGENT_FACTORIES = {
+    "gpt-4o": OpenAIAgent,
+    "claude-3-7-sonnet-latest": AnthropicAgent.fork(max_tokens=MAX_OUTPUT_TOKENS),
+}
+
+MODEL_AGENTS = {model: factory.fork(model=model) for model, factory in MODEL_AGENT_FACTORIES.items()}
+FAVOURITE_MODEL = list(MODEL_AGENTS)[0]  # the first model in the dictionary will be our favourite one
 
 
 @miniagent
