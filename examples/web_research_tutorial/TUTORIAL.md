@@ -258,9 +258,11 @@ The complete source code for this example can be found in [`web_research.py`](ht
 
 ### Prerequisites
 
+TODO merge this text with "Environment Setup" section from the old tutorial properly
+
 Before running the `web_research.py` script, you'll need to set up a few things:
 
-1.  **Environment Variables:** The system uses Bright Data for web searching (via their SERP API) and web scraping (via their Scraping Browser). You'll need to sign up for these services and obtain API credentials. Create a `.env` file in the project root directory (or the same directory as `web_research.py`) with your credentials:
+1.  **Environment Variables:** For LLM we will use [OpenAI](https://platform.openai.com/) and for the google searches as well as scraping we will use [BrightData](https://brightdata.com/), a pay as you go scraping service with two products that we are interested in: [SERP API](https://brightdata.com/products/serp-api) and [Scraping Browser](https://brightdata.com/products/scraping-browser). Create a `.env` file in the project root directory (or the same directory as `web_research.py`) with your credentials:
 
     ```env
     # .env
@@ -316,7 +318,7 @@ Key takeaways from `main()`:
 1.  **Non-Blocking Trigger:** `research_agent.trigger(question)` is called without `await`. This immediately returns a `MessageSequencePromise`, and the `research_agent` (and any agents it triggers) will start processing in the background when the event loop allows.
 2.  **Streaming Responses:** The `async for message_promise in response_promises:` loop iterates through the promised messages. Crucially, this loop allows `asyncio` to switch tasks. As messages (or even tokens within messages, if streaming is enabled for an LLM agent) become available from the agent system, they are printed to the console.
 3.  **Filtering Messages:** Some messages might be internal to the agent system (e.g., detailed summaries for other agents). We can attach metadata to messages (like `not_for_user`) and use it to filter what's shown to the end-user. The `known_beforehand` attribute of a `MessagePromise` allows access to metadata that is available before the message content itself is resolved. This can be useful for early filtering or routing of messages. In our `main` function, we use this to check the `"not_for_user"` flag (set in `page_scraper_agent`) to prevent internal page summaries from being directly displayed.
-4.  **Centralized Output:** Notice that all user-facing output happens here. Agents themselves don't `print`. They communicate results back, which `main` then decides how to present. This separation makes it easier to change the UI or integrate the agent system elsewhere (TODO more emphasis on possibility to integrate it as part of a bigger AI system).
+4.  **Centralized Output:** Notice that all user-facing output happens here. Agents themselves don't `print`. They communicate results back, which `main` then decides how to present. This separation makes it easier to change the UI or integrate the agent system elsewhere (TODO more emphasis on possibility to integrate it as part of a bigger AI system - take the text from respective comment in web_research.py).
 5.  **Automatic Background Execution:** MiniAgents, by default, starts processing triggered agents as soon as possible. This is generally the desired behavior for maximum parallelism. While you *can* control this with `start_soon=False` in `trigger` calls or globally (TODO mention global parameter name), it's often unnecessary and can complicate agent interdependencies (TODO the actual problem is deadlocks).
 
 ### The `research_agent`: Orchestrating the Search
@@ -628,22 +630,8 @@ if __name__ == "__main__":
 
 Key `MiniAgents` configurations used here:
 *   **`llm_logger_agent=True`**: This is incredibly useful for debugging. It logs all requests to and responses from LLM agents (like `OpenAIAgent`) into markdown files in an `llm_logs` directory. You can inspect these logs to see the exact prompts, model parameters, and outputs.
-*   **`errors_as_messages=True`**: This global setting makes the system more robust. If an agent encounters an unhandled exception, instead of the agent (and potentially the whole flow) crashing, the error is packaged into an `ErrorMessage` object and continues through the system. Downstream agents can then decide how to handle these error messages (e.g., ignore them, try an alternative; TODO this isn't what's happening in our example, though). As we saw, `page_scraper_agent` locally overrides this for one of its LLM calls.
+*   **`errors_as_messages=True`**: This global setting makes the system more robust. If an agent encounters an unhandled exception, instead of the agent (and potentially the whole flow) crashing, the error is packaged into an `ErrorMessage` object and continues through the system. Downstream agents can then decide how to handle these error messages (e.g., ignore them, try an alternative; TODO this isn't what's happening in our example, though, is it ?). As we saw, `page_scraper_agent` locally overrides this for one of its LLM calls.
 *   **`error_tracebacks_in_messages=True` (commented out)**: If you enable this, the error messages produced when `errors_as_messages=True` will also include the full Python traceback, which can be helpful during development.
-
-## Choosing Your Framework: MiniAgents in Context
-
-# TODO is this section really needed ? isn't it diverting attention from MiniAgents ?
-
-MiniAgents excels when your primary challenge involves managing complex asynchronous data streams and you want to achieve parallel execution of agent tasks with straightforward, procedural-looking code. Its automatic sequence flattening and replayable promises are designed to simplify the development of agents that produce and consume dynamic, streaming information.
-
-However, the AI agent framework landscape is rich, and other tools might be a better fit depending on your project's core needs:
-
-*   If your application demands explicit, graph-based control flow, intricate state management across agent steps, or you need to define complex cyclical interactions (like in sophisticated state machines), a framework like **LangGraph** could be a more direct choice. LangGraph (and the broader Langchain ecosystem) provides strong primitives for these scenarios and boasts a vast array of integrations.
-*   For systems centered around multi-agent conversations and dynamic role assignments, frameworks like **AutoGen** offer specialized capabilities.
-*   If your focus is on orchestrating role-playing agents in a highly structured collaborative process, **CrewAI** might be more aligned.
-
-Ultimately, the best choice depends on whether your main architectural challenge lies in managing asynchronous data flow and streaming (where MiniAgents shines) or in areas like explicit state/control-flow graphs or leveraging specific collaborative agent paradigms offered by other frameworks.
 
 ## Conclusion
 
