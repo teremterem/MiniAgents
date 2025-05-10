@@ -20,7 +20,9 @@ The source code of the project is hosted on [GitHub](https://github.com/teremter
 
 3. **Immutable message philosophy:** MiniAgents uses immutable, Pydantic-based messages that eliminate race conditions and data corruption concerns. This design choice enables highly parallelized agent execution without many of the common headaches of state management. (While messages themselves are immutable, state can still be maintained across multiple invocations of agents by using forked agent instances, a pattern demonstrated later in this tutorial.)
 
-4. **Sequential Appearance, Parallel Reality via Promises:** MiniAgents achieves this seamless blend of procedural style and concurrent execution through one of its core mechanisms: "Message Sequence Flattening". Here is a very simple example (a more complex example will be shown later in this tutorial):
+4. **Fundamental Agent Contract:** Every miniagent adheres to a simple contract: it receives a promise of an input sequence of message promises, arbitrary keyword arguments passed to it (which are all automatically "frozen" unless passed via `non_freezable_kwargs` upon forking an agent, which will be explained later in this tutorial), and in return, it produces a promise of a reply sequence of message promises.
+
+5. **Sequential Appearance, Parallel Reality via Promises:** MiniAgents achieves this seamless blend of procedural style and concurrent execution through one of its core mechanisms: "Message Sequence Flattening". Here is a very simple example (a more complex example will be shown later in this tutorial):
 
 ```python
 @miniagent
@@ -339,13 +341,14 @@ if __name__ == "__main__":
 ```
 
 In the MiniAgents version:
-1.  When `research_agent` calls `web_search_agent.trigger(...)`, this call is non-blocking. It immediately returns a `MessageSequencePromise`. The actual execution of `web_search_agent` (as well as any other agents it subsequently triggers) starts in the background when the asyncio event loop gets a chance to switch tasks.
+1.  When `research_agent` calls `web_search_agent.trigger(...)`, this call is non-blocking. It immediately returns a `MessageSequencePromise`. The actual execution of `web_search_agent` starts in the background when the asyncio event loop gets a chance to switch tasks.
 2.  The `ctx.reply(...)` method (and its variant `ctx.reply_out_of_order(...)`) is versatile. It can accept:
     *   Instances of `Message` (or its subclasses), or other concrete Python objects (like strings, dictionaries, or arbitrary Pydantic models). If not already `Message` objects, these are automatically wrapped into appropriate framework-specific `Message` types (e.g., `TextMessage`).
     *   Promises of individual messages (`MessagePromise`).
     *   Promises that resolve to a sequence of individual message promises (`MessageSequencePromise`), such as those returned by `agent.trigger()`.
     *   Collections (lists, tuples, etc.) containing any mix of the above.
 3.  MiniAgents automatically "flattens" this potentially deeply nested structure of messages and promises. When the `main` function (or another agent) consumes the `response_promises` from `research_agent`, it receives a single, flat sequence of all messages. This sequence includes messages produced directly by `research_agent`, all messages from all the triggered `web_search_agent` instances, and consequently, all messages from all the `page_scraper_agent` instances called by them.
+    *   _A key aspect to remember is that sequence flattening happens both when you pass input to an agent (which can be concrete messages, promises, or collections of either) and when an agent replies with a promise of a message sequence (`MessageSequencePromise`)._
 4.  The `async for message_promise in promises:` loop in the `stream_to_stdout` function in our example (which consumes the results in `main`) leads to asyncio switching tasks. This gives the agents (`research_agent`, `web_search_agent`, `page_scraper_agent`) a chance to run in the background. The use of `reply_out_of_order` in some of the agents ensures that certain messages are yielded to the output stream as soon as they are ready from these parallel operations, rather than in the order in which they were registered as part of the agents' responses. This enhances the sense of parallelism from the consumer's perspective, though it doesn't change the parallelism of the actual agent execution (which is already parallel due to `trigger` being non-blocking).
 5.  A key feature highlighted in the `main` function of `sequence_flattening.py` is the **replayability** of `MessageSequencePromise` objects. You can iterate over `response_promises` multiple times and get the exact same sequence of messages. This is invaluable for scenarios where you might want to feed the same set of results to multiple different subsequent processing agents without worrying about "exhausting" the input stream.
 
@@ -654,7 +657,7 @@ Key points for `page_scraper_agent`:
 2.  **LLM for Summarization/Extraction:** The MiniAgents built-in `OpenAIAgent` is used here. It's triggered to process the scraped content and extract information relevant to the original user question and the rationale for visiting this specific page.
 3.  **Awaiting Specific Results:** Unlike previous `trigger` calls, `page_summary = await OpenAIAgent.trigger(...)` *awaits* the result. This is a design choice: we want to ensure the summarization is complete and successful before this agent reports `SCRAPING SUCCESSFUL` and sends the summary onward.
 4.  **Error Handling Choice (`errors_as_messages=False`):** For this particular call to `OpenAIAgent`, `errors_as_messages` is set to `False`. This means if the LLM call fails, the `page_scraper_agent` itself will raise an exception. The overall system is configured with `errors_as_messages=True` (see the `if __name__ == "__main__":` block), so this local override demonstrates fine-grained control. If it were `True` (or defaulted to the global setting), an LLM error would result in an error message being sent as `page_summary` instead of crashing this agent.
-5.  **Message Metadata (`response_metadata`):** The `OpenAIAgent.trigger` call includes `response_metadata`. This dictionary is attached to the message(s) produced by `OpenAIAgent`. Here, `"not_for_user": True` signals that this summary is an intermediate result, primarily for the `final_answer_agent`, and shouldn't be directly displayed to the user by the `main` function's loop.
+5.  **Message Metadata (`response_metadata`):** The `OpenAIAgent.trigger` call includes `response_metadata`. This dictionary is attached to the message(s) produced by `OpenAIAgent`. Here, `"not_for_user": True` signals that this summary is an intermediate result, primarily for the `final_answer_agent`, and shouldn't be directly displayed to the user by the `main` function's loop. _It's worth noting that metadata keys like `"not_for_user"` are arbitrary choices specific to this application's design; you can use any key names that suit your system's logic for routing or annotating messages._
 
 ### The `final_answer_agent`: Synthesizing the Result
 
@@ -770,4 +773,4 @@ This Web Research System demonstrates several powerful features of MiniAgents:
 -   **Debugging Support:** Features like `llm_logger_agent` aid in development by providing visibility into LLM interactions.
 -   **Enhanced Robustness:** Global error handling settings like `errors_as_messages` help create more resilient systems.
 
-By focusing on the logic of individual agents, MiniAgents lets you build sophisticated, concurrent AI systems without getting bogged down in the complexities of manual parallelism management.
+By focusing on the logic of individual agents, MiniAgents lets you build sophisticated, concurrent AI systems without getting bogged down in the complexities of manual parallelism management. The system naturally parallelizes IO-bound tasks (like calls to LLMs or external APIs) without requiring explicit concurrency code from the developer, as AI agents are typically IO-bound.
