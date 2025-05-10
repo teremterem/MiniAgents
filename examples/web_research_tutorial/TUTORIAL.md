@@ -29,10 +29,10 @@ The source code of the project is hosted on [GitHub](https://github.com/teremter
 async def aggregator_agent(ctx: InteractionContext) -> None:
     # This looks sequential but all agents start working in parallel
     ctx.reply([
-        # All nested sequences here will be asynchronously "flattened" in the background
-        # for an outside agent (i.e., the one triggering the `aggregator_agent`), so that
-        # when the outside agent consumes the result, it appears as a single, flat sequence
-        # of messages.
+        # All nested sequences here will be asynchronously "flattened" in the
+        # background for an outside agent (i.e., the one triggering the
+        # `aggregator_agent`), so that when the outside agent consumes the
+        # result, it appears as a single, flat sequence of messages.
         "Starting analysis...",
         research_agent.trigger(ctx.message_promises),
         calculation_agent.trigger(ctx.message_promises),
@@ -100,9 +100,9 @@ async def research_agent_naive(question: str) -> AsyncGenerator[str, None]:
     for i in range(3):
         query = f"query {i+1}"
         # The `async for ... yield` construct processes the generator
-        # sequentially. The `web_search_agent_naive` for "query 2" will only
-        # start after the one for "query 1" (including all its pretend-scraping)
-        # is finished.
+        # sequentially. The `web_search_agent_naive` for "query 2" will
+        # only start after the one for "query 1" (including all its
+        # pretend-scraping) is finished.
         async for item in web_search_agent_naive(search_query=query):
             yield item
 
@@ -118,8 +118,8 @@ async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]
 
     for i in range(2):
         url = f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}"
-        # This leads to sequential execution. The next iteration or yield
-        # only happens *after* page_scraper_agent_naive is completely finished.
+        # This leads to sequential execution. The next iteration or yield only
+        # happens *after* page_scraper_agent_naive is completely finished.
         async for item in page_scraper_agent_naive(url=url):
             yield item
 
@@ -163,7 +163,6 @@ async def main_naive():
     print()
 
     print("Attempting to reiterate (WILL YIELD NOTHING):")
-    # await asyncio.sleep(0.2)
 
     # NOTE: Re-iterating a standard async generator like this is not possible.
     # Once consumed, it's exhausted. This contrasts with MiniAgents promises,
@@ -261,7 +260,10 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
         ctx.reply_out_of_order(
             page_scraper_agent.trigger(
                 ctx.message_promises, # Original question
-                url=f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}",
+                url=(
+                    f"https://dummy.com/{search_query.replace(' ', '-')}"
+                    f"/page-{i+1}"
+                ),
             )
         )
 
@@ -275,12 +277,12 @@ async def page_scraper_agent(ctx: InteractionContext, url: str) -> None:
 
 async def stream_to_stdout(promises: MessageSequencePromise):
     """
-    As we iterate through the `response_promises` sequence, asyncio switches tasks,
-    allowing the agents (`research_agent`, `web_search_agent`, `page_scraper_agent`)
-    to run concurrently in the background and resolve their promises.
-    The `async for` loop seamlessly receives messages from the flattened sequence,
-    regardless of how deeply nested their origins were (research_agent ->
-    web_search_agent -> page_scraper_agent).
+    As we iterate through the `response_promises` sequence, asyncio switches
+    tasks, allowing the agents (`research_agent`, `web_search_agent`,
+    `page_scraper_agent`) to run concurrently in the background and resolve
+    their promises. The `async for` loop seamlessly receives messages from the
+    flattened sequence, regardless of how deeply nested their origins were
+    (research_agent -> web_search_agent -> page_scraper_agent).
     """
     i = 0
     async for message_promise in promises:
@@ -298,7 +300,9 @@ async def main():
     """
     # Trigger the top-level agent. This returns a MessageSequencePromise.
     # No processing has started yet.
-    response_promises = research_agent.trigger("Tell me about MiniAgents sequence flattening")
+    response_promises = research_agent.trigger(
+        "Tell me about MiniAgents sequence flattening"
+    )
 
     print()
 
@@ -306,7 +310,6 @@ async def main():
 
     print()
     print("=== REPLAYING MESSAGES ===")
-    # await asyncio.sleep(0.2)
     print()
 
     # If we iterate through the sequence again, we will see that exactly same messages
