@@ -228,7 +228,13 @@ Here are the agent definitions, along with the main execution logic:
 import asyncio
 import random
 
-from miniagents import InteractionContext, Message, MessageSequencePromise, MiniAgents, miniagent
+from miniagents import (
+    InteractionContext,
+    Message,
+    MessageSequencePromise,
+    MiniAgents,
+    miniagent,
+)
 
 
 @miniagent
@@ -260,10 +266,7 @@ async def web_search_agent(ctx: InteractionContext, search_query: str) -> None:
         ctx.reply_out_of_order(
             page_scraper_agent.trigger(
                 ctx.message_promises, # Original question
-                url=(
-                    f"https://dummy.com/{search_query.replace(' ', '-')}"
-                    f"/page-{i+1}"
-                ),
+                url=f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}",
             )
         )
 
@@ -312,14 +315,15 @@ async def main():
     print("=== REPLAYING MESSAGES ===")
     print()
 
-    # If we iterate through the sequence again, we will see that exactly same messages
-    # are yielded again (and in exactly the same order). This demonstrates the
-    # replayability of all types of promises in MiniAgents.
+    # If we iterate through the sequence again, we will see that exactly same
+    # messages are yielded again (and in exactly the same order). This
+    # demonstrates the replayability of all types of promises in MiniAgents.
     #
-    # Replayability is useful because it allows you to feed the same same sequences
-    # (be it responses from some agents, or an input to the current agent) to
-    # multiple other agents without even thinking that those sequences might
-    # already be "exhausted" in a traditional, async generator sense.
+    # Replayability is useful because it allows you to feed the same same
+    # sequences (be it responses from some agents, or an input to the current
+    # agent) to multiple other agents without even thinking that those
+    # sequences might already be "exhausted" in a traditional, async generator
+    # sense.
     await stream_to_stdout(response_promises)
 
     print()
@@ -327,12 +331,13 @@ async def main():
     print()
 
     # We can even await the whole sequence promise again to get the full list
-    # of resolved messages (demonstrating the replayability of promises once again).
+    # of resolved messages (demonstrating the replayability of promises once
+    # again).
     messages: tuple[Message, ...] = await response_promises
     for i, message in enumerate(messages):
         # When you run this example, you will see that for agents replying with
-        # simple strings, they are automatically wrapped into TextMessage objects
-        # (a subclass of Message).
+        # simple strings, they are automatically wrapped into TextMessage
+        # objects (a subclass of Message).
         print(f"{type(message).__name__} {i+1}: {message}")
 
     print()
@@ -408,7 +413,14 @@ from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from miniagents import AgentCall, InteractionContext, Message, MessageSequencePromise, MiniAgents, miniagent
+from miniagents import (
+    AgentCall,
+    InteractionContext,
+    Message,
+    MessageSequencePromise,
+    MiniAgents,
+    miniagent,
+)
 from miniagents.ext.llms import OpenAIAgent, aprepare_dicts_for_openai
 
 from utils import fetch_google_search, scrape_web_page
@@ -426,20 +438,23 @@ openai_client = AsyncOpenAI()
 async def main():
     question = input("\nEnter your question: ")
 
-    # Invoke the main agent (no `await` is placed in front of the call, hence this is a non-blocking operation, no
-    # processing starts just yet)
+    # Invoke the main agent (no `await` is placed in front of the call, hence
+    # this is a non-blocking operation, no processing starts just yet)
     response_promises: MessageSequencePromise = research_agent.trigger(question)
 
     print()
-    # Iterate over the individual message promises in the response sequence promise. The async loops below lead to task
-    # switching, so the agent above as well as its "sub-agents" will now start their work in the background to serve
-    # all the promises.
+    # Iterate over the individual message promises in the response sequence
+    # promise. The async loops below lead to task switching, so the agent above
+    # as well as its "sub-agents" will now start their work in the background
+    # to serve all the promises.
     async for message_promise in response_promises:
-        # Skip messages that are not intended for the user (you'll see where the `not_for_user` attribute is set later)
+        # Skip messages that are not intended for the user (you'll see where
+        # the `not_for_user` attribute is set later)
         if message_promise.known_beforehand.get("not_for_user"):
             continue
-        # Iterate over the individual tokens in the message promise (messages that aren't broken down into tokens will
-        # be delivered in a single token)
+        # Iterate over the individual tokens in the message promise (messages
+        # that aren't broken down into tokens will be delivered in a single
+        # token)
         async for token in message_promise:
             print(token, end="", flush=True)
         print("\n")
@@ -470,9 +485,10 @@ async def research_agent(ctx: InteractionContext) -> None:
     message_dicts = await aprepare_dicts_for_openai(
         ctx.message_promises, # The user's question
         system=(
-            "Your job is to breakdown the user's question into a list of web searches that need to be done to answer "
-            "the question. Please try to optimize your search queries so there aren't too many of them. Current date "
-            "is " + datetime.now().strftime("%Y-%m-%d")
+            "Your job is to breakdown the user's question into a list of web "
+            "searches that need to be done to answer the question. Please try "
+            "to optimize your search queries so there aren't too many of "
+            "them. Current date is " + datetime.now().strftime("%Y-%m-%d")
         ),
     )
     # Using OpenAI's client library directly for structured output
@@ -486,17 +502,19 @@ async def research_agent(ctx: InteractionContext) -> None:
     ctx.reply(f"RUNNING {len(parsed.web_searches)} WEB SEARCHES")
 
     already_picked_urls = set[str]()
-    # Fork the `web_search_agent` to create an isolated, configurable instance for this task.
-    # `non_freezable_kwargs` allows passing mutable objects like our `already_picked_urls` set,
-    # which will then be specific to this forked agent instance and shared across its invocations
-    # within this research task.
+    # Fork the `web_search_agent` to create an isolated, configurable instance
+    # for this task. `non_freezable_kwargs` allows passing mutable objects like
+    # our `already_picked_urls` set, which will then be specific to this forked
+    # agent instance and shared across its invocations within this research
+    # task.
     _web_search_agent = web_search_agent.fork(
         non_freezable_kwargs={
             "already_picked_urls": already_picked_urls,
         },
     )
 
-    # Initiate a call to the final_answer_agent. We'll send it data as we gather it.
+    # Initiate a call to the final_answer_agent. We'll send it data as we
+    # gather it.
     final_answer_call: AgentCall = final_answer_agent.initiate_call(
         user_question=await ctx.message_promises,
     )
@@ -515,15 +533,16 @@ async def research_agent(ctx: InteractionContext) -> None:
         # Send the same results to the final_answer_agent
         final_answer_call.send_message(search_and_scraping_results)
 
-    # Reply with the sequence from final_answer_agent, effectively chaining its output
-    # to research_agent's output. This also closes the call to final_answer_agent.
+    # Reply with the sequence from final_answer_agent, effectively chaining
+    # its output to research_agent's output. This also closes the call to
+    # final_answer_agent.
     ctx.reply(final_answer_call.reply_sequence())
 
 # ... (other agents)
 ```
 
 Key aspects of `research_agent`:
-1.  **Query Generation:** It uses an LLM (via `openai_client.beta.chat.completions.parse`) to break the user's question into a list of specific search queries. `WebSearchesToBeDone` is a Pydantic model that ensures the LLM returns data in the expected structure (using OpenAI's "structured output" feature). While this example uses the OpenAI client library directly for structured output, MiniAgents plans to support this natively as another built-in LLM mini-agent, along with already existing OpenAIAgent, AnthropicAgent etc. which simply generate text.
+1.  **Query Generation:** It uses an LLM (via `openai_client.beta.chat.completions.parse`) to break the user's question into a list of specific search queries. `WebSearchesToBeDone` is a Pydantic model that ensures the LLM returns data in the expected structure (using OpenAI's "structured output" feature). While this example uses the OpenAI client library directly for structured output, MiniAgents plans to support this natively as another built-in LLM miniagent, along with already existing OpenAIAgent, AnthropicAgent etc. which simply generate text.
 2.  **Agent Forking for Configuration and State:** The `web_search_agent` needs to keep track of URLs it has already decided to scrape to avoid redundant work. `agent.fork()` creates a new, independent version (an "instance") of the agent. This is useful for creating agents with specific configurations or, as in this case, for endowing an agent instance with mutable state (like `already_picked_urls`) that is shared across its invocations *by this particular forked instance*. The `non_freezable_kwargs` argument is the mechanism for passing such mutable resources that cannot (or should not) be "frozen" by the fork.
 3.  **Initiating Calls (`initiate_call`):** The `final_answer_agent` will eventually synthesize an answer using all gathered information. We don't have all this information upfront. `final_answer_agent.initiate_call()` creates an `AgentCall` object. This allows `research_agent` to send messages (or message promises) to `final_answer_agent` incrementally using `final_answer_call.send_message()`.
 4.  **Parallel Fan-Out (`trigger` without `await`):** For each generated search query, `_web_search_agent.trigger()` is called. Again, no `await` means these sub-agents start working in parallel.
@@ -559,13 +578,16 @@ async def web_search_agent(
     message_dicts = await aprepare_dicts_for_openai(
         [
             ctx.message_promises, # Original user question
-            f"RATIONALE: {rationale}\n\nSEARCH QUERY: {search_query}\n\nSEARCH RESULTS:\n\n{search_results}",
+            f"RATIONALE: {rationale}\n\nSEARCH QUERY: {search_query}\n\n"
+            f"SEARCH RESULTS:\n\n{search_results}",
         ],
         system=(
-            "This is a user question that another AI agent (not you) will have to answer. Your job, however, is "
-            "to list all the web page urls that need to be inspected to collect information related to the "
-            "RATIONALE and SEARCH QUERY. SEARCH RESULTS where to take the page urls from are be provided to you as "
-            "well. Current date is " + datetime.now().strftime("%Y-%m-%d")
+            "This is a user question that another AI agent (not you) will "
+            "have to answer. Your job, however, is to list all the web page "
+            "urls that need to be inspected to collect information related to "
+            "the RATIONALE and SEARCH QUERY. SEARCH RESULTS where to take the "
+            "page urls from are be provided to you as well. Current date is "
+            + datetime.now().strftime("%Y-%m-%d")
         ),
     )
     response = await openai_client.beta.chat.completions.parse(
@@ -577,9 +599,9 @@ async def web_search_agent(
 
     web_pages_to_scrape: list[WebPage] = []
     for web_page in parsed.web_pages:
-        if web_page.url not in already_picked_urls: # Check against the shared set
+        if web_page.url not in already_picked_urls:
             web_pages_to_scrape.append(web_page)
-            already_picked_urls.add(web_page.url) # Update the shared set
+            already_picked_urls.add(web_page.url)
         if len(web_pages_to_scrape) >= MAX_WEB_PAGES_PER_SEARCH:
             break
 
@@ -629,24 +651,28 @@ async def page_scraper_agent(
     page_summary = await OpenAIAgent.trigger(
         [
             ctx.message_promises, # Original user question
-            f"URL: {url}\nRATIONALE: {rationale}\n\nWEB PAGE CONTENT:\n\n{page_content}",
+            f"URL: {url}\nRATIONALE: {rationale}\n\n"
+            f"WEB PAGE CONTENT:\n\n{page_content}",
         ],
         system=(
-            "This is a user question that another AI agent (not you) will have to answer. Your job, however, is "
-            "to extract from WEB PAGE CONTENT facts that are relevant to the users original "
-            "question. The other AI agent will use the information you extract along with information extracted "
-            "by other agents to answer the user's original question later. "
-            "Current date is " + datetime.now().strftime("%Y-%m-%d")
+            "This is a user question that another AI agent (not you) will "
+            "have to answer. Your job, however, is to extract from WEB PAGE "
+            "CONTENT facts that are relevant to the users original question. "
+            "The other AI agent will use the information you extract along "
+            "with information extracted by other agents to answer the user's "
+            "original question later. Current date is "
+            + datetime.now().strftime("%Y-%m-%d")
         ),
         model=MODEL,
         stream=False, # Streaming isn't critical for this internal summary
-        # If summarization fails, let this agent fail rather than sending an error message.
-        # This is a choice; for robustness, True might be preferred if partial results are acceptable.
+        # If summarization fails, let this agent fail rather than sending an
+        # error message. This is a choice; for robustness, True might be
+        # preferred if partial results are acceptable.
         errors_as_messages=False,
         response_metadata={
-            # This summary is for the final_answer_agent, not directly for the user.
+            # This summary is for the final_answer_agent, not directly for the
+            # user.
             "not_for_user": True,
-            # "role": "user", # This metadata might be for other internal tracking
         },
     )
     ctx.reply(f"SCRAPING SUCCESSFUL: {url}")
@@ -671,12 +697,15 @@ This agent receives all the summaries and extracted pieces of information from t
 # ... (page_scraper_agent) ...
 
 @miniagent
-async def final_answer_agent(ctx: InteractionContext, user_question: Union[Message, tuple[Message, ...]]) -> None:
-    # Await all incoming messages (summaries from page_scraper_agents) to ensure
-    # they are "materialized" before we proceed to show the "ANSWER" heading. If
-    # not for this heading, `await` would not have been important here -
-    # OpenAIAgent would have waited for all the incoming messages to make them
-    # part of its prompt anyway.
+async def final_answer_agent(
+    ctx: InteractionContext,
+    user_question: Union[Message, tuple[Message, ...]],
+) -> None:
+    # Await all incoming messages (summaries from page_scraper_agents) to
+    # ensure they are "materialized" before we proceed to show the "ANSWER"
+    # heading. If not for this heading, `await` would not have been important
+    # here - OpenAIAgent would have waited for all the incoming messages to
+    # make them part of its prompt anyway.
     await ctx.message_promises
 
     ctx.reply("==========\nANSWER:\n==========")
@@ -685,19 +714,20 @@ async def final_answer_agent(ctx: InteractionContext, user_question: Union[Messa
         OpenAIAgent.trigger(
             [
                 "USER QUESTION:",
-                user_question, # Passed as a keyword argument during initiate_call
+                user_question, # Passed as a kwarg during initiate_call
                 "INFORMATION FOUND ON THE INTERNET:",
-                # Concatenate all received messages (page summaries) into a single text block.
-                # `as_single_text_promise()` returns a promise; actual concatenation
-                # happens in the background.
+                # Concatenate all received messages (page summaries) into a
+                # single text block. `as_single_text_promise()` returns a
+                # promise; actual concatenation happens in the background.
                 ctx.message_promises.as_single_text_promise(),
             ],
             system=(
-                "Please answer the USER QUESTION based on the INFORMATION FOUND ON THE INTERNET. "
-                "Current date is " + datetime.now().strftime("%Y-%m-%d")
+                "Please answer the USER QUESTION based on the INFORMATION "
+                "FOUND ON THE INTERNET. Current date is "
+                + datetime.now().strftime("%Y-%m-%d")
             ),
             model=MODEL,
-            # stream=True, # OpenAIAgent streams by default, so this is implicitly True.
+            # stream=True, # In LLM miniagents streaming is enabled by default.
                            # Explicitly setting stream=False would turn it off.
         )
     )
