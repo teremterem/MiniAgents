@@ -1,4 +1,4 @@
-***NOTE: The [web_research.py](https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial/web_research.py) file contains exhaustive commentary, we advise you to read it if you want to understand the system in detail (and get a good feel of the framework).***
+***NOTE: For a detailed walkthrough of this project, check out the [full tutorial](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp).***
 
 # WebResearch
 
