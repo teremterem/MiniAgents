@@ -6,7 +6,7 @@ branch = true
 
 [tool.poetry]
 name = "miniagents"
-version = "0.0.30"
+version = "0.0.31"
 description = """\
 An open-source, async-first framework for building multi-agent AI systems with an innovative approach to parallelism, \
 so you can focus on creating intelligent agents, not on managing the concurrency of your flows.\
@@ -25,30 +25,21 @@ wrapt = "*"
 
 [tool.poetry.dev-dependencies]
 anthropic = "*"
-#anyio = "*"
 black = "*"
-#haystack-ai = "*"
+httpx = "*"
 ipython = "*"
 jupyterlab = "*"
-#langchain = "*"
-#langchain-anthropic = "*"
-#langchain-openai = "*"
-#langgraph = "*"
 llama-index = "*"
+markdownify = "*"
 notebook = "*"
 openai = "*"
 pre-commit = "*"
-#promptlayer = "*"
 pylint = "*"
-#pypdf = "*"
 pytest = "*"
 pytest-asyncio = "*"
 pytest-cov = "*"
 python-dotenv = "*"
-#trafilatura = "*"
-#trio = "*"
-#unstructured = {version = "*", extras = ["md"]}
-xonsh = {version = "*", extras = ["full"]}
+selenium = "*"
 
 [build-system]
 requires = ["poetry-core"]

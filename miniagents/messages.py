@@ -11,12 +11,12 @@ import wrapt
 from pydantic import BaseModel, ConfigDict
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
-from miniagents.promising.errors import AppenderNotOpenError
+from miniagents.promising.errors import AppenderNotOpenError, PromisingContextError
 from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
-from miniagents.utils import dict_to_message, as_single_text_promise
+from miniagents.utils import dict_to_message, as_single_text_promise, display_agent_trace
 
 
 class Token(Frozen):
@@ -550,7 +550,12 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
                 # TODO support `log_reduced_tracebacks` here as well ?
-                error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                error_lines = traceback.format_exception(type(exc), exc, exc.__traceback__)
+                try:
+                    error_lines.append(f"\nAgent trace:\n{display_agent_trace()}\n---\n")
+                except PromisingContextError:
+                    pass
+                error_msg = "".join(error_lines)
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
@@ -569,7 +574,12 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
                 # TODO support `log_reduced_tracebacks` here as well ?
-                error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                error_lines = traceback.format_exception(type(exc), exc, exc.__traceback__)
+                try:
+                    error_lines.append(f"\nAgent trace:\n{display_agent_trace()}\n---\n")
+                except PromisingContextError:
+                    pass
+                error_msg = "".join(error_lines)
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
@@ -593,7 +603,12 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
                 # TODO support `log_reduced_tracebacks` here as well ?
-                error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                error_lines = traceback.format_exception(type(exc), exc, exc.__traceback__)
+                try:
+                    error_lines.append(f"\nAgent trace:\n{display_agent_trace()}\n---\n")
+                except PromisingContextError:
+                    pass
+                error_msg = "".join(error_lines)
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 

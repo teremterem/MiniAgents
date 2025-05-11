@@ -5,7 +5,6 @@ Code example for using LLMs.
 from pprint import pprint
 
 from dotenv import load_dotenv
-
 from miniagents import Message, MiniAgents
 from miniagents.ext import console_output_agent
 from miniagents.ext.llms import OpenAIAgent
