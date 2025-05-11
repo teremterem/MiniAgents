@@ -658,7 +658,8 @@ async def page_scraper_agent(
             + datetime.now().strftime("%Y-%m-%d")
         ),
         model=MODEL,
-        stream=False, # Streaming isn't critical for this internal summary
+        # Streaming isn't important for this internal summary
+        stream=False,
         # If summarization fails, let this agent fail rather than sending an
         # error message. This is a choice; for robustness, True might be
         # preferred if partial results are acceptable.
