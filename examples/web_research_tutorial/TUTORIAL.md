@@ -364,7 +364,7 @@ This automatic concurrency and sequence flattening greatly simplify the developm
 
 Now that we've explored the core concept of "Message Sequence Flattening" with a dummy example, let's dive into the fully functional Web Research System. This system uses real AI models for understanding and generation, performs actual web searches, and scrapes web pages to gather information.
 
-The complete source code for this example can be found in [`web_research.py`](https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/web_research_tutorial/web_research.py).
+Again, as mentioned earlier, the complete source code for this example can be found [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).
 
 ### Prerequisites
 
