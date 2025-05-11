@@ -118,7 +118,7 @@ async def web_search_agent_naive(search_query: str) -> AsyncGenerator[str, None]
 
     for i in range(2):
         url = f"https://dummy.com/{search_query.replace(' ', '-')}/page-{i+1}"
-        # This also leads to sequential execution.
+        # This also leads to sequential execution
         async for item in page_scraper_agent_naive(url=url):
             yield item
 
@@ -154,7 +154,7 @@ async def main_naive():
     print("=== Naive Async Generator Execution ===")
     print()
 
-    # Consume and print results sequentially
+    # Consume and print results
     await stream_to_stdout_naive(result_generator)
 
     print()
