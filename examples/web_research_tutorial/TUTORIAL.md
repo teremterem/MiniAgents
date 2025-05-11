@@ -312,8 +312,8 @@ async def main():
     print("=== REPLAYING MESSAGES ===")
     print()
 
-    # If we iterate through the sequence again, we will see that exactly same
-    # messages are yielded again (and in exactly the same order). This
+    # If we iterate through the sequence again, we will see that exactly the
+    # same messages are yielded again (and in exactly the same order). This
     # demonstrates the replayability of all types of promises in MiniAgents.
     #
     # Replayability is useful because it allows you to feed the same same
