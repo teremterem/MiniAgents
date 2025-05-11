@@ -785,7 +785,7 @@ if __name__ == "__main__":
 ```
 
 Key `MiniAgents` configurations used here:
-*   **`llm_logger_agent=True`**: This is incredibly useful for debugging. It logs all requests to and responses from LLM agents (like `OpenAIAgent`) into markdown files in an `llm_logs` directory. You can inspect these logs to see the exact prompts, model parameters, and outputs.
+*   **`llm_logger_agent=True`**: This is incredibly useful for debugging. It logs all requests to and responses from LLM miniagents (like `OpenAIAgent`) into markdown files in an `llm_logs` directory. You can inspect these logs to see the exact prompts, model parameters, and outputs.
 *   **`errors_as_messages=True`**: This global setting makes the system more robust. If an agent encounters an unhandled exception, instead of the agent (and potentially the whole flow) crashing, the error is packaged into an `ErrorMessage` object and continues through the system. As we saw, `page_scraper_agent` locally overrides this for its LLM calls by setting `errors_as_messages=False` in the `trigger` call.
 *   **`error_tracebacks_in_messages=True` (commented out)**: If you enable this, the error messages produced when `errors_as_messages=True` will also include the full Python traceback, which can be helpful during development (only useful when `errors_as_messages=True`, because when `errors_as_messages=False`, errors are raised as exceptions and are logged to the console with the tracebacks regardless of the `error_tracebacks_in_messages` setting).
 
