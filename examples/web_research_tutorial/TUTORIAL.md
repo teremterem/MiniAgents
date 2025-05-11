@@ -326,9 +326,9 @@ async def main():
     print("=== REPLAYING MESSAGES AGAIN ===")
     print()
 
-    # We can even await the whole sequence promise again to get the full list
-    # of resolved messages (demonstrating the replayability of promises once
-    # again).
+    # We can even await the whole sequence promise to get the full list (tuple,
+    # to be precise) of resolved messages (demonstrating the replayability of
+    # promises once again).
     messages: tuple[Message, ...] = await response_promises
     for i, message in enumerate(messages):
         # When you run this example, you will see that for agents replying with
