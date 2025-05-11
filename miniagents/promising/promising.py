@@ -82,7 +82,15 @@ class PromisingContext:
         Run an awaitable in the context of this PromisingContext instance. This method is blocking. It also creates a
         new event loop.
         """
-        return asyncio.run(self.arun(awaitable))
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            # If no event loop exists in this thread, create a new one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        return loop.run_until_complete(self.arun(awaitable))
 
     async def arun(self, awaitable: Awaitable[Any]) -> Any:
         """
