@@ -16,7 +16,7 @@ from selenium.webdriver.remote.client_config import ClientConfig
 
 load_dotenv()
 
-EXPECTED_MINIAGENTS_VERSION = (0, 0, 30)
+EXPECTED_MINIAGENTS_VERSION = (0, 0, 31)
 
 BRIGHTDATA_SERP_API_CREDS = os.environ["BRIGHTDATA_SERP_API_CREDS"]
 BRIGHTDATA_SCRAPING_BROWSER_CREDS = os.environ["BRIGHTDATA_SCRAPING_BROWSER_CREDS"]
