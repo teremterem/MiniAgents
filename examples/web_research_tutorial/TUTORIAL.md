@@ -699,7 +699,7 @@ async def final_answer_agent(
     # Await all incoming messages (summaries from page_scraper_agents) to
     # ensure they are "materialized" before we proceed to show the "ANSWER"
     # heading. If not for this heading, `await` would not have been important
-    # here - OpenAIAgent would have waited for all the incoming messages to
+    # here - OpenAIAgent will internally await for all the incoming messages to
     # make them part of its prompt anyway.
     await ctx.message_promises
 
