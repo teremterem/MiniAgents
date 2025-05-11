@@ -176,9 +176,7 @@ if __name__ == "__main__":
     asyncio.run(main_naive())
 ```
 
-In `research_agent_naive`, the loop that calls `web_search_agent_naive` processes each "search query" one after the other. The comment inside the loop explicitly points this out: `web_search_agent_naive` for "query 2" will only begin after "query 1" and all its subsequent operations (like page scraping) are entirely finished.
-
-Similarly, `web_search_agent_naive` waits for `page_scraper_agent_naive` to complete for one URL before processing the next. This is because `async for item in sub_generator:` effectively awaits the completion of `sub_generator`'s items sequentially.
+In `research_agent_naive`, the loop that calls `web_search_agent_naive` processes each "search query" one after the other. Similarly, `web_search_agent_naive` waits for `page_scraper_agent_naive` to complete for one URL before processing the next.
 
 Here is what this process looks like as a result:
 
