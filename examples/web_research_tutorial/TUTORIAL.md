@@ -42,16 +42,10 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
 
 # Let's build a Web Research System with MiniAgents
 
-<!-- <p>
+<p>
     <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial">
         <img alt="WebResearch in action"
             src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif">
-    </a>
-</p> -->
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/web_research_tutorial">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/web_research.py-x3plus.gif">
     </a>
 </p>
 
@@ -65,9 +59,7 @@ In this tutorial we'll build a system that can:
 
 The animation above demonstrates what the output of this system will look like.
 
-<!-- ***NOTE: The complete source code is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).*** -->
-
-***NOTE: The complete source code is available [here](https://github.com/teremterem/MiniAgents/tree/examples/web-research-tutorial/examples/web_research_tutorial).***
+***NOTE: The complete source code is available [here](https://github.com/teremterem/MiniAgents/tree/main/examples/web_research_tutorial).***
 
 ## "Message Sequence Flattening"
 
@@ -180,16 +172,10 @@ In `research_agent_naive`, the loop that calls `web_search_agent_naive` processe
 
 Here is what this process looks like as a result:
 
-<!-- <p>
+<p>
     <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py">
         <img alt="WebResearch in action"
             src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening_naive_alternative.py.gif">
-    </a>
-</p> -->
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/sequence_flattening_naive_alternative.py">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/sequence_flattening_naive_alternative.py.gif">
     </a>
 </p>
 
@@ -203,16 +189,10 @@ This manual management is typical when using raw `asyncio` or even foundational 
 
 Now, let's see how MiniAgents addresses these challenges, enabling concurrent execution while keeping the same level of code simplicity. You'll see what the changed version of the same code looks like in a moment, but first, let's jump ahead and take a look at how different its output is going to be:
 
-<!-- <p>
+<p>
     <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py">
         <img alt="WebResearch in action"
             src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening.py.gif">
-    </a>
-</p> -->
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/sequence_flattening.py">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/examples/web-research-tutorial/images/sequence_flattening.py.gif">
     </a>
 </p>
 
@@ -387,9 +367,7 @@ Before running the `web_research.py` script, you'll need to set up a few things:
 
     ***ATTENTION: The credentials above are NOT for your whole Bright Data account. They are for the SERP API and Scraping Browser respectively (their website will guide you how to set up both products).***
 
-<!-- 3.  **Helper Utilities (`utils.py`):** The project uses a `utils.py` file (available [here](https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial/utils.py)) which contains helper functions for: -->
-
-3.  **Helper Utilities (`utils.py`):** The project uses a `utils.py` file (available [here](https://github.com/teremterem/MiniAgents/blob/examples/web-research-tutorial/examples/web_research_tutorial/utils.py)) which contains helper functions for:
+3.  **Helper Utilities (`utils.py`):** The project uses a `utils.py` file (available [here](https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial/utils.py)) which contains helper functions for:
     *   `fetch_google_search()`: Interacts with the Bright Data SERP API.
     *   `scrape_web_page()`: Uses Selenium with Bright Data's Scraping Browser to fetch and parse web page content. It runs Selenium in a separate thread pool as Selenium is blocking.
 
