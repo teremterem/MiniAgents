@@ -797,7 +797,7 @@ This Web Research System demonstrates several powerful features of MiniAgents:
 -   **Sequence Flattening:** Complex, nested calls to agents still result in a single, flat stream of messages for the consumer, managed automatically by the framework.
 -   **Flexible Message Handling:** Features like `ctx.reply_out_of_order` for responsive streaming and `agent.initiate_call` for incremental data feeding provide fine-grained control over message flow.
 -   **Configurable Agent Instances with Forks:** `agent.fork()` offers a clean way to create isolated, configurable instances of agents, which can be used for managing state specific to a task or for creating differently parameterized versions of an agent.
--   **Native LLM Integration:** The built-in `OpenAIAgent` provides a convenient, MiniAgents-native way to incorporate OpenAI model capabilities into your agents.
+-   **Native LLM Integration:** The built-in `OpenAIAgent`, `AntropicAgent` etc. provide a convenient, MiniAgents-native way to incorporate LLM capabilities from popular providers like OpenAI and Anthropic into your agents. (More such built-in LLM miniagents will be added in the future and there will also be a tutorial showing how easy it is to create such an LLM miniagent on your own.)
 -   **Debugging Support:** Features like `llm_logger_agent` aid in development by providing visibility into LLM interactions.
 -   **Enhanced Robustness:** Global error handling settings like `errors_as_messages` help create more resilient systems.
 
