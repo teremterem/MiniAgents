@@ -1,6 +1,6 @@
 # MiniAgents: Multi-Agent AI With Procedural Simplicity
 
-![MiniAgents on Mars](https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-04-27.jpeg)
+![MiniAgents on Mars](https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-05-04.jpeg)
 
 An open-source, async-first Python framework for building multi-agent AI systems with an innovative approach to parallelism, so you can focus on creating intelligent agents, not on managing the concurrency of your flows.
 
@@ -439,7 +439,8 @@ async def main():
 Key takeaways from `main()`:
 1.  **Filtering Messages:** Some messages might be internal to the agent system (e.g., detailed summaries for other agents). We can attach metadata to messages (like `not_for_user`) and use it to filter what's shown to the end-user. The `known_beforehand` attribute of a `MessagePromise` allows access to metadata that is available before the message content itself is resolved. This can be useful for early filtering or routing of messages. In our `main` function, we use this to check the `"not_for_user"` flag (set in `page_scraper_agent`) to prevent internal page summaries from being directly displayed.
 2.  **Centralized Output:** Notice that all user-facing output happens here. Agents themselves don't `print`. They communicate results back, which `main` then decides how to present. This separation makes it easier to change the UI or even integrate this entire agentic system as a component within a larger AI system, where its output would be consumed programmatically rather than printed to a console.
-3.  **Background Execution is Optional:** MiniAgents, by default, starts processing triggered agents as soon as possible. This is generally the desired behavior for maximum parallelism. It is worth noting, however, that you can disable this behavior by passing `start_soon=False` to individual `trigger` calls, or by setting `start_everything_soon_by_default=False` in the `MiniAgents` constructor for a global effect. The latter is generally not recommended, though. Disabling "early start" globally can often lead to deadlocks if agent interdependencies are complex, and in the majority of scenarios, there is hardly any benefit in setting `start_soon` to `False`.
+
+**NOTE: Background execution is optional.** MiniAgents, by default, starts processing triggered agents as soon as possible, and this is generally the desired behavior for maximum parallelism. You can, however, disable this behavior by passing `start_soon=False` to individual `trigger` calls, or by setting `start_everything_soon_by_default=False` in the `MiniAgents` constructor for a global effect. The latter is generally not recommended, though. Disabling "early start" globally can often lead to deadlocks if agent interdependencies are complex, and in the majority of scenarios, there is hardly any benefit in setting `start_soon` to `False`.
 
 ### The `research_agent`: Orchestrating the Search
 
