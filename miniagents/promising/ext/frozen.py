@@ -7,12 +7,13 @@ import json
 from functools import wraps
 from numbers import Number
 from typing import Any, Callable, Optional, Union
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from miniagents.promising.sentinels import NO_VALUE
 
-FrozenType = Optional[Union[str, Number, bool, tuple["FrozenType", ...], "Frozen"]]
+FrozenType = Optional[Union[str, Number, bool, UUID, tuple["FrozenType", ...], "Frozen"]]
 
 FROZEN_CLASS_FIELD = "class_"
 
@@ -190,4 +191,4 @@ class Frozen(BaseModel):
 
     @classmethod
     def _allowed_value_types(cls) -> tuple[type[Any], ...]:
-        return type(None), str, Number, bool, tuple, list, dict, Frozen
+        return type(None), str, Number, bool, UUID, tuple, list, dict, Frozen
