@@ -10,7 +10,6 @@ from typing import Any, Callable, Optional, Union
 from uuid import UUID
 from datetime import datetime, date, time, timedelta
 from pathlib import Path
-from ipaddress import IPv4Address, IPv6Address
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -28,8 +27,6 @@ FrozenType = Optional[
         time,
         timedelta,
         Path,
-        IPv4Address,
-        IPv6Address,
         Enum,
         bytes,
         frozenset["FrozenType"],
@@ -146,7 +143,7 @@ class Frozen(BaseModel):
         Frozen object and all its nested objects. Child classes may override this method to customize serialization
         (e.g. externalize certain nested objects and only reference them by their hash keys - see Message).
         """
-        return self.model_dump()
+        return self.model_dump(mode="json")
 
     @property
     @cached_privately
@@ -225,8 +222,6 @@ class Frozen(BaseModel):
             time,
             timedelta,
             Path,
-            IPv4Address,
-            IPv6Address,
             Enum,
             bytes,
             frozenset,
