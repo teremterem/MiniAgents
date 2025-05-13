@@ -1,6 +1,6 @@
 # MiniAgents: Multi-Agent AI Framework With Procedural Simplicity
 
-![MiniAgents on Venus](https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-05-04.jpeg)
+![MiniAgents on Venus](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/banner-miniagents-2025-05-04.jpeg)
 
 An open-source, async-first Python framework for building multi-agent AI systems with an innovative approach to parallelism, so you can focus on creating intelligent agents, not on managing the concurrency of your flows.
 
@@ -42,12 +42,7 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
 
 # Let's build a Web Research System with MiniAgents
 
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif">
-    </a>
-</p>
+[![WebResearch in action](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/web_research.py-x3plus.gif)](https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial)
 
 In this tutorial we'll build a system that can:
 
@@ -73,7 +68,7 @@ This approach uses standard Python `async def` with `async for ... yield` to sim
 
 The full code for this naive example can be found in [`sequence_flattening_naive_alternative.py`](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py).
 
-Let's look at the core agent definitions and how they are run:
+Let's look at the agent definitions and how they are run:
 
 ```python
 # examples/sequence_flattening_naive_alternative.py
@@ -172,12 +167,7 @@ In `research_agent_naive`, the loop that calls `web_search_agent_naive` processe
 
 Here is what this process looks like as a result:
 
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening_naive_alternative.py.gif">
-    </a>
-</p>
+[![WebResearch in action](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/sequence_flattening_naive_alternative.py.gif)](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py)
 
 To achieve true concurrency with this naive approach, you would need to manually manage `asyncio.create_task` for each sub-operation and potentially use queues or other synchronization primitives to collect and yield results as they become available. This would significantly increase code complexity.
 
@@ -189,12 +179,7 @@ This manual management is typical when using raw `asyncio` or even foundational 
 
 Now, let's see how MiniAgents addresses these challenges, enabling concurrent execution while keeping the same level of code simplicity. You'll see what the changed version of the same code looks like in a moment, but first, let's jump ahead and take a look at how different its output is going to be:
 
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening.py.gif">
-    </a>
-</p>
+[![WebResearch in action](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/sequence_flattening.py.gif)](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py)
 
 Looks much faster, doesn't it? Now, back to the code. The full example that uses MiniAgents can be found in [`sequence_flattening.py`](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py).
 
@@ -781,3 +766,7 @@ This Web Research System demonstrates several powerful features of MiniAgents:
 -   **Enhanced Robustness:** Global error handling settings like `errors_as_messages` help create more resilient systems.
 
 By focusing on the logic of individual agents, MiniAgents lets you build sophisticated, concurrent AI systems without getting bogged down in the complexities of manual parallelism management. The system naturally parallelizes IO-bound tasks (like calls to LLMs or external APIs) without requiring explicit concurrency code from the developer, as AI agents are typically IO-bound.
+
+Join our [Discord community](https://discord.gg/ptSvVnbwKt) to get help with your projects. We welcome questions, feature suggestions, and contributions!
+
+[![Discord](https://img.shields.io/discord/1356683647926796398?logo=discord&color=darkviolet)](https://discord.gg/ptSvVnbwKt)

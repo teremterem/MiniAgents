@@ -29,7 +29,7 @@
 
 <p align="center">
     <img alt="MiniAgents on the Moon"
-        src="https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-04-19.jpeg">
+        src="https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/banner-miniagents-2025-04-19.jpeg">
 </p>
 
 MiniAgents is an open-source Python framework that takes the complexity out of building multi-agent AI systems. With its innovative approach to parallelism and async-first design, you can focus on creating intelligent agents in an easy to follow procedural fashion while the framework handles the concurrency challenges for you.
@@ -48,12 +48,7 @@ pip install -U miniagents
 
 ### [📚 Building a Web Research Multi-Agent System](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp)
 
-<p>
-    <a href="https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif">
-    </a>
-</p>
+[![WebResearch in action](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/web_research.py-x3plus.gif)](https://app.readytensor.ai/publications/miniagents-multi-agent-ai-with-procedural-simplicity-sZ9xgmyLOTyp)
 
 The above step-by-step tutorial teaches you how to build a practical multi-agent web research system that can break down complex questions, run parallel searches, and synthesize comprehensive answers.
 
