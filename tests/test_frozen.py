@@ -7,7 +7,7 @@ import hashlib
 import json
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from enum import Enum as PyEnum
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 from unittest.mock import patch
@@ -134,7 +134,7 @@ async def test_model_hash_key_vs_key_ordering() -> None:
         assert model1.hash_key == model2.hash_key
 
 
-class SampleEnum(PyEnum):
+class SampleEnum(Enum):
     OPTION_A = "value_a"
     OPTION_B = "value_b"
 
