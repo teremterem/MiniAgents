@@ -66,7 +66,7 @@ async def test_sample_model_hash_key() -> None:
         # Let's make sure that private instance attributes that were not declared in the model beforehand:
         #  1) are settable despite the model being frozen;
         #  2) do not influence the hash_key.
-        # MiniAgents.on_persist_message event sets a private attribute on Message instances, hence we want to
+        # MiniAgents.on_persist_messages event sets a private attribute on Message instances, hence we want to
         # ensure these properties.
         # pylint: disable=protected-access,attribute-defined-outside-init
         sample._some_private_attribute = "some value"

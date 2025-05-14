@@ -96,7 +96,7 @@ class Message(Frozen):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._persist_message_event_triggered = False
+        self._persist_messages_event_triggered = False
 
     def _as_string(self) -> str:
         return f"```json\n{super()._as_string()}\n```"

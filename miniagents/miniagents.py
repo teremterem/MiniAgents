@@ -20,7 +20,7 @@ from miniagents.messages import (
     MessageSequenceAppender,
     MessageSequencePromise,
 )
-from miniagents.miniagent_typing import AgentFunction, MessageType, PersistMessageEventHandler
+from miniagents.miniagent_typing import AgentFunction, MessageType, PersistMessagesEventHandler
 from miniagents.promising.errors import NoActiveContextError, WrongActiveContextError
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseResolvedEventHandler
@@ -44,7 +44,7 @@ _default_logger.addHandler(_log_handler)
 class MiniAgents(PromisingContext):
     stream_llm_tokens_by_default: bool
     llm_logger_agent: Union["MiniAgent", bool]
-    on_persist_message_handlers: list[PersistMessageEventHandler]
+    on_persist_messages_handlers: list[PersistMessagesEventHandler]
     errors_as_messages: bool
     error_tracebacks_in_messages: bool
     log_reduced_tracebacks: bool
@@ -56,7 +56,7 @@ class MiniAgents(PromisingContext):
         *,
         stream_llm_tokens_by_default: bool = True,
         llm_logger_agent: Union["MiniAgent", bool] = False,
-        on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
+        on_persist_messages: Union[PersistMessagesEventHandler, Iterable[PersistMessagesEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         errors_as_messages: bool = False,
         error_tracebacks_in_messages: bool = False,
@@ -65,9 +65,9 @@ class MiniAgents(PromisingContext):
         **kwargs,
     ) -> None:
         on_promise_resolved = (
-            [self._trigger_persist_message_event, on_promise_resolved]
+            [self._atrigger_persist_messages_event, on_promise_resolved]
             if callable(on_promise_resolved)
-            else [self._trigger_persist_message_event, *on_promise_resolved]
+            else [self._atrigger_persist_messages_event, *on_promise_resolved]
         )
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
@@ -76,8 +76,8 @@ class MiniAgents(PromisingContext):
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
-        self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
-            [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
+        self.on_persist_messages_handlers: list[PersistMessagesEventHandler] = (
+            [on_persist_messages] if callable(on_persist_messages) else list(on_persist_messages)
         )
 
         self._child_agent_calls: set[AgentCall] = set()
@@ -92,38 +92,60 @@ class MiniAgents(PromisingContext):
             )
         return current
 
-    def on_persist_message(self, handler: PersistMessageEventHandler) -> PersistMessageEventHandler:
+    def on_persist_messages(self, handler: PersistMessagesEventHandler) -> PersistMessagesEventHandler:
         """
         Add a handler that will be called every time a Message needs to be persisted.
         """
-        self.on_persist_message_handlers.append(handler)
+        if not callable(handler):
+            raise ValueError("The handler must be a callable.")
+        self.on_persist_messages_handlers.append(handler)
         return handler
+
+    # noinspection PyProtectedMember
+    async def apersist_messages(
+        self,
+        message_or_messages: Union[Message, Iterable[Message]],
+        extend_with_sub_messages: bool = True,
+        parallelise_handlers: bool = False,
+    ) -> None:
+        # pylint: disable=protected-access
+        if isinstance(message_or_messages, Message):
+            message_or_messages = [message_or_messages]
+
+        messages_to_persist = []
+        for message in message_or_messages:
+            if not isinstance(message, Message):
+                raise ValueError("The messages must be of type Message.")
+
+            if message._persist_messages_event_triggered:
+                continue
+
+            if extend_with_sub_messages:
+                for sub_message in message.sub_messages():
+                    if sub_message._persist_messages_event_triggered:
+                        continue
+                    messages_to_persist.append(sub_message)
+                    sub_message._persist_messages_event_triggered = True
+
+            messages_to_persist.append(message)
+            message._persist_messages_event_triggered = True
+
+        for handler in self.on_persist_messages_handlers:
+            if parallelise_handlers:
+                self.start_soon(handler(messages_to_persist))
+            else:
+                await handler(messages_to_persist)
 
     async def afinalize(self) -> None:
         for agent_call in list(self._child_agent_calls):
             agent_call.finish()
         await super().afinalize()
 
-    # noinspection PyProtectedMember
-    async def _trigger_persist_message_event(self, _, obj: Any) -> None:
-        # pylint: disable=protected-access
+    async def _atrigger_persist_messages_event(self, _, obj: Any) -> None:
         if not isinstance(obj, Message):
             return
 
-        for sub_message in obj.sub_messages():
-            if sub_message._persist_message_event_triggered:
-                continue
-
-            for handler in self.on_persist_message_handlers:
-                self.start_soon(handler(_, sub_message))
-            sub_message._persist_message_event_triggered = True
-
-        if obj._persist_message_event_triggered:
-            return
-
-        for handler in self.on_persist_message_handlers:
-            self.start_soon(handler(_, obj))
-        obj._persist_message_event_triggered = True
+        await self.apersist_messages(obj, extend_with_sub_messages=True, parallelise_handlers=True)
 
 
 def miniagent(
@@ -140,8 +162,7 @@ def miniagent(
     """
     A decorator that converts an agent function into an agent.
 
-    Args:
-        # TODO describe all the parameters
+    # TODO describe parameters
     """
     if func_or_class is None:
         # the decorator `@miniagent(...)` was used with arguments

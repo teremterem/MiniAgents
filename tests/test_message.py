@@ -9,6 +9,7 @@ from enum import Enum
 import hashlib
 import json
 from pathlib import Path
+from typing import Iterable
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -78,49 +79,50 @@ async def test_message_nesting_vs_hash_key() -> None:
 
 # noinspection PyAsyncCall
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
-async def test_on_persist_message_event_called_once(start_soon: bool) -> None:
+async def test_message_is_persisted_only_once(start_soon: bool) -> None:
     """
-    Assert that the `on_persist_message` event is called only once if the same Message is resolved multiple times.
+    Assert that the `on_persist_messages` event persists the same Message only once even if it is resolved multiple
+    times.
     """
     promise_resolved_calls = 0
-    persist_message_calls = 0
+    num_messages_persisted = 0
 
     async def on_promise_resolved(_, __) -> None:
         nonlocal promise_resolved_calls
         promise_resolved_calls += 1
 
-    async def on_persist_message(_, __) -> None:
-        nonlocal persist_message_calls
-        persist_message_calls += 1
+    async def on_persist_messages(messages: Iterable[Message]) -> None:
+        nonlocal num_messages_persisted
+        num_messages_persisted += len(messages)
 
-    some_message = Message()
+    same_message = Message()
 
     async with MiniAgents(
         on_promise_resolved=on_promise_resolved,
-        on_persist_message=on_persist_message,
+        on_persist_messages=on_persist_messages,
     ):
-        Promise(prefill_result=some_message, start_soon=start_soon)
-        Promise(prefill_result=some_message, start_soon=start_soon)
+        Promise(prefill_result=same_message, start_soon=start_soon)
+        Promise(prefill_result=same_message, start_soon=start_soon)
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
-    assert persist_message_calls == 1
+    assert num_messages_persisted == 1
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
-async def test_on_persist_message_event_called_four_times(start_soon: bool) -> None:
+async def test_four_messages_are_persisted(start_soon: bool) -> None:
     """
-    Assert that the `on_persist_message` event is called four times if four different Messages are resolved.
+    Assert that the `on_persist_messages` event persists four Messages if four are resolved.
     """
     promise_resolved_calls = 0
-    persist_message_calls = 0
+    num_messages_persisted = 0
 
     async def on_promise_resolved(_, __) -> None:
         nonlocal promise_resolved_calls
         promise_resolved_calls += 1
 
-    async def on_persist_message(_, __) -> None:
-        nonlocal persist_message_calls
-        persist_message_calls += 1
+    async def on_persist_messages(messages: Iterable[Message]) -> None:
+        nonlocal num_messages_persisted
+        num_messages_persisted += len(messages)
 
     message1 = Message()
     message2 = TextMessage()
@@ -129,7 +131,7 @@ async def test_on_persist_message_event_called_four_times(start_soon: bool) -> N
 
     async with MiniAgents(
         on_promise_resolved=on_promise_resolved,
-        on_persist_message=on_persist_message,
+        on_persist_messages=on_persist_messages,
     ):
         Promise(prefill_result=message1, start_soon=start_soon)
         Promise(prefill_result=message2, start_soon=start_soon)
@@ -137,36 +139,36 @@ async def test_on_persist_message_event_called_four_times(start_soon: bool) -> N
         Promise(prefill_result=message4, start_soon=start_soon)
 
     assert promise_resolved_calls == 4  # on_promise_resolved should be called four times regardless
-    assert persist_message_calls == 4
+    assert num_messages_persisted == 4
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
-async def test_on_persist_message_event_not_called(start_soon: bool) -> None:
+async def test_on_persist_messages_event_not_called(start_soon: bool) -> None:
     """
-    Assert that the `on_persist_message` event is not called if the resolved value is not a Message.
+    Assert that the `on_persist_messages` event is not called if the resolved value is not a Message.
     """
     promise_resolved_calls = 0
-    persist_message_calls = 0
+    num_messages_persisted = 0
 
     async def on_promise_resolved(_, __) -> None:
         nonlocal promise_resolved_calls
         promise_resolved_calls += 1
 
-    async def on_persist_message(_, __) -> None:
-        nonlocal persist_message_calls
-        persist_message_calls += 1
+    async def on_persist_messages(messages: Iterable[Message]) -> None:
+        nonlocal num_messages_persisted
+        num_messages_persisted += len(messages)
 
     not_a_message = Frozen(some_field="not a message")
 
     async with MiniAgents(
         on_promise_resolved=on_promise_resolved,
-        on_persist_message=on_persist_message,
+        on_persist_messages=on_persist_messages,
     ):
         Promise(prefill_result=not_a_message, start_soon=start_soon)
         Promise(prefill_result=not_a_message, start_soon=start_soon)
 
     assert promise_resolved_calls == 2  # on_promise_resolved should be called twice regardless
-    assert persist_message_calls == 0
+    assert num_messages_persisted == 0
 
 
 def test_message_content_template_and_content() -> None:
