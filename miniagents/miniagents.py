@@ -108,6 +108,26 @@ class MiniAgents(PromisingContext):
         extend_with_sub_messages: bool = True,
         parallelise_handlers: bool = False,
     ) -> None:
+        """
+        Persists the given message or messages using the registered `on_persist_messages` handlers.
+
+        This method is typically called automatically when a MessagePromise is resolved (which typically
+        happens in the background when agents communicate with each other). However, it can also be called
+        manually if needed (e.g. you want to persist multiple messages to a database and do that in a single
+        database transaction that you opened).
+
+        Args:
+            message_or_messages: A single `Message` object or an iterable of `Message` objects to persist.
+            extend_with_sub_messages: If True (default), all sub-messages of the given messages (no matter the
+                depth of nesting) will also be persisted. This is useful when a message is a container for other,
+                nested messages.
+            parallelise_handlers: If True, the `on_persist_messages` handlers will be called in parallel.
+                Defaults to False, meaning the handlers will be called sequentially.
+
+        NOTE: If your objective is to persist messages in a single database transaction, you probably should not
+        parallelise the handlers (you should keep `parallelise_handlers=False`), otherwise they will be run as
+        separate async operations and most likely not be part of the transaction you opened.
+        """
         # pylint: disable=protected-access
         if isinstance(message_or_messages, Message):
             message_or_messages = [message_or_messages]
