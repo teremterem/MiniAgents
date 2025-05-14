@@ -120,6 +120,8 @@ class PromisingContext:
         """
         Add a handler to be called after a promise is resolved.
         """
+        if not callable(handler):
+            raise ValueError("The handler must be a callable.")
         self.on_promise_resolved_handlers.append(handler)
         return handler
 

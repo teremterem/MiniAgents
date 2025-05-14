@@ -1,10 +1,17 @@
+# pylint: disable=redefined-outer-name
 """
 Tests for the `Frozen`-based models.
 """
 
 import hashlib
+import json
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
+from enum import Enum
+from pathlib import Path
 from typing import Optional
 from unittest.mock import patch
+from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
@@ -59,7 +66,7 @@ async def test_sample_model_hash_key() -> None:
         # Let's make sure that private instance attributes that were not declared in the model beforehand:
         #  1) are settable despite the model being frozen;
         #  2) do not influence the hash_key.
-        # MiniAgents.on_persist_message event sets a private attribute on Message instances, hence we want to
+        # MiniAgents.on_persist_messages event sets a private attribute on Message instances, hence we want to
         # ensure these properties.
         # pylint: disable=protected-access,attribute-defined-outside-init
         sample._some_private_attribute = "some value"
@@ -125,3 +132,142 @@ async def test_model_hash_key_vs_key_ordering() -> None:
         model2 = Frozen(some_other_field=2, some_field="test")
 
         assert model1.hash_key == model2.hash_key
+
+
+class SampleEnum(Enum):
+    OPTION_A = "value_a"
+    OPTION_B = "value_b"
+
+
+@pytest.fixture
+def frozen_with_all_types() -> Frozen:
+    """
+    Provides a Frozen object populated with all allowed immutable types.
+    """
+    frozen = Frozen(
+        field_none=None,
+        field_str="hello world",
+        field_int=123,
+        field_float=45.67,
+        field_bool_true=True,
+        field_bool_false=False,
+        field_uuid=UUID("123e4567-e89b-12d3-a456-426614174000"),
+        field_datetime=datetime(2023, 10, 26, 12, 30, 15),
+        field_date=date(2023, 10, 26),
+        field_time=time(12, 30, 15),
+        field_timedelta=timedelta(days=1, hours=2, minutes=30),
+        field_decimal=Decimal("123.456789"),
+        field_path=Path("/usr/local/bin"),
+        field_enum=SampleEnum.OPTION_A,
+        field_bytes="some bytes".encode("utf-8"),
+        field_frozenset=frozenset(["two"]),
+        field_tuple=("text", 99, False, Path("/tmp")),
+        field_nested_frozen=Frozen(nested_str="nested value", nested_int=789),
+        field_list_to_tuple=[10, "eleven", datetime(2024, 1, 1)],
+        field_dict_to_frozen={"key1": "value1", "key2": 200},
+    )
+    return frozen
+
+
+def test_frozen_with_all_types_can_be_created(frozen_with_all_types: Frozen) -> None:
+    """
+    Test that the Frozen object with all types can be created and accessed.
+    """
+    assert frozen_with_all_types.field_none is None
+    assert frozen_with_all_types.field_str == "hello world"
+    assert frozen_with_all_types.field_int == 123
+    assert frozen_with_all_types.field_float == 45.67
+    assert frozen_with_all_types.field_bool_true is True
+    assert frozen_with_all_types.field_bool_false is False
+    assert frozen_with_all_types.field_uuid == UUID("123e4567-e89b-12d3-a456-426614174000")
+    assert frozen_with_all_types.field_datetime == datetime(2023, 10, 26, 12, 30, 15)
+    assert frozen_with_all_types.field_date == date(2023, 10, 26)
+    assert frozen_with_all_types.field_time == time(12, 30, 15)
+    assert frozen_with_all_types.field_timedelta == timedelta(days=1, hours=2, minutes=30)
+    assert frozen_with_all_types.field_decimal == Decimal("123.456789")
+    assert frozen_with_all_types.field_path == Path("/usr/local/bin")
+    assert frozen_with_all_types.field_enum == SampleEnum.OPTION_A
+    assert frozen_with_all_types.field_bytes == "some bytes".encode("utf-8")
+    assert frozen_with_all_types.field_frozenset == frozenset(["two"])
+    assert frozen_with_all_types.field_tuple == ("text", 99, False, Path("/tmp"))
+    assert frozen_with_all_types.field_nested_frozen == Frozen(nested_str="nested value", nested_int=789)
+    # For fields that are converted, we check the type and content
+    assert isinstance(frozen_with_all_types.field_list_to_tuple, tuple)
+    assert frozen_with_all_types.field_list_to_tuple == (10, "eleven", datetime(2024, 1, 1))
+    assert isinstance(frozen_with_all_types.field_dict_to_frozen, Frozen)
+    assert frozen_with_all_types.field_dict_to_frozen == Frozen(key1="value1", key2=200)
+
+
+# Expected dictionary content after serialization of `frozen_with_all_types` by `model_dump(mode='json')`
+EXPECTED_SERIALIZED_DICT_VALUES = {
+    "class_": "Frozen",
+    "field_none": None,
+    "field_str": "hello world",
+    "field_int": 123,
+    "field_float": 45.67,
+    "field_bool_true": True,
+    "field_bool_false": False,
+    "field_uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "field_datetime": "2023-10-26T12:30:15",
+    "field_date": "2023-10-26",
+    "field_time": "12:30:15",
+    "field_timedelta": "P1DT2H30M",
+    "field_decimal": "123.456789",
+    "field_path": "/usr/local/bin",
+    "field_enum": "value_a",
+    "field_bytes": "some bytes",  # Decoded from utf-8 by default in Pydantic's model_dump
+    "field_frozenset": ["two"],  # Updated: frozenset becomes a list with one element
+    "field_tuple": ["text", 99, False, "/tmp"],  # Tuples become lists, elements serialized
+    "field_nested_frozen": {
+        "class_": "Frozen",  # Nested Frozen objects also include 'class_'
+        "nested_str": "nested value",
+        "nested_int": 789,
+    },
+    "field_list_to_tuple": [10, "eleven", "2024-01-01T00:00:00"],  # List elements serialized
+    "field_dict_to_frozen": {
+        "class_": "Frozen",  # Dicts converted to Frozen also include 'class_'
+        "key1": "value1",
+        "key2": 200,
+    },
+}
+
+
+def test_frozen_serialize(frozen_with_all_types: Frozen) -> None:
+    """
+    Test the `serialize()` method of the Frozen class.
+    """
+    serialized_dict = frozen_with_all_types.serialize()
+
+    assert isinstance(serialized_dict, dict)
+    assert serialized_dict == EXPECTED_SERIALIZED_DICT_VALUES
+
+
+def test_frozen_serialized_property(frozen_with_all_types: Frozen) -> None:
+    """
+    Test the `serialized` property of the Frozen class.
+    """
+    serialized_json_str = frozen_with_all_types.serialized
+    assert isinstance(serialized_json_str, str)
+
+    parsed_data = json.loads(serialized_json_str)
+    assert parsed_data == EXPECTED_SERIALIZED_DICT_VALUES
+
+
+def test_frozen_full_json_property(frozen_with_all_types: Frozen) -> None:
+    """
+    Test the `full_json` property of the Frozen class.
+    """
+    full_json_str = frozen_with_all_types.full_json
+    assert isinstance(full_json_str, str)
+    assert str(frozen_with_all_types) == full_json_str  # In plain Frozen objects, `str()` uses `full_json`
+
+    parsed_data = json.loads(full_json_str)
+    assert parsed_data == EXPECTED_SERIALIZED_DICT_VALUES
+
+
+async def test_frozen_hash_key_property(frozen_with_all_types: Frozen) -> None:
+    """
+    Test the `hash_key` property of the Frozen class, ensuring all types are hashable.
+    """
+    async with PromisingContext():
+        assert frozen_with_all_types.hash_key == "cdeb1db152f6ba51f730f954d0cabea2f48bd478"

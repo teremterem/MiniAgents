@@ -521,11 +521,11 @@ The design choice for immutable messages was made specifically to enable this ki
 
 ## 🔒 Message persistence and identification
 
-MiniAgents provides a way to persist messages as they are resolved from promises using the `@MiniAgents().on_persist_message` decorator. This allows you to implement custom logic for storing or logging messages.
+MiniAgents provides a way to persist messages as they are resolved from promises using the `@MiniAgents().on_persist_messages` decorator. This allows you to implement custom logic for storing or logging messages.
 
 Additionally, messages (as well as any other Pydantic models derived from `Frozen`) have a `hash_key` property. This property calculates the sha256 hash of the content of the message and is used as the id of the `Messages` (or any other `Frozen` model), much like there are commit hashes in git.
 
-Here's a simple example of how to use the `on_persist_message` decorator:
+Here's a simple example of how to use the `on_persist_messages` decorator:
 
 ```python
 from miniagents import MiniAgents, Message
@@ -533,10 +533,11 @@ from miniagents import MiniAgents, Message
 mini_agents = MiniAgents()
 
 
-@mini_agents.on_persist_message
-async def persist_message(_, message: Message) -> None:
-    print(f"Persisting message with hash key: {message.hash_key}")
-    # Here you could save the message to a database or log it to a file
+@mini_agents.on_persist_messages
+async def persist_messages(messages: Iterable[Message]) -> None:
+    # Here you could save the messages to a database or log them to a file
+    for message in messages:
+        print(f"Persisting message with hash key: {message.hash_key}")
 ```
 
 ## 📚 Core concepts

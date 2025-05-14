@@ -96,14 +96,14 @@ class Message(Frozen):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._persist_message_event_triggered = False
+        self._persist_messages_event_triggered = False
 
     def _as_string(self) -> str:
         return f"```json\n{super()._as_string()}\n```"
 
     def serialize(self) -> dict[str, Any]:
         include_into_serialization, sub_messages = self._serialization_metadata
-        model_dump = self.model_dump(include=include_into_serialization)
+        model_dump = self.model_dump(include=include_into_serialization, mode="json")
 
         for path, message_or_messages in sub_messages.items():
             sub_dict = model_dump
@@ -112,7 +112,7 @@ class Message(Frozen):
             if isinstance(message_or_messages, Message):
                 sub_dict[f"{path[-1]}__hash_key"] = message_or_messages.hash_key
             else:
-                sub_dict[f"{path[-1]}__hash_keys"] = tuple(message.hash_key for message in message_or_messages)
+                sub_dict[f"{path[-1]}__hash_keys"] = [message.hash_key for message in message_or_messages]
         return model_dump
 
     def sub_messages(self) -> Iterator["Message"]:
