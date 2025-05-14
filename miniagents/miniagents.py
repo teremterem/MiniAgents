@@ -135,14 +135,12 @@ def miniagent(
     normalize_spaces_in_docstring: bool = True,
     interaction_metadata: Optional[dict[str, Any]] = None,
     non_freezable_kwargs: Optional[dict[str, Any]] = None,
-    mutable_state: Optional[dict[str, Any]] = None,  # deprecated
     **kwargs_to_freeze,
 ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
 
     Args:
-        mutable_state: Deprecated. Use `non_freezable_kwargs` instead.
         # TODO describe all the parameters
     """
     if func_or_class is None:
@@ -156,7 +154,6 @@ def miniagent(
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
                 interaction_metadata=interaction_metadata,
                 non_freezable_kwargs=non_freezable_kwargs,
-                mutable_state=mutable_state,
                 **kwargs_to_freeze,
             )
 
@@ -171,7 +168,6 @@ def miniagent(
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
         interaction_metadata=interaction_metadata,
         non_freezable_kwargs=non_freezable_kwargs,
-        mutable_state=mutable_state,
         **kwargs_to_freeze,
     )
 
@@ -195,25 +191,8 @@ class MiniAgent(Frozen):
         normalize_spaces_in_docstring: bool = True,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
-        mutable_state: Optional[dict[str, Any]] = None,  # deprecated
         **kwargs_to_freeze,
     ) -> None:
-        if mutable_state is not None:
-            warnings.warn(
-                "The `mutable_state` parameter is deprecated and will be removed in a future version. "
-                "Use `non_freezable_kwargs` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if non_freezable_kwargs is not None:
-                raise ValueError(
-                    "Both `mutable_state` and `non_freezable_kwargs` are set. Please use only one of them "
-                    "(preferrably the latter because the former is deprecated)."
-                )
-
-            non_freezable_kwargs = mutable_state
-        del mutable_state
-
         if alias is None:
             alias = func_or_class.__name__
             if normalize_func_or_class_name:
@@ -289,7 +268,6 @@ class MiniAgent(Frozen):
         *,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
-        mutable_state: Optional[dict[str, Any]] = None,  # deprecated
         **kwargs_to_freeze,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
@@ -300,28 +278,11 @@ class MiniAgent(Frozen):
             description: New description for the forked agent. If not provided, uses the original description.
             interaction_metadata: TODO explain this parameter
             non_freezable_kwargs: Additional non-freezable kwargs to merge with the original non-freezable kwargs.
-            mutable_state: Deprecated. Use `non_freezable_kwargs` instead.
             **kwargs_to_freeze: Additional static parameters for the forked agent.
 
         Returns:
             A new MiniAgent instance with the modified parameters.
         """
-        if mutable_state is not None:
-            warnings.warn(
-                "The `mutable_state` parameter is deprecated and will be removed in a future version. "
-                "Use `non_freezable_kwargs` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if non_freezable_kwargs is not None:
-                raise ValueError(
-                    "Both `mutable_state` and `non_freezable_kwargs` are set. Please use only one of them "
-                    "(preferrably the latter because the former is deprecated)."
-                )
-
-            non_freezable_kwargs = mutable_state
-        del mutable_state
-
         return MiniAgent(
             self._func_or_class,
             alias=alias or self.alias,
