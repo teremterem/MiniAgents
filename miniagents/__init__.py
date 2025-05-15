@@ -11,7 +11,7 @@ from miniagents.messages import (
     Token,
 )
 from miniagents.miniagents import __version__, AgentCall, InteractionContext, MiniAgent, MiniAgents, miniagent
-from miniagents.promising.ext.frozen import Frozen, cached_privately
+from miniagents.promising.ext.frozen import Frozen, FrozenType, cached_privately
 
 __all__ = [
     "__version__",
@@ -19,6 +19,7 @@ __all__ = [
     "cached_privately",
     "ErrorMessage",
     "Frozen",
+    "FrozenType",
     "InteractionContext",
     "Message",
     "MessagePromise",
