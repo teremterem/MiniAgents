@@ -10,12 +10,25 @@ from miniagents.messages import (
     TextToken,
     Token,
 )
-from miniagents.miniagents import __version__, AgentCall, InteractionContext, MiniAgent, MiniAgents, miniagent
+from miniagents.miniagents import (
+    __version__,
+    AgentCall,
+    AgentCallNode,
+    AgentInteractionNode,
+    AgentReplyNode,
+    InteractionContext,
+    MiniAgent,
+    MiniAgents,
+    miniagent,
+)
 from miniagents.promising.ext.frozen import Frozen, FrozenType, cached_privately
 
 __all__ = [
     "__version__",
     "AgentCall",
+    "AgentCallNode",
+    "AgentInteractionNode",
+    "AgentReplyNode",
     "cached_privately",
     "ErrorMessage",
     "Frozen",
