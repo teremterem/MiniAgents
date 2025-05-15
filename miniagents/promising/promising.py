@@ -4,6 +4,7 @@ The main class in this module is `StreamedPromise`. See its docstring for more i
 
 import asyncio
 import contextvars
+import inspect
 import logging
 from asyncio import Task
 from contextvars import ContextVar
@@ -121,7 +122,10 @@ class PromisingContext:
         Add a handler to be called after a promise is resolved.
         """
         if not callable(handler):
-            raise ValueError("The handler must be a callable.")
+            raise ValueError("An `on_promise_resolved` handler must be a callable.")
+        if not inspect.iscoroutinefunction(handler):
+            raise ValueError("An `on_promise_resolved` handler must be async.")
+
         self.on_promise_resolved_handlers.append(handler)
         return handler
 
@@ -131,6 +135,8 @@ class PromisingContext:
         `asyncio.create_task()` allows the context to keep track of the child tasks and to wait for them to finish
         before finalizing the context.
         """
+        if not inspect.isawaitable(awaitable):
+            raise TypeError(f"Expected an awaitable, got {type(awaitable).__name__}.")
 
         async def awaitable_wrapper() -> Any:
             # pylint: disable=broad-except

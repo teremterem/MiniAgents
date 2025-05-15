@@ -4,6 +4,7 @@
 
 import asyncio
 import contextvars
+import inspect
 import logging
 import re
 import warnings
@@ -97,7 +98,10 @@ class MiniAgents(PromisingContext):
         Add a handler that will be called every time a Message needs to be persisted.
         """
         if not callable(handler):
-            raise ValueError("The handler must be a callable.")
+            raise ValueError("An `on_persist_messages` handler must be a callable.")
+        if not inspect.iscoroutinefunction(handler):
+            raise ValueError("An `on_persist_messages` handler must be async.")
+
         self.on_persist_messages_handlers.append(handler)
         return handler
 
