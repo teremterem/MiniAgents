@@ -355,6 +355,7 @@ class MiniAgent(Frozen):
 class InteractionContext:
     this_agent: MiniAgent
     message_promises: MessageSequencePromise
+    miniagents: MiniAgents
 
     _current: ContextVar[Optional["InteractionContext"]] = ContextVar("InteractionContext._current", default=None)
 
@@ -364,10 +365,10 @@ class InteractionContext:
         message_promises: MessageSequencePromise,
         reply_streamer: MessageSequenceAppender,
     ) -> None:
+        self.miniagents = MiniAgents.get_current()
         self.this_agent = this_agent
         self.message_promises = message_promises
 
-        self._mini_agents = MiniAgents.get_current()
         self._parent: Optional["InteractionContext"] = None
         self._reply_streamer = reply_streamer
         self._tasks_to_wait_for: list[Awaitable[Any]] = []
@@ -436,7 +437,7 @@ class InteractionContext:
         """
         if asyncio.iscoroutine(awaitable) and start_soon_if_coroutine:
             # let's turn this coroutine into our special kind of task and start it as soon as possible
-            awaitable = self._mini_agents.start_soon(awaitable)
+            awaitable = self.miniagents.start_soon(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
     async def await_now(self, suppress_deadlock_warning: bool = False) -> None:
@@ -459,7 +460,7 @@ class InteractionContext:
                 stacklevel=2,
             )
 
-        await self._mini_agents.agather(*self._tasks_to_wait_for)
+        await self.miniagents.agather(*self._tasks_to_wait_for)
 
     async def afinish_early(self, make_sure_to_wait: bool = True) -> None:
         if make_sure_to_wait:
