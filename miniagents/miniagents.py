@@ -217,6 +217,7 @@ def miniagent(
     description: Optional[str] = None,
     normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
+    await_reply_persistence: bool = False,  # TODO Set it globally in MiniAgents too
     interaction_metadata: Optional[dict[str, Any]] = None,
     non_freezable_kwargs: Optional[dict[str, Any]] = None,
     **kwargs_to_freeze,
@@ -235,6 +236,7 @@ def miniagent(
                 description=description,
                 normalize_func_or_class_name=normalize_func_or_class_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+                await_reply_persistence=await_reply_persistence,
                 interaction_metadata=interaction_metadata,
                 non_freezable_kwargs=non_freezable_kwargs,
                 **kwargs_to_freeze,
@@ -249,6 +251,7 @@ def miniagent(
         description=description,
         normalize_func_or_class_name=normalize_func_or_class_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+        await_reply_persistence=await_reply_persistence,
         interaction_metadata=interaction_metadata,
         non_freezable_kwargs=non_freezable_kwargs,
         **kwargs_to_freeze,
@@ -263,6 +266,7 @@ class MiniAgent(Frozen):
     alias: str
     description: Optional[str] = Field(exclude=True)
     interaction_metadata: Frozen = Field(exclude=True)
+    await_reply_persistence: bool
 
     def __init__(
         self,
@@ -272,6 +276,7 @@ class MiniAgent(Frozen):
         description: Optional[str] = None,
         normalize_func_or_class_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
+        await_reply_persistence: bool = False,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
@@ -296,7 +301,12 @@ class MiniAgent(Frozen):
         # TODO is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         interaction_metadata = Frozen(**dict(interaction_metadata or {}))
 
-        super().__init__(alias=alias, description=description, interaction_metadata=interaction_metadata)
+        super().__init__(
+            alias=alias,
+            description=description,
+            interaction_metadata=interaction_metadata,
+            await_reply_persistence=await_reply_persistence,
+        )
         self.__name__ = alias
         self.__doc__ = description
 
@@ -698,8 +708,19 @@ class AgentReplyMessageSequence(MessageSequence):
             resolver=_arun_agent,
         )
 
+        reply_promises = []
         async for reply_promise in super()._astreamer(_):
             yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
+            if self._mini_agent.await_reply_persistence:
+                reply_promises.append(reply_promise)
+
+        if self._mini_agent.await_reply_persistence:
+            # There will be a certain level of chaos in regards to persistence batching - some messages will manage to
+            # be persisted individually upon their "resolution" (in batches together with their own sub-messages),
+            # others will be persisted by the method call below (which will happen in a single batch for all those
+            # remaining messages).
+            # TODO Should we do something about this ?
+            await MiniAgents.get_current().apersist_messages([await reply_promise for reply_promise in reply_promises])
 
         async def _acreate_agent_reply_node(_) -> AgentReplyNode:
             return AgentReplyNode(
