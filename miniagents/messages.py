@@ -2,6 +2,7 @@
 `Message` class and other classes related to messages.
 """
 
+import asyncio
 import traceback
 import warnings
 from types import TracebackType
@@ -96,7 +97,8 @@ class Message(Frozen):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._persist_messages_event_triggered = False
+        self._persistence_not_needed = False
+        self._persistence_lock = asyncio.Lock()
 
     def _as_string(self) -> str:
         return f"```json\n{super()._as_string()}\n```"
@@ -129,6 +131,31 @@ class Message(Frozen):
                 for message in message_or_messages:
                     yield from message.sub_messages()
                     yield message
+
+    @property
+    def persistence_not_needed(self) -> bool:
+        return self._persistence_not_needed
+
+    async def aset_persistence_not_needed(self, value: bool = True) -> bool:
+        """
+        Set the value of the "persistence not needed" flag for this message. This flag is used to prevent the message
+        from being persisted by `.apersist_messages()` (either manually or upon `on_persist_messages` event).
+
+        Args:
+            value: Whether to set (default) or unset the "persistence not needed" flag.
+
+        Returns:
+            True if the flag was changed, False if it was already set to the desired value.
+        """
+        if self._persistence_not_needed == value:
+            return False
+
+        async with self._persistence_lock:
+            if self._persistence_not_needed == value:
+                return False
+
+            self._persistence_not_needed = value
+            return True
 
     @property
     @cached_privately

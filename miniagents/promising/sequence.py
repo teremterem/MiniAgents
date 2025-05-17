@@ -65,6 +65,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         # TODO we might want to stop processing any more items if an exception is raised and we are not in
         #  "exceptions as messages" mode (or maybe not, I'm not sure)
         async def _process_unordered_piece(zero_or_more_items: OUT_co) -> None:
+            # TODO !!! Does this prevent agents from finishing before all the reply messages are fully resolved ?!!
             try:
                 # let's use `flattener` to convert [potentially] nested sequences into a "flat" sequence
                 async for item in self._flattener(zero_or_more_items):
