@@ -49,6 +49,7 @@ class MiniAgents(PromisingContext):
     errors_as_messages: bool
     error_tracebacks_in_messages: bool
     log_reduced_tracebacks: bool
+    await_reply_persistence_before_agent_finish: bool
 
     logger: logging.Logger = _default_logger
 
@@ -62,6 +63,7 @@ class MiniAgents(PromisingContext):
         errors_as_messages: bool = False,
         error_tracebacks_in_messages: bool = False,
         log_reduced_tracebacks: bool = True,
+        await_reply_persistence_before_agent_finish: bool = False,
         logger: Optional[logging.Logger] = None,
         **kwargs,
     ) -> None:
@@ -77,6 +79,7 @@ class MiniAgents(PromisingContext):
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
+        self.await_reply_persistence_before_agent_finish = await_reply_persistence_before_agent_finish
         self.on_persist_messages_handlers: list[PersistMessagesEventHandler] = (
             [on_persist_messages] if callable(on_persist_messages) else list(on_persist_messages)
         )
@@ -217,7 +220,7 @@ def miniagent(
     description: Optional[str] = None,
     normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
-    await_reply_persistence: bool = False,  # TODO Set it globally in MiniAgents too
+    await_reply_persistence: Union[bool, Sentinel] = NO_VALUE,
     interaction_metadata: Optional[dict[str, Any]] = None,
     non_freezable_kwargs: Optional[dict[str, Any]] = None,
     **kwargs_to_freeze,
@@ -276,7 +279,7 @@ class MiniAgent(Frozen):
         description: Optional[str] = None,
         normalize_func_or_class_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
-        await_reply_persistence: bool = False,
+        await_reply_persistence: Union[bool, Sentinel] = NO_VALUE,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
@@ -296,6 +299,9 @@ class MiniAgent(Frozen):
         if description:
             # replace all {AGENT_ALIAS} entries in the description with the actual agent alias
             description = description.format(AGENT_ALIAS=alias)
+
+        if await_reply_persistence is NO_VALUE:
+            await_reply_persistence = MiniAgents.get_current().await_reply_persistence_before_agent_finish
 
         # validate interaction metadata
         # TODO is `interaction_metadata` a good name ? see how it is used in Recensia to decide
