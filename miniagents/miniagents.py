@@ -111,7 +111,8 @@ class MiniAgents(PromisingContext):
         message_or_messages: Union[Message, Iterable[Message]],
         extend_with_sub_messages: bool = True,
         parallelise_handlers: bool = False,
-    ) -> None:
+        raise_on_error: bool = True,
+    ) -> list[Message]:
         """
         Persists the given message or messages using the registered `on_persist_messages` handlers.
 
@@ -127,38 +128,75 @@ class MiniAgents(PromisingContext):
                 nested messages.
             parallelise_handlers: If True, the `on_persist_messages` handlers will be called in parallel.
                 Defaults to False, meaning the handlers will be called sequentially.
+            raise_on_error: If True (default), an exception will be raised if any of the handlers raises an exception.
+
+        Returns:
+            A list of messages that were actually persisted (there is a mechanism that prevents persisting the same
+            message more than once).
 
         NOTE: If your objective is to persist messages in a single database transaction, you probably should not
         parallelise the handlers (you should keep `parallelise_handlers=False`), otherwise they will be run as
         separate async operations and most likely not be part of the transaction you opened.
         """
-        # pylint: disable=protected-access
+        # pylint: disable=protected-access,broad-exception-caught
         if isinstance(message_or_messages, Message):
             message_or_messages = [message_or_messages]
 
         messages_to_persist = []
-        for message in message_or_messages:
-            if not isinstance(message, Message):
-                raise ValueError("The messages must be of type Message.")
+        acquired_locks = []
 
-            if message._persist_messages_event_triggered:
-                continue
+        async def _is_persistence_not_needed(message: Message) -> bool:
+            if message.persistence_not_needed:
+                return True
 
-            if extend_with_sub_messages:
-                for sub_message in message.sub_messages():
-                    if sub_message._persist_messages_event_triggered:
-                        continue
-                    messages_to_persist.append(sub_message)
-                    sub_message._persist_messages_event_triggered = True
+            await message._persistence_lock.acquire()
+            if message.persistence_not_needed:
+                message._persistence_lock.release()
+                return True
 
-            messages_to_persist.append(message)
-            message._persist_messages_event_triggered = True
+            acquired_locks.append(message._persistence_lock)
+            return False
 
-        for handler in self.on_persist_messages_handlers:
+        async def _apersist_messages() -> None:
             if parallelise_handlers:
-                self.start_soon(handler(messages_to_persist))
+                parallel_handlers = []
+                for handler in self.on_persist_messages_handlers:
+                    parallel_handlers.append(self.start_soon(handler(messages_to_persist)))
+                await self.agather(*parallel_handlers, return_exceptions=not raise_on_error)
             else:
-                await handler(messages_to_persist)
+                for handler in self.on_persist_messages_handlers:
+                    try:
+                        await handler(messages_to_persist)
+                    except Exception as e:
+                        if raise_on_error:
+                            raise e
+                        self.logger.debug("ERROR PERSISTING MESSAGES", exc_info=True)
+
+        try:
+            for message in message_or_messages:
+                if not isinstance(message, Message):
+                    raise ValueError("The messages must be of type Message.")
+
+                if await _is_persistence_not_needed(message):
+                    continue
+
+                if extend_with_sub_messages:
+                    for sub_message in message.sub_messages():
+                        if await _is_persistence_not_needed(sub_message):
+                            continue
+
+                        messages_to_persist.append(sub_message)
+
+                messages_to_persist.append(message)
+
+            await _apersist_messages()
+            return messages_to_persist
+        finally:
+            for message in messages_to_persist:
+                message._persistence_not_needed = True
+
+            for lock in acquired_locks:
+                lock.release()
 
     async def afinalize(self) -> None:
         for agent_call in list(self._child_agent_calls):
