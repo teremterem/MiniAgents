@@ -14,8 +14,9 @@ from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 @pytest.mark.parametrize("reply_out_of_order", [False, True])
+@pytest.mark.parametrize("raw_strings", [False, True])
 async def test_agent_multiple_replies_without_task_switching(
-    start_soon: Union[bool, Sentinel], reply_out_of_order: bool
+    start_soon: Union[bool, Sentinel], reply_out_of_order: bool, raw_strings: bool
 ) -> None:
     """
     Test that an agent can send multiple replies (using both `reply` and `reply_out_of_order` methods) without task
@@ -29,16 +30,21 @@ async def test_agent_multiple_replies_without_task_switching(
         else:
             reply_method = ctx.reply
 
-        reply_method(TextMessage(content="agent 1 msg 1"))
-        reply_method(TextMessage(content="agent 1 msg 2"))
+        def message_factory(content: str) -> TextMessage:
+            if raw_strings:
+                return content
+            return TextMessage(content=content)
+
+        reply_method(message_factory("agent 1 msg 1"))
+        reply_method(message_factory("agent 1 msg 2"))
         reply_method(
             [
-                "agent 1 msg 3",
-                "agent 1 msg 4",
+                message_factory("agent 1 msg 3"),
+                message_factory("agent 1 msg 4"),
             ]
         )
-        reply_method("agent 1 msg 5")
-        reply_method("agent 1 msg 6")
+        reply_method(message_factory("agent 1 msg 5"))
+        reply_method(message_factory("agent 1 msg 6"))
 
     async with MiniAgents():
         replies = await agent1.trigger(start_soon=start_soon)
