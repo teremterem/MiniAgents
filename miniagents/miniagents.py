@@ -269,7 +269,6 @@ class MiniAgent(Frozen):
     alias: str
     description: Optional[str] = Field(exclude=True)
     interaction_metadata: Frozen = Field(exclude=True)
-    await_reply_persistence: bool
 
     def __init__(
         self,
@@ -300,9 +299,6 @@ class MiniAgent(Frozen):
             # replace all {AGENT_ALIAS} entries in the description with the actual agent alias
             description = description.format(AGENT_ALIAS=alias)
 
-        if await_reply_persistence is NO_VALUE:
-            await_reply_persistence = MiniAgents.get_current().await_reply_persistence_before_agent_finish
-
         # validate interaction metadata
         # TODO is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         interaction_metadata = Frozen(**dict(interaction_metadata or {}))
@@ -311,7 +307,6 @@ class MiniAgent(Frozen):
             alias=alias,
             description=description,
             interaction_metadata=interaction_metadata,
-            await_reply_persistence=await_reply_persistence,
         )
         self.__name__ = alias
         self.__doc__ = description
@@ -319,6 +314,7 @@ class MiniAgent(Frozen):
         self._func_or_class = func_or_class
         self._frozen_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
         self._non_freezable_kwargs = dict(non_freezable_kwargs or {})
+        self._await_reply_persistence = await_reply_persistence
 
     def trigger(
         self,
@@ -714,13 +710,17 @@ class AgentReplyMessageSequence(MessageSequence):
             resolver=_arun_agent,
         )
 
+        await_reply_persistence = self._mini_agent._await_reply_persistence
+        if await_reply_persistence is NO_VALUE:
+            await_reply_persistence = MiniAgents.get_current().await_reply_persistence_before_agent_finish
+
         reply_promises = []
         async for reply_promise in super()._astreamer(_):
             yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
-            if self._mini_agent.await_reply_persistence:
+            if await_reply_persistence:
                 reply_promises.append(reply_promise)
 
-        if self._mini_agent.await_reply_persistence:
+        if await_reply_persistence:
             # There will be a certain level of chaos in regards to persistence batching - some messages will manage to
             # be persisted individually upon their "resolution" (in batches together with their own sub-messages),
             # others will be persisted by the method call below (which will happen in a single batch for all those
