@@ -367,17 +367,14 @@ class MessageTokenAppender(StreamAppender[Token]):
         """
         return self._auxiliary_field_collector
 
-    def append(self, piece: Union[Token, str, dict[str, Any]]) -> "MessageTokenAppender":
+    def append(self, piece: Union[Token, str, dict[str, Any], BaseModel]) -> "MessageTokenAppender":
         if not isinstance(piece, Token) and isinstance(piece, BaseModel):
             piece = dict(piece)
         elif isinstance(piece, str):
             piece = TextToken(piece)
 
         if isinstance(piece, dict):
-            if any(isinstance(piece.get(field), str) for field in TextToken.non_metadata_fields()):
-                piece = TextToken(**piece)
-            else:
-                piece = Token(**piece)
+            piece = Token(**piece)
 
         return super().append(piece)
 
