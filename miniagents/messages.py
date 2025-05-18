@@ -17,7 +17,7 @@ from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
-from miniagents.utils import dict_to_message, as_single_text_promise, display_agent_trace
+from miniagents.utils import as_single_text_promise, display_agent_trace
 
 
 class Token(Frozen):
@@ -434,9 +434,9 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, Message):
             yield zero_or_more_items.as_promise
         elif isinstance(zero_or_more_items, BaseModel):
-            yield dict_to_message(dict(zero_or_more_items)).as_promise
+            yield Message(**dict(zero_or_more_items)).as_promise
         elif isinstance(zero_or_more_items, dict):
-            yield dict_to_message(zero_or_more_items).as_promise
+            yield Message(**zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, str):
             yield TextMessage(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
@@ -489,9 +489,9 @@ class MessageSequenceAppender:
             # these types are "frozen enough" as they are
             return zero_or_more_messages
         if isinstance(zero_or_more_messages, BaseModel):
-            return dict_to_message(dict(zero_or_more_messages))
+            return Message(**dict(zero_or_more_messages))
         if isinstance(zero_or_more_messages, dict):
-            return dict_to_message(zero_or_more_messages)
+            return Message(**zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__iter__"):
             return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__aiter__"):

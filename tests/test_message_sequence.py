@@ -6,7 +6,15 @@ from typing import Optional, Union
 
 import pytest
 
-from miniagents.messages import ErrorMessage, Message, MessageSequence, MessageTokenAppender, TextMessage, TextToken
+from miniagents.messages import (
+    ErrorMessage,
+    Message,
+    MessageSequence,
+    MessageTokenAppender,
+    TextMessage,
+    TextToken,
+    Token,
+)
 from miniagents.miniagents import MiniAgents
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
@@ -57,7 +65,7 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
         message_result = [await msg_promise async for msg_promise in msg_seq1.sequence_promise]
         assert message_result == [
             TextMessage("msg1"),
-            TextMessage("msg2", some_attr=2),
+            Message(content="msg2", some_attr=2),
             TextMessage("msg3", another_attr=3),
             TextMessage("msg4"),
             TextMessage("msg5"),
@@ -72,7 +80,7 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
         token_result = [token async for msg_promise in msg_seq1.sequence_promise async for token in msg_promise]
         assert token_result == [
             TextToken("msg1", content_template=None),
-            TextToken("msg2", content_template=None, some_attr=2),
+            Token(content="msg2", some_attr=2),
             TextToken("msg3", content_template=None, another_attr=3),
             TextToken("msg4", content_template=None),
             TextToken("msg5", content_template=None),
