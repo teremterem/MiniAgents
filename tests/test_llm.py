@@ -17,11 +17,13 @@ from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
 
 def _check_openai_response(message: Message) -> None:
+    assert isinstance(message, TextMessage)
     assert str(message).strip() == "I AM ONLINE"
     assert message.choices[0].finish_reason == "stop"
 
 
 def _check_anthropic_response(message: Message) -> None:
+    assert isinstance(message, TextMessage)
     assert str(message).strip() == "I AM ONLINE"
     assert message.stop_reason == "end_turn"
 
@@ -35,11 +37,13 @@ def _check_anthropic_response(message: Message) -> None:
 )
 @pytest.mark.parametrize("stream", [False, True])
 @pytest.mark.parametrize("start_soon", [False, True])
+@pytest.mark.parametrize("flip_consumption_order", [False, True])
 async def test_llm(
-    start_soon: bool,
-    stream: bool,
     llm_agent: MiniAgent,
     check_response_func: Callable[[Message], None],
+    stream: bool,
+    start_soon: bool,
+    flip_consumption_order: bool,
 ) -> None:
     """
     Assert that all the LLM agents can respond to a simple prompt.
@@ -59,7 +63,13 @@ async def test_llm(
 
         result = ""
         async for msg_promise in reply_sequence:
-            async for token in msg_promise:
-                result += str(token)
-            check_response_func(await msg_promise)
+            if flip_consumption_order:
+                async for token in msg_promise:
+                    result += str(token)
+                check_response_func(await msg_promise)
+            else:
+                check_response_func(await msg_promise)
+                async for token in msg_promise:
+                    result += str(token)
+
     assert result.strip() == "I AM ONLINE"

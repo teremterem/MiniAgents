@@ -40,7 +40,7 @@ class TextToken(Token):
         super().__init__(content=content, **metadata)
 
 
-class Message(Frozen):
+class Message(Token):
     @classmethod
     def token_class(cls) -> type[Token]:
         return Token
@@ -56,7 +56,7 @@ class Message(Frozen):
         raise TypeError(f"{cls.__name__} does not support token streaming.")
 
     def _message_to_tokens(self) -> tuple[Token, ...]:
-        return (self.token_class()(**dict(self)),)
+        return (self,)
 
     @cached_privately
     def message_to_tokens(self) -> tuple[Token, ...]:
@@ -210,7 +210,7 @@ class StrictMessage(Message):
     model_config = ConfigDict(extra="forbid")
 
 
-class TextMessage(Message):
+class TextMessage(Message, TextToken):
     content: Optional[str] = None
     content_template: Optional[str] = None
 
