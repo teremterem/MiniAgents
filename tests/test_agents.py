@@ -7,8 +7,7 @@ from typing import Union
 
 import pytest
 
-from miniagents import InteractionContext, MiniAgents, miniagent
-from miniagents.messages import TextMessage
+from miniagents import miniagent, InteractionContext, Message, MiniAgents, TextMessage
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
@@ -321,3 +320,16 @@ async def test_agents_reply_out_of_order_exception(
         )
 
     assert actual_replies == expected_replies
+
+
+# async def test_message_to_str_always_the_same() -> None:
+#     """
+#     Test that when an agent returns a Message its string representation looks exactly the same regardless of whether it
+#     was consumed as a whole or token by token.
+#     """
+#     @miniagent
+#     async def some_agent(ctx: InteractionContext) -> None:
+#         ctx.reply(Message(word1="hello", word2="world"))
+
+#     async with MiniAgents():
+#         await some_agent.trigger()

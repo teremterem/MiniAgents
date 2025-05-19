@@ -6,16 +6,16 @@ from typing import Optional, Union
 
 import pytest
 
-from miniagents.messages import (
+from miniagents import (
     ErrorMessage,
     Message,
     MessageSequence,
     MessageTokenAppender,
+    MiniAgents,
     TextMessage,
     TextToken,
     Token,
 )
-from miniagents.miniagents import MiniAgents
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 

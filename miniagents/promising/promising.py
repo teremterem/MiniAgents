@@ -170,7 +170,7 @@ class PromisingContext:
         self._previous_ctx_token = self._current.set(self)  # <- this is the context switch
         return self
 
-    async def agather(self, *awaitables: Awaitable[Any], return_exceptions=True) -> list[Any]:
+    async def agather(self, *awaitables: Awaitable[Any], return_exceptions=True) -> tuple[Any, ...]:
         """
         Gather the results of the given `awaitables`. This method works exactly as `asyncio.gather` does, except we
         encourage `return_exceptions` to be True by choosing it to be the default. This way all the given `awaitables`
