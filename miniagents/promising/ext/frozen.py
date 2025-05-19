@@ -73,7 +73,7 @@ class Frozen(BaseModel):
         return key in iter(self)
 
     @cached_privately
-    def keys(self) -> tuple[str]:
+    def keys(self) -> tuple[str, ...]:
         return tuple(key for key, _ in self)
 
     @cached_privately

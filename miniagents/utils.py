@@ -15,7 +15,7 @@ from pydantic._internal._model_construction import ModelMetaclass
 from miniagents.promising.sentinels import NO_VALUE
 
 if typing.TYPE_CHECKING:
-    from miniagents.messages import Message, MessagePromise, TextMessage
+    from miniagents.messages import MessagePromise, TextMessage
     from miniagents.miniagent_typing import MessageType
     from miniagents.miniagents import MiniAgent
 
