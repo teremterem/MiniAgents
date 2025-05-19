@@ -324,20 +324,29 @@ async def test_agents_reply_out_of_order_exception(
 
 @pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
 @pytest.mark.parametrize("flip_consumption_order", [False, True])
-async def test_non_text_message_str_always_same(
+@pytest.mark.parametrize("text_message", [False, True])
+async def test_message_str_always_same(
     start_everything_soon_by_default: bool,
     flip_consumption_order: bool,
+    text_message: bool,
 ) -> None:
     """
-    Test that when an agent returns a non-text Message (which is going to be represented as a json by default), its
-    string representation looks exactly the same regardless of whether it was consumed as a whole or token by token.
+    Test that when an agent returns amessage, its string representation looks exactly the same regardless of whether it
+    was consumed as a whole or token by token.
     """
 
     @miniagent
     async def some_agent(ctx: InteractionContext) -> None:
-        ctx.reply(Message(word1="hello", word2="world"))
+        if text_message:
+            ctx.reply(TextMessage("hello world", some="metadata"))
+        else:
+            ctx.reply(Message(word1="hello", word2="world"))
 
-    expected_str = '```json\n{"class_":"Message","word1":"hello","word2":"world"}\n```'
+    if text_message:
+        expected_str = "hello world"
+    else:
+        expected_str = '```json\n{"class_":"Message","word1":"hello","word2":"world"}\n```'
+
     async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
         async for promise in some_agent.trigger():
             if flip_consumption_order:
