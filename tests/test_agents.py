@@ -338,14 +338,15 @@ async def test_message_str_always_same(
     @miniagent
     async def some_agent(ctx: InteractionContext) -> None:
         if text_message:
-            ctx.reply(TextMessage("hello world", some="metadata"))
+            ctx.reply(TextMessage("hello", next_word="world"))
         else:
-            ctx.reply(Message(word1="hello", word2="world"))
+            ctx.reply(Message(content="hello", next_word="world"))
 
     if text_message:
+        # The `next_word` field is a metadata field in this case, thus it is not included in the string
         expected_str = "hello world"
     else:
-        expected_str = '```json\n{"class_":"Message","word1":"hello","word2":"world"}\n```'
+        expected_str = '```json\n{"class_":"Message","content":"hello","next_word":"world"}\n```'
 
     async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
         async for promise in some_agent.trigger():
