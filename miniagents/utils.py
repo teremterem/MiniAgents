@@ -228,11 +228,3 @@ def display_agent_trace(agent_trace: Optional[Iterable["MiniAgent"]] = None) -> 
     if agent_trace is None:
         agent_trace = get_current_agent_trace()
     return " <- ".join([agent.alias for agent in agent_trace])
-
-
-def dict_to_message(d: dict[str, Any]) -> "Message":
-    from miniagents.messages import TextMessage, Message
-
-    if any(isinstance(d.get(field), str) for field in TextMessage.non_metadata_fields()):
-        return TextMessage(**d)
-    return Message(**d)

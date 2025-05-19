@@ -4,6 +4,7 @@
 
 import asyncio
 import contextvars
+import inspect
 import logging
 import re
 import warnings
@@ -20,7 +21,7 @@ from miniagents.messages import (
     MessageSequenceAppender,
     MessageSequencePromise,
 )
-from miniagents.miniagent_typing import AgentFunction, MessageType, PersistMessageEventHandler
+from miniagents.miniagent_typing import AgentFunction, MessageType, PersistMessagesEventHandler
 from miniagents.promising.errors import NoActiveContextError, WrongActiveContextError
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.promising.promise_typing import PromiseResolvedEventHandler
@@ -44,10 +45,11 @@ _default_logger.addHandler(_log_handler)
 class MiniAgents(PromisingContext):
     stream_llm_tokens_by_default: bool
     llm_logger_agent: Union["MiniAgent", bool]
-    on_persist_message_handlers: list[PersistMessageEventHandler]
+    on_persist_messages_handlers: list[PersistMessagesEventHandler]
     errors_as_messages: bool
     error_tracebacks_in_messages: bool
     log_reduced_tracebacks: bool
+    await_reply_persistence_before_agent_finish: bool
 
     logger: logging.Logger = _default_logger
 
@@ -56,18 +58,19 @@ class MiniAgents(PromisingContext):
         *,
         stream_llm_tokens_by_default: bool = True,
         llm_logger_agent: Union["MiniAgent", bool] = False,
-        on_persist_message: Union[PersistMessageEventHandler, Iterable[PersistMessageEventHandler]] = (),
+        on_persist_messages: Union[PersistMessagesEventHandler, Iterable[PersistMessagesEventHandler]] = (),
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         errors_as_messages: bool = False,
         error_tracebacks_in_messages: bool = False,
         log_reduced_tracebacks: bool = True,
+        await_reply_persistence_before_agent_finish: bool = False,
         logger: Optional[logging.Logger] = None,
         **kwargs,
     ) -> None:
         on_promise_resolved = (
-            [self._trigger_persist_message_event, on_promise_resolved]
+            [self._atrigger_persist_messages_event, on_promise_resolved]
             if callable(on_promise_resolved)
-            else [self._trigger_persist_message_event, *on_promise_resolved]
+            else [self._atrigger_persist_messages_event, *on_promise_resolved]
         )
         super().__init__(on_promise_resolved=on_promise_resolved, logger=logger, **kwargs)
 
@@ -76,8 +79,9 @@ class MiniAgents(PromisingContext):
         self.log_reduced_tracebacks = log_reduced_tracebacks
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
-        self.on_persist_message_handlers: list[PersistMessageEventHandler] = (
-            [on_persist_message] if callable(on_persist_message) else list(on_persist_message)
+        self.await_reply_persistence_before_agent_finish = await_reply_persistence_before_agent_finish
+        self.on_persist_messages_handlers: list[PersistMessagesEventHandler] = (
+            [on_persist_messages] if callable(on_persist_messages) else list(on_persist_messages)
         )
 
         self._child_agent_calls: set[AgentCall] = set()
@@ -92,38 +96,121 @@ class MiniAgents(PromisingContext):
             )
         return current
 
-    def on_persist_message(self, handler: PersistMessageEventHandler) -> PersistMessageEventHandler:
+    def on_persist_messages(self, handler: PersistMessagesEventHandler) -> PersistMessagesEventHandler:
         """
         Add a handler that will be called every time a Message needs to be persisted.
         """
-        self.on_persist_message_handlers.append(handler)
+        if not callable(handler):
+            raise ValueError("An `on_persist_messages` handler must be a callable.")
+        if not inspect.iscoroutinefunction(handler):
+            raise ValueError("An `on_persist_messages` handler must be async.")
+
+        self.on_persist_messages_handlers.append(handler)
         return handler
+
+    # noinspection PyProtectedMember
+    async def apersist_messages(
+        self,
+        message_or_messages: Union[Message, Iterable[Message]],
+        extend_with_sub_messages: bool = True,
+        parallelise_handlers: bool = False,
+        raise_on_error: bool = True,
+    ) -> list[Message]:
+        """
+        Persists the given message or messages using the registered `on_persist_messages` handlers.
+
+        This method is typically called automatically when a MessagePromise is resolved (which typically
+        happens in the background when agents communicate with each other). However, it can also be called
+        manually if needed (e.g. you want to persist multiple messages to a database and do that in a single
+        database transaction that you opened).
+
+        Args:
+            message_or_messages: A single `Message` object or an iterable of `Message` objects to persist.
+            extend_with_sub_messages: If True (default), all sub-messages of the given messages (no matter the
+                depth of nesting) will also be persisted. This is useful when a message is a container for other,
+                nested messages.
+            parallelise_handlers: If True, the `on_persist_messages` handlers will be called in parallel.
+                Defaults to False, meaning the handlers will be called sequentially.
+            raise_on_error: If True (default), an exception will be raised if any of the handlers raises an exception.
+
+        Returns:
+            A list of messages that were actually persisted (there is a mechanism that prevents persisting the same
+            message more than once).
+
+        NOTE: If your objective is to persist messages in a single database transaction, you probably should not
+        parallelise the handlers (you should keep `parallelise_handlers=False`), otherwise they will be run as
+        separate async operations and most likely not be part of the transaction you opened.
+        """
+        # pylint: disable=protected-access,broad-exception-caught
+        if isinstance(message_or_messages, Message):
+            message_or_messages = [message_or_messages]
+
+        messages_to_persist = []
+        acquired_locks = []
+
+        async def _is_persistence_not_needed(message: Message) -> bool:
+            if message.persistence_not_needed:
+                return True
+
+            await message._persistence_lock.acquire()
+            if message.persistence_not_needed:
+                message._persistence_lock.release()
+                return True
+
+            acquired_locks.append(message._persistence_lock)
+            return False
+
+        async def _apersist_messages() -> None:
+            if parallelise_handlers:
+                parallel_handlers = []
+                for handler in self.on_persist_messages_handlers:
+                    parallel_handlers.append(self.start_soon(handler(messages_to_persist)))
+                await self.agather(*parallel_handlers, return_exceptions=not raise_on_error)
+            else:
+                for handler in self.on_persist_messages_handlers:
+                    try:
+                        await handler(messages_to_persist)
+                    except Exception as e:
+                        if raise_on_error:
+                            raise e
+                        self.logger.debug("ERROR PERSISTING MESSAGES", exc_info=True)
+
+        try:
+            for message in message_or_messages:
+                if not isinstance(message, Message):
+                    raise ValueError("The messages must be of type Message.")
+
+                if await _is_persistence_not_needed(message):
+                    continue
+
+                if extend_with_sub_messages:
+                    for sub_message in message.sub_messages():
+                        if await _is_persistence_not_needed(sub_message):
+                            continue
+
+                        messages_to_persist.append(sub_message)
+
+                messages_to_persist.append(message)
+
+            await _apersist_messages()
+            return messages_to_persist
+        finally:
+            for message in messages_to_persist:
+                message._persistence_not_needed = True
+
+            for lock in acquired_locks:
+                lock.release()
 
     async def afinalize(self) -> None:
         for agent_call in list(self._child_agent_calls):
             agent_call.finish()
         await super().afinalize()
 
-    # noinspection PyProtectedMember
-    async def _trigger_persist_message_event(self, _, obj: Any) -> None:
-        # pylint: disable=protected-access
+    async def _atrigger_persist_messages_event(self, _, obj: Any) -> None:
         if not isinstance(obj, Message):
             return
 
-        for sub_message in obj.sub_messages():
-            if sub_message._persist_message_event_triggered:
-                continue
-
-            for handler in self.on_persist_message_handlers:
-                self.start_soon(handler(_, sub_message))
-            sub_message._persist_message_event_triggered = True
-
-        if obj._persist_message_event_triggered:
-            return
-
-        for handler in self.on_persist_message_handlers:
-            self.start_soon(handler(_, obj))
-        obj._persist_message_event_triggered = True
+        await self.apersist_messages(obj, extend_with_sub_messages=True, parallelise_handlers=True)
 
 
 def miniagent(
@@ -133,17 +220,15 @@ def miniagent(
     description: Optional[str] = None,
     normalize_func_or_class_name: bool = True,
     normalize_spaces_in_docstring: bool = True,
+    await_reply_persistence: Union[bool, Sentinel] = NO_VALUE,
     interaction_metadata: Optional[dict[str, Any]] = None,
     non_freezable_kwargs: Optional[dict[str, Any]] = None,
-    mutable_state: Optional[dict[str, Any]] = None,  # deprecated
     **kwargs_to_freeze,
 ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
     """
     A decorator that converts an agent function into an agent.
 
-    Args:
-        mutable_state: Deprecated. Use `non_freezable_kwargs` instead.
-        # TODO describe all the parameters
+    # TODO describe parameters
     """
     if func_or_class is None:
         # the decorator `@miniagent(...)` was used with arguments
@@ -154,9 +239,9 @@ def miniagent(
                 description=description,
                 normalize_func_or_class_name=normalize_func_or_class_name,
                 normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+                await_reply_persistence=await_reply_persistence,
                 interaction_metadata=interaction_metadata,
                 non_freezable_kwargs=non_freezable_kwargs,
-                mutable_state=mutable_state,
                 **kwargs_to_freeze,
             )
 
@@ -169,9 +254,9 @@ def miniagent(
         description=description,
         normalize_func_or_class_name=normalize_func_or_class_name,
         normalize_spaces_in_docstring=normalize_spaces_in_docstring,
+        await_reply_persistence=await_reply_persistence,
         interaction_metadata=interaction_metadata,
         non_freezable_kwargs=non_freezable_kwargs,
-        mutable_state=mutable_state,
         **kwargs_to_freeze,
     )
 
@@ -193,26 +278,17 @@ class MiniAgent(Frozen):
         description: Optional[str] = None,
         normalize_func_or_class_name: bool = True,
         normalize_spaces_in_docstring: bool = True,
+        await_reply_persistence: Union[bool, Sentinel] = NO_VALUE,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
-        mutable_state: Optional[dict[str, Any]] = None,  # deprecated
         **kwargs_to_freeze,
     ) -> None:
-        if mutable_state is not None:
-            warnings.warn(
-                "The `mutable_state` parameter is deprecated and will be removed in a future version. "
-                "Use `non_freezable_kwargs` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if non_freezable_kwargs is not None:
-                raise ValueError(
-                    "Both `mutable_state` and `non_freezable_kwargs` are set. Please use only one of them "
-                    "(preferrably the latter because the former is deprecated)."
-                )
-
-            non_freezable_kwargs = mutable_state
-        del mutable_state
+        if not callable(func_or_class):
+            raise ValueError("A `@miniagent` decorated type must be a callable.")
+        if not inspect.iscoroutinefunction(func_or_class) and not (
+            hasattr(func_or_class, "__call__") and inspect.iscoroutinefunction(func_or_class.__call__)
+        ):
+            raise ValueError("A `@miniagent` decorated class or function must be async.")
 
         if alias is None:
             alias = func_or_class.__name__
@@ -234,13 +310,18 @@ class MiniAgent(Frozen):
         # TODO is `interaction_metadata` a good name ? see how it is used in Recensia to decide
         interaction_metadata = Frozen(**dict(interaction_metadata or {}))
 
-        super().__init__(alias=alias, description=description, interaction_metadata=interaction_metadata)
+        super().__init__(
+            alias=alias,
+            description=description,
+            interaction_metadata=interaction_metadata,
+        )
         self.__name__ = alias
         self.__doc__ = description
 
         self._func_or_class = func_or_class
         self._frozen_kwargs = Frozen(**kwargs_to_freeze).as_kwargs()
         self._non_freezable_kwargs = dict(non_freezable_kwargs or {})
+        self._await_reply_persistence = await_reply_persistence
 
     def trigger(
         self,
@@ -289,7 +370,6 @@ class MiniAgent(Frozen):
         *,
         interaction_metadata: Optional[Union[dict[str, Any], Frozen]] = None,
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
-        mutable_state: Optional[dict[str, Any]] = None,  # deprecated
         **kwargs_to_freeze,
     ) -> Union["MiniAgent", Callable[[AgentFunction], "MiniAgent"]]:
         """
@@ -300,28 +380,11 @@ class MiniAgent(Frozen):
             description: New description for the forked agent. If not provided, uses the original description.
             interaction_metadata: TODO explain this parameter
             non_freezable_kwargs: Additional non-freezable kwargs to merge with the original non-freezable kwargs.
-            mutable_state: Deprecated. Use `non_freezable_kwargs` instead.
             **kwargs_to_freeze: Additional static parameters for the forked agent.
 
         Returns:
             A new MiniAgent instance with the modified parameters.
         """
-        if mutable_state is not None:
-            warnings.warn(
-                "The `mutable_state` parameter is deprecated and will be removed in a future version. "
-                "Use `non_freezable_kwargs` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if non_freezable_kwargs is not None:
-                raise ValueError(
-                    "Both `mutable_state` and `non_freezable_kwargs` are set. Please use only one of them "
-                    "(preferrably the latter because the former is deprecated)."
-                )
-
-            non_freezable_kwargs = mutable_state
-        del mutable_state
-
         return MiniAgent(
             self._func_or_class,
             alias=alias or self.alias,
@@ -349,6 +412,7 @@ class MiniAgent(Frozen):
 class InteractionContext:
     this_agent: MiniAgent
     message_promises: MessageSequencePromise
+    miniagents: MiniAgents
 
     _current: ContextVar[Optional["InteractionContext"]] = ContextVar("InteractionContext._current", default=None)
 
@@ -358,10 +422,10 @@ class InteractionContext:
         message_promises: MessageSequencePromise,
         reply_streamer: MessageSequenceAppender,
     ) -> None:
+        self.miniagents = MiniAgents.get_current()
         self.this_agent = this_agent
         self.message_promises = message_promises
 
-        self._mini_agents = MiniAgents.get_current()
         self._parent: Optional["InteractionContext"] = None
         self._reply_streamer = reply_streamer
         self._tasks_to_wait_for: list[Awaitable[Any]] = []
@@ -430,7 +494,7 @@ class InteractionContext:
         """
         if asyncio.iscoroutine(awaitable) and start_soon_if_coroutine:
             # let's turn this coroutine into our special kind of task and start it as soon as possible
-            awaitable = self._mini_agents.start_soon(awaitable)
+            awaitable = self.miniagents.start_soon(awaitable)
         self._tasks_to_wait_for.append(awaitable)
 
     async def await_now(self, suppress_deadlock_warning: bool = False) -> None:
@@ -453,7 +517,7 @@ class InteractionContext:
                 stacklevel=2,
             )
 
-        await self._mini_agents.agather(*self._tasks_to_wait_for)
+        await self.miniagents.agather(*self._tasks_to_wait_for)
 
     async def afinish_early(self, make_sure_to_wait: bool = True) -> None:
         if make_sure_to_wait:
@@ -653,8 +717,23 @@ class AgentReplyMessageSequence(MessageSequence):
             resolver=_arun_agent,
         )
 
+        await_reply_persistence = self._mini_agent._await_reply_persistence
+        if await_reply_persistence is NO_VALUE:
+            await_reply_persistence = MiniAgents.get_current().await_reply_persistence_before_agent_finish
+
+        reply_promises = []
         async for reply_promise in super()._astreamer(_):
             yield reply_promise  # at this point all MessageType items are "flattened" into MessagePromise items
+            if await_reply_persistence:
+                reply_promises.append(reply_promise)
+
+        if await_reply_persistence:
+            # There will be a certain level of chaos in regards to persistence batching - some messages will manage to
+            # be persisted individually upon their "resolution" (in batches together with their own sub-messages),
+            # others will be persisted by the method call below (which will happen in a single batch for all those
+            # remaining messages).
+            # TODO Should we do something about this ?
+            await MiniAgents.get_current().apersist_messages([await reply_promise for reply_promise in reply_promises])
 
         async def _acreate_agent_reply_node(_) -> AgentReplyNode:
             return AgentReplyNode(

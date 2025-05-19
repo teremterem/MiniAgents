@@ -1,3 +1,4 @@
+# pylint: disable=wrong-import-order
 """
 WebResearch is a multi-agent system that:
 
@@ -16,16 +17,12 @@ from datetime import datetime
 from typing import Union
 
 from dotenv import load_dotenv
+from miniagents import AgentCall, InteractionContext, Message, MessageSequencePromise, MiniAgents, miniagent
+from miniagents.ext.llms import OpenAIAgent, aprepare_dicts_for_openai
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from utils import check_miniagents_version, fetch_google_search, scrape_web_page
-
-check_miniagents_version()
-
-# pylint: disable=wrong-import-position
-from miniagents import AgentCall, InteractionContext, Message, MessageSequencePromise, MiniAgents, miniagent
-from miniagents.ext.llms import OpenAIAgent, aprepare_dicts_for_openai
+from utils import fetch_google_search, scrape_web_page
 
 load_dotenv()
 

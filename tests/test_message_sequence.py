@@ -6,8 +6,16 @@ from typing import Optional, Union
 
 import pytest
 
-from miniagents.messages import ErrorMessage, Message, MessageSequence, MessageTokenAppender, TextMessage, TextToken
-from miniagents.miniagents import MiniAgents
+from miniagents import (
+    ErrorMessage,
+    Message,
+    MessageSequence,
+    MessageTokenAppender,
+    MiniAgents,
+    TextMessage,
+    TextToken,
+    Token,
+)
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
@@ -54,10 +62,9 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
             msg_seq1.message_appender.append(TextMessage.promise("msg10", yet_another_attr=10))
             # msg_seq1.message_appender.append(ValueError("msg11"))
 
-        message_result = [await msg_promise async for msg_promise in msg_seq1.sequence_promise]
-        assert message_result == [
+        expected_result = [
             TextMessage("msg1"),
-            TextMessage("msg2", some_attr=2),
+            Message(content="msg2", some_attr=2),
             TextMessage("msg3", another_attr=3),
             TextMessage("msg4"),
             TextMessage("msg5"),
@@ -69,20 +76,14 @@ async def test_message_sequence(start_soon: Union[bool, Sentinel], errors_as_mes
             # ValueError("msg11"),
         ]
 
+        message_result = [await msg_promise async for msg_promise in msg_seq1.sequence_promise]
+        assert message_result == expected_result
+
         token_result = [token async for msg_promise in msg_seq1.sequence_promise async for token in msg_promise]
-        assert token_result == [
-            TextToken("msg1", content_template=None),
-            TextToken("msg2", content_template=None, some_attr=2),
-            TextToken("msg3", content_template=None, another_attr=3),
-            TextToken("msg4", content_template=None),
-            TextToken("msg5", content_template=None),
-            TextToken("msg6", content_template=None),
-            TextToken("msg7", content_template=None),
-            TextToken("msg8", content_template=None, another_attr=8),
-            TextToken("msg9", content_template=None),
-            TextToken("msg10", content_template=None, yet_another_attr=10),
-            # TextToken("msg11", content_template=None),
-        ]
+        # In case of so called "prefilled" message promises (those which weren't streamed token by token in the first
+        # place) the very same message instances play the role of tokens (for this to work TextMessage and Message are
+        # made to be subclasses of TextToken and Token respectively, by design)
+        assert token_result == expected_result
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
@@ -140,19 +141,11 @@ async def test_message_sequence_error_to_message(
             raise ValueError("error1")
 
         message_result = await _collect_message_sequence_result(msg_seq, collect_token_by_token)
-
-        if collect_token_by_token:
-            assert message_result == [
-                TextToken("msg1", content_template=None),
-                TextToken("ValueError: error1", content_template=None),
-            ]
-            assert issubclass([promise async for promise in msg_seq.sequence_promise][-1].message_class, ErrorMessage)
-            assert isinstance((await msg_seq.sequence_promise)[-1], ErrorMessage)
-        else:
-            assert message_result == [
-                TextMessage("msg1"),
-                ErrorMessage("ValueError: error1"),
-            ]
+        assert message_result == [
+            TextMessage("msg1"),
+            ErrorMessage("ValueError: error1"),
+        ]
+        assert issubclass([promise async for promise in msg_seq.sequence_promise][-1].message_class, ErrorMessage)
 
 
 @pytest.mark.parametrize("collect_token_by_token", [False, True, None])
@@ -177,7 +170,7 @@ async def test_message_sequence_token_error_to_message(
 
         if collect_token_by_token:
             assert result == [
-                TextToken("msg1", content_template=None),
+                TextMessage("msg1"),
                 TextToken("token1"),
                 TextToken("token2"),
                 TextToken("\nValueError: error1"),
@@ -196,7 +189,7 @@ async def test_message_sequence_token_error_to_message(
 
 async def _collect_message_sequence_result(
     msg_seq: MessageSequence, collect_token_by_token: Optional[bool]
-) -> list[Union[str, Message]]:
+) -> list[Union[Token, Message]]:
     if collect_token_by_token is None:
         # None means lets test resolution of the whole sequence at once
         return list(await msg_seq.sequence_promise)

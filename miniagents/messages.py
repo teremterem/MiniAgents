@@ -2,6 +2,7 @@
 `Message` class and other classes related to messages.
 """
 
+import asyncio
 import traceback
 import warnings
 from types import TracebackType
@@ -16,7 +17,7 @@ from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
-from miniagents.utils import dict_to_message, as_single_text_promise, display_agent_trace
+from miniagents.utils import as_single_text_promise, display_agent_trace
 
 
 class Token(Frozen):
@@ -39,7 +40,7 @@ class TextToken(Token):
         super().__init__(content=content, **metadata)
 
 
-class Message(Frozen):
+class Message(Token):
     @classmethod
     def token_class(cls) -> type[Token]:
         return Token
@@ -55,7 +56,7 @@ class Message(Frozen):
         raise TypeError(f"{cls.__name__} does not support token streaming.")
 
     def _message_to_tokens(self) -> tuple[Token, ...]:
-        return (self.token_class()(**dict(self)),)
+        return (self,)
 
     @cached_privately
     def message_to_tokens(self) -> tuple[Token, ...]:
@@ -96,14 +97,15 @@ class Message(Frozen):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._persist_message_event_triggered = False
+        self._persistence_not_needed = False
+        self._persistence_lock = asyncio.Lock()
 
     def _as_string(self) -> str:
         return f"```json\n{super()._as_string()}\n```"
 
     def serialize(self) -> dict[str, Any]:
         include_into_serialization, sub_messages = self._serialization_metadata
-        model_dump = self.model_dump(include=include_into_serialization)
+        model_dump = self.model_dump(include=include_into_serialization, mode="json")
 
         for path, message_or_messages in sub_messages.items():
             sub_dict = model_dump
@@ -112,7 +114,7 @@ class Message(Frozen):
             if isinstance(message_or_messages, Message):
                 sub_dict[f"{path[-1]}__hash_key"] = message_or_messages.hash_key
             else:
-                sub_dict[f"{path[-1]}__hash_keys"] = tuple(message.hash_key for message in message_or_messages)
+                sub_dict[f"{path[-1]}__hash_keys"] = [message.hash_key for message in message_or_messages]
         return model_dump
 
     def sub_messages(self) -> Iterator["Message"]:
@@ -129,6 +131,31 @@ class Message(Frozen):
                 for message in message_or_messages:
                     yield from message.sub_messages()
                     yield message
+
+    @property
+    def persistence_not_needed(self) -> bool:
+        return self._persistence_not_needed
+
+    async def aset_persistence_not_needed(self, value: bool = True) -> bool:
+        """
+        Set the value of the "persistence not needed" flag for this message. This flag is used to prevent the message
+        from being persisted by `.apersist_messages()` (either manually or upon `on_persist_messages` event).
+
+        Args:
+            value: Whether to set (default) or unset the "persistence not needed" flag.
+
+        Returns:
+            True if the flag was changed, False if it was already set to the desired value.
+        """
+        if self._persistence_not_needed == value:
+            return False
+
+        async with self._persistence_lock:
+            if self._persistence_not_needed == value:
+                return False
+
+            self._persistence_not_needed = value
+            return True
 
     @property
     @cached_privately
@@ -183,7 +210,7 @@ class StrictMessage(Message):
     model_config = ConfigDict(extra="forbid")
 
 
-class TextMessage(Message):
+class TextMessage(Message, TextToken):
     content: Optional[str] = None
     content_template: Optional[str] = None
 
@@ -193,7 +220,7 @@ class TextMessage(Message):
 
     @classmethod
     def non_metadata_fields(cls) -> tuple[str, ...]:
-        return ("content", "content_template")
+        return "content", "content_template"
 
     @classmethod
     def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "TextMessage":
@@ -340,17 +367,14 @@ class MessageTokenAppender(StreamAppender[Token]):
         """
         return self._auxiliary_field_collector
 
-    def append(self, piece: Union[Token, str, dict[str, Any]]) -> "MessageTokenAppender":
+    def append(self, piece: Union[Token, str, dict[str, Any], BaseModel]) -> "MessageTokenAppender":
         if not isinstance(piece, Token) and isinstance(piece, BaseModel):
             piece = dict(piece)
         elif isinstance(piece, str):
             piece = TextToken(piece)
 
         if isinstance(piece, dict):
-            if any(isinstance(piece.get(field), str) for field in TextToken.non_metadata_fields()):
-                piece = TextToken(**piece)
-            else:
-                piece = Token(**piece)
+            piece = Token(**piece)
 
         return super().append(piece)
 
@@ -407,9 +431,9 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, Message):
             yield zero_or_more_items.as_promise
         elif isinstance(zero_or_more_items, BaseModel):
-            yield dict_to_message(dict(zero_or_more_items)).as_promise
+            yield Message(**dict(zero_or_more_items)).as_promise
         elif isinstance(zero_or_more_items, dict):
-            yield dict_to_message(zero_or_more_items).as_promise
+            yield Message(**zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, str):
             yield TextMessage(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
@@ -462,9 +486,9 @@ class MessageSequenceAppender:
             # these types are "frozen enough" as they are
             return zero_or_more_messages
         if isinstance(zero_or_more_messages, BaseModel):
-            return dict_to_message(dict(zero_or_more_messages))
+            return Message(**dict(zero_or_more_messages))
         if isinstance(zero_or_more_messages, dict):
-            return dict_to_message(zero_or_more_messages)
+            return Message(**zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__iter__"):
             return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__aiter__"):
@@ -593,7 +617,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
 
 
 class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
-    async def __anext__(self) -> str:
+    async def __anext__(self) -> Token:
         try:
             return await self.__wrapped__.__anext__()
         except StopAsyncIteration:

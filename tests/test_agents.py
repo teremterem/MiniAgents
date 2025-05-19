@@ -7,8 +7,57 @@ from typing import Union
 
 import pytest
 
-from miniagents import InteractionContext, MiniAgents, miniagent
+from miniagents import miniagent, InteractionContext, Message, MiniAgents, TextMessage
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
+
+
+@pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
+@pytest.mark.parametrize("reply_out_of_order", [False, True])
+@pytest.mark.parametrize("raw_strings", [False, True])
+async def test_agent_multiple_replies_without_task_switching(
+    start_soon: Union[bool, Sentinel], reply_out_of_order: bool, raw_strings: bool
+) -> None:
+    """
+    Test that an agent can send multiple replies (using both `reply` and `reply_out_of_order` methods) without task
+    switching and all of them are delivered.
+    """
+
+    @miniagent
+    async def agent1(ctx: InteractionContext) -> None:
+        if reply_out_of_order:
+            reply_method = ctx.reply_out_of_order
+        else:
+            reply_method = ctx.reply
+
+        def message_factory(content: str) -> TextMessage:
+            if raw_strings:
+                return content
+            return TextMessage(content=content)
+
+        reply_method(message_factory("agent 1 msg 1"))
+        reply_method(message_factory("agent 1 msg 2"))
+        reply_method(
+            [
+                message_factory("agent 1 msg 3"),
+                message_factory("agent 1 msg 4"),
+            ]
+        )
+        reply_method(message_factory("agent 1 msg 5"))
+        reply_method(message_factory("agent 1 msg 6"))
+
+    async with MiniAgents():
+        replies = await agent1.trigger(start_soon=start_soon)
+
+    # Even in the case of out-of-order replies, all of them are still delivered in the same order because there is no
+    # real agent concurrency and/or nested agents in this test
+    assert replies == (
+        TextMessage(content="agent 1 msg 1"),
+        TextMessage(content="agent 1 msg 2"),
+        TextMessage(content="agent 1 msg 3"),
+        TextMessage(content="agent 1 msg 4"),
+        TextMessage(content="agent 1 msg 5"),
+        TextMessage(content="agent 1 msg 6"),
+    )
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
@@ -271,3 +320,46 @@ async def test_agents_reply_out_of_order_exception(
         )
 
     assert actual_replies == expected_replies
+
+
+@pytest.mark.parametrize("start_everything_soon_by_default", [False, True])
+@pytest.mark.parametrize("flip_consumption_order", [False, True])
+@pytest.mark.parametrize("text_message", [False, True])
+async def test_message_str_always_same(
+    start_everything_soon_by_default: bool,
+    flip_consumption_order: bool,
+    text_message: bool,
+) -> None:
+    """
+    Test that when an agent returns amessage, its string representation looks exactly the same regardless of whether it
+    was consumed as a whole or token by token.
+    """
+
+    @miniagent
+    async def some_agent(ctx: InteractionContext) -> None:
+        if text_message:
+            ctx.reply(TextMessage("Hello world", punctuation="!!!"))
+        else:
+            ctx.reply(Message(content="Hello world", punctuation="!!!"))
+
+    if text_message:
+        # The `punctuation` field is a metadata field in this case, thus it is not included in the string
+        expected_str = "Hello world"
+    else:
+        expected_str = '```json\n{"class_":"Message","content":"Hello world","punctuation":"!!!"}\n```'
+
+    async with MiniAgents(start_everything_soon_by_default=start_everything_soon_by_default):
+        async for promise in some_agent.trigger():
+            if flip_consumption_order:
+                actual_token_by_token_str = ""
+                async for token in promise:
+                    actual_token_by_token_str += str(token)
+                actual_whole_str = str(await promise)
+            else:
+                actual_whole_str = str(await promise)
+                actual_token_by_token_str = ""
+                async for token in promise:
+                    actual_token_by_token_str += str(token)
+
+            assert actual_whole_str == expected_str
+            assert actual_token_by_token_str == expected_str

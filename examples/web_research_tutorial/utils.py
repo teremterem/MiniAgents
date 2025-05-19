@@ -1,13 +1,10 @@
 import asyncio
 import os
-import sys
 from typing import Any
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
-import miniagents
 
-# pylint: disable=wrong-import-order
 from dotenv import load_dotenv
 from markdownify import markdownify as md
 from selenium.webdriver import Remote, ChromeOptions
@@ -15,8 +12,6 @@ from selenium.webdriver.chromium.remote_connection import ChromiumRemoteConnecti
 from selenium.webdriver.remote.client_config import ClientConfig
 
 load_dotenv()
-
-EXPECTED_MINIAGENTS_VERSION = (0, 0, 31)
 
 BRIGHTDATA_SERP_API_CREDS = os.environ["BRIGHTDATA_SERP_API_CREDS"]
 BRIGHTDATA_SCRAPING_BROWSER_CREDS = os.environ["BRIGHTDATA_SCRAPING_BROWSER_CREDS"]
@@ -63,26 +58,3 @@ async def scrape_web_page(url: str) -> str:
     # Selenium does not support asyncio, so we need to run it in a thread pool
     page_source = await loop.run_in_executor(scraping_thread_pool, _scrape_web_page_sync, url)
     return md(page_source)
-
-
-def check_miniagents_version():
-    try:
-        miniagents_version: tuple[int, int, int] = tuple(map(int, miniagents.__version__.split(".")))
-        valid_miniagents_version = miniagents_version >= EXPECTED_MINIAGENTS_VERSION
-    except ValueError:
-        # if any of the version components are not integers, we will consider it as an older version
-        # (before 0.0.28 there were only numeric versions)
-        valid_miniagents_version = True
-    except AttributeError:
-        # the absence of the __version__ attribute means that it is definitely an old version
-        valid_miniagents_version = False
-
-    if not valid_miniagents_version:
-        print(
-            "\n"
-            f"You need MiniAgents v{'.'.join([str(v) for v in EXPECTED_MINIAGENTS_VERSION])} or later to run this "
-            "example.\n"
-            "\n"
-            "Please update MiniAgents with `pip install -U miniagents`\n"
-        )
-        sys.exit(1)

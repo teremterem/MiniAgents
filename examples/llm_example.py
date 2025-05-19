@@ -3,6 +3,7 @@ Code example for using LLMs.
 """
 
 from pprint import pprint
+from typing import Iterable
 
 from dotenv import load_dotenv
 from miniagents import Message, MiniAgents
@@ -19,15 +20,16 @@ llm_agent = OpenAIAgent.fork(model="gpt-4o")
 mini_agents = MiniAgents()
 
 
-@mini_agents.on_persist_message
-async def persist_message(_, message: Message) -> None:
+@mini_agents.on_persist_messages
+async def persist_messages(messages: Iterable[Message]) -> None:
     """
-    Print the message to the console.
+    Print messages to the console.
     """
-    print("HASH KEY:", message.hash_key)
-    print(type(message).__name__)
-    pprint(message.serialize(), width=119)
-    print()
+    for message in messages:
+        print("HASH KEY:", message.hash_key)
+        print(type(message).__name__)
+        pprint(message.serialize(), width=119)
+        print()
 
 
 async def main() -> None:

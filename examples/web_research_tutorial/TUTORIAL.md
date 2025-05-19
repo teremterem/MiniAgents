@@ -1,6 +1,6 @@
-# MiniAgents: Multi-Agent AI With Procedural Simplicity
+# MiniAgents: Multi-Agent AI Framework With Procedural Simplicity
 
-![MiniAgents on Mars](https://github.com/teremterem/MiniAgents/raw/main/images/banner-miniagents-2025-04-27.jpeg)
+![MiniAgents on Venus](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/banner-miniagents-2025-05-04.jpeg)
 
 An open-source, async-first Python framework for building multi-agent AI systems with an innovative approach to parallelism, so you can focus on creating intelligent agents, not on managing the concurrency of your flows.
 
@@ -42,12 +42,7 @@ async def aggregator_agent(ctx: InteractionContext) -> None:
 
 # Let's build a Web Research System with MiniAgents
 
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/web_research.py-x3plus.gif">
-    </a>
-</p>
+[![WebResearch in action](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/web_research.py-x3plus.gif)](https://github.com/teremterem/MiniAgents/blob/main/examples/web_research_tutorial)
 
 In this tutorial we'll build a system that can:
 
@@ -73,7 +68,7 @@ This approach uses standard Python `async def` with `async for ... yield` to sim
 
 The full code for this naive example can be found in [`sequence_flattening_naive_alternative.py`](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py).
 
-Let's look at the core agent definitions and how they are run:
+Let's look at the agent definitions and how they are run:
 
 ```python
 # examples/sequence_flattening_naive_alternative.py
@@ -172,12 +167,7 @@ In `research_agent_naive`, the loop that calls `web_search_agent_naive` processe
 
 Here is what this process looks like as a result:
 
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening_naive_alternative.py.gif">
-    </a>
-</p>
+[![WebResearch in action](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/sequence_flattening_naive_alternative.py.gif)](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening_naive_alternative.py)
 
 To achieve true concurrency with this naive approach, you would need to manually manage `asyncio.create_task` for each sub-operation and potentially use queues or other synchronization primitives to collect and yield results as they become available. This would significantly increase code complexity.
 
@@ -189,12 +179,7 @@ This manual management is typical when using raw `asyncio` or even foundational 
 
 Now, let's see how MiniAgents addresses these challenges, enabling concurrent execution while keeping the same level of code simplicity. You'll see what the changed version of the same code looks like in a moment, but first, let's jump ahead and take a look at how different its output is going to be:
 
-<p>
-    <a href="https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py">
-        <img alt="WebResearch in action"
-            src="https://github.com/teremterem/MiniAgents/raw/main/images/sequence_flattening.py.gif">
-    </a>
-</p>
+[![WebResearch in action](https://raw.githubusercontent.com/teremterem/MiniAgents/main/images/sequence_flattening.py.gif)](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py)
 
 Looks much faster, doesn't it? Now, back to the code. The full example that uses MiniAgents can be found in [`sequence_flattening.py`](https://github.com/teremterem/MiniAgents/blob/main/examples/sequence_flattening.py).
 
@@ -306,9 +291,9 @@ async def main():
     print("=== REPLAYING MESSAGES AGAIN ===")
     print()
 
-    # We can even await the whole sequence promise to get the full list (tuple,
-    # to be precise) of resolved messages (demonstrating the replayability of
-    # promises once again).
+    # We can even await for the whole MessageSequencePromise to get the
+    # complete tuple of resolved messages (demonstrating the replayability of
+    # the promises once again).
     messages: tuple[Message, ...] = await response_promises
     for i, message in enumerate(messages):
         # When you run this example, you will see that for agents replying with
@@ -439,7 +424,8 @@ async def main():
 Key takeaways from `main()`:
 1.  **Filtering Messages:** Some messages might be internal to the agent system (e.g., detailed summaries for other agents). We can attach metadata to messages (like `not_for_user`) and use it to filter what's shown to the end-user. The `known_beforehand` attribute of a `MessagePromise` allows access to metadata that is available before the message content itself is resolved. This can be useful for early filtering or routing of messages. In our `main` function, we use this to check the `"not_for_user"` flag (set in `page_scraper_agent`) to prevent internal page summaries from being directly displayed.
 2.  **Centralized Output:** Notice that all user-facing output happens here. Agents themselves don't `print`. They communicate results back, which `main` then decides how to present. This separation makes it easier to change the UI or even integrate this entire agentic system as a component within a larger AI system, where its output would be consumed programmatically rather than printed to a console.
-3.  **Background Execution is Optional:** MiniAgents, by default, starts processing triggered agents as soon as possible. This is generally the desired behavior for maximum parallelism. It is worth noting, however, that you can disable this behavior by passing `start_soon=False` to individual `trigger` calls, or by setting `start_everything_soon_by_default=False` in the `MiniAgents` constructor for a global effect. The latter is generally not recommended, though. Disabling "early start" globally can often lead to deadlocks if agent interdependencies are complex, and in the majority of scenarios, there is hardly any benefit in setting `start_soon` to `False`.
+
+**NOTE: Background execution is optional.** MiniAgents, by default, starts processing triggered agents as soon as possible, and this is generally the desired behavior for maximum parallelism. You can, however, disable this behavior by passing `start_soon=False` to individual `trigger` calls, or by setting `start_everything_soon_by_default=False` in the `MiniAgents` constructor for a global effect. The latter is generally not recommended, though. Disabling "early start" globally can often lead to deadlocks if agent interdependencies are complex, and in the majority of scenarios, there is hardly any benefit in setting `start_soon` to `False`.
 
 ### The `research_agent`: Orchestrating the Search
 
@@ -780,3 +766,7 @@ This Web Research System demonstrates several powerful features of MiniAgents:
 -   **Enhanced Robustness:** Global error handling settings like `errors_as_messages` help create more resilient systems.
 
 By focusing on the logic of individual agents, MiniAgents lets you build sophisticated, concurrent AI systems without getting bogged down in the complexities of manual parallelism management. The system naturally parallelizes IO-bound tasks (like calls to LLMs or external APIs) without requiring explicit concurrency code from the developer, as AI agents are typically IO-bound.
+
+Join our [Discord community](https://discord.gg/ptSvVnbwKt) to get help with your projects. We welcome questions, feature suggestions, and contributions!
+
+[![Discord](https://img.shields.io/discord/1356683647926796398?logo=discord&color=darkviolet)](https://discord.gg/ptSvVnbwKt)
