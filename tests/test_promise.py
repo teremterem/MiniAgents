@@ -17,7 +17,7 @@ async def test_stream_replay_iterator(start_soon: bool) -> None:
     """
     streamer_iterations = 0
 
-    async def streamer(_streamed_promise: StreamedPromise) -> AsyncIterator[int]:
+    async def streamer(_: StreamedPromise) -> AsyncIterator[int]:
         nonlocal streamer_iterations
         for i in range(1, 6):
             streamer_iterations += 1

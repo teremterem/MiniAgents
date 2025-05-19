@@ -17,7 +17,7 @@ from miniagents.promising.ext.frozen import Frozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
-from miniagents.utils import dict_to_message, as_single_text_promise, display_agent_trace
+from miniagents.utils import as_single_text_promise, display_agent_trace
 
 
 class Token(Frozen):
@@ -40,7 +40,7 @@ class TextToken(Token):
         super().__init__(content=content, **metadata)
 
 
-class Message(Frozen):
+class Message(Token):
     @classmethod
     def token_class(cls) -> type[Token]:
         return Token
@@ -56,7 +56,7 @@ class Message(Frozen):
         raise TypeError(f"{cls.__name__} does not support token streaming.")
 
     def _message_to_tokens(self) -> tuple[Token, ...]:
-        return (self.token_class()(**dict(self)),)
+        return (self,)
 
     @cached_privately
     def message_to_tokens(self) -> tuple[Token, ...]:
@@ -210,7 +210,7 @@ class StrictMessage(Message):
     model_config = ConfigDict(extra="forbid")
 
 
-class TextMessage(Message):
+class TextMessage(Message, TextToken):
     content: Optional[str] = None
     content_template: Optional[str] = None
 
@@ -220,7 +220,7 @@ class TextMessage(Message):
 
     @classmethod
     def non_metadata_fields(cls) -> tuple[str, ...]:
-        return ("content", "content_template")
+        return "content", "content_template"
 
     @classmethod
     def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "TextMessage":
@@ -367,17 +367,14 @@ class MessageTokenAppender(StreamAppender[Token]):
         """
         return self._auxiliary_field_collector
 
-    def append(self, piece: Union[Token, str, dict[str, Any]]) -> "MessageTokenAppender":
+    def append(self, piece: Union[Token, str, dict[str, Any], BaseModel]) -> "MessageTokenAppender":
         if not isinstance(piece, Token) and isinstance(piece, BaseModel):
             piece = dict(piece)
         elif isinstance(piece, str):
             piece = TextToken(piece)
 
         if isinstance(piece, dict):
-            if any(isinstance(piece.get(field), str) for field in TextToken.non_metadata_fields()):
-                piece = TextToken(**piece)
-            else:
-                piece = Token(**piece)
+            piece = Token(**piece)
 
         return super().append(piece)
 
@@ -434,9 +431,9 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         elif isinstance(zero_or_more_items, Message):
             yield zero_or_more_items.as_promise
         elif isinstance(zero_or_more_items, BaseModel):
-            yield dict_to_message(dict(zero_or_more_items)).as_promise
+            yield Message(**dict(zero_or_more_items)).as_promise
         elif isinstance(zero_or_more_items, dict):
-            yield dict_to_message(zero_or_more_items).as_promise
+            yield Message(**zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, str):
             yield TextMessage(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
@@ -489,9 +486,9 @@ class MessageSequenceAppender:
             # these types are "frozen enough" as they are
             return zero_or_more_messages
         if isinstance(zero_or_more_messages, BaseModel):
-            return dict_to_message(dict(zero_or_more_messages))
+            return Message(**dict(zero_or_more_messages))
         if isinstance(zero_or_more_messages, dict):
-            return dict_to_message(zero_or_more_messages)
+            return Message(**zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__iter__"):
             return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__aiter__"):
@@ -620,7 +617,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
 
 
 class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
-    async def __anext__(self) -> str:
+    async def __anext__(self) -> Token:
         try:
             return await self.__wrapped__.__anext__()
         except StopAsyncIteration:

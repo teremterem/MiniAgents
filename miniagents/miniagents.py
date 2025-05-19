@@ -283,6 +283,13 @@ class MiniAgent(Frozen):
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
     ) -> None:
+        if not callable(func_or_class):
+            raise ValueError("A `@miniagent` decorated type must be a callable.")
+        if not inspect.iscoroutinefunction(func_or_class) and not (
+            hasattr(func_or_class, "__call__") and inspect.iscoroutinefunction(func_or_class.__call__)
+        ):
+            raise ValueError("A `@miniagent` decorated class or function must be async.")
+
         if alias is None:
             alias = func_or_class.__name__
             if normalize_func_or_class_name:

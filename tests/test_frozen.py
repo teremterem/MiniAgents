@@ -16,7 +16,7 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError
 
-from miniagents.promising.ext.frozen import Frozen
+from miniagents import Frozen
 from miniagents.promising.promising import PromisingContext
 
 
