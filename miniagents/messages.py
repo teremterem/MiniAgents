@@ -220,7 +220,7 @@ class TextMessage(Message, TextToken):
 
     @classmethod
     def non_metadata_fields(cls) -> tuple[str, ...]:
-        return ("content", "content_template")
+        return "content", "content_template"
 
     @classmethod
     def tokens_to_message(cls, tokens: Iterable[Token], **extra_fields) -> "TextMessage":
@@ -617,7 +617,7 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
 
 
 class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
-    async def __anext__(self) -> str:
+    async def __anext__(self) -> Token:
         try:
             return await self.__wrapped__.__anext__()
         except StopAsyncIteration:
