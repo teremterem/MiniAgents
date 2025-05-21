@@ -733,6 +733,10 @@ class AgentReplyMessageSequence(MessageSequence):
             # others will be persisted by the method call below (which will happen in a single batch for all those
             # remaining messages).
             # TODO Should we do something about this ?
+            # TODO Are we sure this feature in its current form is useful at all ? Maybe it is better to guarantee
+            #  message persistence (together with on_promise_resolved) directly upon the promise resolution (not
+            #  "leave" the respective "await" operator in an agent until on_persist_messages / on_promise_resolved
+            #  finishes) ?
             await MiniAgents.get_current().apersist_messages([await reply_promise for reply_promise in reply_promises])
 
         async def _acreate_agent_reply_node(_) -> AgentReplyNode:
