@@ -34,7 +34,6 @@ try:
 except PackageNotFoundError:
     __version__ = "0.0.0"  # fallback or default for dev environments
 
-
 _default_logger = logging.Logger("MiniAgents", level=logging.WARNING)
 _log_formatter = MiniAgentsLogFormatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 _log_handler = logging.StreamHandler()
@@ -95,6 +94,24 @@ class MiniAgents(PromisingContext):
                 f"but it is of type {type(current).__name__} instead."
             )
         return current
+
+    def run_agent(
+        self,
+        agent: "MiniAgent",
+        messages: Optional[MessageType] = None,
+        **kwargs,
+    ) -> tuple[Message, ...]:
+        """
+        This method is a shortcut for calling the `trigger` method of the agent with the given arguments and inside
+        the context of the current MiniAgents instance.
+
+        Returns a tuple of messages produced by the agent.
+        """
+
+        async def _amain() -> tuple[Message, ...]:
+            return await agent.trigger(messages, **kwargs)
+
+        return self.run(_amain())
 
     def on_persist_messages(self, handler: PersistMessagesEventHandler) -> PersistMessagesEventHandler:
         """
@@ -326,6 +343,7 @@ class MiniAgent(Frozen):
     def trigger(
         self,
         messages: Optional[MessageType] = None,
+        *,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         errors_as_messages: Union[bool, Sentinel] = NO_VALUE,
         **kwargs_to_freeze,
@@ -340,6 +358,7 @@ class MiniAgent(Frozen):
     # noinspection PyProtectedMember
     def initiate_call(
         self,
+        *,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         errors_as_messages: Union[bool, Sentinel] = NO_VALUE,
         **kwargs_to_freeze,
