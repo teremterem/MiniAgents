@@ -73,7 +73,7 @@ class Frozen(BaseModel):
         return key in iter(self)
 
     @cached_privately
-    def keys(self) -> tuple[str]:
+    def keys(self) -> tuple[str, ...]:
         return tuple(key for key, _ in self)
 
     @cached_privately
@@ -136,6 +136,7 @@ class Frozen(BaseModel):
         from miniagents.promising.promising import PromisingContext
 
         hash_key = hashlib.sha256(self.serialized.encode("utf-8")).hexdigest()
+        # TODO Make it failsafe: use longer hash keys by default if PromisingContext is not available ?
         if not PromisingContext.get_current().longer_hash_keys:
             hash_key = hash_key[:40]
         return hash_key

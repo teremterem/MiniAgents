@@ -495,6 +495,7 @@ class MessageSequenceAppender:
             # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
             # hence we return it as is
             if not isinstance(zero_or_more_messages, StreamedPromise):
+                # TODO make this warning disableable ? at what level ?
                 warnings.warn(
                     "An async iterator is being passed to a message sequence and will not be consumed immediately.",
                     # TODO explain in the message why this might be a problem ?

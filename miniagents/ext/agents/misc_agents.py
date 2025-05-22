@@ -104,7 +104,7 @@ async def file_output_agent(ctx: InteractionContext, file: str, **kwargs) -> Non
         encoding="utf-8",
     ) as file_stream:
         async for token in ctx.message_promises.as_single_text_promise(**kwargs):
-            file_stream.write(token)
+            file_stream.write(str(token))
 
 
 _user_prompt_style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
