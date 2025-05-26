@@ -377,6 +377,7 @@ class MiniAgent(Frozen):
         )
 
         agent_call = AgentCall(
+            agent=self,
             message_streamer=input_sequence.message_appender,
             reply_sequence_promise=reply_sequence.sequence_promise,
         )
@@ -561,9 +562,12 @@ class InteractionContext:
 class AgentCall:  # pylint: disable=protected-access
     def __init__(
         self,
+        agent: MiniAgent,
         message_streamer: MessageSequenceAppender,
         reply_sequence_promise: MessageSequencePromise,
     ) -> None:
+        self.agent = agent
+
         self._message_streamer = message_streamer
         self._reply_sequence_promise = reply_sequence_promise
 
