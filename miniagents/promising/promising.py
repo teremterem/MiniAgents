@@ -38,7 +38,7 @@ class PromisingContext:
 
     start_everything_soon_by_default: bool
     appenders_capture_errors_by_default: bool
-    longer_hash_keys: bool
+    longer_hash_keys: Union[bool, Sentinel]
     log_level_for_errors: int
     on_promise_resolved_handlers: list[PromiseResolvedEventHandler]
     parent: Optional["PromisingContext"]
@@ -53,7 +53,7 @@ class PromisingContext:
         *,
         start_everything_soon_by_default: bool = True,
         appenders_capture_errors_by_default: bool = False,
-        longer_hash_keys: bool = False,
+        longer_hash_keys: Union[bool, Sentinel] = NO_VALUE,
         logger: Optional[logging.Logger] = None,
         log_level_for_errors: int = logging.ERROR,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
