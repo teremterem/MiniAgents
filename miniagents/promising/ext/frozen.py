@@ -14,7 +14,10 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from miniagents.promising.errors import NoActiveContextError
 from miniagents.promising.sentinels import NO_VALUE
+
+LONGER_HASH_KEYS = False
 
 FROZEN_CLASS_FIELD = "class_"
 
@@ -136,8 +139,15 @@ class Frozen(BaseModel):
         from miniagents.promising.promising import PromisingContext
 
         hash_key = hashlib.sha256(self.serialized.encode("utf-8")).hexdigest()
-        # TODO Make it failsafe: use longer hash keys by default if PromisingContext is not available ?
-        if not PromisingContext.get_current().longer_hash_keys:
+
+        try:
+            longer_hash_keys = PromisingContext.get_current().longer_hash_keys
+            if longer_hash_keys is NO_VALUE:
+                longer_hash_keys = LONGER_HASH_KEYS
+        except NoActiveContextError:
+            longer_hash_keys = LONGER_HASH_KEYS
+
+        if not longer_hash_keys:
             hash_key = hash_key[:40]
         return hash_key
 
