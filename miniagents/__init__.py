@@ -28,7 +28,7 @@ from miniagents.miniagents import (
     MiniAgents,
     miniagent,
 )
-from miniagents.promising.ext.frozen import Frozen, FrozenType, cached_privately
+from miniagents.promising.ext.frozen import Frozen, FrozenType, StrictFrozen, cached_privately
 
 __all__ = [
     "__version__",
@@ -54,6 +54,7 @@ __all__ = [
     "MiniAgents",
     "PersistMessagesEventHandler",
     "SingleMessageType",
+    "StrictFrozen",
     "StrictMessage",
     "TextMessage",
     "TextToken",

@@ -9,11 +9,11 @@ from types import TracebackType
 from typing import Any, AsyncIterator, Iterable, Iterator, Optional, Union
 
 import wrapt
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError, PromisingContextError
-from miniagents.promising.ext.frozen import Frozen, cached_privately
+from miniagents.promising.ext.frozen import Frozen, StrictFrozen, cached_privately
 from miniagents.promising.promising import StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
@@ -206,8 +206,8 @@ class Message(Token):
         return include_into_serialization, sub_messages
 
 
-class StrictMessage(Message):
-    model_config = ConfigDict(extra="forbid")
+class StrictMessage(Message, StrictFrozen):
+    pass
 
 
 class TextMessage(Message, TextToken):

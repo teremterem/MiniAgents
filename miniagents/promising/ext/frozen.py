@@ -242,3 +242,7 @@ FrozenType = Optional[
         Frozen,
     ]
 ]
+
+
+class StrictFrozen(Frozen):
+    model_config = ConfigDict(extra="forbid")
