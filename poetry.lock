@@ -1924,13 +1924,13 @@ pydantic = ">=1.10"
 
 [[package]]
 name = "llama-cloud-services"
-version = "0.6.29"
+version = "0.6.30"
 description = "Tailored SDK clients for LlamaCloud services."
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "llama_cloud_services-0.6.29-py3-none-any.whl", hash = "sha256:a357da1ac0f6727d0636af37c5a928c92fbab9562c9c2a7381f69cb51677fa93"},
-    {file = "llama_cloud_services-0.6.29.tar.gz", hash = "sha256:8f44143434aacf5fff5346f67f7d5d57a926348b6c4c9885d326c4fda5290ac2"},
+    {file = "llama_cloud_services-0.6.30-py3-none-any.whl", hash = "sha256:4d5817a9841fc3ba3409865c52d082090f4ef827931f0e5e4a89f5818c0d4e36"},
+    {file = "llama_cloud_services-0.6.30.tar.gz", hash = "sha256:2cb5004d13127aac52888ae9b3d70f899d598633520b2a2542bb62682d08d776"},
 ]
 
 [package.dependencies]
@@ -2167,17 +2167,17 @@ llama-parse = ">=0.5.0"
 
 [[package]]
 name = "llama-parse"
-version = "0.6.28"
+version = "0.6.30"
 description = "Parse files into RAG-Optimized formats."
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "llama_parse-0.6.28-py3-none-any.whl", hash = "sha256:b87135c45f9d6a56573b491b39df7ab4c72d6a57df8e5c7bb361b12d42509086"},
-    {file = "llama_parse-0.6.28.tar.gz", hash = "sha256:6cee752dc93a5ead07c7da8c89839f2d3bcdab676603fde61fd12ac2d08227d6"},
+    {file = "llama_parse-0.6.30-py3-none-any.whl", hash = "sha256:f5969510cf01c2fda9832acb32086dac781729bee5768c21ad9b444420173948"},
+    {file = "llama_parse-0.6.30.tar.gz", hash = "sha256:2506802bc7f3974c75d91444387b0ee22c3a91828cd19da0dd9ea327c9f47a79"},
 ]
 
 [package.dependencies]
-llama-cloud-services = ">=0.6.28"
+llama-cloud-services = ">=0.6.30"
 
 [[package]]
 name = "markdown-it-py"
