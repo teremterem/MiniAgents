@@ -128,7 +128,6 @@ Three-layer promise architecture:
 ## Testing Guidelines
 
 - Framework uses pytest with asyncio support
-- Tests should use `pytest.mark.asyncio` for async tests
 - Coverage tracking is enabled
 - Test individual agents in isolation before integration
 
@@ -155,7 +154,7 @@ async def processor_agent(ctx: InteractionContext, config_param: str) -> None:
 ```python
 # Create agent with mutable state
 stateful_agent = base_agent.fork(
-    non_freezable_kwargs={"cache": {}, "counter": 0}
+    non_freezable_kwargs={"some_cache": {}, "some_mutable_list": []}
 )
 ```
 
@@ -187,7 +186,6 @@ python examples/web_research_tutorial/web_research.py
 
 ## Important Notes
 
-- The project recently migrated from poetry to uv for dependency management
 - LLM integrations require API keys (OpenAI, Anthropic)
 - Use `llm_logger_agent=True` for debugging LLM interactions
 - Framework handles concurrency automatically - avoid manual asyncio task management
