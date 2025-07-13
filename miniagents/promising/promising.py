@@ -162,8 +162,8 @@ class PromisingContext:
         """
         Activate the context. This is a context manager method that is used to activate the context for the duration
         of the `async with` block. Can be called as a regular method as well in cases where it is not possible to use
-        the `async with` block (e.g., if a PromisingContext needs to be activated for the duration of an async webserver
-        being up).
+        the `async with` block (e.g., if a PromisingContext needs to be activated for the duration of an async
+        webserver being up).
         """
         if self._previous_ctx_token:
             raise RuntimeError(f"{type(self).__name__} is not reentrant")
@@ -232,6 +232,16 @@ class PromisingContext:
 
 
 class Promise(Generic[T_co]):
+    """
+    TODO Elaborate the following:
+    - It is different from asyncio.Task, because tasks ALWAYS start soon.
+    - It is different from asyncio.Future, because it is more than just a container for a result
+      (closer to task than to future).
+    """
+
+    # TODO Make it extend asyncio.Future, but do it manually
+    # TODO Try to leverage from properties of asyncio.Task as much as possible
+
     def __init__(
         self,
         *,

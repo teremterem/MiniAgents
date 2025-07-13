@@ -17,6 +17,11 @@ from miniagents.ext.llms.llm_utils import UserMessage
 from miniagents.miniagents import InteractionContext, miniagent
 
 
+# TODO Try to import prompt-toolkit only when the agents are actually used
+#  and instruct the user how to install it if it's not available
+# TODO Should all the look and feel be FULLY customizable here ?
+
+
 @miniagent
 async def console_input_agent(
     ctx: InteractionContext,

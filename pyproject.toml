@@ -17,8 +17,8 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
-    "markdown-it-py",
-    "prompt-toolkit",
+    "markdown-it-py",  # TODO Should this be optional ?
+    "prompt-toolkit",  # TODO This definitely should be optional
     "pydantic>=2.0.0,<3.0.0",
     "wrapt",
 ]
