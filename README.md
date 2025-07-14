@@ -169,8 +169,8 @@ The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop be
 
 ⚠️ **ATTENTION!** Before running the example below: ⚠️
 - Run `pip install -U openai` and set your OpenAI API key in the `OPENAI_API_KEY` environment variable
-- Install `pip install -U markdown-it-py` for markdown history functionality
-- Install `pip install -U prompt-toolkit` for console interaction features
+- Run `pip install -U markdown-it-py` for markdown history functionality
+- Run `pip install -U prompt-toolkit` for console interaction features
 
 ```python
 from miniagents import MiniAgents
