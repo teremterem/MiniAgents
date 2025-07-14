@@ -597,7 +597,8 @@ class SafeMessagePromise(MessagePromise):
         super().__init__(
             start_soon=False,
             message_token_streamer=self._amessage_token_streamer,
-            message_class=Message,
+            message_class=original_message_promise.message_class,
+            **original_message_promise.known_beforehand.as_kwargs(),
         )
         self._original_message_promise = original_message_promise
 
