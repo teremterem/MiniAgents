@@ -9,15 +9,15 @@ async def some_agent(ctx: InteractionContext) -> None:
 
 async def main() -> None:
     call = some_agent.initiate_call()
-    reply_aiter = call.reply_sequence(finish_call=False).__aiter__()
+    reply_aiter = aiter(call.reply_sequence(finish_call=False))
 
     print("sending hello")
     call.send_message("hello")
-    print(await (await reply_aiter.__anext__()))
+    print(await (await anext(reply_aiter)))
 
     print("sending world")
     call.send_message("world")
-    print(await (await reply_aiter.__anext__()))
+    print(await (await anext(reply_aiter)))
 
 
 if __name__ == "__main__":

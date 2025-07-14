@@ -35,7 +35,7 @@ class PromiseStreamer(Protocol[PIECE_co]):
 class PromiseResolvedEventHandler(Protocol):
     """
     A protocol for Promise resolution event handlers. A promise resolution event handler is a function that is
-    scheduled to be called after Promise.aresolve() finishes resolving the promise. "Scheduled" means that the
+    scheduled to be called after `await promise` finishes resolving the promise. "Scheduled" means that the
     function is passed to the async event loop for execution without blocking the current coroutine.
     """
 

@@ -114,16 +114,16 @@ async def test_full_duplex_communication():
 
     async with MiniAgents():
         call = some_agent.initiate_call()
-        reply_aiter = call.reply_sequence(finish_call=False).__aiter__()
+        reply_aiter = aiter(call.reply_sequence(finish_call=False))
 
         # Test first exchange
         call.send_message("hello")
-        response1 = await (await reply_aiter.__anext__())
+        response1 = await (await anext(reply_aiter))
         assert str(response1) == "you said: hello"
 
         # Test second exchange
         call.send_message("world")
-        response2 = await (await reply_aiter.__anext__())
+        response2 = await (await anext(reply_aiter))
         assert str(response2) == "you said: world"
 
 

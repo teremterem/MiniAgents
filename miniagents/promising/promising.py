@@ -6,7 +6,7 @@ import asyncio
 import contextvars
 import inspect
 import logging
-from asyncio import Task
+from asyncio import AbstractEventLoop, Future, Task
 from contextvars import ContextVar
 from functools import partial
 from types import TracebackType
@@ -57,6 +57,7 @@ class PromisingContext:
         logger: Optional[logging.Logger] = None,
         log_level_for_errors: int = logging.ERROR,
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
+        # TODO Add an option to pass and remember an event loop, so Promises (Futures) can reuse it implicitly ?
     ) -> None:
         self.parent_ctx = self._current.get()
 
@@ -144,6 +145,7 @@ class PromisingContext:
             try:
                 return await awaitable
             except Exception as e:
+                # TODO Will this "log once" trick still be relevant after we switch to Future-based Promise ?
                 self._log_background_error_once(e)
 
                 if not suppress_errors:
@@ -162,8 +164,8 @@ class PromisingContext:
         """
         Activate the context. This is a context manager method that is used to activate the context for the duration
         of the `async with` block. Can be called as a regular method as well in cases where it is not possible to use
-        the `async with` block (e.g., if a PromisingContext needs to be activated for the duration of an async webserver
-        being up).
+        the `async with` block (e.g., if a PromisingContext needs to be activated for the duration of an async
+        webserver being up).
         """
         if self._previous_ctx_token:
             raise RuntimeError(f"{type(self).__name__} is not reentrant")
@@ -231,16 +233,32 @@ class PromisingContext:
         self.logger.log(log_level, "AN ERROR OCCURRED IN AN ASYNC BACKGROUND TASK", exc_info=error)
 
 
-class Promise(Generic[T_co]):
+class Promise(Future, Generic[T_co]):
+    """
+    TODO Elaborate the following:
+    - It is different from asyncio.Task, because tasks ALWAYS start soon.
+    - It is different from asyncio.Future, because it is more than just a container for a result
+      (closer to task than to future).
+    """
+
+    # TODO Make it extend asyncio.Future, but do it manually
+    # TODO Try to leverage from properties of asyncio.Task as much as possible
+
     def __init__(
         self,
         *,
+        loop: Optional[AbstractEventLoop] = None,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
+        prefill_exception: Optional[BaseException] = None,
     ) -> None:
-        if resolver is not None and prefill_result is not NO_VALUE:
-            raise ValueError("Cannot provide both 'resolver' and 'prefill_result' parameters")
+        if resolver is not None and (prefill_result is not NO_VALUE or prefill_exception is not None):
+            raise ValueError("Cannot provide both 'resolver' and 'prefill_result' or 'prefill_exception' parameters")
+        if prefill_result is not NO_VALUE and prefill_exception is not None:
+            raise ValueError("Cannot provide both 'prefill_result' and 'prefill_exception' parameters")
+
+        super().__init__(loop=loop)
 
         self._promising_context = PromisingContext.get_current()
 
@@ -253,15 +271,16 @@ class Promise(Generic[T_co]):
 
         if prefill_result is NO_VALUE:
             # NO_VALUE is used because `None` is also a legitimate value
-            self._result: Union[T_co, Sentinel, BaseException] = NO_VALUE
+            if start_soon:
+                self._task = self._promising_context.start_soon(self._aresolve())
+            else:
+                self._task = None
         else:
-            self._result = prefill_result
+            if prefill_exception is None:
+                self.set_result(prefill_result)
+            else:
+                self.set_exception(prefill_exception)
             self._trigger_promise_resolved_event()
-
-        self._resolver_lock = asyncio.Lock()
-
-        if start_soon and prefill_result is NO_VALUE:
-            self._promising_context.start_soon(self)
 
     async def _aresolver(self) -> T_co:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -269,34 +288,30 @@ class Promise(Generic[T_co]):
             "or by subclassing the `Promise` class."
         )
 
-    async def aresolve(self) -> T_co:
-        # TODO put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
-        #  `aresolve()` from within the `resolver` function
-        if self._result is NO_VALUE:
-            async with self._resolver_lock:
-                if self._result is NO_VALUE:
-                    try:
-                        self._result = await self._aresolver()
-                    except BaseException as exc:  # pylint: disable=broad-except
-                        self._promising_context.logger.debug(
-                            "An error occurred while resolving a Promise", exc_info=True
-                        )
-                        self._result = exc
+    async def _aresolve(self) -> None:
+        try:
+            self.set_result(await self._aresolver())
+        except BaseException as exc:  # pylint: disable=broad-except
+            self._promising_context.logger.debug("An error occurred while resolving a Promise", exc_info=True)
+            self.set_exception(exc)
 
-                    self._trigger_promise_resolved_event()
-
-        if isinstance(self._result, BaseException):
-            raise self._result
-        return self._result
+        self._trigger_promise_resolved_event()
 
     def __await__(self):
-        return self.aresolve().__await__()
+        # TODO put a deadlock prevention mechanism in place, i. e. find a way to disallow calling
+        #  `await` on the very same promise from within the `resolver` function
+
+        if not self.done() and not self._task:
+            self._task = self._promising_context.start_soon(self._aresolve())
+
+        return super().__await__()
 
     def _trigger_promise_resolved_event(self):
+        # TODO Dismiss this event altogether when on_persist_message happens upon message creation
         promising_context = PromisingContext.get_current()
         while promising_context:
             for handler in promising_context.on_promise_resolved_handlers:
-                promising_context.start_soon(handler(self, self._result))
+                promising_context.start_soon(handler(self, self.result()))
             promising_context = promising_context.parent_ctx
 
 
@@ -326,7 +341,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
 
     The StreamedPromise supports three main operations:
     1. Streaming pieces through asynchronous iteration (using __aiter__)
-    2. Resolving the final complete value (using aresolve() or await)
+    2. Resolving the final complete value with `await streamed_promise`
     3. Chaining with other StreamedPromises (using __call__)  # TODO elaborate what this means
     """
 
@@ -385,14 +400,14 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         This allows to consume the stream piece by piece. Each new iterator returned by `__aiter__` will replay
         the stream from the beginning.
         """
-        return _StreamReplayIterator(self)
+        return _StreamReplayIterator[PIECE_co](self)
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
         """
         This enables the `StreamedPromise` to be used as a piece streamer for another `StreamedPromise`, effectively
         chaining them together.
         """
-        return self.__aiter__()
+        return aiter(self)
 
     async def _aconsume_the_stream(self) -> None:
         while True:
@@ -407,8 +422,12 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             try:
                 self._astreamer_aiter = self._astreamer()
                 # noinspection PyUnresolvedReferences
-                if not callable(self._astreamer_aiter.__anext__):
-                    raise TypeError("The streamer must return an async iterator")
+                if (
+                    not self._astreamer_aiter
+                    or not getattr(self._astreamer_aiter, "__anext__", None)
+                    or not callable(self._astreamer_aiter.__anext__)
+                ):
+                    raise TypeError(f"The streamer must return an async iterator, but got {self._astreamer_aiter}")
             except BaseException as exc:
                 self._promising_context.logger.debug(
                     "An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True
@@ -421,7 +440,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             return StopAsyncIteration()
 
         try:
-            return await self._astreamer_aiter.__anext__()
+            return await anext(self._astreamer_aiter)
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 self._promising_context.logger.debug(
@@ -650,4 +669,4 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         return self
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
-        return self.__aiter__()
+        return aiter(self)

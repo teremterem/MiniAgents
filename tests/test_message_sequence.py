@@ -16,6 +16,7 @@ from miniagents import (
     TextToken,
     Token,
 )
+from miniagents.messages import ErrorToken
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
@@ -173,7 +174,7 @@ async def test_message_sequence_token_error_to_message(
                 TextMessage("msg1"),
                 TextToken("token1"),
                 TextToken("token2"),
-                TextToken("\nValueError: error1"),
+                ErrorToken("\nValueError: error1"),
             ]
             assert issubclass(
                 [promise async for promise in msg_seq.sequence_promise][-1].message_class,
