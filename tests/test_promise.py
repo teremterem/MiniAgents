@@ -133,8 +133,8 @@ async def test_broken_streamer(broken_streamer, start_soon: bool) -> None:
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 async def test_broken_stream_resolver(broken_resolver, start_soon: bool) -> None:
     """
-    Assert that if `resolver` is broken, `StreamedPromise` still yields the stream and only fails upon `aresolve()`
-    (or bare `await`, for that matter).
+    Assert that if `resolver` is broken, `StreamedPromise` still yields the stream and only fails upon
+    `await streamed_promise`.
     """
     expected_resolver_call_count = 0  # we are not counting resolver calls for completely broken resolvers (too hard)
     actual_resolver_call_count = 0
@@ -177,7 +177,7 @@ async def test_streamed_promise_aresolve(start_soon: bool) -> None:
     """
     Assert that:
     - when a `StreamedPromise` is "resolved" multiple times, the `resolver` is only called once;
-    - the exact same instance of the result object is returned from `aresolve()` when it is called again.
+    - the exact same instance of the result object is returned from `await streamed_promise` when it is called again.
     """
     resolver_calls = 0
 

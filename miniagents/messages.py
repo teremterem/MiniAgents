@@ -333,7 +333,7 @@ class MessagePromise(StreamedPromise[Token, Message]):
         streaming the constructor of the class always overrides this method with an externally supplied streamer.
         """
         # The code below is executed when the message is prefilled but the client still requests to stream
-        for token in self._result.message_to_tokens():
+        for token in self.result().message_to_tokens():
             yield token
 
     async def _aresolver(self) -> Message:
@@ -593,12 +593,12 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
 
 
 class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
-    async def aresolve(self) -> Message:
+    async def _afulfil_promise(self) -> Message:
         tokens = []
         try:
             async for token in self.__wrapped__:
                 tokens.append(token)
-            return await self.__wrapped__.aresolve()
+            return await self.__wrapped__._afulfil_promise()  # pylint: disable=protected-access
         except Exception as exc:  # pylint: disable=broad-except
             from miniagents.miniagents import MiniAgents
 
@@ -616,7 +616,8 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             return ErrorMessage(f"{''.join([str(token) for token in tokens])}\n{error_msg}")
 
     def __await__(self):
-        return self.aresolve().__await__()
+        # TODO TODO TODO This is broken
+        return type(self.__wrapped__).__await__(self)
 
     def __aiter__(self):
         return _SafeMessageTokenIteratorProxy(self.__wrapped__.__aiter__())
