@@ -167,7 +167,7 @@ You can read agent responses token-by-token as shown above regardless of whether
 
 The `dialog_loop` agent is a pre-packaged agent that implements a dialog loop between a user agent and an assistant agent. Here is how you can use it to set up an interaction between a user and your agent (can be bare LLM agent, like `OpenAIAgent` or `AnthropicAgent`, can also be a custom agent that you define yourself - a more complex agent that uses LLM agents under the hood but also introduces more complex behavior, i.e. Retrieval Augmented Generation etc.):
 
-⚠️ **ATTENTION!** Make sure to run `pip install -U openai` and set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the example below. ⚠️
+⚠️ **ATTENTION!** Make sure to run `pip install -U openai` and set your OpenAI API key in the `OPENAI_API_KEY` environment variable before running the example below. Also install `pip install -U markdown-it-py` for markdown history functionality and `pip install -U prompt-toolkit` for console interaction features. ⚠️
 
 ```python
 from miniagents import MiniAgents
@@ -291,16 +291,16 @@ For this reason, the presence of `AWAIT` sentinel in the agent chain in the exam
   - `OpenAIAgent`: Connects to OpenAI models like GPT-4o, GPT-4o-mini, etc. Supports all OpenAI API parameters and handles token streaming seamlessly.
   - `AnthropicAgent`: Similar to OpenAIAgent but for Anthropic's Claude models.
 - `miniagents.ext`
-  - `console_input_agent`: Prompts the user for input via the console with support for multi-line input.
+  - `console_input_agent`: Prompts the user for input via the console with support for multi-line input. (⚠️ Requires `pip install -U prompt-toolkit`)
   - `console_output_agent`: Echoes messages to the console token by token, which is useful when the response is streamed from an LLM (if response messages are delivered all at once instead, this agent will also just print them all at once).
   - `file_output_agent`: Writes messages to a specified file, useful for saving responses from other agents.
-  - `user_agent`: A user agent that echoes messages from the agent that called it, then reads the user input and returns the user input as its response. This agent is an aggregation of the `console_output_agent` and `console_input_agent` (these two agents can be substituted with other agents of similar functionality, however).
+  - `user_agent`: A user agent that echoes messages from the agent that called it, then reads the user input and returns the user input as its response. This agent is an aggregation of the `console_output_agent` and `console_input_agent` (these two agents can be substituted with other agents of similar functionality, however). (⚠️ Requires `pip install -U prompt-toolkit`)
   - `agent_loop`: Creates an infinite loop of interactions between the specified agents. It's designed for ongoing conversations or continuous processing, particularly useful for chat interfaces where agents need to take turns indefinitely (or unless stopped with `KeyboardInterrupt`).
   - `dialog_loop`: A special case of `agent_loop` designed for conversation between a user and an assistant, with optional chat history tracking.
   - `agent_chain`: Executes a sequence of agents in order, where each agent processes the output of the previous agent. This creates a pipeline of processing steps, with messages flowing from one agent to the next in a specified sequence.
   - `in_memory_history_agent`: Keeps track of conversation history in memory, enabling context-aware interactions without external storage.
-  - `MarkdownHistoryAgent`: Keeps track of conversation history in a markdown file, allowing to resume a conversation from the same point even if the app is restarted.
-  - `markdown_llm_logger_agent`: Logs LLM interactions (prompts and responses) in markdown format, useful for debugging and auditing purposes (look for `llm_logger_agent=True` of the `MiniAgents()` context manager in one of the code examples above).
+  - `MarkdownHistoryAgent`: Keeps track of conversation history in a markdown file, allowing to resume a conversation from the same point even if the app is restarted. (⚠️ Requires `pip install -U markdown-it-py`)
+  - `markdown_llm_logger_agent`: Logs LLM interactions (prompts and responses) in markdown format, useful for debugging and auditing purposes (look for `llm_logger_agent=True` of the `MiniAgents()` context manager in one of the code examples above). (⚠️ Requires `pip install -U markdown-it-py`)
 
 ***Feel free to explore the source code in the `miniagents.ext` package to see how various agents are implemented and get inspiration for building your own!***
 

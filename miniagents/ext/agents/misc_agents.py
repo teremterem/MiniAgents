@@ -6,19 +6,11 @@ track of the chat history using the provided ChatHistory object.
 from pathlib import Path
 from typing import Union
 
-from prompt_toolkit import HTML, PromptSession
-from prompt_toolkit.document import Document
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.keys import Keys
-from prompt_toolkit.lexers import Lexer
-from prompt_toolkit.styles import Style
-
 from miniagents.ext.llms.llm_utils import UserMessage
 from miniagents.miniagents import InteractionContext, miniagent
+from miniagents.utils import Singleton
 
 
-# TODO Try to import prompt-toolkit only when the agents are actually used
-#  and instruct the user how to install it if it's not available
 # TODO Should all the look and feel be FULLY customizable here ?
 
 
@@ -44,12 +36,13 @@ async def console_input_agent(
             "\033[0m"
         )
 
-    user_input = await _prompt_session.prompt_async(
-        HTML("<user_utterance>USER: </user_utterance>"),
+    prompt_toolkit_singleton = PromptToolkitSingleton()
+    user_input = await prompt_toolkit_singleton.prompt_session.prompt_async(
+        prompt_toolkit_singleton.html("<user_utterance>USER: </user_utterance>"),
         multiline=True,
-        key_bindings=_prompt_bindings,
-        lexer=_CustomPromptLexer(),
-        style=_user_prompt_style,
+        key_bindings=prompt_toolkit_singleton.prompt_bindings,
+        lexer=prompt_toolkit_singleton.custom_prompt_lexer(),
+        style=prompt_toolkit_singleton.user_prompt_style,
     )
     # skip an extra line after the user input
     print()
@@ -112,30 +105,47 @@ async def file_output_agent(ctx: InteractionContext, file: str, **kwargs) -> Non
             file_stream.write(str(token))
 
 
-_user_prompt_style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
-
-_prompt_session = PromptSession()
-
-_prompt_bindings = KeyBindings()
-
-
-@_prompt_bindings.add(Keys.Enter)
-def _prompt_binding_enter(event):
-    event.current_buffer.validate_and_handle()
-
-
-@_prompt_bindings.add(Keys.ControlSpace)
-def _prompt_binding_control_space(event):
-    event.current_buffer.insert_text("\n")
-
-
-class _CustomPromptLexer(Lexer):
+class PromptToolkitSingleton(Singleton):
     """
-    Custom lexer that paints user utterances in yellow (and bold).
+    Singleton class that holds all prompt-toolkit related components.
     """
 
-    def lex_document(self, document: Document):
-        """
-        Lex the document.
-        """
-        return lambda i: [("class:user_utterance", document.text.split("\n")[i])]
+    def __init__(self):
+        try:
+            # pylint: disable=import-outside-toplevel
+            from prompt_toolkit import HTML, PromptSession
+            from prompt_toolkit.document import Document
+            from prompt_toolkit.key_binding import KeyBindings
+            from prompt_toolkit.keys import Keys
+            from prompt_toolkit.lexers import Lexer
+            from prompt_toolkit.styles import Style
+        except ModuleNotFoundError as exc:
+            raise ImportError(
+                "The 'prompt-toolkit' package is required for the console agents of MiniAgents. "
+                "Please install it via 'pip install -U prompt-toolkit'."
+            ) from exc
+
+        # Initialize all the components that were previously global variables
+        self.user_prompt_style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
+        self.prompt_session = PromptSession()
+        self.prompt_bindings = KeyBindings()
+
+        # Set up key bindings
+        @self.prompt_bindings.add(Keys.Enter)
+        def prompt_binding_enter(event):
+            event.current_buffer.validate_and_handle()
+
+        @self.prompt_bindings.add(Keys.ControlSpace)
+        def prompt_binding_control_space(event):
+            event.current_buffer.insert_text("\n")
+
+        # Create the custom lexer class
+        class CustomPromptLexer(Lexer):
+            """Custom lexer that paints user utterances in yellow (and bold)."""
+
+            def lex_document(self, document: Document):
+                """Lex the document."""
+                return lambda i: [("class:user_utterance", document.text.split("\n")[i])]
+
+        self.custom_prompt_lexer = CustomPromptLexer
+        self.html = HTML

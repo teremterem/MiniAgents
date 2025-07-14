@@ -1820,8 +1820,6 @@ name = "miniagents"
 version = "0.1.0a1"
 source = { editable = "." }
 dependencies = [
-    { name = "markdown-it-py" },
-    { name = "prompt-toolkit" },
     { name = "pydantic" },
 ]
 
@@ -1834,10 +1832,12 @@ dev = [
     { name = "ipython", version = "9.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "jupyterlab" },
     { name = "llama-index" },
+    { name = "markdown-it-py" },
     { name = "markdownify" },
     { name = "notebook" },
     { name = "openai" },
     { name = "pre-commit" },
+    { name = "prompt-toolkit" },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1854,12 +1854,12 @@ requires-dist = [
     { name = "ipython", marker = "extra == 'dev'" },
     { name = "jupyterlab", marker = "extra == 'dev'" },
     { name = "llama-index", marker = "extra == 'dev'" },
-    { name = "markdown-it-py" },
+    { name = "markdown-it-py", marker = "extra == 'dev'" },
     { name = "markdownify", marker = "extra == 'dev'" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "openai", marker = "extra == 'dev'" },
     { name = "pre-commit", marker = "extra == 'dev'" },
-    { name = "prompt-toolkit" },
+    { name = "prompt-toolkit", marker = "extra == 'dev'" },
     { name = "pydantic", specifier = ">=2.0.0,<3.0.0" },
     { name = "pylint", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
