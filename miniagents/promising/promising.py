@@ -400,7 +400,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         This allows to consume the stream piece by piece. Each new iterator returned by `__aiter__` will replay
         the stream from the beginning.
         """
-        return _StreamReplayIterator(self)
+        return _StreamReplayIterator[PIECE_co](self)
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
         """

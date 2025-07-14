@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError, PromisingContextError
 from miniagents.promising.ext.frozen import Frozen, StrictFrozen, cached_privately
-from miniagents.promising.promising import StreamAppender, StreamedPromise
+from miniagents.promising.promising import _StreamReplayIterator, StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import as_single_text_promise, display_agent_trace
@@ -438,12 +438,12 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             yield TextMessage(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
             raise zero_or_more_items
-        elif hasattr(zero_or_more_items, "__iter__"):
-            for item in zero_or_more_items:
-                async for message_promise in self._flattener(item):
-                    yield message_promise
         elif hasattr(zero_or_more_items, "__aiter__"):
             async for item in zero_or_more_items:
+                async for message_promise in self._flattener(item):
+                    yield message_promise
+        elif hasattr(zero_or_more_items, "__iter__"):
+            for item in zero_or_more_items:
                 async for message_promise in self._flattener(item):
                     yield message_promise
         else:
@@ -489,8 +489,6 @@ class MessageSequenceAppender:
             return Message(**dict(zero_or_more_messages))
         if isinstance(zero_or_more_messages, dict):
             return Message(**zero_or_more_messages)
-        if hasattr(zero_or_more_messages, "__iter__"):
-            return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__aiter__"):
             # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
             # hence we return it as is
@@ -508,6 +506,8 @@ class MessageSequenceAppender:
                     stacklevel=3,
                 )
             return zero_or_more_messages
+        if hasattr(zero_or_more_messages, "__iter__"):
+            return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
 
@@ -562,16 +562,16 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
 
 class SafeMessageSequencePromise(MessageSequencePromise):
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
-        return _SafeMessagePromiseIteratorProxy(super().__aiter__())
+        return _SafeMessagePromiseIterator(self)
 
 
 # pylint: disable=abstract-method,import-outside-toplevel
 
 
-class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
+class _SafeMessagePromiseIterator(_StreamReplayIterator[MessagePromise]):
     async def __anext__(self) -> MessagePromise:
         try:
-            message_promise = await self.__wrapped__.__anext__()
+            message_promise = await super().__anext__()
             return _SafeMessagePromiseProxy(message_promise)
         except StopAsyncIteration:
             raise
@@ -616,8 +616,10 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
             return ErrorMessage(f"{''.join([str(token) for token in tokens])}\n{error_msg}")
 
     def __await__(self):
-        # TODO TODO TODO This is broken
-        return type(self.__wrapped__).__await__(self)
+        return self.__wrapped__.__await__()
+
+    def __iter__(self):
+        return self.__wrapped__.__iter__()
 
     def __aiter__(self):
         return _SafeMessageTokenIteratorProxy(self.__wrapped__.__aiter__())

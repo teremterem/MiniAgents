@@ -20,7 +20,7 @@ dependencies = [
     "markdown-it-py",  # TODO Should this be optional ?
     "prompt-toolkit",  # TODO This definitely should be optional
     "pydantic>=2.0.0,<3.0.0",
-    "wrapt",
+    "wrapt",  # TODO Stop using it ?
 ]
 
 [project.optional-dependencies]
