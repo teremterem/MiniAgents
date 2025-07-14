@@ -272,7 +272,7 @@ class Promise(Future, Generic[T_co]):
         if prefill_result is NO_VALUE:
             # NO_VALUE is used because `None` is also a legitimate value
             if start_soon:
-                self._task = self._promising_context.start_soon(self._afulfil_promise())
+                self._task = self._promising_context.start_soon(self._aresolve())
             else:
                 self._task = None
         else:
@@ -288,7 +288,7 @@ class Promise(Future, Generic[T_co]):
             "or by subclassing the `Promise` class."
         )
 
-    async def _afulfil_promise(self) -> None:
+    async def _aresolve(self) -> None:
         try:
             self.set_result(await self._aresolver())
         except BaseException as exc:  # pylint: disable=broad-except
@@ -302,7 +302,7 @@ class Promise(Future, Generic[T_co]):
         #  `await` on the very same promise from within the `resolver` function
 
         if not self.done() and not self._task:
-            self._task = self._promising_context.start_soon(self._afulfil_promise())
+            self._task = self._promising_context.start_soon(self._aresolve())
 
         return super().__await__()
 
@@ -407,7 +407,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         This enables the `StreamedPromise` to be used as a piece streamer for another `StreamedPromise`, effectively
         chaining them together.
         """
-        return self.__aiter__()
+        return aiter(self)
 
     async def _aconsume_the_stream(self) -> None:
         while True:
@@ -422,8 +422,12 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             try:
                 self._astreamer_aiter = self._astreamer()
                 # noinspection PyUnresolvedReferences
-                if not callable(self._astreamer_aiter.__anext__):
-                    raise TypeError("The streamer must return an async iterator")
+                if (
+                    not self._astreamer_aiter
+                    or not getattr(self._astreamer_aiter, "__anext__", None)
+                    or not callable(self._astreamer_aiter.__anext__)
+                ):
+                    raise TypeError(f"The streamer must return an async iterator, but got {self._astreamer_aiter}")
             except BaseException as exc:
                 self._promising_context.logger.debug(
                     "An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True
@@ -436,7 +440,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             return StopAsyncIteration()
 
         try:
-            return await self._astreamer_aiter.__anext__()
+            return await anext(self._astreamer_aiter)
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 self._promising_context.logger.debug(
@@ -665,4 +669,4 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         return self
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
-        return self.__aiter__()
+        return aiter(self)

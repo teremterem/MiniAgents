@@ -1,10 +1,13 @@
 from miniagents.messages import (
     ErrorMessage,
+    ErrorToken,
     Message,
     MessagePromise,
     MessageSequence,
     MessageSequencePromise,
     MessageTokenAppender,
+    SafeMessagePromise,
+    SafeMessageSequencePromise,
     StrictMessage,
     TextMessage,
     TextToken,
@@ -39,6 +42,7 @@ __all__ = [
     "AgentReplyNode",
     "cached_privately",
     "ErrorMessage",
+    "ErrorToken",
     "Frozen",
     "FrozenType",
     "InteractionContext",
@@ -56,6 +60,8 @@ __all__ = [
     "SingleMessageType",
     "StrictFrozen",
     "StrictMessage",
+    "SafeMessagePromise",  # TODO Does it really need to be exported ?
+    "SafeMessageSequencePromise",  # TODO Does it really need to be exported ?
     "TextMessage",
     "TextToken",
     "Token",

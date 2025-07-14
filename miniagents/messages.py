@@ -8,7 +8,6 @@ import warnings
 from types import TracebackType
 from typing import Any, AsyncIterator, Iterable, Iterator, Optional, Union
 
-import wrapt
 from pydantic import BaseModel
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
@@ -266,6 +265,9 @@ class TextMessage(Message, TextToken):
         if self.content_template is not None:
             return self.content_template.format(**dict(self))
         return self.content or ""
+
+
+class ErrorToken(TextToken): ...
 
 
 class ErrorMessage(TextMessage): ...
@@ -565,17 +567,15 @@ class SafeMessageSequencePromise(MessageSequencePromise):
         return _SafeMessagePromiseIterator(self)
 
 
-# pylint: disable=abstract-method,import-outside-toplevel
-
-
 class _SafeMessagePromiseIterator(_StreamReplayIterator[MessagePromise]):
     async def __anext__(self) -> MessagePromise:
+        # pylint: disable=broad-except,import-outside-toplevel
         try:
             message_promise = await super().__anext__()
-            return _SafeMessagePromiseProxy(message_promise)
+            return SafeMessagePromise(message_promise)
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
@@ -592,14 +592,27 @@ class _SafeMessagePromiseIterator(_StreamReplayIterator[MessagePromise]):
             return ErrorMessage.promise(error_msg)
 
 
-class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
-    async def _afulfil_promise(self) -> Message:
+class SafeMessagePromise(MessagePromise):
+    def __init__(self, original_message_promise: MessagePromise) -> None:
+        super().__init__(
+            start_soon=False,
+            message_token_streamer=self._amessage_token_streamer,
+            message_class=Message,
+        )
+        self._original_message_promise = original_message_promise
+
+    async def _amessage_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[Token]:
+        async for token in self._original_message_promise:
+            yield token
+
+    async def _aresolver(self) -> Message:
+        # pylint: disable=broad-except,import-outside-toplevel
         tokens = []
         try:
-            async for token in self.__wrapped__:
+            async for token in self._original_message_promise:
                 tokens.append(token)
-            return await self.__wrapped__._afulfil_promise()  # pylint: disable=protected-access
-        except Exception as exc:  # pylint: disable=broad-except
+            return await self._original_message_promise
+        except Exception as exc:
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
@@ -615,23 +628,18 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
 
             return ErrorMessage(f"{''.join([str(token) for token in tokens])}\n{error_msg}")
 
-    def __await__(self):
-        return self.__wrapped__.__await__()
-
-    def __iter__(self):
-        return self.__wrapped__.__iter__()
-
     def __aiter__(self):
-        return _SafeMessageTokenIteratorProxy(self.__wrapped__.__aiter__())
+        return _SafeMessageTokenIterator(self._original_message_promise)
 
 
-class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
+class _SafeMessageTokenIterator(_StreamReplayIterator[Token]):
     async def __anext__(self) -> Token:
+        # pylint: disable=broad-except,import-outside-toplevel
         try:
-            return await self.__wrapped__.__anext__()
+            return await super().__anext__()
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
@@ -645,4 +653,4 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return TextToken(f"\n{error_msg}")
+            return ErrorToken(f"\n{error_msg}")

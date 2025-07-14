@@ -58,16 +58,16 @@ async def test_stream_replay_iterator_exception(start_soon: bool) -> None:
             return [piece async for piece in _streamed_promise]
 
         async def iterate_over_promise():
-            promise_iterator = streamed_promise.__aiter__()
+            promise_iterator = aiter(streamed_promise)
 
-            assert await promise_iterator.__anext__() == 1
-            assert await promise_iterator.__anext__() == 2
+            assert await anext(promise_iterator) == 1
+            assert await anext(promise_iterator) == 2
             with pytest.raises(ValueError):
-                await promise_iterator.__anext__()
+                await anext(promise_iterator)
             with pytest.raises(StopAsyncIteration):
-                await promise_iterator.__anext__()
+                await anext(promise_iterator)
             with pytest.raises(StopAsyncIteration):
-                await promise_iterator.__anext__()
+                await anext(promise_iterator)
 
         streamed_promise = StreamedPromise(
             streamer=appender,
@@ -102,14 +102,14 @@ async def test_broken_streamer(broken_streamer, start_soon: bool) -> None:
         return [piece async for piece in _streamed_promise]
 
     async def iterate_over_promise():
-        promise_iterator = streamed_promise.__aiter__()
+        promise_iterator = aiter(streamed_promise)
 
         with pytest.raises((TypeError, AttributeError)):
-            await promise_iterator.__anext__()
+            await anext(promise_iterator)
         with pytest.raises(StopAsyncIteration):
-            await promise_iterator.__anext__()
+            await anext(promise_iterator)
         with pytest.raises(StopAsyncIteration):
-            await promise_iterator.__anext__()
+            await anext(promise_iterator)
 
     async with PromisingContext():
         streamed_promise = StreamedPromise(
