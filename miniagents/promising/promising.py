@@ -282,6 +282,8 @@ class Promise(Future, Generic[T_co]):
                 self.set_exception(prefill_exception)
             self._trigger_promise_resolved_event()
 
+    # TODO def cancel(self, msg: Optional[str] = None) -> bool: ...
+
     async def _aresolver(self) -> T_co:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
             "The `resolver` function should be provided either via the constructor "
