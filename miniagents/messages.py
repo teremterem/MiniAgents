@@ -283,9 +283,11 @@ class MessagePromise(StreamedPromise[Token, Message]):
 
     def __init__(
         self,
+        *,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
+        prefill_exception: Optional[BaseException] = None,
         message_class: Optional[type[Message]] = None,
         **known_beforehand,
     ) -> None:
@@ -294,6 +296,8 @@ class MessagePromise(StreamedPromise[Token, Message]):
             raise ValueError(
                 "Cannot provide both 'prefill_message' and 'message_token_streamer'/'known_beforehand' parameters"
             )
+        if prefill_exception is not None and prefill_message is not None:
+            raise ValueError("Cannot provide both 'prefill_exception' and 'prefill_message' parameters")
         if prefill_message is None and message_token_streamer is None:
             raise ValueError("Either 'prefill_message' or 'message_token_streamer' parameter must be provided")
 
@@ -302,7 +306,11 @@ class MessagePromise(StreamedPromise[Token, Message]):
             self.message_class = type(prefill_message)
 
             self._auxiliary_field_collector = None
-            super().__init__(prefill_result=prefill_message, start_soon=False)
+            super().__init__(
+                prefill_result=prefill_message,
+                prefill_exception=prefill_exception,
+                start_soon=False,
+            )
         else:
             if message_class is None:
                 raise ValueError("'message_class' parameter must be provided if 'prefill_message' is not provided")

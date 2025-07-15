@@ -266,7 +266,7 @@ class Promise(Future, Generic[T_co]):
         if resolver:
             self._aresolver = partial(resolver, self)
 
-        if prefill_result is NO_VALUE:
+        if prefill_result is NO_VALUE and prefill_exception is None:
             # NO_VALUE is used because `None` is also a legitimate value
             if start_soon:
                 self._task = self._promising_context.start_soon(self._aresolve())
@@ -333,6 +333,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         resolver: A callable that takes an async iterable of pieces and returns the whole value
                  ("packages" the pieces).
         prefill_result: Optional pre-computed result for the promise. Cannot be used with resolver.
+        prefill_exception: Optional pre-computed exception for the promise. Cannot be used with resolver.
         start_soon: If True, the promise will start producing pieces immediately when created, regardless of
                    when consumers start iterating over the promise. If False, pieces will be produced on demand
                    only when the first consumer starts iterating. Defaults to the parent context's
@@ -354,18 +355,22 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         prefill_pieces: Union[Optional[Iterable[PIECE_co]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
+        prefill_exception: Optional[BaseException] = None,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
     ) -> None:
         if streamer is not None and prefill_pieces is not NO_VALUE:
             raise ValueError("Cannot provide both 'streamer' and 'prefill_pieces' parameters")
+        if prefill_exception is not None and prefill_result is not NO_VALUE:
+            raise ValueError("Cannot provide both 'prefill_exception' and 'prefill_result' parameters")
 
         super().__init__(
             start_soon=start_soon,
             resolver=resolver,
             prefill_result=prefill_result,
+            prefill_exception=prefill_exception,
         )
-        # ATTENTION !!! DO NOT use `start_soon` directly, USE `self._start_soon` instead !!!
-        # Unlike the former, the parent class initializes the latter with the default value if it is None.
+        # Let's not use `start_soon` directly, and use `self._start_soon` instead. Unlike the former, the parent class
+        # initializes the latter with the default value if it is NO_VALUE.
         del start_soon
 
         if streamer:
