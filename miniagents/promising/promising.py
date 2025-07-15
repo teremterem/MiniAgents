@@ -360,8 +360,6 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
     ) -> None:
         if streamer is not None and prefill_pieces is not NO_VALUE:
             raise ValueError("Cannot provide both 'streamer' and 'prefill_pieces' parameters")
-        if prefill_exception is not None and prefill_result is not NO_VALUE:
-            raise ValueError("Cannot provide both 'prefill_exception' and 'prefill_result' parameters")
 
         super().__init__(
             start_soon=start_soon,
@@ -447,6 +445,8 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             return StopAsyncIteration()
 
         try:
+            if self.cancelled():
+                self._astreamer_aiter.athrow(self._make_cancelled_error())
             return await anext(self._astreamer_aiter)
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
