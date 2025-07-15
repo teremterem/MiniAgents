@@ -241,9 +241,6 @@ class Promise(Future, Generic[T_co]):
       (closer to task than to future).
     """
 
-    # TODO Make it extend asyncio.Future, but do it manually
-    # TODO Try to leverage from properties of asyncio.Task as much as possible
-
     def __init__(
         self,
         *,
@@ -282,7 +279,10 @@ class Promise(Future, Generic[T_co]):
                 self.set_exception(prefill_exception)
             self._trigger_promise_resolved_event()
 
-    # TODO def cancel(self, msg: Optional[str] = None) -> bool: ...
+    def cancel(self, msg: Optional[str] = None) -> bool:
+        if self._task:
+            self._task.cancel(msg)
+        return super().cancel(msg)
 
     async def _aresolver(self) -> T_co:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
