@@ -79,6 +79,10 @@ async def test_stream_replay_iterator_exception(start_soon: bool) -> None:
         # iterate over the stream again
         await iterate_over_promise()
 
+        # Let's get rid of the "exception was never retrieved" error from the console output
+        with pytest.raises(ValueError):
+            await streamed_promise
+
 
 async def _async_streamer_but_not_generator(_):
     return  # not a generator
