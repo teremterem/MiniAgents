@@ -11,6 +11,30 @@ from miniagents import miniagent, InteractionContext, Message, MiniAgents, TextM
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
+async def test_cancel_agent() -> None:
+    steps = []
+
+    @miniagent
+    async def agent1(ctx: InteractionContext) -> None:
+        steps.append("before first reply")
+        ctx.reply("first reply")
+        steps.append("after first reply")
+
+        await asyncio.sleep(0.1)
+
+        steps.append("before second reply")
+        ctx.reply("second reply")
+        steps.append("after second reply")
+
+    async with MiniAgents():
+        reply_sequence = agent1.trigger()
+        reply_sequence.cancel()
+        replies = await reply_sequence
+
+    assert not replies
+    assert not steps
+
+
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 @pytest.mark.parametrize("reply_out_of_order", [False, True])
 @pytest.mark.parametrize("raw_strings", [False, True])

@@ -61,6 +61,7 @@ class PromisingContext:
     ) -> None:
         self.parent_ctx = self._current.get()
 
+        # TODO check each of the handlers for being a coroutine function
         self.on_promise_resolved_handlers: list[PromiseResolvedEventHandler] = (
             [on_promise_resolved] if callable(on_promise_resolved) else [*on_promise_resolved]
         )
@@ -122,10 +123,10 @@ class PromisingContext:
         """
         Add a handler to be called after a promise is resolved.
         """
-        if not callable(handler):
-            raise ValueError("An `on_promise_resolved` handler must be a callable.")
         if not inspect.iscoroutinefunction(handler):
-            raise ValueError("An `on_promise_resolved` handler must be async.")
+            raise ValueError(
+                "An `on_promise_resolved` handler must be a coroutine function (defined with `async def`)."
+            )
 
         self.on_promise_resolved_handlers.append(handler)
         return handler
@@ -431,11 +432,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
 
                 self._astreamer_aiter = self._astreamer()
                 # noinspection PyUnresolvedReferences
-                if (
-                    not self._astreamer_aiter
-                    or not getattr(self._astreamer_aiter, "__anext__", None)
-                    or not callable(self._astreamer_aiter.__anext__)
-                ):
+                if not self._astreamer_aiter or not getattr(self._astreamer_aiter, "__anext__", None):
                     raise TypeError(
                         f"The streamer must return an async iterator, got {type(self._astreamer_aiter)} instead"
                     )
@@ -452,8 +449,12 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
 
         try:
             if self.cancelled():
+                if not hasattr(self._astreamer_aiter, "athrow"):
+                    raise self._make_cancelled_error()
                 self._astreamer_aiter.athrow(self._make_cancelled_error())
+
             return await anext(self._astreamer_aiter)
+
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 self._promising_context.logger.debug(
