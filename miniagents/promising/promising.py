@@ -425,6 +425,10 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         # pylint: disable=broad-except
         if self._astreamer_aiter is None:
             try:
+                if self.cancelled():
+                    # Let's not even try to instantiate the streamer iterator if the promise is already cancelled
+                    raise self._make_cancelled_error()
+
                 self._astreamer_aiter = self._astreamer()
                 # noinspection PyUnresolvedReferences
                 if (
@@ -432,7 +436,9 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
                     or not getattr(self._astreamer_aiter, "__anext__", None)
                     or not callable(self._astreamer_aiter.__anext__)
                 ):
-                    raise TypeError(f"The streamer must return an async iterator, but got {self._astreamer_aiter}")
+                    raise TypeError(
+                        f"The streamer must return an async iterator, got {type(self._astreamer_aiter)} instead"
+                    )
             except BaseException as exc:
                 self._promising_context.logger.debug(
                     "An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True
