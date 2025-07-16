@@ -38,18 +38,12 @@ class FlatSequence(Generic[IN_co, OUT_co]):
 
         self._queue = asyncio.Queue()
 
-        # # TODO why did we need this promise ? it didn't seem to accomplish anything
-        # self._input_promise = StreamedPromise(
-        #     streamer=self._astreamer,
-        #     resolver=lambda _: None,
-        #     start_soon=False,
-        # )
         # TODO should I really pass `self` here ? it is not of type `StreamedPromiseBound` ? why pass anything at all ?
         self._normal_streamer_aiter = normal_streamer(self)
         self._unordered_streamer_aiter = unordered_streamer(self) if unordered_streamer else None
 
         self.sequence_promise = sequence_promise_class(
-            streamer=self._astreamer,  # self._input_promise,
+            streamer=self._astreamer,
             resolver=self._aresolver,
             start_soon=self._start_soon,
         )
@@ -105,6 +99,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
             self._queue.put_nowait(END_OF_QUEUE)
 
     async def _astreamer(self, _) -> AsyncIterator[OUT_co]:
+        # TODO TODO TODO
         normal_stream_finished = self._normal_streamer_aiter is None  # will always be `False`, though
         unordered_stream_finished = self._unordered_streamer_aiter is None
 
@@ -122,5 +117,6 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 return
 
     async def _aresolver(self, seq_promise: StreamedPromise[OUT_co, tuple[OUT_co, ...]]) -> tuple[OUT_co, ...]:
+        # TODO TODO TODO
         # pylint: disable=consider-using-generator
         return tuple([item async for item in seq_promise])
