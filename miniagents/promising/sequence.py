@@ -1,14 +1,10 @@
-"""
-The main class in this module is `FlatSequence`. See its docstring for more information.
-"""
-
 import asyncio
 from functools import partial
 from typing import AsyncIterator, Generic, Optional, Union
 
 from miniagents.promising.errors import FunctionNotProvidedError
 from miniagents.promising.promise_typing import IN_co, OUT_co, PromiseStreamer, SequenceFlattener
-from miniagents.promising.promising import PromisingContext, StreamedPromise
+from miniagents.promising.promising import PromisingContext, StreamedPromise, cancel_async_iterator
 from miniagents.promising.sentinels import END_OF_QUEUE, END_OF_UNORDERED_QUEUE, NO_VALUE, Sentinel
 
 
@@ -111,7 +107,16 @@ class FlatSequence(Generic[IN_co, OUT_co]):
             elif item is END_OF_QUEUE:
                 normal_stream_finished = True
             else:
-                yield item
+                try:
+                    yield item
+                except asyncio.CancelledError as cancelled_error:
+                    # pylint: disable=broad-except
+                    try:
+                        if not normal_stream_finished:
+                            cancel_async_iterator(self._normal_streamer_aiter, cancelled_error)
+                    finally:
+                        if not unordered_stream_finished:
+                            cancel_async_iterator(self._unordered_streamer_aiter, cancelled_error)
 
             if normal_stream_finished and unordered_stream_finished:
                 return

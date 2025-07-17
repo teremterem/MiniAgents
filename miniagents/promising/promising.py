@@ -29,6 +29,24 @@ from miniagents.promising.promise_typing import (
 from miniagents.promising.sentinels import END_OF_QUEUE, FAILED, NO_VALUE, Sentinel
 
 
+def cancel_async_iterator(async_iterator: AsyncIterator[Any], cancelled_error: asyncio.CancelledError) -> None:
+    """
+    Handle cancellation for different types of async iterators. Does nothing if the iterator does not support
+    cancellation methods known to this function.
+
+    Args:
+        async_iterator: The async iterator to cancel (could be StreamAppender or async generator)
+        cancelled_error: The cancellation error to propagate
+    """
+    if isinstance(async_iterator, StreamAppender):
+        async_iterator.cancel(cancelled_error)
+    elif inspect.isasyncgen(async_iterator):
+        try:
+            async_iterator.athrow(cancelled_error)
+        except type(cancelled_error):
+            pass
+
+
 class PromisingContext:
     """
     This is the main class for managing the context of promises. It is a context manager that is used to configure
@@ -294,6 +312,8 @@ class Promise(Future, Generic[T_co]):
     async def _aresolve(self) -> None:
         try:
             self.set_result(await self._aresolver())
+        except asyncio.CancelledError:
+            raise
         except BaseException as exc:  # pylint: disable=broad-except
             self._promising_context.logger.debug("An error occurred while resolving a Promise", exc_info=True)
             self.set_exception(exc)
@@ -450,15 +470,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         try:
             if self.cancelled():
                 cancelled_error = self._make_cancelled_error()
-
-                if isinstance(self._astreamer_aiter, StreamAppender):
-                    # The error WILL NOT be raised from here, but it will be explicitly raised after the if-elif block
-                    self._astreamer_aiter.cancel(cancelled_error)
-                elif inspect.isasyncgen(self._astreamer_aiter):
-                    # The error WILL be raised from here implicitly (`athrow` raises the error both, here and in the
-                    # generator)
-                    self._astreamer_aiter.athrow(cancelled_error)
-
+                cancel_async_iterator(self._astreamer_aiter, cancelled_error)
                 raise cancelled_error
 
             return await anext(self._astreamer_aiter)
