@@ -26,13 +26,13 @@ async def test_cancel_agent() -> None:
         ctx.reply("second reply")
         steps.append("after second reply")
 
-    # async with MiniAgents():
-    #     reply_sequence = agent1.trigger()
-    #     reply_sequence.cancel()
-    #     replies = await reply_sequence
+    async with MiniAgents():
+        reply_sequence = agent1.trigger()
+        reply_sequence.cancel()
+        replies = await reply_sequence
 
-    # assert not replies
-    # assert not steps
+    assert not replies
+    assert not steps
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])

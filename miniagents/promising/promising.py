@@ -449,9 +449,17 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
 
         try:
             if self.cancelled():
-                if not hasattr(self._astreamer_aiter, "athrow"):
-                    raise self._make_cancelled_error()
-                self._astreamer_aiter.athrow(self._make_cancelled_error())
+                cancelled_error = self._make_cancelled_error()
+
+                if isinstance(self._astreamer_aiter, StreamAppender):
+                    # The error WILL NOT be raised from here, but it will be explicitly raised after the if-elif block
+                    self._astreamer_aiter.cancel(cancelled_error)
+                elif inspect.isasyncgen(self._astreamer_aiter):
+                    # The error WILL be raised from here implicitly (`athrow` raises the error both, here and in the
+                    # generator)
+                    self._astreamer_aiter.athrow(cancelled_error)
+
+                raise cancelled_error
 
             return await anext(self._astreamer_aiter)
 
@@ -561,6 +569,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         self._queue = asyncio.Queue()
         self._append_was_open = False
         self._append_closed = False
+        self._cancelled_error: Optional[asyncio.CancelledError] = None
 
     @property
     def was_open(self) -> bool:
@@ -605,6 +614,8 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
                 "(or call `open()` and `close()` manually)."
             )
         if self._append_closed:
+            if self._cancelled_error:
+                raise self._cancelled_error
             raise AppenderClosedError(f"The {type(self).__name__} has already been closed for appending.")
         self._queue.put_nowait(piece)
         return self
@@ -623,6 +634,32 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
             raise AppenderClosedError(f"Once closed, the {type(self).__name__} cannot be opened again.")
         self._append_was_open = True
         return self
+
+    def cancel(self, msg: Optional[Union[str, asyncio.CancelledError]] = None) -> bool:
+        """
+        Cancel the streamer by appending a CancelledError to the queue and immediately closing it.
+
+        Args:
+            msg: Optional message to include in the CancelledError.
+                 If an instance of asyncio.CancelledError is provided instead of a string, it is used as is.
+                 If not provided at all, a CancelledError without a message is constructed.
+
+        Returns:
+            True if the appender was successfully cancelled, False if it was already closed
+        """
+        if self._append_closed:
+            return False
+
+        if msg is None:
+            self._cancelled_error = asyncio.CancelledError()
+        elif isinstance(msg, asyncio.CancelledError):
+            self._cancelled_error = msg
+        else:
+            self._cancelled_error = asyncio.CancelledError(msg)
+
+        self.close(self._cancelled_error)
+
+        return True
 
     def close(self, exc_value: Optional[BaseException] = None) -> bool:
         """

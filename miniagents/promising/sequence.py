@@ -99,7 +99,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
             self._queue.put_nowait(END_OF_QUEUE)
 
     async def _astreamer(self, _) -> AsyncIterator[OUT_co]:
-        # TODO TODO TODO
+        # TODO TODO TODO TODO TODO TODO
         normal_stream_finished = self._normal_streamer_aiter is None  # will always be `False`, though
         unordered_stream_finished = self._unordered_streamer_aiter is None
 
