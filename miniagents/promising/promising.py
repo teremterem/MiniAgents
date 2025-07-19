@@ -473,7 +473,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             return exc
 
 
-class _StreamReplayIterator(AsyncIterator[PIECE_co]):
+class _StreamReplayIterator(abc.AsyncIterator[PIECE_co]):
     """
     The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
     `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
@@ -704,9 +704,6 @@ class StreamAppender(abc.AsyncIterator[PIECE_co], Generic[PIECE_co]):
             raise StopAsyncIteration()
 
         return piece
-
-    def __aiter__(self) -> AsyncIterator[PIECE_co]:
-        return self
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
         return aiter(self)

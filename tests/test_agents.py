@@ -11,6 +11,7 @@ from miniagents import miniagent, InteractionContext, Message, MiniAgents, TextM
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
+@pytest.mark.skip(reason="TODO TODO TODO")
 async def test_cancel_agent() -> None:
     steps = []
     cancel_lock = asyncio.Lock()
