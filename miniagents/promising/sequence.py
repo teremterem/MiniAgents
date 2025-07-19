@@ -52,10 +52,7 @@ class FlatSequence(Generic[IN_co, OUT_co]):
         )
 
     async def _amerge_streams(self) -> None:
-        # TODO TODO TODO If cancelled, cancel child tasks (and related async generators) too
         # TODO a detailed docstring is crucial for this private method
-        # TODO we might want to stop processing any more items if an exception is raised and we are not in
-        #  "exceptions as messages" mode (or maybe not, I'm not sure)
         async def _process_unordered_piece(zero_or_more_items: OUT_co) -> None:
             # TODO !!! Does this prevent agents from finishing before all the reply messages are fully resolved ?!!
             try:
@@ -66,8 +63,8 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 self._queue.put_nowait(exc)
 
         async def _go_over_unordered_stream() -> None:
+            subtasks = []
             try:
-                subtasks = []
                 async for zero_or_more_items in self._unordered_streamer_aiter:  # pylint: disable=not-an-iterable
                     subtask = self._promising_context.start_soon(_process_unordered_piece(zero_or_more_items))
                     subtasks.append(subtask)
@@ -76,13 +73,16 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 # priority stream is finished
                 await self._promising_context.agather(*subtasks)
             except BaseException as exc:  # pylint: disable=broad-except
+                for subtask in subtasks:
+                    subtask.cancel(str(exc))
                 self._queue.put_nowait(exc)
             finally:
                 self._queue.put_nowait(END_OF_UNORDERED_QUEUE)
 
+        unordered_stream_task = None
         try:
             if self._unordered_streamer_aiter is not None:
-                self._promising_context.start_soon(_go_over_unordered_stream())
+                unordered_stream_task = self._promising_context.start_soon(_go_over_unordered_stream())
 
             async for zero_or_more_items in self._normal_streamer_aiter:
                 try:
@@ -92,6 +92,8 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 except BaseException as exc:  # pylint: disable=broad-except
                     self._queue.put_nowait(exc)
         except BaseException as exc:  # pylint: disable=broad-except
+            if unordered_stream_task is not None:
+                unordered_stream_task.cancel(str(exc))
             self._queue.put_nowait(exc)
         finally:
             self._queue.put_nowait(END_OF_QUEUE)
@@ -115,13 +117,14 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                     return
 
         except (asyncio.CancelledError, GeneratorExit) as exc:
+            error_msg = str(exc)
             if isinstance(exc, asyncio.CancelledError):
                 cancelled_error = exc
             else:
                 # It's not a `CancelledError`, let's only use the message
-                cancelled_error = str(exc)
+                cancelled_error = error_msg
 
-            merge_streams_task.cancel(str(exc))
+            merge_streams_task.cancel(error_msg)
             # pylint: disable=broad-except
             try:
                 if not normal_stream_finished:

@@ -13,26 +13,19 @@ from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 @pytest.mark.skip(reason="TODO TODO TODO")
 async def test_cancel_agent() -> None:
-    steps = []
-    cancel_lock = asyncio.Lock()
+    agent1_ran = False
 
     @miniagent
     async def agent1(_: InteractionContext) -> None:
-        steps.append("before first sleep")
-        async with cancel_lock:
-            await asyncio.sleep(0.1)
-        steps.append("after first sleep")
-
-        steps.append("before second sleep")
-        await asyncio.sleep(0.1)
-        steps.append("after second sleep")
+        nonlocal agent1_ran
+        agent1_ran = True
 
     async with MiniAgents():
-        async with cancel_lock:
-            reply_sequence = agent1.trigger()
-            reply_sequence.cancel()
+        reply_sequence = agent1.trigger()
+        reply_sequence.cancel()
+        await reply_sequence
 
-    assert steps == ["before first sleep"]
+    assert not agent1_ran
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
