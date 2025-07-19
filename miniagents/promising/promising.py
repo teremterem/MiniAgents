@@ -7,6 +7,7 @@ import contextvars
 import inspect
 import logging
 from asyncio import AbstractEventLoop, Future, Task
+from collections import abc
 from contextvars import ContextVar
 from functools import partial
 from types import TracebackType
@@ -26,25 +27,8 @@ from miniagents.promising.promise_typing import (
     T_co,
     WHOLE_co,
 )
+from miniagents.promising.promise_utils import acancel_async_object, prepare_cancelled_error
 from miniagents.promising.sentinels import END_OF_QUEUE, FAILED, NO_VALUE, Sentinel
-
-
-def cancel_async_iterator(async_iterator: AsyncIterator[Any], cancelled_error: asyncio.CancelledError) -> None:
-    """
-    Handle cancellation for different types of async iterators. Does nothing if the iterator does not support
-    cancellation methods known to this function.
-
-    Args:
-        async_iterator: The async iterator to cancel (could be StreamAppender or async generator)
-        cancelled_error: The cancellation error to propagate
-    """
-    if isinstance(async_iterator, StreamAppender):
-        async_iterator.cancel(cancelled_error)
-    elif inspect.isasyncgen(async_iterator):
-        try:
-            async_iterator.athrow(cancelled_error)
-        except type(cancelled_error):
-            pass
 
 
 class PromisingContext:
@@ -312,8 +296,6 @@ class Promise(Future, Generic[T_co]):
     async def _aresolve(self) -> None:
         try:
             self.set_result(await self._aresolver())
-        except asyncio.CancelledError:
-            raise
         except BaseException as exc:  # pylint: disable=broad-except
             self._promising_context.logger.debug("An error occurred while resolving a Promise", exc_info=True)
             self.set_exception(exc)
@@ -470,7 +452,8 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         try:
             if self.cancelled():
                 cancelled_error = self._make_cancelled_error()
-                cancel_async_iterator(self._astreamer_aiter, cancelled_error)
+                # TODO TODO TODO raise_if_not_cancellable=False
+                await acancel_async_object(self._astreamer_aiter, msg=cancelled_error)
                 raise cancelled_error
 
             return await anext(self._astreamer_aiter)
@@ -543,7 +526,7 @@ class _StreamReplayIterator(AsyncIterator[PIECE_co]):
         return piece
 
 
-class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
+class StreamAppender(abc.AsyncIterator[PIECE_co], Generic[PIECE_co]):
     """
     This is a special kind of `streamer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
@@ -662,13 +645,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         if self._append_closed:
             return False
 
-        if msg is None:
-            self._cancelled_error = asyncio.CancelledError()
-        elif isinstance(msg, asyncio.CancelledError):
-            self._cancelled_error = msg
-        else:
-            self._cancelled_error = asyncio.CancelledError(msg)
-
+        self._cancelled_error = prepare_cancelled_error(msg)
         self.close(self._cancelled_error)
 
         return True
