@@ -6,6 +6,7 @@ import asyncio
 import contextvars
 import inspect
 import logging
+import os
 import re
 import warnings
 from contextvars import ContextVar
@@ -61,7 +62,7 @@ class MiniAgents(PromisingContext):
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         errors_as_messages: bool = False,
         error_tracebacks_in_messages: bool = False,
-        log_reduced_tracebacks: bool = True,
+        log_reduced_tracebacks: bool = os.getenv("MINIAGENTS_LOG_REDUCED_TRACEBACKS", "true").lower() == "true",
         await_reply_persistence_before_agent_finish: bool = False,
         logger: Optional[logging.Logger] = None,
         **kwargs,

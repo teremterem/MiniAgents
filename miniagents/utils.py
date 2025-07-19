@@ -201,6 +201,12 @@ class MiniAgentsLogFormatter(logging.Formatter):
                 "ATTENTION! Some parts of the traceback above are omitted for readability.\n"
                 "Use `MiniAgents(log_reduced_tracebacks=False)` to see the full traceback.\n"
             )
+        else:
+            lines.append(
+                "\n"
+                "ATTENTION! All the traceback lines are shown (including those from `miniagents` library).\n"
+                "Use `MiniAgents(log_reduced_tracebacks=True)` to only show the lines from the scripts you wrote.\n"
+            )
 
         # Add the agent trace if enabled
         if self.include_agent_trace:
