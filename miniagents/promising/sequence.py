@@ -1,13 +1,10 @@
-"""
-The main class in this module is `FlatSequence`. See its docstring for more information.
-"""
-
 import asyncio
 from functools import partial
 from typing import AsyncIterator, Generic, Optional, Union
 
 from miniagents.promising.errors import FunctionNotProvidedError
 from miniagents.promising.promise_typing import IN_co, OUT_co, PromiseStreamer, SequenceFlattener
+from miniagents.promising.promise_utils import acancel_async_object
 from miniagents.promising.promising import PromisingContext, StreamedPromise
 from miniagents.promising.sentinels import END_OF_QUEUE, END_OF_UNORDERED_QUEUE, NO_VALUE, Sentinel
 
@@ -56,8 +53,6 @@ class FlatSequence(Generic[IN_co, OUT_co]):
 
     async def _amerge_streams(self) -> None:
         # TODO a detailed docstring is crucial for this private method
-        # TODO we might want to stop processing any more items if an exception is raised and we are not in
-        #  "exceptions as messages" mode (or maybe not, I'm not sure)
         async def _process_unordered_piece(zero_or_more_items: OUT_co) -> None:
             # TODO !!! Does this prevent agents from finishing before all the reply messages are fully resolved ?!!
             try:
@@ -68,8 +63,8 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 self._queue.put_nowait(exc)
 
         async def _go_over_unordered_stream() -> None:
+            subtasks = []
             try:
-                subtasks = []
                 async for zero_or_more_items in self._unordered_streamer_aiter:  # pylint: disable=not-an-iterable
                     subtask = self._promising_context.start_soon(_process_unordered_piece(zero_or_more_items))
                     subtasks.append(subtask)
@@ -78,13 +73,16 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 # priority stream is finished
                 await self._promising_context.agather(*subtasks)
             except BaseException as exc:  # pylint: disable=broad-except
+                for subtask in subtasks:
+                    subtask.cancel(str(exc))
                 self._queue.put_nowait(exc)
             finally:
                 self._queue.put_nowait(END_OF_UNORDERED_QUEUE)
 
+        unordered_stream_task = None
         try:
             if self._unordered_streamer_aiter is not None:
-                self._promising_context.start_soon(_go_over_unordered_stream())
+                unordered_stream_task = self._promising_context.start_soon(_go_over_unordered_stream())
 
             async for zero_or_more_items in self._normal_streamer_aiter:
                 try:
@@ -94,29 +92,50 @@ class FlatSequence(Generic[IN_co, OUT_co]):
                 except BaseException as exc:  # pylint: disable=broad-except
                     self._queue.put_nowait(exc)
         except BaseException as exc:  # pylint: disable=broad-except
+            if unordered_stream_task is not None:
+                unordered_stream_task.cancel(str(exc))
             self._queue.put_nowait(exc)
         finally:
             self._queue.put_nowait(END_OF_QUEUE)
 
     async def _astreamer(self, _) -> AsyncIterator[OUT_co]:
-        # TODO TODO TODO TODO TODO TODO
         normal_stream_finished = self._normal_streamer_aiter is None  # will always be `False`, though
         unordered_stream_finished = self._unordered_streamer_aiter is None
 
-        self._promising_context.start_soon(self._amerge_streams())
-        while True:
-            item = await self._queue.get()
-            if item is END_OF_UNORDERED_QUEUE:
-                unordered_stream_finished = True
-            elif item is END_OF_QUEUE:
-                normal_stream_finished = True
-            else:
-                yield item
+        merge_streams_task = self._promising_context.start_soon(self._amerge_streams())
+        try:
+            while True:
+                item = await self._queue.get()
+                if item is END_OF_UNORDERED_QUEUE:
+                    unordered_stream_finished = True
+                elif item is END_OF_QUEUE:
+                    normal_stream_finished = True
+                else:
+                    yield item
 
-            if normal_stream_finished and unordered_stream_finished:
-                return
+                if normal_stream_finished and unordered_stream_finished:
+                    return
+
+        except (asyncio.CancelledError, GeneratorExit) as exc:
+            error_msg = str(exc)
+            if isinstance(exc, asyncio.CancelledError):
+                cancelled_error = exc
+            else:
+                # It's not a `CancelledError`, let's only use the message
+                cancelled_error = error_msg
+
+            merge_streams_task.cancel(error_msg)
+            # pylint: disable=broad-except
+            try:
+                if not normal_stream_finished:
+                    # TODO [CANCELLATION] raise_if_not_cancellable=False ?
+                    await acancel_async_object(self._normal_streamer_aiter, msg=cancelled_error)
+            finally:
+                if not unordered_stream_finished:
+                    # TODO [CANCELLATION] raise_if_not_cancellable=False ?
+                    await acancel_async_object(self._unordered_streamer_aiter, msg=cancelled_error)
 
     async def _aresolver(self, seq_promise: StreamedPromise[OUT_co, tuple[OUT_co, ...]]) -> tuple[OUT_co, ...]:
-        # TODO TODO TODO
+        # TODO [CANCELLATION] Should anything be done here cancellation-wise ?
         # pylint: disable=consider-using-generator
         return tuple([item async for item in seq_promise])

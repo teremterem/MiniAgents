@@ -7,6 +7,7 @@ import contextvars
 import inspect
 import logging
 from asyncio import AbstractEventLoop, Future, Task
+from collections import abc
 from contextvars import ContextVar
 from functools import partial
 from types import TracebackType
@@ -26,6 +27,7 @@ from miniagents.promising.promise_typing import (
     T_co,
     WHOLE_co,
 )
+from miniagents.promising.promise_utils import acancel_async_object, prepare_cancelled_error
 from miniagents.promising.sentinels import END_OF_QUEUE, FAILED, NO_VALUE, Sentinel
 
 
@@ -131,6 +133,9 @@ class PromisingContext:
         self.on_promise_resolved_handlers.append(handler)
         return handler
 
+    # # TODO [CANCELLATION] Come up with a way of tracking the "causality" of the spawned tasks
+    # async_tracebacks = contextvars.ContextVar("async_tracebacks", default=())
+
     def start_soon(self, awaitable: Awaitable, suppress_errors: bool = True) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
@@ -157,7 +162,28 @@ class PromisingContext:
             finally:
                 self.child_tasks.remove(task)
 
+        # # TODO [CANCELLATION] Come up with a way of tracking the "causality" of the spawned tasks
+        # task_name = awaitable.__name__
+        # if hasattr(awaitable, "__self__"):
+        #     # Instance method or class method
+        #     if hasattr(awaitable.__self__, "__class__"):
+        #         if isinstance(awaitable.__self__, type):
+        #             # Class method - __self__ is the class itself
+        #             task_name = f"{awaitable.__self__.__name__}.{task_name}"
+        #         else:
+        #             # Instance method - __self__ is an instance
+        #             task_name = f"{awaitable.__self__.__class__.__name__}.{task_name}"
+        # elif hasattr(awaitable, "__qualname__") and "." in awaitable.__qualname__:
+        #     # Static method or nested function
+        #     task_name = awaitable.__qualname__
+
+        # current_tracebacks = self.async_tracebacks.get()
+        # current_tracebacks = current_tracebacks + ("".join(traceback.format_stack()),)
+        # self.async_tracebacks.set(current_tracebacks)
+        # task = asyncio.create_task(awaitable_wrapper(), name=task_name)
+        # task.async_tracebacks = current_tracebacks
         task = asyncio.create_task(awaitable_wrapper())
+
         self.child_tasks.add(task)
         return task
 
@@ -281,8 +307,9 @@ class Promise(Future, Generic[T_co]):
             self._trigger_promise_resolved_event()
 
     def cancel(self, msg: Optional[str] = None) -> bool:
-        if self._task:
-            self._task.cancel(msg)
+        task = self._task
+        if task:
+            task.cancel(msg)
         return super().cancel(msg)
 
     async def _aresolver(self) -> T_co:  # pylint: disable=method-hidden
@@ -417,6 +444,8 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
 
     async def _aconsume_the_stream(self) -> None:
         while True:
+            if self.cancelled():
+                break
             piece = await self._astreamer_aiter_anext()
             self._queue.put_nowait(piece)
             if isinstance(piece, StopAsyncIteration):
@@ -450,15 +479,8 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         try:
             if self.cancelled():
                 cancelled_error = self._make_cancelled_error()
-
-                if isinstance(self._astreamer_aiter, StreamAppender):
-                    # The error WILL NOT be raised from here, but it will be explicitly raised after the if-elif block
-                    self._astreamer_aiter.cancel(cancelled_error)
-                elif inspect.isasyncgen(self._astreamer_aiter):
-                    # The error WILL be raised from here implicitly (`athrow` raises the error both, here and in the
-                    # generator)
-                    self._astreamer_aiter.athrow(cancelled_error)
-
+                # TODO [CANCELLATION] raise_if_not_cancellable=False ?
+                await acancel_async_object(self._astreamer_aiter, msg=cancelled_error)
                 raise cancelled_error
 
             return await anext(self._astreamer_aiter)
@@ -478,7 +500,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             return exc
 
 
-class _StreamReplayIterator(AsyncIterator[PIECE_co]):
+class _StreamReplayIterator(abc.AsyncIterator[PIECE_co]):
     """
     The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
     `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
@@ -531,7 +553,7 @@ class _StreamReplayIterator(AsyncIterator[PIECE_co]):
         return piece
 
 
-class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
+class StreamAppender(abc.AsyncIterator[PIECE_co], Generic[PIECE_co]):
     """
     This is a special kind of `streamer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
@@ -650,13 +672,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         if self._append_closed:
             return False
 
-        if msg is None:
-            self._cancelled_error = asyncio.CancelledError()
-        elif isinstance(msg, asyncio.CancelledError):
-            self._cancelled_error = msg
-        else:
-            self._cancelled_error = asyncio.CancelledError(msg)
-
+        self._cancelled_error = prepare_cancelled_error(msg)
         self.close(self._cancelled_error)
 
         return True
@@ -715,9 +731,6 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
             raise StopAsyncIteration()
 
         return piece
-
-    def __aiter__(self) -> AsyncIterator[PIECE_co]:
-        return self
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
         return aiter(self)

@@ -464,7 +464,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
         and return them as a tuple of Message objects.
         """
-        # TODO TODO TODO
+        # TODO [CANCELLATION] Should anything be done here cancellation-wise ?
         # first collect all the message promises
         msg_promises = [msg_promise async for msg_promise in seq_promise]
         # then resolve them all
@@ -563,9 +563,9 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
     A promise of a sequence of messages that can be streamed message by message.
     """
 
-    def cancel(self, msg: Optional[str] = None, cancel_messages_too: bool = True) -> bool:
-        # TODO TODO TODO
-        return super().cancel(msg)
+    # def cancel(self, msg: Optional[str] = None, cancel_individual_promises_too: bool = True) -> bool:
+    #     # TODO [CANCELLATION] Cancel message promises already yielded from the sequence too if the flag is True
+    #     return super().cancel(msg)
 
     def as_single_text_promise(self, **kwargs) -> MessagePromise:
         """
