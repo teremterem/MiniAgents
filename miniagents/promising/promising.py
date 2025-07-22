@@ -133,6 +133,9 @@ class PromisingContext:
         self.on_promise_resolved_handlers.append(handler)
         return handler
 
+    # # TODO [CANCELLATION] Come up with a way of tracking the "causality" of the spawned tasks
+    # async_tracebacks = contextvars.ContextVar("async_tracebacks", default=())
+
     def start_soon(self, awaitable: Awaitable, suppress_errors: bool = True) -> Task:
         """
         Schedule a task in the current context. "Scheduling" a task this way instead of just creating it with
@@ -159,7 +162,28 @@ class PromisingContext:
             finally:
                 self.child_tasks.remove(task)
 
+        # # TODO [CANCELLATION] Come up with a way of tracking the "causality" of the spawned tasks
+        # task_name = awaitable.__name__
+        # if hasattr(awaitable, "__self__"):
+        #     # Instance method or class method
+        #     if hasattr(awaitable.__self__, "__class__"):
+        #         if isinstance(awaitable.__self__, type):
+        #             # Class method - __self__ is the class itself
+        #             task_name = f"{awaitable.__self__.__name__}.{task_name}"
+        #         else:
+        #             # Instance method - __self__ is an instance
+        #             task_name = f"{awaitable.__self__.__class__.__name__}.{task_name}"
+        # elif hasattr(awaitable, "__qualname__") and "." in awaitable.__qualname__:
+        #     # Static method or nested function
+        #     task_name = awaitable.__qualname__
+
+        # current_tracebacks = self.async_tracebacks.get()
+        # current_tracebacks = current_tracebacks + ("".join(traceback.format_stack()),)
+        # self.async_tracebacks.set(current_tracebacks)
+        # task = asyncio.create_task(awaitable_wrapper(), name=task_name)
+        # task.async_tracebacks = current_tracebacks
         task = asyncio.create_task(awaitable_wrapper())
+
         self.child_tasks.add(task)
         return task
 
@@ -283,8 +307,9 @@ class Promise(Future, Generic[T_co]):
             self._trigger_promise_resolved_event()
 
     def cancel(self, msg: Optional[str] = None) -> bool:
-        if self._task:
-            self._task.cancel(msg)
+        task = self._task
+        if task:
+            task.cancel(msg)
         return super().cancel(msg)
 
     async def _aresolver(self) -> T_co:  # pylint: disable=method-hidden
@@ -419,6 +444,8 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
 
     async def _aconsume_the_stream(self) -> None:
         while True:
+            if self.cancelled():
+                break
             piece = await self._astreamer_aiter_anext()
             self._queue.put_nowait(piece)
             if isinstance(piece, StopAsyncIteration):
@@ -452,7 +479,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         try:
             if self.cancelled():
                 cancelled_error = self._make_cancelled_error()
-                # TODO TODO TODO raise_if_not_cancellable=False
+                # TODO [CANCELLATION] raise_if_not_cancellable=False ?
                 await acancel_async_object(self._astreamer_aiter, msg=cancelled_error)
                 raise cancelled_error
 

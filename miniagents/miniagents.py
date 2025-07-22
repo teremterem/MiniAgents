@@ -739,7 +739,7 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         agent_call_promise = Promise[AgentCallNode](
-            start_soon=True,
+            start_soon=True,  # TODO Try to recall why it is True and explain in a comment
             resolver=_arun_agent,
         )
 

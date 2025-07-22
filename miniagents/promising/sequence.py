@@ -128,14 +128,14 @@ class FlatSequence(Generic[IN_co, OUT_co]):
             # pylint: disable=broad-except
             try:
                 if not normal_stream_finished:
-                    # TODO TODO TODO raise_if_not_cancellable=False
+                    # TODO [CANCELLATION] raise_if_not_cancellable=False ?
                     await acancel_async_object(self._normal_streamer_aiter, msg=cancelled_error)
             finally:
                 if not unordered_stream_finished:
-                    # TODO TODO TODO raise_if_not_cancellable=False
+                    # TODO [CANCELLATION] raise_if_not_cancellable=False ?
                     await acancel_async_object(self._unordered_streamer_aiter, msg=cancelled_error)
 
     async def _aresolver(self, seq_promise: StreamedPromise[OUT_co, tuple[OUT_co, ...]]) -> tuple[OUT_co, ...]:
-        # TODO TODO TODO
+        # TODO [CANCELLATION] Should anything be done here cancellation-wise ?
         # pylint: disable=consider-using-generator
         return tuple([item async for item in seq_promise])

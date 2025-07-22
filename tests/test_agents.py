@@ -11,8 +11,8 @@ from miniagents import miniagent, InteractionContext, Message, MiniAgents, TextM
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
-@pytest.mark.skip(reason="TODO TODO TODO")
-async def test_cancel_agent() -> None:
+@pytest.mark.skip(reason="TODO [CANCELLATION] Unskip this test when cancellation fully works")
+async def test_cancel_agent_immediately() -> None:
     agent1_ran = False
 
     @miniagent
@@ -26,6 +26,26 @@ async def test_cancel_agent() -> None:
         await reply_sequence
 
     assert not agent1_ran
+
+
+@pytest.mark.skip(reason="TODO [CANCELLATION] Unskip this test when cancellation fully works")
+async def test_cancel_agent_with_delay() -> None:
+    agent_steps = []
+
+    @miniagent
+    async def agent1(_: InteractionContext) -> None:
+        agent_steps.append("agent1 - start")
+        await asyncio.sleep(0.2)
+        agent_steps.append("agent1 - end")
+
+    async with MiniAgents(start_everything_soon_by_default=True):
+        reply_sequence = agent1.trigger()
+        await asyncio.sleep(0.1)
+        reply_sequence.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await reply_sequence
+
+    assert agent_steps == ["agent1 - start"]
 
 
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
