@@ -7,6 +7,7 @@ import contextvars
 import inspect
 import logging
 from asyncio import AbstractEventLoop, Future, Task
+from collections import abc
 from contextvars import ContextVar
 from functools import partial
 from types import TracebackType
@@ -26,6 +27,7 @@ from miniagents.promising.promise_typing import (
     T_co,
     WHOLE_co,
 )
+from miniagents.promising.promise_utils import acancel_async_object, prepare_cancelled_error
 from miniagents.promising.sentinels import END_OF_QUEUE, FAILED, NO_VALUE, Sentinel
 
 
@@ -61,6 +63,7 @@ class PromisingContext:
     ) -> None:
         self.parent_ctx = self._current.get()
 
+        # TODO check each of the handlers for being a coroutine function
         self.on_promise_resolved_handlers: list[PromiseResolvedEventHandler] = (
             [on_promise_resolved] if callable(on_promise_resolved) else [*on_promise_resolved]
         )
@@ -122,13 +125,16 @@ class PromisingContext:
         """
         Add a handler to be called after a promise is resolved.
         """
-        if not callable(handler):
-            raise ValueError("An `on_promise_resolved` handler must be a callable.")
         if not inspect.iscoroutinefunction(handler):
-            raise ValueError("An `on_promise_resolved` handler must be async.")
+            raise ValueError(
+                "An `on_promise_resolved` handler must be a coroutine function (defined with `async def`)."
+            )
 
         self.on_promise_resolved_handlers.append(handler)
         return handler
+
+    # # TODO [CANCELLATION] Come up with a way of tracking the "causality" of the spawned tasks
+    # async_tracebacks = contextvars.ContextVar("async_tracebacks", default=())
 
     def start_soon(self, awaitable: Awaitable, suppress_errors: bool = True) -> Task:
         """
@@ -156,7 +162,28 @@ class PromisingContext:
             finally:
                 self.child_tasks.remove(task)
 
+        # # TODO [CANCELLATION] Come up with a way of tracking the "causality" of the spawned tasks
+        # task_name = awaitable.__name__
+        # if hasattr(awaitable, "__self__"):
+        #     # Instance method or class method
+        #     if hasattr(awaitable.__self__, "__class__"):
+        #         if isinstance(awaitable.__self__, type):
+        #             # Class method - __self__ is the class itself
+        #             task_name = f"{awaitable.__self__.__name__}.{task_name}"
+        #         else:
+        #             # Instance method - __self__ is an instance
+        #             task_name = f"{awaitable.__self__.__class__.__name__}.{task_name}"
+        # elif hasattr(awaitable, "__qualname__") and "." in awaitable.__qualname__:
+        #     # Static method or nested function
+        #     task_name = awaitable.__qualname__
+
+        # current_tracebacks = self.async_tracebacks.get()
+        # current_tracebacks = current_tracebacks + ("".join(traceback.format_stack()),)
+        # self.async_tracebacks.set(current_tracebacks)
+        # task = asyncio.create_task(awaitable_wrapper(), name=task_name)
+        # task.async_tracebacks = current_tracebacks
         task = asyncio.create_task(awaitable_wrapper())
+
         self.child_tasks.add(task)
         return task
 
@@ -241,9 +268,6 @@ class Promise(Future, Generic[T_co]):
       (closer to task than to future).
     """
 
-    # TODO Make it extend asyncio.Future, but do it manually
-    # TODO Try to leverage from properties of asyncio.Task as much as possible
-
     def __init__(
         self,
         *,
@@ -269,7 +293,7 @@ class Promise(Future, Generic[T_co]):
         if resolver:
             self._aresolver = partial(resolver, self)
 
-        if prefill_result is NO_VALUE:
+        if prefill_result is NO_VALUE and prefill_exception is None:
             # NO_VALUE is used because `None` is also a legitimate value
             if start_soon:
                 self._task = self._promising_context.start_soon(self._aresolve())
@@ -281,6 +305,12 @@ class Promise(Future, Generic[T_co]):
             else:
                 self.set_exception(prefill_exception)
             self._trigger_promise_resolved_event()
+
+    def cancel(self, msg: Optional[str] = None) -> bool:
+        task = self._task
+        if task:
+            task.cancel(msg)
+        return super().cancel(msg)
 
     async def _aresolver(self) -> T_co:  # pylint: disable=method-hidden
         raise FunctionNotProvidedError(
@@ -331,6 +361,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         resolver: A callable that takes an async iterable of pieces and returns the whole value
                  ("packages" the pieces).
         prefill_result: Optional pre-computed result for the promise. Cannot be used with resolver.
+        prefill_exception: Optional pre-computed exception for the promise. Cannot be used with resolver.
         start_soon: If True, the promise will start producing pieces immediately when created, regardless of
                    when consumers start iterating over the promise. If False, pieces will be produced on demand
                    only when the first consumer starts iterating. Defaults to the parent context's
@@ -352,6 +383,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         prefill_pieces: Union[Optional[Iterable[PIECE_co]], Sentinel] = NO_VALUE,
         resolver: Optional[PromiseResolver[T_co]] = None,
         prefill_result: Union[Optional[T_co], Sentinel] = NO_VALUE,
+        prefill_exception: Optional[BaseException] = None,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
     ) -> None:
         if streamer is not None and prefill_pieces is not NO_VALUE:
@@ -361,9 +393,10 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             start_soon=start_soon,
             resolver=resolver,
             prefill_result=prefill_result,
+            prefill_exception=prefill_exception,
         )
-        # ATTENTION !!! DO NOT use `start_soon` directly, USE `self._start_soon` instead !!!
-        # Unlike the former, the parent class initializes the latter with the default value if it is None.
+        # Let's not use `start_soon` directly, and use `self._start_soon` instead. Unlike the former, the parent class
+        # initializes the latter with the default value if it is NO_VALUE.
         del start_soon
 
         if streamer:
@@ -411,6 +444,8 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
 
     async def _aconsume_the_stream(self) -> None:
         while True:
+            if self.cancelled():
+                break
             piece = await self._astreamer_aiter_anext()
             self._queue.put_nowait(piece)
             if isinstance(piece, StopAsyncIteration):
@@ -420,14 +455,16 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
         # pylint: disable=broad-except
         if self._astreamer_aiter is None:
             try:
+                if self.cancelled():
+                    # Let's not even try to instantiate the streamer iterator if the promise is already cancelled
+                    raise self._make_cancelled_error()
+
                 self._astreamer_aiter = self._astreamer()
                 # noinspection PyUnresolvedReferences
-                if (
-                    not self._astreamer_aiter
-                    or not getattr(self._astreamer_aiter, "__anext__", None)
-                    or not callable(self._astreamer_aiter.__anext__)
-                ):
-                    raise TypeError(f"The streamer must return an async iterator, but got {self._astreamer_aiter}")
+                if not self._astreamer_aiter or not getattr(self._astreamer_aiter, "__anext__", None):
+                    raise TypeError(
+                        f"The streamer must return an async iterator, got {type(self._astreamer_aiter)} instead"
+                    )
             except BaseException as exc:
                 self._promising_context.logger.debug(
                     "An error occurred while instantiating a streamer for a StreamedPromise", exc_info=True
@@ -440,7 +477,14 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             return StopAsyncIteration()
 
         try:
+            if self.cancelled():
+                cancelled_error = self._make_cancelled_error()
+                # TODO [CANCELLATION] raise_if_not_cancellable=False ?
+                await acancel_async_object(self._astreamer_aiter, msg=cancelled_error)
+                raise cancelled_error
+
             return await anext(self._astreamer_aiter)
+
         except BaseException as exc:
             if not isinstance(exc, StopAsyncIteration):
                 self._promising_context.logger.debug(
@@ -456,7 +500,7 @@ class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):
             return exc
 
 
-class _StreamReplayIterator(AsyncIterator[PIECE_co]):
+class _StreamReplayIterator(abc.AsyncIterator[PIECE_co]):
     """
     The pieces that have already been "produced" are stored in the `_pieces_so_far` attribute of the parent
     `StreamedPromise`. The `_StreamReplayIterator` first yields the pieces from `_pieces_so_far`, and then it
@@ -509,7 +553,7 @@ class _StreamReplayIterator(AsyncIterator[PIECE_co]):
         return piece
 
 
-class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
+class StreamAppender(abc.AsyncIterator[PIECE_co], Generic[PIECE_co]):
     """
     This is a special kind of `streamer` that can be fed into `StreamedPromise` constructor. Objects of this class
     implement the context manager protocol and an `append()` method, which allows for passing such an object into
@@ -547,6 +591,7 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
         self._queue = asyncio.Queue()
         self._append_was_open = False
         self._append_closed = False
+        self._cancelled_error: Optional[asyncio.CancelledError] = None
 
     @property
     def was_open(self) -> bool:
@@ -591,6 +636,8 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
                 "(or call `open()` and `close()` manually)."
             )
         if self._append_closed:
+            if self._cancelled_error:
+                raise self._cancelled_error
             raise AppenderClosedError(f"The {type(self).__name__} has already been closed for appending.")
         self._queue.put_nowait(piece)
         return self
@@ -609,6 +656,26 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
             raise AppenderClosedError(f"Once closed, the {type(self).__name__} cannot be opened again.")
         self._append_was_open = True
         return self
+
+    def cancel(self, msg: Optional[Union[str, asyncio.CancelledError]] = None) -> bool:
+        """
+        Cancel the streamer by appending a CancelledError to the queue and immediately closing it.
+
+        Args:
+            msg: Optional message to include in the CancelledError.
+                 If an instance of asyncio.CancelledError is provided instead of a string, it is used as is.
+                 If not provided at all, a CancelledError without a message is constructed.
+
+        Returns:
+            True if the appender was successfully cancelled, False if it was already closed
+        """
+        if self._append_closed:
+            return False
+
+        self._cancelled_error = prepare_cancelled_error(msg)
+        self.close(self._cancelled_error)
+
+        return True
 
     def close(self, exc_value: Optional[BaseException] = None) -> bool:
         """
@@ -664,9 +731,6 @@ class StreamAppender(AsyncIterator[PIECE_co], Generic[PIECE_co]):
             raise StopAsyncIteration()
 
         return piece
-
-    def __aiter__(self) -> AsyncIterator[PIECE_co]:
-        return self
 
     def __call__(self, *args, **kwargs) -> AsyncIterator[PIECE_co]:
         return aiter(self)

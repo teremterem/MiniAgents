@@ -6,13 +6,8 @@ Test the LLM agents.
 from typing import Callable
 
 import pytest
-from dotenv import load_dotenv
 
 from miniagents import Message, MiniAgent, MiniAgents, TextMessage
-
-load_dotenv()
-
-# pylint: disable=wrong-import-position
 from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
 
