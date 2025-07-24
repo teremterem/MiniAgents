@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 from miniagents.promising.errors import NoActiveContextError
 from miniagents.promising.promise_utils import cached_privately
+from miniagents.promising.promising import Promise
 from miniagents.promising.sentinels import NO_VALUE
 
 LONGER_HASH_KEYS = False
@@ -154,7 +155,7 @@ class Frozen(BaseModel):
     # noinspection PyNestedDecorators
     @model_validator(mode="before")
     @classmethod
-    def _validate_and_freeze_values(cls, values: dict[str, Any]) -> dict[str, "FrozenType"]:
+    def _validate_and_freeze_values(cls, values: dict[str, Any]) -> dict[str, Union["FrozenType", Promise]]:
         """
         Recursively make sure that the field values of the object are immutable and of allowed types.
         """
@@ -162,7 +163,7 @@ class Frozen(BaseModel):
         return {key: cls._validate_and_freeze_value(key, value) for key, value in values.items()}
 
     @classmethod
-    def _validate_and_freeze_value(cls, key: str, value: Any) -> "FrozenType":
+    def _validate_and_freeze_value(cls, key: str, value: Any) -> Union["FrozenType", Promise]:
         """
         Recursively make sure that the field value is immutable and of allowed type.
         """
@@ -197,6 +198,7 @@ class Frozen(BaseModel):
             list,
             dict,
             Frozen,
+            Promise,
         )
 
 
