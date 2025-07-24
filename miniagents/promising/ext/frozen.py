@@ -11,7 +11,7 @@ from datetime import datetime, date, time, timedelta
 from pathlib import Path
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, model_serializer, model_validator
 
 from miniagents.promising.errors import NoActiveContextError
 from miniagents.promising.promise_utils import cached_privately
@@ -139,6 +139,15 @@ class Frozen(BaseModel):
         representation of the message for the LLM prompts.
         """
         return self.full_json
+
+    @model_serializer(mode="wrap")
+    def _pydantic_serialize(self, default_serializer, info) -> dict[str, Any]:  # pylint: disable=unused-argument
+        # TODO TODO TODO Provide type hints for the arguments
+        # TODO TODO TODO Update info to exclude all the fields whose values are promises
+        result = default_serializer(self)
+        # TODO TODO TODO Put references to promised messages back somehow
+        #  (it's ok for them to be at the end of the dict)
+        return result
 
     @classmethod
     def _preprocess_values(cls, values: dict[str, Any]) -> dict[str, Any]:
