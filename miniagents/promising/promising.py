@@ -13,6 +13,8 @@ from functools import partial
 from types import TracebackType
 from typing import Any, AsyncIterator, Awaitable, Generic, Iterable, Optional, Union
 
+from pydantic import model_serializer
+
 from miniagents.promising.errors import (
     AppenderClosedError,
     AppenderNotOpenError,
@@ -343,6 +345,10 @@ class Promise(Future, Generic[T_co]):
             for handler in promising_context.on_promise_resolved_handlers:
                 promising_context.start_soon(handler(self, self.result()))
             promising_context = promising_context.parent_ctx
+
+    @model_serializer
+    def _pydantic_serialize(self) -> dict[str, str]:
+        return {"hello": "world"}
 
 
 class StreamedPromise(Promise[WHOLE_co], Generic[PIECE_co, WHOLE_co]):

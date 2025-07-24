@@ -31,7 +31,8 @@ from miniagents.miniagents import (
     MiniAgents,
     miniagent,
 )
-from miniagents.promising.ext.frozen import Frozen, FrozenType, StrictFrozen, cached_privately
+from miniagents.promising.ext.frozen import Frozen, FrozenType, StrictFrozen
+from miniagents.promising.promise_utils import cached_privately
 
 __all__ = [
     "__version__",
