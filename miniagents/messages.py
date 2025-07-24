@@ -12,8 +12,8 @@ from pydantic import BaseModel
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError, PromisingContextError
-from miniagents.promising.ext.frozen import Frozen, StrictFrozen, cached_privately
-from miniagents.promising.promising import _StreamReplayIterator, StreamAppender, StreamedPromise
+from miniagents.promising.ext.frozen import Frozen, FrozenType, StrictFrozen, cached_privately
+from miniagents.promising.promising import _StreamReplayIterator, Promise, StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import as_single_text_promise, display_agent_trace
@@ -204,6 +204,12 @@ class Message(Token):
 
         build_serialization_metadata(include_into_serialization, self, ())
         return include_into_serialization, sub_messages
+
+    @classmethod
+    def _validate_and_freeze_value(cls, key: str, value: Any) -> Union[FrozenType, Promise]:
+        if isinstance(value, Message):
+            return value.as_promise
+        return super()._validate_and_freeze_value(key, value)
 
 
 class StrictMessage(Message, StrictFrozen):
