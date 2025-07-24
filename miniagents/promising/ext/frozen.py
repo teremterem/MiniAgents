@@ -170,6 +170,8 @@ class Frozen(BaseModel):
         """
         Preprocess the values before validation and freezing.
         """
+        # TODO Either explain in a comment why this field is *silently* overridden whenever it was manually set to a
+        #  different value, or prohibit setting it manually altogether with an error
         if values.get(FROZEN_CLASS_FIELD) != cls.__name__:
             # TODO what about saving fully qualified model name, and not just the short name ?
             values = {**values, FROZEN_CLASS_FIELD: cls.__name__}
