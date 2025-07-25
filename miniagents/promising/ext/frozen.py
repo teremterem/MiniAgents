@@ -13,6 +13,8 @@ from pathlib import Path
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, model_serializer, model_validator
+from pydantic.functional_serializers import SerializerFunctionWrapHandler
+from pydantic.functional_serializers import SerializationInfo
 
 from miniagents.promising.errors import NoActiveContextError
 from miniagents.promising.promise_utils import cached_privately
@@ -143,8 +145,11 @@ class Frozen(BaseModel):
         return self.full_json
 
     @model_serializer(mode="wrap")
-    def _pydantic_serialize(self, default_serializer, info) -> dict[str, Any]:  # pylint: disable=unused-argument
-        # TODO TODO TODO Provide type hints for the arguments
+    def _pydantic_serialize(
+        self,
+        default_serializer: SerializerFunctionWrapHandler,
+        info: SerializationInfo,  # pylint: disable=unused-argument
+    ) -> dict[str, Any]:
         # TODO TODO TODO Update info to exclude all the fields whose values are promises
         result = default_serializer(self)
         # TODO TODO TODO Put references to promised messages back somehow
