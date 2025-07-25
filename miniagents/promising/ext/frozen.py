@@ -4,6 +4,7 @@ The main class in this module is `Frozen`. See its docstring for more informatio
 
 import hashlib
 import json
+import os
 from numbers import Number
 from typing import Any, Optional, Union
 from uuid import UUID
@@ -18,7 +19,8 @@ from miniagents.promising.promise_utils import cached_privately
 from miniagents.promising.promising import Promise
 from miniagents.promising.sentinels import NO_VALUE
 
-LONGER_HASH_KEYS = False
+
+LONGER_HASH_KEYS = os.getenv("FROZEN_LONGER_HASH_KEYS", "false").lower() == "true"
 
 FROZEN_CLASS_FIELD = "class_"
 
