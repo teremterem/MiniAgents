@@ -38,13 +38,12 @@ async def test_message_nesting_vs_hash_key() -> None:
                 15,
                 {
                     "role": "user",
-                    "nested_nested": (TextMessage("nested_text"), TextMessage("nested_text_promise")),
+                    "nested_nested": (TextMessage("nested_text"), TextMessage("nested_text2")),
                     "nested_nested2": [TextMessage(content="nested_text2")],
                 },
             ],
             extra_node=SpecialNode(nested_nested=TextMessage("nested_text3")),
             nested_message=TextMessage("nested_text"),
-            nested_promise=TextMessage("nested_text_promise"),
         )
 
         expected_structure = {
