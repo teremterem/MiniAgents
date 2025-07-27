@@ -12,9 +12,9 @@ from pydantic import BaseModel
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError, PromisingContextError
-from miniagents.promising.ext.frozen import Frozen, FrozenType, StrictFrozen
+from miniagents.promising.ext.frozen import Frozen, StrictFrozen
 from miniagents.promising.promise_utils import cached_privately
-from miniagents.promising.promising import _StreamReplayIterator, Promise, StreamAppender, StreamedPromise
+from miniagents.promising.promising import _StreamReplayIterator, StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import as_single_text_promise, display_agent_trace
@@ -104,18 +104,17 @@ class Message(Token):
         return f"```json\n{super()._as_string()}\n```"
 
     def serialize(self) -> dict[str, Any]:
-        include_into_serialization, _ = self._serialization_metadata
+        include_into_serialization, sub_messages = self._serialization_metadata
         model_dump = self.model_dump(include=include_into_serialization, mode="json")
 
-        # # TODO [SUB-PROMISES] Move this kind of serialization to an async method
-        # for path, message_or_messages in sub_messages.items():
-        #     sub_dict = model_dump
-        #     for path_part in path[:-1]:
-        #         sub_dict = sub_dict[path_part]
-        #     if isinstance(message_or_messages, Message):
-        #         sub_dict[f"{path[-1]}__hash_key"] = message_or_messages.hash_key
-        #     else:
-        #         sub_dict[f"{path[-1]}__hash_keys"] = [message.hash_key for message in message_or_messages]
+        for path, message_or_messages in sub_messages.items():
+            sub_dict = model_dump
+            for path_part in path[:-1]:
+                sub_dict = sub_dict[path_part]
+            if isinstance(message_or_messages, Message):
+                sub_dict[f"{path[-1]}__hash_key"] = message_or_messages.hash_key
+            else:
+                sub_dict[f"{path[-1]}__hash_keys"] = [message.hash_key for message in message_or_messages]
         return model_dump
 
     def sub_messages(self) -> Iterator["Message"]:
@@ -205,12 +204,6 @@ class Message(Token):
 
         build_serialization_metadata(include_into_serialization, self, ())
         return include_into_serialization, sub_messages
-
-    @classmethod
-    def _validate_and_freeze_value(cls, key: str, value: Any) -> Union[FrozenType, Promise]:
-        if isinstance(value, Message):
-            return value.as_promise
-        return super()._validate_and_freeze_value(key, value)
 
 
 class StrictMessage(Message, StrictFrozen):

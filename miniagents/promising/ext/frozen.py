@@ -12,13 +12,10 @@ from datetime import datetime, date, time, timedelta
 from pathlib import Path
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, model_serializer, model_validator
-from pydantic.functional_serializers import SerializerFunctionWrapHandler
-from pydantic.functional_serializers import SerializationInfo
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from miniagents.promising.errors import NoActiveContextError
 from miniagents.promising.promise_utils import cached_privately
-from miniagents.promising.promising import Promise
 from miniagents.promising.sentinels import NO_VALUE
 
 
@@ -144,18 +141,6 @@ class Frozen(BaseModel):
         """
         return self.full_json
 
-    @model_serializer(mode="wrap")
-    def _pydantic_serialize(
-        self,
-        default_serializer: SerializerFunctionWrapHandler,
-        info: SerializationInfo,  # pylint: disable=unused-argument
-    ) -> dict[str, Any]:
-        # TODO TODO TODO Update info to exclude all the fields whose values are promises
-        result = default_serializer(self)
-        # TODO TODO TODO Put references to promised messages back somehow
-        #  (it's ok for them to be at the end of the dict)
-        return result
-
     @classmethod
     def _preprocess_values(cls, values: dict[str, Any]) -> dict[str, Any]:
         """
@@ -171,7 +156,7 @@ class Frozen(BaseModel):
     # noinspection PyNestedDecorators
     @model_validator(mode="before")
     @classmethod
-    def _validate_and_freeze_values(cls, values: dict[str, Any]) -> dict[str, Union["FrozenType", Promise]]:
+    def _validate_and_freeze_values(cls, values: dict[str, Any]) -> dict[str, "FrozenType"]:
         """
         Recursively make sure that the field values of the object are immutable and of allowed types.
         """
@@ -179,7 +164,7 @@ class Frozen(BaseModel):
         return {key: cls._validate_and_freeze_value(key, value) for key, value in values.items()}
 
     @classmethod
-    def _validate_and_freeze_value(cls, key: str, value: Any) -> Union["FrozenType", Promise]:
+    def _validate_and_freeze_value(cls, key: str, value: Any) -> "FrozenType":
         """
         Recursively make sure that the field value is immutable and of allowed type.
         """
@@ -214,7 +199,6 @@ class Frozen(BaseModel):
             list,
             dict,
             Frozen,
-            Promise,
         )
 
 
