@@ -12,7 +12,8 @@ from pydantic import BaseModel
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError, PromisingContextError
-from miniagents.promising.ext.frozen import Frozen, StrictFrozen, cached_privately
+from miniagents.promising.ext.frozen import Frozen, StrictFrozen
+from miniagents.promising.promise_utils import cached_privately
 from miniagents.promising.promising import _StreamReplayIterator, StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
