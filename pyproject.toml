@@ -24,6 +24,7 @@ dependencies = [
 dev = [
     "anthropic",
     "black",
+    "hatch",
     "httpx",
     "ipython",
     "jupyterlab",
