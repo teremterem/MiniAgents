@@ -19,7 +19,7 @@ from miniagents.promising.promise_utils import cached_privately
 from miniagents.promising.sentinels import NO_VALUE
 
 
-LONGER_HASH_KEYS = os.getenv("FROZEN_LONGER_HASH_KEYS", "false").lower() == "true"
+LONGER_HASH_KEYS_DEFAULT = os.getenv("FROZEN_LONGER_HASH_KEYS", "false").lower() == "true"
 
 FROZEN_CLASS_FIELD = "class_"
 
@@ -119,9 +119,9 @@ class Frozen(BaseModel):
         try:
             longer_hash_keys = PromisingContext.get_current().longer_hash_keys
             if longer_hash_keys is NO_VALUE:
-                longer_hash_keys = LONGER_HASH_KEYS
+                longer_hash_keys = LONGER_HASH_KEYS_DEFAULT
         except NoActiveContextError:
-            longer_hash_keys = LONGER_HASH_KEYS
+            longer_hash_keys = LONGER_HASH_KEYS_DEFAULT
 
         if not longer_hash_keys:
             hash_key = hash_key[:40]
