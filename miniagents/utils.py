@@ -4,6 +4,7 @@ Utility functions of the MiniAgents framework.
 """
 import logging
 import re
+import threading
 import traceback
 import typing
 from pathlib import Path
@@ -23,21 +24,62 @@ if typing.TYPE_CHECKING:
 class SingletonMeta(type):
     """
     A metaclass that ensures that only one instance of a certain class is created.
-    NOTE: This metaclass is designed to work in asynchronous environments, hence we didn't bother making
-    it thread-safe (people typically don't mix multithreading and asynchronous paradigms together).
+    # TODO Mention that it's thread-safe
+    #  (to widen the scope of usecases despite the framework being async rather than multithreaded)
+    # TODO Document `singleton_*` parameters (also, mention that the thread lock is global for all singletons)
+    # TODO Mention `**_` trick in the classes that use this metaclass so IDEs don't complain
     """
 
-    # TODO make it thread-safe just in case ? (for the sake of tricks like `asyncio.to_thread()` and similar)
+    def __new__(mcs, name, bases, dct):
+        singleton_cls = super().__new__(mcs, name, bases, dct)
+        singleton_cls.__singleton_lock = threading.Lock()  # pylint: disable=protected-access,unused-private-member
+        return singleton_cls
 
-    def __call__(cls):
-        if not hasattr(cls, "_instance"):
-            cls._instance = super().__call__()
-        return cls._instance
+    def __call__(
+        cls,
+        *,
+        singleton_scope: Any = None,
+        singleton_scope_key: Optional[str] = None,
+        singleton_scope_as_dict: bool = False,
+    ):
+        if singleton_scope_key is None:
+            if singleton_scope is None:
+                # The scope of the singleton is the class itself => no need to duplicate the class name in the key
+                singleton_scope_key = "__instance"
+            else:
+                singleton_scope_key = f"__{cls.__name__}_instance"
+
+        if singleton_scope is None:
+            # The scope of the singleton is the class itself (global singleton)
+            singleton_scope = cls
+
+        if singleton_scope_as_dict:
+            # The scope is a dictionary => use [] notation
+            if singleton_scope_key not in singleton_scope:
+                with cls.__singleton_lock:
+                    # Double check in case of race condition
+                    if singleton_scope_key not in singleton_scope:
+                        singleton_scope[singleton_scope_key] = super().__call__()
+
+            return singleton_scope[singleton_scope_key]
+
+        # The scope is NOT a dictionary => use hasattr/setattr/getattr()
+        if not hasattr(singleton_scope, singleton_scope_key):
+            with cls.__singleton_lock:
+                # Double check in case of race condition
+                if not hasattr(singleton_scope, singleton_scope_key):
+                    setattr(singleton_scope, singleton_scope_key, super().__call__())
+
+        return getattr(singleton_scope, singleton_scope_key)
 
 
 class Singleton(metaclass=SingletonMeta):
     """
     A class that ensures that only one instance of a certain class is created.
+    # TODO Mention that it's thread-safe
+    #  (to widen the scope of usecases despite the framework being async rather than multithreaded)
+    # TODO Document `singleton_*` parameters (also, mention that the thread lock is global for all singletons)
+    # TODO Mention `**_` trick in the classes that inherit from this one so IDEs don't complain
     """
 
 
