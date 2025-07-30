@@ -24,10 +24,20 @@ if typing.TYPE_CHECKING:
 class SingletonMeta(type):
     """
     A metaclass that ensures that only one instance of a certain class is created.
-    # TODO Mention that it's thread-safe
-    #  (to widen the scope of usecases despite the framework being async rather than multithreaded)
-    # TODO Document `singleton_*` parameters (also, mention that the thread lock is global for all singletons)
-    # TODO Mention `**_` trick in the classes that use this metaclass so IDEs don't complain
+
+    Even though MiniAgents framework is async, this metaclass is still thread-safe, to widen the scope of use cases.
+
+    Parameters for singleton instantiation:
+    - singleton_scope: The scope object where the singleton instance will be stored.
+                       If None, the class itself is used as the scope (global singleton).
+    - singleton_scope_key: The attribute/key name for storing the instance in the scope.
+                           If None, defaults to "__instance" for class scope or "__{ClassName}_instance" for custom
+                           scopes.
+    - singleton_scope_as_dict: If True, treat the scope as a dictionary when storing the instance.
+                               If False, treat it as an object and store the instance as an attribute.
+
+    NOTE: To avoid complaints from some IDEs about unexpected keyword arguments from the singleton parameters, classes
+    using this metaclass could accept `**_` in their `__init__`.
     """
 
     def __new__(mcs, name, bases, dct):
@@ -75,11 +85,19 @@ class SingletonMeta(type):
 
 class Singleton(metaclass=SingletonMeta):
     """
-    A class that ensures that only one instance of a certain class is created.
-    # TODO Mention that it's thread-safe
-    #  (to widen the scope of usecases despite the framework being async rather than multithreaded)
-    # TODO Document `singleton_*` parameters (also, mention that the thread lock is global for all singletons)
-    # TODO Mention `**_` trick in the classes that inherit from this one so IDEs don't complain
+    A base class for singletons.
+
+    Parameters for singleton instantiation (see `SingletonMeta` for more details):
+    - singleton_scope: The scope object where the singleton instance will be stored.
+                       If None, the class itself is used as the scope (global singleton).
+    - singleton_scope_key: The attribute/key name for storing the instance in the scope.
+                           If None, defaults to "__instance" for class scope or "__{ClassName}_instance" for custom
+                           scopes.
+    - singleton_scope_as_dict: If True, treat the scope as a dictionary when storing the instance.
+                               If False, treat it as an object and store the instance as an attribute.
+
+    NOTE: To avoid complaints from some IDEs about unexpected keyword arguments from the singleton parameters, classes
+    inheriting from this one could accept `**_` in their `__init__`.
     """
 
 
@@ -91,7 +109,9 @@ class ModelSingletonMeta(ModelMetaclass, SingletonMeta):
 
 class ModelSingleton(metaclass=ModelSingletonMeta):
     """
-    A class that ensures that only one instance of a Pydantic model of a certain class is created.
+    A base class that ensures that only one instance of a Pydantic model of a certain class is created.
+
+    This base class exists separately from `Singleton` because Pydantic models cannot be extended from `Singleton`.
     """
 
 
