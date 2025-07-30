@@ -3,19 +3,38 @@ This module provides agents working with chat history.
 """
 
 import random
+import typing
 from dataclasses import dataclass
 from datetime import datetime
+from functools import cache
 from pathlib import Path
 from pprint import pformat
 from typing import Callable, Optional
 
-from markdown_it import MarkdownIt
 from pydantic import BaseModel, ConfigDict
 
 from miniagents.messages import Message, TextMessage
 from miniagents.miniagents import InteractionContext, miniagent
 from miniagents.promising.ext.frozen import Frozen
 from miniagents.utils import display_agent_trace, get_current_agent_trace
+
+if typing.TYPE_CHECKING:
+    from markdown_it import MarkdownIt
+
+
+@cache
+def _get_markdown_it() -> "MarkdownIt":
+    try:
+        # pylint: disable=import-outside-toplevel
+        from markdown_it import MarkdownIt
+    except ModuleNotFoundError as exc:
+        raise ImportError(
+            "The 'markdown-it-py' package is required for the history agents of MiniAgents. "
+            "Please install it via 'pip install -U markdown-it-py'."
+        ) from exc
+
+    return MarkdownIt()
+
 
 GLOBAL_MESSAGE_HISTORY: list[Message] = []
 
@@ -108,7 +127,7 @@ class MarkdownHistoryAgent(BaseModel):
         md_content = Path(self.history_md_file).read_text(encoding="utf-8")
 
         md_lines = md_content.split("\n")
-        md_tokens = _md.parse(md_content)
+        md_tokens = _get_markdown_it().parse(md_content)
 
         last_section = None
         sections = []
@@ -197,6 +216,7 @@ async def markdown_llm_logger_agent(
         model_suffix = ""
 
     log_file = log_folder / (
+        # TODO Use UTC time here ? (probably not)
         f"{datetime.now().strftime('%Y%m%d_%H%M%S__%f')}{model_suffix}__{random.randint(0, 0xfff):03x}.md"
     )
     if log_file.exists():
@@ -228,6 +248,3 @@ async def markdown_llm_logger_agent(
     response_metadata = messages[-1].model_dump(exclude=set(messages[-1].non_metadata_fields()))
     with log_file.open(mode="a", buffering=1, encoding="utf-8") as log_file:
         log_file.write(f"\n----------------------------------------\n\n```python\n{pformat(response_metadata)}\n```\n")
-
-
-_md = MarkdownIt()

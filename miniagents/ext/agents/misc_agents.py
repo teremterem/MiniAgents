@@ -6,15 +6,12 @@ track of the chat history using the provided ChatHistory object.
 from pathlib import Path
 from typing import Union
 
-from prompt_toolkit import HTML, PromptSession
-from prompt_toolkit.document import Document
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.keys import Keys
-from prompt_toolkit.lexers import Lexer
-from prompt_toolkit.styles import Style
-
 from miniagents.ext.llms.llm_utils import UserMessage
 from miniagents.miniagents import InteractionContext, miniagent
+from miniagents.utils import Singleton
+
+
+# TODO Should all the look and feel be FULLY customizable here ?
 
 
 @miniagent
@@ -39,12 +36,13 @@ async def console_input_agent(
             "\033[0m"
         )
 
-    user_input = await _prompt_session.prompt_async(
-        HTML("<user_utterance>USER: </user_utterance>"),
+    prompt_toolkit_singleton = PromptToolkitSingleton()
+    user_input = await prompt_toolkit_singleton.prompt_session.prompt_async(
+        prompt_toolkit_singleton.html("<user_utterance>USER: </user_utterance>"),
         multiline=True,
-        key_bindings=_prompt_bindings,
-        lexer=_CustomPromptLexer(),
-        style=_user_prompt_style,
+        key_bindings=prompt_toolkit_singleton.prompt_bindings,
+        lexer=prompt_toolkit_singleton.custom_prompt_lexer(),
+        style=prompt_toolkit_singleton.user_prompt_style,
     )
     # skip an extra line after the user input
     print()
@@ -66,26 +64,28 @@ async def console_output_agent(
     """
     MiniAgent that echoes messages to the console token by token.
     """
-    ctx.reply(ctx.message_promises)  # this is a "transparent" agent - pass the same messages forward
+    try:
+        ctx.reply(ctx.message_promises)  # this is a "transparent" agent - pass the same messages forward
 
-    # TODO should MessageSequencePromise support `cancel()` operation
-    #  (to interrupt whoever is producing it) ?
+        async for msg_promise in ctx.message_promises:
+            resolved_style = getattr(msg_promise.known_beforehand, "console_style", None) or assistant_style
 
-    async for msg_promise in ctx.message_promises:
-        resolved_style = getattr(msg_promise.known_beforehand, "console_style", None) or assistant_style
+            if mention_aliases:
+                agent_alias = (
+                    getattr(msg_promise.known_beforehand, "agent_alias", None)
+                    or getattr(msg_promise.known_beforehand, "role", None)
+                    or default_role
+                )
 
-        if mention_aliases:
-            agent_alias = (
-                getattr(msg_promise.known_beforehand, "agent_alias", None)
-                or getattr(msg_promise.known_beforehand, "role", None)
-                or default_role
-            )
+                print(f"\033[{resolved_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
 
-            print(f"\033[{resolved_style}m{agent_alias.upper()}: \033[0m", end="", flush=True)
+            async for token in msg_promise:
+                print(f"\033[{resolved_style}m{token}\033[0m", end="", flush=True)
+                print("\n")  # this produces a double newline after a single message
 
-        async for token in msg_promise:
-            print(f"\033[{resolved_style}m{token}\033[0m", end="", flush=True)
-        print("\n")  # this produces a double newline after a single message
+    except KeyboardInterrupt as exc:
+        ctx.message_promises.cancel(str(exc))
+        raise exc
 
 
 @miniagent
@@ -107,30 +107,47 @@ async def file_output_agent(ctx: InteractionContext, file: str, **kwargs) -> Non
             file_stream.write(str(token))
 
 
-_user_prompt_style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
-
-_prompt_session = PromptSession()
-
-_prompt_bindings = KeyBindings()
-
-
-@_prompt_bindings.add(Keys.Enter)
-def _prompt_binding_enter(event):
-    event.current_buffer.validate_and_handle()
-
-
-@_prompt_bindings.add(Keys.ControlSpace)
-def _prompt_binding_control_space(event):
-    event.current_buffer.insert_text("\n")
-
-
-class _CustomPromptLexer(Lexer):
+class PromptToolkitSingleton(Singleton):
     """
-    Custom lexer that paints user utterances in yellow (and bold).
+    Singleton class that holds all prompt-toolkit related components.
     """
 
-    def lex_document(self, document: Document):
-        """
-        Lex the document.
-        """
-        return lambda i: [("class:user_utterance", document.text.split("\n")[i])]
+    def __init__(self):
+        try:
+            # pylint: disable=import-outside-toplevel
+            from prompt_toolkit import HTML, PromptSession
+            from prompt_toolkit.document import Document
+            from prompt_toolkit.key_binding import KeyBindings
+            from prompt_toolkit.keys import Keys
+            from prompt_toolkit.lexers import Lexer
+            from prompt_toolkit.styles import Style
+        except ModuleNotFoundError as exc:
+            raise ImportError(
+                "The 'prompt-toolkit' package is required for the console agents of MiniAgents. "
+                "Please install it via 'pip install -U prompt-toolkit'."
+            ) from exc
+
+        # Initialize all the components that were previously global variables
+        self.user_prompt_style = Style.from_dict({"user_utterance": "fg:ansibrightyellow bold"})
+        self.prompt_session = PromptSession()
+        self.prompt_bindings = KeyBindings()
+
+        # Set up key bindings
+        @self.prompt_bindings.add(Keys.Enter)
+        def prompt_binding_enter(event):
+            event.current_buffer.validate_and_handle()
+
+        @self.prompt_bindings.add(Keys.ControlSpace)
+        def prompt_binding_control_space(event):
+            event.current_buffer.insert_text("\n")
+
+        # Create the custom lexer class
+        class CustomPromptLexer(Lexer):
+            """Custom lexer that paints user utterances in yellow (and bold)."""
+
+            def lex_document(self, document: Document):
+                """Lex the document."""
+                return lambda i: [("class:user_utterance", document.text.split("\n")[i])]
+
+        self.custom_prompt_lexer = CustomPromptLexer
+        self.html = HTML

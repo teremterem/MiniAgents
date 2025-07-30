@@ -11,6 +11,43 @@ from miniagents import miniagent, InteractionContext, Message, MiniAgents, TextM
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 
 
+@pytest.mark.skip(reason="TODO [CANCELLATION] Unskip this test when cancellation fully works")
+async def test_cancel_agent_immediately() -> None:
+    agent1_ran = False
+
+    @miniagent
+    async def agent1(_: InteractionContext) -> None:
+        nonlocal agent1_ran
+        agent1_ran = True
+
+    async with MiniAgents():
+        reply_sequence = agent1.trigger()
+        reply_sequence.cancel()
+        await reply_sequence
+
+    assert not agent1_ran
+
+
+@pytest.mark.skip(reason="TODO [CANCELLATION] Unskip this test when cancellation fully works")
+async def test_cancel_agent_with_delay() -> None:
+    agent_steps = []
+
+    @miniagent
+    async def agent1(_: InteractionContext) -> None:
+        agent_steps.append("agent1 - start")
+        await asyncio.sleep(0.2)
+        agent_steps.append("agent1 - end")
+
+    async with MiniAgents(start_everything_soon_by_default=True):
+        reply_sequence = agent1.trigger()
+        await asyncio.sleep(0.1)
+        reply_sequence.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await reply_sequence
+
+    assert agent_steps == ["agent1 - start"]
+
+
 @pytest.mark.parametrize("start_soon", [False, True, NO_VALUE])
 @pytest.mark.parametrize("reply_out_of_order", [False, True])
 @pytest.mark.parametrize("raw_strings", [False, True])
@@ -114,16 +151,16 @@ async def test_full_duplex_communication():
 
     async with MiniAgents():
         call = some_agent.initiate_call()
-        reply_aiter = call.reply_sequence(finish_call=False).__aiter__()
+        reply_aiter = aiter(call.reply_sequence(finish_call=False))
 
         # Test first exchange
         call.send_message("hello")
-        response1 = await (await reply_aiter.__anext__())
+        response1 = await (await anext(reply_aiter))
         assert str(response1) == "you said: hello"
 
         # Test second exchange
         call.send_message("world")
-        response2 = await (await reply_aiter.__anext__())
+        response2 = await (await anext(reply_aiter))
         assert str(response2) == "you said: world"
 
 

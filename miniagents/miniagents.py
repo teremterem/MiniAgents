@@ -6,6 +6,7 @@ import asyncio
 import contextvars
 import inspect
 import logging
+import os
 import re
 import warnings
 from contextvars import ContextVar
@@ -61,7 +62,7 @@ class MiniAgents(PromisingContext):
         on_promise_resolved: Union[PromiseResolvedEventHandler, Iterable[PromiseResolvedEventHandler]] = (),
         errors_as_messages: bool = False,
         error_tracebacks_in_messages: bool = False,
-        log_reduced_tracebacks: bool = True,
+        log_reduced_tracebacks: bool = os.getenv("MINIAGENTS_LOG_REDUCED_TRACEBACKS", "true").lower() == "true",
         await_reply_persistence_before_agent_finish: bool = False,
         logger: Optional[logging.Logger] = None,
         **kwargs,
@@ -79,6 +80,7 @@ class MiniAgents(PromisingContext):
         self.stream_llm_tokens_by_default = stream_llm_tokens_by_default
         self.llm_logger_agent = llm_logger_agent
         self.await_reply_persistence_before_agent_finish = await_reply_persistence_before_agent_finish
+        # TODO check each of the handlers for being a coroutine function
         self.on_persist_messages_handlers: list[PersistMessagesEventHandler] = (
             [on_persist_messages] if callable(on_persist_messages) else list(on_persist_messages)
         )
@@ -117,10 +119,10 @@ class MiniAgents(PromisingContext):
         """
         Add a handler that will be called every time a Message needs to be persisted.
         """
-        if not callable(handler):
-            raise ValueError("An `on_persist_messages` handler must be a callable.")
         if not inspect.iscoroutinefunction(handler):
-            raise ValueError("An `on_persist_messages` handler must be async.")
+            raise ValueError(
+                "An `on_persist_messages` handler must be a coroutine function (defined with `async def`)."
+            )
 
         self.on_persist_messages_handlers.append(handler)
         return handler
@@ -300,12 +302,13 @@ class MiniAgent(Frozen):
         non_freezable_kwargs: Optional[dict[str, Any]] = None,
         **kwargs_to_freeze,
     ) -> None:
-        if not callable(func_or_class):
-            raise ValueError("A `@miniagent` decorated type must be a callable.")
         if not inspect.iscoroutinefunction(func_or_class) and not (
             hasattr(func_or_class, "__call__") and inspect.iscoroutinefunction(func_or_class.__call__)
         ):
-            raise ValueError("A `@miniagent` decorated class or function must be async.")
+            raise ValueError(
+                "A `@miniagent` decorated function or class must be a coroutine function (defined with `async def` "
+                "or have a `__call__` method that is a coroutine function, respectively)."
+            )
 
         if alias is None:
             alias = func_or_class.__name__
@@ -736,7 +739,7 @@ class AgentReplyMessageSequence(MessageSequence):
             )
 
         agent_call_promise = Promise[AgentCallNode](
-            start_soon=True,
+            start_soon=True,  # TODO Try to recall why it is True and explain in a comment
             resolver=_arun_agent,
         )
 

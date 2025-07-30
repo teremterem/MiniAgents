@@ -4,6 +4,7 @@ Utility functions of the MiniAgents framework.
 """
 import logging
 import re
+import threading
 import traceback
 import typing
 from pathlib import Path
@@ -23,21 +24,80 @@ if typing.TYPE_CHECKING:
 class SingletonMeta(type):
     """
     A metaclass that ensures that only one instance of a certain class is created.
-    NOTE: This metaclass is designed to work in asynchronous environments, hence we didn't bother making
-    it thread-safe (people typically don't mix multithreading and asynchronous paradigms together).
+
+    Even though MiniAgents framework is async, this metaclass is still thread-safe, to widen the scope of use cases.
+
+    Parameters for singleton instantiation:
+    - singleton_scope: The scope object where the singleton instance will be stored.
+                       If None, the class itself is used as the scope (global singleton).
+    - singleton_scope_key: The attribute/key name for storing the instance in the scope.
+                           If None, defaults to "__instance" for class scope or "__{ClassName}_instance" for custom
+                           scopes.
+    - singleton_scope_as_dict: If True, treat the scope as a dictionary when storing the instance.
+                               If False, treat it as an object and store the instance as an attribute.
+
+    NOTE: To avoid complaints from some IDEs about unexpected keyword arguments from the singleton parameters, classes
+    using this metaclass could accept `**_` in their `__init__`.
     """
 
-    # TODO make it thread-safe just in case ? (for the sake of tricks like `asyncio.to_thread()` and similar)
+    def __new__(mcs, name, bases, dct):
+        singleton_cls = super().__new__(mcs, name, bases, dct)
+        singleton_cls.__singleton_lock = threading.Lock()  # pylint: disable=protected-access,unused-private-member
+        return singleton_cls
 
-    def __call__(cls):
-        if not hasattr(cls, "_instance"):
-            cls._instance = super().__call__()
-        return cls._instance
+    def __call__(
+        cls,
+        *,
+        singleton_scope: Any = None,
+        singleton_scope_key: Optional[str] = None,
+        singleton_scope_as_dict: bool = False,
+    ):
+        if singleton_scope_key is None:
+            if singleton_scope is None:
+                # The scope of the singleton is the class itself => no need to duplicate the class name in the key
+                singleton_scope_key = "__instance"
+            else:
+                singleton_scope_key = f"__{cls.__name__}_instance"
+
+        if singleton_scope is None:
+            # The scope of the singleton is the class itself (global singleton)
+            singleton_scope = cls
+
+        if singleton_scope_as_dict:
+            # The scope is a dictionary => use [] notation
+            if singleton_scope_key not in singleton_scope:
+                with cls.__singleton_lock:
+                    # Double check in case of race condition
+                    if singleton_scope_key not in singleton_scope:
+                        singleton_scope[singleton_scope_key] = super().__call__()
+
+            return singleton_scope[singleton_scope_key]
+
+        # The scope is NOT a dictionary => use hasattr/setattr/getattr()
+        if not hasattr(singleton_scope, singleton_scope_key):
+            with cls.__singleton_lock:
+                # Double check in case of race condition
+                if not hasattr(singleton_scope, singleton_scope_key):
+                    setattr(singleton_scope, singleton_scope_key, super().__call__())
+
+        return getattr(singleton_scope, singleton_scope_key)
 
 
 class Singleton(metaclass=SingletonMeta):
     """
-    A class that ensures that only one instance of a certain class is created.
+    A base class for singletons.
+
+    Parameters for singleton instantiation (see `SingletonMeta` for more details):
+    - singleton_scope: The scope object where the singleton instance will be stored.
+                       If None, the class itself is used as the scope (global singleton).
+    - singleton_scope_key: The attribute/key name for storing the instance in the scope.
+                           If None, defaults to "__instance" for class scope or "__{ClassName}_instance" for custom
+                           scopes.
+    - singleton_scope_as_dict: If True, treat the scope as a dictionary when storing the instance.
+                               If False, treat it as an object and store the instance as an attribute.
+
+    NOTE: To avoid complaints from some IDEs about unexpected keyword arguments from the singleton parameters, classes
+    inheriting from this one could accept `**_` in their `__init__`.
     """
 
 
@@ -49,7 +109,9 @@ class ModelSingletonMeta(ModelMetaclass, SingletonMeta):
 
 class ModelSingleton(metaclass=ModelSingletonMeta):
     """
-    A class that ensures that only one instance of a Pydantic model of a certain class is created.
+    A base class that ensures that only one instance of a Pydantic model of a certain class is created.
+
+    This base class exists separately from `Singleton` because Pydantic models cannot be extended from `Singleton`.
     """
 
 
@@ -200,6 +262,12 @@ class MiniAgentsLogFormatter(logging.Formatter):
                 "\n"
                 "ATTENTION! Some parts of the traceback above are omitted for readability.\n"
                 "Use `MiniAgents(log_reduced_tracebacks=False)` to see the full traceback.\n"
+            )
+        else:
+            lines.append(
+                "\n"
+                "ATTENTION! All the traceback lines are shown (including those from `miniagents` library).\n"
+                "Use `MiniAgents(log_reduced_tracebacks=True)` to only show the lines from the scripts you wrote.\n"
             )
 
         # Add the agent trace if enabled

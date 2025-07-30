@@ -4,9 +4,9 @@ The main class in this module is `Frozen`. See its docstring for more informatio
 
 import hashlib
 import json
-from functools import wraps
+import os
 from numbers import Number
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 from uuid import UUID
 from datetime import datetime, date, time, timedelta
 from pathlib import Path
@@ -15,37 +15,13 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from miniagents.promising.errors import NoActiveContextError
+from miniagents.promising.promise_utils import cached_privately
 from miniagents.promising.sentinels import NO_VALUE
 
-LONGER_HASH_KEYS = False
+
+LONGER_HASH_KEYS = os.getenv("FROZEN_LONGER_HASH_KEYS", "false").lower() == "true"
 
 FROZEN_CLASS_FIELD = "class_"
-
-
-def cached_privately(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
-    """
-    Unlike `@functools.cached_property`, this decorator caches the result of the method call in a private attribute
-    instead of replacing the original method with the calculated value. This approach prevents the cached value from
-    being registered as a field value in the Pydantic model upon evaluation.
-
-    NOTE: This decorator does not automatically turn the method into a property - you need to additionally decorate
-    your method with `@property` on top of this decorator. This decision was made because IDEs like PyCharm don't seem
-    to realize that the method became a property if it wasn't explicitly decorated with known decorators like
-    `@property` or `@functools.cached_property` (they might have hardcoded this behaviour).
-    """
-
-    # TODO can it be made thread-safe ? (for the sake of tricks like `asyncio.to_thread()` and similar)
-
-    @wraps(func)
-    def wrapper(self: Any) -> Any:
-        attr_name = f"__{type(self).__name__}__{func.__name__}__cache"
-        result = getattr(self, attr_name, NO_VALUE)
-        if result is NO_VALUE:
-            result = func(self)
-            setattr(self, attr_name, result)
-        return result
-
-    return wrapper
 
 
 class Frozen(BaseModel):
@@ -170,6 +146,8 @@ class Frozen(BaseModel):
         """
         Preprocess the values before validation and freezing.
         """
+        # TODO Either explain in a comment why this field is *silently* overridden whenever it was manually set to a
+        #  different value, or prohibit setting it manually altogether with an error
         if values.get(FROZEN_CLASS_FIELD) != cls.__name__:
             # TODO what about saving fully qualified model name, and not just the short name ?
             values = {**values, FROZEN_CLASS_FIELD: cls.__name__}
@@ -242,3 +220,7 @@ FrozenType = Optional[
         Frozen,
     ]
 ]
+
+
+class StrictFrozen(Frozen):
+    model_config = ConfigDict(extra="forbid")

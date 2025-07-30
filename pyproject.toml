@@ -4,46 +4,48 @@ line-length = 119
 [tool.coverage.run]
 branch = true
 
-[tool.poetry]
+[project]
 name = "miniagents"
-version = "0.0.34"
+version = "0.1.0a1"
 description = """\
 An open-source, async-first framework for building multi-agent AI systems with an innovative approach to parallelism, \
 so you can focus on creating intelligent agents, not on managing the concurrency of your flows.\
 """
-authors = ["Oleksandr Tereshchenko <toporok@gmail.com>"]
+authors = [{name = "Oleksandr Tereshchenko", email = "toporok@gmail.com"}]
 homepage = "https://github.com/teremterem/MiniAgents"
 readme = "README.md"
-license = "MIT"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0,<3.0.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<4.0"
-markdown-it-py = "*"
-prompt-toolkit = "*"
-pydantic = ">=2.0.0,<3.0.0"
-wrapt = "*"
-
-[tool.poetry.dev-dependencies]
-anthropic = "*"
-black = "*"
-httpx = "*"
-ipython = "*"
-jupyterlab = "*"
-llama-index = "*"
-markdownify = "*"
-notebook = "*"
-openai = "*"
-pre-commit = "*"
-pylint = "*"
-pytest = "*"
-pytest-asyncio = "*"
-pytest-cov = "*"
-python-dotenv = "*"
-selenium = "*"
+[project.optional-dependencies]
+dev = [
+    "anthropic",
+    "black",
+    "httpx",
+    "ipython",
+    "jupyterlab",
+    "llama-index",
+    "markdown-it-py",
+    "markdownify",
+    "notebook",
+    "openai",
+    "pre-commit",
+    "prompt-toolkit",
+    "pylint",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-dotenv",
+    "python-dotenv",
+    "selenium",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

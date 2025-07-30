@@ -8,13 +8,13 @@ import warnings
 from types import TracebackType
 from typing import Any, AsyncIterator, Iterable, Iterator, Optional, Union
 
-import wrapt
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from miniagents.miniagent_typing import MessageTokenStreamer, MessageType
 from miniagents.promising.errors import AppenderNotOpenError, PromisingContextError
-from miniagents.promising.ext.frozen import Frozen, cached_privately
-from miniagents.promising.promising import StreamAppender, StreamedPromise
+from miniagents.promising.ext.frozen import Frozen, StrictFrozen
+from miniagents.promising.promise_utils import cached_privately
+from miniagents.promising.promising import _StreamReplayIterator, StreamAppender, StreamedPromise
 from miniagents.promising.sentinels import NO_VALUE, Sentinel
 from miniagents.promising.sequence import FlatSequence
 from miniagents.utils import as_single_text_promise, display_agent_trace
@@ -206,8 +206,8 @@ class Message(Token):
         return include_into_serialization, sub_messages
 
 
-class StrictMessage(Message):
-    model_config = ConfigDict(extra="forbid")
+class StrictMessage(Message, StrictFrozen):
+    pass
 
 
 class TextMessage(Message, TextToken):
@@ -268,6 +268,9 @@ class TextMessage(Message, TextToken):
         return self.content or ""
 
 
+class ErrorToken(TextToken): ...
+
+
 class ErrorMessage(TextMessage): ...
 
 
@@ -281,9 +284,11 @@ class MessagePromise(StreamedPromise[Token, Message]):
 
     def __init__(
         self,
+        *,
         start_soon: Union[bool, Sentinel] = NO_VALUE,
         message_token_streamer: Optional[Union[MessageTokenStreamer, "MessageTokenAppender"]] = None,
         prefill_message: Optional[Message] = None,
+        prefill_exception: Optional[BaseException] = None,
         message_class: Optional[type[Message]] = None,
         **known_beforehand,
     ) -> None:
@@ -292,6 +297,8 @@ class MessagePromise(StreamedPromise[Token, Message]):
             raise ValueError(
                 "Cannot provide both 'prefill_message' and 'message_token_streamer'/'known_beforehand' parameters"
             )
+        if prefill_exception is not None and prefill_message is not None:
+            raise ValueError("Cannot provide both 'prefill_exception' and 'prefill_message' parameters")
         if prefill_message is None and message_token_streamer is None:
             raise ValueError("Either 'prefill_message' or 'message_token_streamer' parameter must be provided")
 
@@ -300,7 +307,11 @@ class MessagePromise(StreamedPromise[Token, Message]):
             self.message_class = type(prefill_message)
 
             self._auxiliary_field_collector = None
-            super().__init__(prefill_result=prefill_message, start_soon=False)
+            super().__init__(
+                prefill_result=prefill_message,
+                prefill_exception=prefill_exception,
+                start_soon=False,
+            )
         else:
             if message_class is None:
                 raise ValueError("'message_class' parameter must be provided if 'prefill_message' is not provided")
@@ -333,7 +344,7 @@ class MessagePromise(StreamedPromise[Token, Message]):
         streaming the constructor of the class always overrides this method with an externally supplied streamer.
         """
         # The code below is executed when the message is prefilled but the client still requests to stream
-        for token in self._result.message_to_tokens():
+        for token in self.result().message_to_tokens():
             yield token
 
     async def _aresolver(self) -> Message:
@@ -438,12 +449,12 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
             yield TextMessage(zero_or_more_items).as_promise
         elif isinstance(zero_or_more_items, BaseException):
             raise zero_or_more_items
-        elif hasattr(zero_or_more_items, "__iter__"):
-            for item in zero_or_more_items:
-                async for message_promise in self._flattener(item):
-                    yield message_promise
         elif hasattr(zero_or_more_items, "__aiter__"):
             async for item in zero_or_more_items:
+                async for message_promise in self._flattener(item):
+                    yield message_promise
+        elif hasattr(zero_or_more_items, "__iter__"):
+            for item in zero_or_more_items:
                 async for message_promise in self._flattener(item):
                     yield message_promise
         else:
@@ -454,6 +465,7 @@ class MessageSequence(FlatSequence[MessageType, MessagePromise]):
         Resolve all the messages in the sequence (which also includes collecting all the streamed tokens)
         and return them as a tuple of Message objects.
         """
+        # TODO [CANCELLATION] Should anything be done here cancellation-wise ?
         # first collect all the message promises
         msg_promises = [msg_promise async for msg_promise in seq_promise]
         # then resolve them all
@@ -489,8 +501,6 @@ class MessageSequenceAppender:
             return Message(**dict(zero_or_more_messages))
         if isinstance(zero_or_more_messages, dict):
             return Message(**zero_or_more_messages)
-        if hasattr(zero_or_more_messages, "__iter__"):
-            return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
         if hasattr(zero_or_more_messages, "__aiter__"):
             # we do not want to consume an async iterator (and execute its underlying "tasks") prematurely,
             # hence we return it as is
@@ -508,6 +518,8 @@ class MessageSequenceAppender:
                     stacklevel=3,
                 )
             return zero_or_more_messages
+        if hasattr(zero_or_more_messages, "__iter__"):
+            return tuple(cls._freeze_if_needed(item) for item in zero_or_more_messages)
 
         raise TypeError(f"Unexpected message type: {type(zero_or_more_messages)}")
 
@@ -552,6 +564,10 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
     A promise of a sequence of messages that can be streamed message by message.
     """
 
+    # def cancel(self, msg: Optional[str] = None, cancel_individual_promises_too: bool = True) -> bool:
+    #     # TODO [CANCELLATION] Cancel message promises already yielded from the sequence too if the flag is True
+    #     return super().cancel(msg)
+
     def as_single_text_promise(self, **kwargs) -> MessagePromise:
         """
         Convert this sequence promise into a single message promise that will contain all the messages from this
@@ -562,20 +578,18 @@ class MessageSequencePromise(StreamedPromise[MessagePromise, tuple[Message, ...]
 
 class SafeMessageSequencePromise(MessageSequencePromise):
     def __aiter__(self) -> AsyncIterator[MessagePromise]:
-        return _SafeMessagePromiseIteratorProxy(super().__aiter__())
+        return _SafeMessagePromiseIterator(self)
 
 
-# pylint: disable=abstract-method,import-outside-toplevel
-
-
-class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
+class _SafeMessagePromiseIterator(_StreamReplayIterator[MessagePromise]):
     async def __anext__(self) -> MessagePromise:
+        # pylint: disable=broad-except,import-outside-toplevel
         try:
-            message_promise = await self.__wrapped__.__anext__()
-            return _SafeMessagePromiseProxy(message_promise)
+            message_promise = await super().__anext__()
+            return SafeMessagePromise(message_promise)
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
@@ -592,14 +606,28 @@ class _SafeMessagePromiseIteratorProxy(wrapt.ObjectProxy):
             return ErrorMessage.promise(error_msg)
 
 
-class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
-    async def aresolve(self) -> Message:
+class SafeMessagePromise(MessagePromise):
+    def __init__(self, original_message_promise: MessagePromise) -> None:
+        super().__init__(
+            start_soon=False,
+            message_token_streamer=self._amessage_token_streamer,
+            message_class=original_message_promise.message_class,
+            **original_message_promise.known_beforehand.as_kwargs(),
+        )
+        self._original_message_promise = original_message_promise
+
+    async def _amessage_token_streamer(self, _: dict[str, Any]) -> AsyncIterator[Token]:
+        async for token in self._original_message_promise:
+            yield token
+
+    async def _aresolver(self) -> Message:
+        # pylint: disable=broad-except,import-outside-toplevel
         tokens = []
         try:
-            async for token in self.__wrapped__:
+            async for token in self._original_message_promise:
                 tokens.append(token)
-            return await self.__wrapped__.aresolve()
-        except Exception as exc:  # pylint: disable=broad-except
+            return await self._original_message_promise
+        except Exception as exc:
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
@@ -615,20 +643,18 @@ class _SafeMessagePromiseProxy(wrapt.ObjectProxy):
 
             return ErrorMessage(f"{''.join([str(token) for token in tokens])}\n{error_msg}")
 
-    def __await__(self):
-        return self.aresolve().__await__()
-
     def __aiter__(self):
-        return _SafeMessageTokenIteratorProxy(self.__wrapped__.__aiter__())
+        return _SafeMessageTokenIterator(self._original_message_promise)
 
 
-class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
+class _SafeMessageTokenIterator(_StreamReplayIterator[Token]):
     async def __anext__(self) -> Token:
+        # pylint: disable=broad-except,import-outside-toplevel
         try:
-            return await self.__wrapped__.__anext__()
+            return await super().__anext__()
         except StopAsyncIteration:
             raise
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             from miniagents.miniagents import MiniAgents
 
             if MiniAgents.get_current().error_tracebacks_in_messages:
@@ -642,4 +668,4 @@ class _SafeMessageTokenIteratorProxy(wrapt.ObjectProxy):
             else:
                 error_msg = f"{type(exc).__name__}: {exc}"
 
-            return TextToken(f"\n{error_msg}")
+            return ErrorToken(f"\n{error_msg}")
