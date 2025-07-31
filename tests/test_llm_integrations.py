@@ -7,8 +7,8 @@ from typing import Callable
 
 import pytest
 
-from miniagents import Message, MiniAgent, MiniAgents, TextMessage
-from miniagents.ext.llms import AnthropicAgent, AnthropicMessage, OpenAIAgent, OpenAIMessage
+from miniagents import Message, MiniAgent, MiniAgents
+from miniagents.ext.llms import AnthropicAgent, AnthropicMessage, AssistantMessage, OpenAIAgent, OpenAIMessage
 
 
 def _check_openai_response(message: Message) -> None:
@@ -76,7 +76,7 @@ async def test_llm_integration(  # pylint: disable=too-many-positional-arguments
             )
         else:
             reply_sequence = llm_agent.trigger(
-                TextMessage("ANSWER:", role="assistant"),
+                AssistantMessage("ANSWER:"),
                 system=(
                     "This is a test to verify that you are online. Your response will be validated using a strict "
                     "program that does not tolerate any deviations from the expected output at all. Please respond "

@@ -3,6 +3,7 @@ line-length = 119
 
 [tool.coverage.run]
 branch = true
+source = ["miniagents"]
 
 [project]
 name = "miniagents"
