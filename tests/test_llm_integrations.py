@@ -20,13 +20,13 @@ from miniagents.ext.llms import AnthropicAgent, OpenAIAgent
 
 def _check_openai_response(message: Message) -> None:
     assert isinstance(message, OpenAIMessage)
-    assert str(message).strip() == "I AM ONLINE"
+    assert str(message) == "I AM ONLINE"
     assert message.choices[0].finish_reason == "stop"
 
 
 def _check_anthropic_response(message: Message) -> None:
     assert isinstance(message, AnthropicMessage)
-    assert str(message).strip() == "I AM ONLINE"
+    assert str(message) == "I AM ONLINE"
     assert message.stop_reason == "end_turn"
 
 
@@ -109,4 +109,4 @@ async def test_llm_integration(  # pylint: disable=too-many-positional-arguments
                 async for token in msg_promise:
                     result += str(token)
 
-    assert result.strip() == "I AM ONLINE"
+    assert result == "I AM ONLINE"
