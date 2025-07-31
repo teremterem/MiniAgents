@@ -146,10 +146,18 @@ def message_to_llm_dict(message: Message, default_role: str = "user") -> dict[st
     """
     try:
         role = message.role
+        try:
+            # Let's only try `content` if explicit role was provided
+            # TODO It's a temporary hack to support plain OpenAI-style dicts as inputs - do it more elegantly when
+            #  LiteLLM and Instructor are leveraged instead of direct LLM SDKs
+            content = message.content
+        except AttributeError:
+            content = str(message)
     except AttributeError:
         role = default_role
+        content = str(message)
 
     return {
         "role": role,
-        "content": str(message),
+        "content": content,
     }
