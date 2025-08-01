@@ -28,11 +28,11 @@ dev = [
     "hatch",
     "httpx",
     "ipython",
-    "jupyterlab",
+#    "jupyterlab",
     "llama-index",
     "markdown-it-py",
     "markdownify",
-    "notebook",
+#    "notebook",  # this is needed for notebooks to work in PyCharm
     "openai",
     "pre-commit",
     "prompt-toolkit",
