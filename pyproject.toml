@@ -3,10 +3,11 @@ line-length = 119
 
 [tool.coverage.run]
 branch = true
+source = ["miniagents"]
 
 [project]
 name = "miniagents"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = """\
 An open-source, async-first framework for building multi-agent AI systems with an innovative approach to parallelism, \
 so you can focus on creating intelligent agents, not on managing the concurrency of your flows.\
@@ -27,11 +28,11 @@ dev = [
     "hatch",
     "httpx",
     "ipython",
-    "jupyterlab",
+#    "jupyterlab",
     "llama-index",
     "markdown-it-py",
     "markdownify",
-    "notebook",
+#    "notebook",  # this is needed for notebooks to work in PyCharm
     "openai",
     "pre-commit",
     "prompt-toolkit",
