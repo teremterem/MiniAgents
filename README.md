@@ -400,7 +400,8 @@ print(message.custom_field)  # Output: Custom Value
 
 ---
 
-For some more examples, check out the [examples](examples) directory.
+For some more examples, check out the [examples](examples) directory, including
+[free, keyless search and fetch with Parallel Search MCP](examples/parallel_search).
 
 ## 💡 Motivation behind this project
 
